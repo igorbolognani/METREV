@@ -1,0 +1,35 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+
+scoring_model:
+  principle: Simple, transparent, auditable weighted scoring.
+
+  dimensions:
+    expected_technical_gain:
+      weight: 0.30
+      scale: [1, 2, 3, 4, 5]
+    economic_feasibility:
+      weight: 0.20
+      scale: [1, 2, 3, 4, 5]
+    implementation_risk:
+      weight: 0.15
+      scale: [1, 2, 3, 4, 5]
+      invert: true
+    maturity_trl:
+      weight: 0.15
+      scale: [1, 2, 3, 4, 5]
+    implementation_complexity:
+      weight: 0.10
+      scale: [1, 2, 3, 4, 5]
+      invert: true
+    evidence_strength:
+      weight: 0.10
+      scale: [1, 2, 3, 4, 5]
+
+  output:
+    final_priority_score:
+      range: [0, 100]
+
+  rule: If missing critical inputs exceed threshold, cap final score confidence.

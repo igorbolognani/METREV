@@ -1,0 +1,29 @@
+{
+  "name": "@metrev/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "node scripts/run-prisma-with-direct-url.mjs migrate dev",
+    "prisma:migrate:deploy": "node scripts/run-prisma-with-direct-url.mjs migrate deploy"
+  },
+  "dependencies": {
+    "@metrev/domain-contracts": "workspace:*",
+    "@metrev/telemetry": "workspace:*",
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^16.6.1",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3",
+    "typescript": "^5.8.3"
+  }
+}

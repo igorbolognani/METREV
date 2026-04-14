@@ -1,0 +1,99 @@
+version: 0.1
+domain: bioelectrochemical-decision-support
+scope:
+  primary_technologies:
+    - microbial_fuel_cell
+    - microbial_electrolysis_cell
+    - microbial_electrochemical_technology
+  product_role: decision_support_and_consulting
+  excluded_primary_scope:
+    - first_principles_multiphysics_solver
+    - real_time_closed_loop_plant_control
+
+stack_blocks:
+  reactor_architecture:
+    description: Physical and functional configuration of the reactor system.
+    example_subdomains:
+      - single_chamber
+      - dual_chamber
+      - modular_stack
+      - wetland_coupled_system
+      - digester_coupled_system
+      - batch_operation
+      - continuous_operation
+  anode_biofilm_support:
+    description: Anodic substrate, geometry, and biofilm-supporting environment.
+    example_subdomains:
+      - carbon_felt
+      - carbon_cloth
+      - graphite_brush
+      - porous_carbon_monolith
+      - conductive_polymer_composite
+      - surface_modification
+  cathode_catalyst_support:
+    description: Cathodic substrate, catalyst family, and product-side interface conditions.
+    example_subdomains:
+      - oxygen_reduction_cathode
+      - hydrogen_evolution_cathode
+      - abiotic_cathode
+      - biocathode
+      - catalytic_layer
+      - gas_handling_interface
+  membrane_or_separator:
+    description: Ion transport and/or separation layer, including membrane-free strategies.
+    example_subdomains:
+      - cation_exchange_membrane
+      - anion_exchange_membrane
+      - porous_separator
+      - membrane_free_strategy
+      - anti_crossover_design
+  electrical_interconnect_and_sealing:
+    description: Current collection, interconnects, contacts, sealing, and assembly interfaces.
+    example_subdomains:
+      - current_collector
+      - busbar_or_contact
+      - gasket
+      - sealing_strategy
+      - anti_corrosion_interface
+  balance_of_plant:
+    description: Pumps, valves, dosing, recirculation, gas handling, and auxiliary process hardware.
+    example_subdomains:
+      - liquid_pumping
+      - gas_management
+      - recirculation_loop
+      - dosing_and_conditioning
+      - safety_and_venting
+      - cleaning_or_maintenance_path
+  sensors_and_analytics:
+    description: Instrumentation, diagnostics, telemetry, and process monitoring.
+    example_subdomains:
+      - online_water_quality
+      - electrochemical_diagnostics
+      - voltage_current_logging
+      - alarming
+      - data_pipeline
+      - laboratory_validation
+  operational_biology:
+    description: Inoculum, biofilm startup, microbial resilience, and biological operating regime.
+    example_subdomains:
+      - inoculum_strategy
+      - startup_protocol
+      - shock_response
+      - substrate_utilization_profile
+      - microbial_stability
+      - contamination_or_competition_risk
+
+cross_cutting_layers:
+  technoeconomics:
+    description: Cross-cutting layer for CAPEX, OPEX, TCO, replacement cycles, and decision economics.
+  evidence_and_provenance:
+    description: Cross-cutting layer for evidence typing, source strength, and applicability.
+  risk_and_maturity:
+    description: Cross-cutting layer for TRL, operational risk, scale-up risk, and implementation readiness.
+
+decision_outputs:
+  - current_stack_diagnosis
+  - prioritized_improvement_options
+  - impact_map
+  - supplier_shortlist
+  - phased_roadmap

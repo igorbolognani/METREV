@@ -1,0 +1,84 @@
+version: 0.1
+relationships:
+  - from: reactor_architecture
+    to: anode_biofilm_support
+    type: constrains
+    rationale: Flow path, geometry, and residence behavior constrain viable anodic configurations.
+  - from: reactor_architecture
+    to: cathode_catalyst_support
+    type: constrains
+    rationale: Chambering, gas/liquid access, and product targets constrain cathodic strategy.
+  - from: reactor_architecture
+    to: membrane_or_separator
+    type: conditions_need_for
+    rationale: Configuration and target separation requirements influence membrane or separator choice.
+  - from: membrane_or_separator
+    to: cathode_catalyst_support
+    type: affects
+    rationale: Separator strategy influences crossover, resistance, purity, and cathode-side performance.
+  - from: anode_biofilm_support
+    to: operational_biology
+    type: co_determines
+    rationale: Surface, porosity, and chemistry influence colonization and long-term biological behavior.
+  - from: balance_of_plant
+    to: operational_biology
+    type: conditions
+    rationale: Flow, dosing, and hydraulic regime strongly influence biological stability.
+  - from: balance_of_plant
+    to: sensors_and_analytics
+    type: integrates_with
+    rationale: Auxiliary systems define controllability and observability.
+  - from: electrical_interconnect_and_sealing
+    to: anode_biofilm_support
+    type: supports
+    rationale: Contacts and assembly quality affect effective current collection.
+  - from: electrical_interconnect_and_sealing
+    to: cathode_catalyst_support
+    type: supports
+    rationale: Contact losses and sealing affect cathode-side robustness and maintenance.
+  - from: sensors_and_analytics
+    to: technoeconomics
+    type: informs
+    rationale: Better observability can improve validation quality, maintenance timing, and operational decisions.
+  - from: evidence_and_provenance
+    to: all_blocks
+    type: qualifies
+    rationale: Evidence quality determines how strongly block-level conclusions can be trusted.
+  - from: risk_and_maturity
+    to: technoeconomics
+    type: modifies
+    rationale: Higher risk or lower maturity alters economic plausibility and implementation timing.
+
+block_to_decision_dimensions:
+  reactor_architecture:
+    - hydraulic_fit
+    - scale_up_complexity
+    - footprint_constraint
+  anode_biofilm_support:
+    - startup_behavior
+    - fouling_risk
+    - biofilm_support_quality
+  cathode_catalyst_support:
+    - target_reaction_fit
+    - durability
+    - product_selectivity_or_function_fit
+  membrane_or_separator:
+    - crossover_control
+    - ionic_resistance
+    - maintenance_burden
+  electrical_interconnect_and_sealing:
+    - ohmic_loss_risk
+    - assembly_repeatability
+    - serviceability
+  balance_of_plant:
+    - operability
+    - maintenance_load
+    - retrofit_feasibility
+  sensors_and_analytics:
+    - observability
+    - validation_readiness
+    - alarm_coverage
+  operational_biology:
+    - startup_time_risk
+    - shock_resilience
+    - biological_stability

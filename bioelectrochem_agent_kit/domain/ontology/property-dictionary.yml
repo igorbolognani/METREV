@@ -1,0 +1,591 @@
+version: 0.2
+metadata:
+  provenance_source_values:
+    - raw
+    - parsed
+    - normalized
+    - reviewed
+  confidence_impact_values:
+    - none
+    - low
+    - medium
+    - high
+properties:
+  case_id:
+    type: string
+    description: Unique identifier for the case under evaluation.
+    required: true
+    default_behavior: generated_uuid_when_absent
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - case_id
+  technology_family:
+    type: enum
+    allowed:
+      - microbial_fuel_cell
+      - microbial_electrolysis_cell
+      - microbial_electrochemical_technology
+    legacy_aliases:
+      - hybrid_or_other_met
+    description: Primary technology family for the case.
+    required: true
+    default_behavior: domain_template_default_with_missing_flag
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - technology_family
+      - technology_context.technology_family
+  primary_objective:
+    type: enum
+    allowed:
+      - wastewater_treatment
+      - hydrogen_recovery
+      - nitrogen_recovery
+      - sensing
+      - low_power_generation
+      - biogas_synergy
+      - other
+    description: Main operational objective being purchased or optimized.
+    required: true
+    default_behavior: domain_template_default_with_missing_flag
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - primary_objective
+      - business_context.primary_objective
+  influent_type:
+    type: string
+    description: Description of wastewater, sidestream, substrate, or relevant feed.
+    required: false
+    default_behavior: no_default
+    missing_behavior: add_missing_operating_condition_flag
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - feed_and_operation.influent_type
+  influent_cod_mg_per_l:
+    type: number
+    units: mg/L
+    description: Chemical oxygen demand if known.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.influent_cod_mg_per_l
+  pH:
+    type: number
+    units: unitless
+    description: Operating or influent pH.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.pH
+  temperature_c:
+    type: number
+    units: C
+    description: Relevant operating temperature.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.temperature_c
+  conductivity_ms_per_cm:
+    type: number
+    units: mS/cm
+    description: Bulk conductivity when known.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.conductivity_ms_per_cm
+  hydraulic_retention_time_h:
+    type: number
+    units: h
+    description: Hydraulic retention time.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.hydraulic_retention_time_h
+  membrane_presence:
+    type: enum
+    allowed:
+      - present
+      - absent
+      - unknown
+    description: Membrane presence before normalization into the canonical reactor architecture block.
+    required: false
+    default_behavior: infer_unknown_when_absent
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - technology_context.membrane_presence
+      - stack_blocks.reactor_architecture.membrane_presence
+  architecture_family:
+    type: string
+    description: Canonical architecture designation from the taxonomy.
+    required: true
+    default_behavior: needs_classification_with_missing_flag
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - architecture_family
+      - technology_context.architecture_family
+  anode_material_family:
+    type: string
+    description: Canonical anodic substrate or material family.
+    required: false
+    default_behavior: unknown_placeholder_when_unresolved
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.anode_biofilm_support.material_family
+  cathode_material_family:
+    type: string
+    description: Canonical cathodic substrate or material family.
+    required: false
+    default_behavior: unknown_placeholder_when_unresolved
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.cathode_catalyst_support.catalyst_family
+  separator_family:
+    type: string
+    description: Canonical separator or membrane family when present.
+    required: false
+    default_behavior: unknown_placeholder_when_unresolved
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.membrane_or_separator.type
+  current_collection_strategy:
+    type: string
+    description: Current collector and contact approach.
+    required: false
+    default_behavior: unknown_placeholder_when_unresolved
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.electrical_interconnect_and_sealing.current_collection_strategy
+  bop_summary:
+    type: string
+    description: Short structured description of auxiliary process systems.
+    required: false
+    default_behavior: no_default
+    missing_behavior: derive_flow_control_or_dosing_when_possible
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.balance_of_plant.bop_summary
+  sensing_summary:
+    type: string
+    description: Short structured description of monitoring and diagnostics capability.
+    required: false
+    default_behavior: no_default
+    missing_behavior: infer_unknown_sensor_coverage
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - stack_blocks.sensors_and_analytics.sensing_summary
+      - stack_blocks.sensors_and_analytics.diagnostics_summary
+  biology_summary:
+    type: string
+    description: Structured note on inoculum and biological operating strategy.
+    required: false
+    default_behavior: no_default
+    missing_behavior: infer_biofilm_maturity_from_context
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.operational_biology.biology_summary
+  local_energy_cost_note:
+    type: string
+    description: Local cost context relevant to decision framing.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.local_energy_cost_note
+      - cross_cutting_layers.technoeconomics.local_energy_cost_note
+  capex_constraint_level:
+    type: enum
+    allowed:
+      - low
+      - medium
+      - high
+      - unknown
+    description: Capital expenditure constraint level used in deterministic prioritization.
+    required: false
+    default_behavior: explicit_unknown_allowed
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.capex_constraint_level
+      - cross_cutting_layers.technoeconomics.capex_constraint_level
+  opex_sensitivity_level:
+    type: enum
+    allowed:
+      - low
+      - medium
+      - high
+      - unknown
+    description: Operational expenditure sensitivity used in deterministic prioritization.
+    required: false
+    default_behavior: explicit_unknown_allowed
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.opex_sensitivity_level
+      - cross_cutting_layers.technoeconomics.opex_sensitivity_level
+  supplier_preference_notes:
+    type: string
+    description: Existing supplier constraints, preferences, or exclusions.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - supplier_context.supplier_preference_notes
+      - cross_cutting_layers.risk_and_maturity.supplier_context.supplier_preference_notes
+  priorities:
+    type: list<string>
+    description: Ranked business or technical priorities.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.priorities
+      - cross_cutting_layers.technoeconomics.priorities
+  defaults_used:
+    type: list<string>
+    description: List of fields populated through defaults or bounded assumptions.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - defaults_used
+  missing_data:
+    type: list<string>
+    description: List of missing fields that materially affect inference or confidence.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: normalized
+    confidence_impact: high
+    runtime_field_paths:
+      - missing_data
+  evidence_refs:
+    type: list<string>
+    description: References to structured evidence records used in reasoning.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: parsed
+    confidence_impact: high
+    runtime_field_paths:
+      - evidence_refs
+      - cross_cutting_layers.evidence_and_provenance.evidence_refs
+  rule_refs:
+    type: list<string>
+    description: References to deterministic or scoring rules used in reasoning.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: reviewed
+    confidence_impact: medium
+    runtime_field_paths:
+      - decision_output.prioritized_improvement_options[].rule_refs
+  confidence_level:
+    type: enum
+    allowed:
+      - low
+      - medium
+      - high
+    description: Confidence in the current conclusion, adjusted for evidence quality and missing data.
+    required: true
+    default_behavior: derived_from_deterministic_scoring
+    provenance_source: reviewed
+    confidence_impact: none
+    runtime_field_paths:
+      - decision_output.confidence_and_uncertainty_summary.confidence_level
+      - audit_record.confidence_level
+  measured_metrics:
+    type: map<string, unknown>
+    description: Raw measured metrics captured at intake and carried into deterministic evaluation.
+    required: false
+    default_behavior: default_empty_object
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - measured_metrics
+  evidence_records:
+    type: list<object>
+    description: Structured evidence intake records before deterministic normalization and scoring.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - evidence_records
+  assumptions:
+    type: list<string>
+    description: Assumptions carried into normalization, scoring, and audit outputs.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - assumptions
+  normalization_status:
+    type: object
+    description: Intake-side normalization annotations that explain defaults, assumptions, and missing-data flags.
+    required: false
+    default_behavior: no_default
+    provenance_source: parsed
+    confidence_impact: medium
+    runtime_field_paths:
+      - normalization_status
+  business_context.decision_horizon:
+    type: string
+    description: Time horizon that bounds economic plausibility and roadmap staging.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: low
+    runtime_field_paths:
+      - business_context.decision_horizon
+  business_context.deployment_context:
+    type: string
+    description: Deployment setting used to contextualize feasibility and serviceability.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.deployment_context
+  business_context.retrofit_priority:
+    type: string
+    description: Business preference for retrofit-friendly options.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.retrofit_priority
+  business_context.serviceability_priority:
+    type: string
+    description: Business preference that feeds serviceability risk and roadmap staging.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.serviceability_priority
+  business_context.hard_constraints:
+    type: list<string>
+    description: Non-negotiable business or engineering constraints that bound recommendation space.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - business_context.hard_constraints
+      - cross_cutting_layers.technoeconomics.hard_constraints
+  technology_context.scale_context:
+    type: string
+    description: Declared or inferred scale context used in scale-up risk framing.
+    required: false
+    default_behavior: inferred_from_current_trl_when_possible
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - technology_context.scale_context
+  technology_context.current_trl:
+    type: number|string
+    description: Raw maturity indicator that is normalized into the canonical TRL signal.
+    required: false
+    default_behavior: contract_default_with_missing_flag
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - technology_context.current_trl
+      - cross_cutting_layers.risk_and_maturity.trl
+  technology_context.current_pain_points:
+    type: list<string>
+    description: Current operating pain points used to infer missing risks and biology maturity.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - technology_context.current_pain_points
+  technology_context.performance_claims_under_review:
+    type: list<string>
+    description: Claims still under review and not yet promoted to validated evidence.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - technology_context.performance_claims_under_review
+  technology_context.target_maturity_window:
+    type: string
+    description: Desired maturity window for roadmap timing and review decisions.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: low
+    runtime_field_paths:
+      - technology_context.target_maturity_window
+      - cross_cutting_layers.risk_and_maturity.target_maturity_window
+  feed_and_operation.substrate_profile:
+    type: string
+    description: Substrate description used alongside influent type for interpretation.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.substrate_profile
+  feed_and_operation.salinity_or_conductivity_context:
+    type: string
+    description: Qualitative conductivity context retained alongside explicit conductivity measurements.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.salinity_or_conductivity_context
+  feed_and_operation.operating_regime:
+    type: string
+    description: Operating regime that affects benchmarking comparability and uncertainty.
+    required: false
+    default_behavior: no_default
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.operating_regime
+  stack_blocks.sensors_and_analytics.data_quality:
+    type: string
+    description: Canonical observability quality signal that drives missing-data and confidence behavior.
+    required: false
+    default_behavior: contract_default_with_missing_sensor_coverage_flag
+    provenance_source: normalized
+    confidence_impact: high
+    runtime_field_paths:
+      - stack_blocks.sensors_and_analytics.data_quality
+  stack_blocks.operational_biology.biofilm_maturity:
+    type: string
+    description: Canonical biology maturity signal inferred from evidence, pain points, or defaults.
+    required: false
+    default_behavior: inferred_or_contract_default
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - stack_blocks.operational_biology.biofilm_maturity
+  cross_cutting_layers.technoeconomics.maintenance_burden:
+    type: string
+    description: Maintenance burden signal used in sensitivity framing and prioritization.
+    required: false
+    default_behavior: contract_default
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - cross_cutting_layers.technoeconomics.maintenance_burden
+  cross_cutting_layers.evidence_and_provenance.evidence_profile:
+    type: string
+    description: Summary of evidence density and corroboration generated from typed evidence.
+    required: true
+    default_behavior: derived_from_typed_evidence
+    provenance_source: normalized
+    confidence_impact: high
+    runtime_field_paths:
+      - cross_cutting_layers.evidence_and_provenance.evidence_profile
+  cross_cutting_layers.evidence_and_provenance.supplier_claim_fraction:
+    type: string
+    description: Fraction of evidence originating from supplier claims and used to lower confidence when necessary.
+    required: true
+    default_behavior: derived_from_typed_evidence
+    provenance_source: normalized
+    confidence_impact: high
+    runtime_field_paths:
+      - cross_cutting_layers.evidence_and_provenance.supplier_claim_fraction
+  cross_cutting_layers.evidence_and_provenance.typed_evidence:
+    type: list<object>
+    description: Canonical typed evidence bundle persisted for audit and confidence review.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: parsed
+    confidence_impact: high
+    runtime_field_paths:
+      - cross_cutting_layers.evidence_and_provenance.typed_evidence
+      - audit_record.typed_evidence
+  cross_cutting_layers.risk_and_maturity.trl:
+    type: number
+    description: Canonical TRL used in risk, maturity, and roadmap reasoning.
+    required: true
+    default_behavior: normalized_from_current_trl_or_contract_default
+    provenance_source: normalized
+    confidence_impact: high
+    runtime_field_paths:
+      - cross_cutting_layers.risk_and_maturity.trl
+  cross_cutting_layers.risk_and_maturity.scale_up_risk:
+    type: string
+    description: Deterministic scale-up risk derived from scale context and flow-control readiness.
+    required: true
+    default_behavior: derived_from_scale_context_and_flow_control
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - cross_cutting_layers.risk_and_maturity.scale_up_risk
+  cross_cutting_layers.risk_and_maturity.serviceability_risk:
+    type: string
+    description: Deterministic serviceability risk derived from architecture serviceability signals.
+    required: true
+    default_behavior: derived_from_serviceability_level
+    provenance_source: normalized
+    confidence_impact: medium
+    runtime_field_paths:
+      - cross_cutting_layers.risk_and_maturity.serviceability_risk
+  supplier_context.current_suppliers:
+    type: list<string>
+    description: Suppliers already in use for the case context.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: low
+    runtime_field_paths:
+      - supplier_context.current_suppliers
+      - cross_cutting_layers.risk_and_maturity.supplier_context.current_suppliers
+  supplier_context.preferred_suppliers:
+    type: list<string>
+    description: Preferred suppliers that may influence shortlist generation but never replace evidence review.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - supplier_context.preferred_suppliers
+      - cross_cutting_layers.risk_and_maturity.supplier_context.preferred_suppliers
+  supplier_context.excluded_suppliers:
+    type: list<string>
+    description: Excluded suppliers that act as hard filters in shortlist generation.
+    required: false
+    default_behavior: default_empty_list
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - supplier_context.excluded_suppliers
+      - cross_cutting_layers.risk_and_maturity.supplier_context.excluded_suppliers

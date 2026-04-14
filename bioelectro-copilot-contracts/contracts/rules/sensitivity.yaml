@@ -1,0 +1,16 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+
+sensitivity_policy:
+  principle: Rankings should state which assumptions most affect recommendation stability.
+  tracked_factors:
+    - case.cross_cutting_layers.evidence_and_provenance.evidence_profile
+    - case.feed_and_operation.operating_regime
+    - case.technology_context.scale_context
+    - case.cross_cutting_layers.technoeconomics.capex_constraint_level
+    - case.cross_cutting_layers.technoeconomics.maintenance_burden
+    - case.stack_blocks.sensors_and_analytics.data_quality
+
+  rule: If rank order changes under plausible assumption shifts, mark the recommendation set as sensitivity_high.

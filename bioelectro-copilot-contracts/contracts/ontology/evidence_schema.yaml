@@ -1,0 +1,56 @@
+version: 0.2
+evidence_record:
+  required_fields:
+    - evidence_id
+    - evidence_type
+    - title
+    - summary
+    - applicability_scope
+    - strength_level
+    - provenance_note
+  optional_fields:
+    - quantitative_metrics
+    - operating_conditions
+    - block_mapping
+    - limitations
+    - contradiction_notes
+    - supplier_name
+    - benchmark_context
+    - tags
+
+fields:
+  evidence_id: string
+  evidence_type:
+    type: enum
+    allowed:
+      - literature_evidence
+      - internal_benchmark
+      - supplier_claim
+      - engineering_assumption
+      - derived_heuristic
+  title: string
+  summary: string
+  applicability_scope: object
+  strength_level:
+    type: enum
+    allowed: [weak, moderate, strong]
+  provenance_note: string
+  quantitative_metrics:
+    type: object
+  operating_conditions:
+    type: object
+  block_mapping:
+    type: list[string]
+  limitations:
+    type: list[string]
+  contradiction_notes:
+    type: list[string]
+  supplier_name: string
+  benchmark_context: string
+  tags:
+    type: list[string]
+
+rules:
+  - Supplier claims must never be presented as validated fact without corroboration.
+  - Engineering assumptions must stay visible in outputs and reduce confidence when material.
+  - Derived heuristics must be traceable to supporting evidence logic.

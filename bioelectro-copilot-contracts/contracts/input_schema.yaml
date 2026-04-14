@@ -1,0 +1,65 @@
+version: 0.2
+normalized_case_input:
+  description: Canonical intake contract for a bioelectrochemical decision-support case.
+  required_fields:
+    - case_id
+    - technology_family
+    - architecture_family
+    - primary_objective
+  optional_fields:
+    - business_context
+    - technology_context
+    - feed_and_operation
+    - stack_blocks
+    - cross_cutting_layers
+    - measured_metrics
+    - evidence_refs
+    - assumptions
+    - missing_data
+    - defaults_used
+
+field_groups:
+  business_context:
+    examples:
+      - decision_horizon
+      - deployment_context
+      - capex_constraint_level
+      - opex_sensitivity_level
+      - retrofit_priority
+      - serviceability_priority
+  technology_context:
+    examples:
+      - scale_context
+      - current_trl
+      - current_pain_points
+      - performance_claims_under_review
+      - target_maturity_window
+  feed_and_operation:
+    examples:
+      - influent_type
+      - substrate_profile
+      - pH
+      - temperature_c
+      - hydraulic_retention_time_h
+      - salinity_or_conductivity_context
+      - operating_regime
+  stack_blocks:
+    required_shape:
+      reactor_architecture: object
+      anode_biofilm_support: object
+      cathode_catalyst_support: object
+      membrane_or_separator: object
+      electrical_interconnect_and_sealing: object
+      balance_of_plant: object
+      sensors_and_analytics: object
+      operational_biology: object
+  cross_cutting_layers:
+    required_shape:
+      technoeconomics: object
+      evidence_and_provenance: object
+      risk_and_maturity: object
+
+rules:
+  - Do not silently infer absent critical fields as known facts.
+  - Defaults are allowed only when surfaced in the final output.
+  - Missing critical inputs must reduce confidence and narrowness of recommendations.

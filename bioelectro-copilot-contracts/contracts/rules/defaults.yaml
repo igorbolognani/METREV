@@ -1,0 +1,32 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+
+defaults_policy:
+  principle: Never hide assumptions. Every default must be explicit, audit-visible, and confidence-aware.
+
+  defaults:
+    case.cross_cutting_layers.risk_and_maturity.trl:
+      default: 3
+      justification: Conservative assumption for early BES deployments unless stronger evidence exists.
+
+    case.stack_blocks.sensors_and_analytics.data_quality:
+      default: medium
+      justification: Neutral baseline when instrumentation details are incomplete.
+
+    case.stack_blocks.operational_biology.biofilm_maturity:
+      default: unknown
+      justification: Do not assume biological stabilization without measured evidence.
+
+    case.cross_cutting_layers.technoeconomics.maintenance_burden:
+      default: medium
+      justification: Neutral operational baseline when maintenance evidence is sparse.
+
+  missing_data_flags:
+    - missing_material_property
+    - missing_operating_condition
+    - missing_metric
+    - missing_economic_assumption
+    - missing_sensor_coverage
+
+  rule: If a recommendation depends on missing data, reduce confidence and annotate the dependency explicitly.

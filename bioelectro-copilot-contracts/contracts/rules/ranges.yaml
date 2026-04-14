@@ -1,0 +1,13 @@
+version: 0.2
+canonical_vocabulary_source:
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+range_policy:
+  principle: Use relative qualitative bands unless project-specific calibrated thresholds exist.
+  qualitative_bands:
+    low_threshold:
+      description: Lower-than-useful band for the current case type.
+    medium_threshold:
+      description: Reference operating band.
+    high_threshold:
+      description: Upper band or unusually elevated value for the current case type.
+  rule: Case-specific thresholds should override generic bands when benchmark data is available.

@@ -1,0 +1,52 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+
+compatibility_rules:
+  - id: comp_001
+    condition:
+      all:
+        - field: case.stack_blocks.anode_biofilm_support.material_family
+          operator: "="
+          value: metal_based
+        - field: case.stack_blocks.operational_biology.contamination_risk
+          operator: "="
+          value: high
+    finding: Potential mismatch between biological robustness and the local material environment.
+    severity: medium
+
+  - id: comp_002
+    condition:
+      all:
+        - field: case.stack_blocks.membrane_or_separator.type
+          operator: "="
+          value: AEM
+        - field: case.stack_blocks.cathode_catalyst_support.reaction_target
+          operator: "="
+          value: HER
+    finding: Verify alkaline stability and full-system ionic compatibility before recommendation.
+    severity: medium
+
+  - id: comp_003
+    condition:
+      all:
+        - field: case.stack_blocks.balance_of_plant.flow_control
+          operator: "="
+          value: none
+        - field: case.technology_context.scale_context
+          operator: in
+          value: [pilot, demo, full_scale]
+    finding: Scale progression is weakly supported when flow-control strategy is absent.
+    severity: high
+
+  - id: comp_004
+    condition:
+      all:
+        - field: case.stack_blocks.sensors_and_analytics.data_quality
+          operator: "="
+          value: low
+        - field: case.technology_context.performance_claims_under_review
+          operator: contains
+          value: optimization
+    finding: Optimization-oriented claims are weakly supported under low observability.
+    severity: medium

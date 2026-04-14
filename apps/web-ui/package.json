@@ -1,0 +1,29 @@
+{
+  "name": "@metrev/web-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "2.11.0",
+    "@metrev/auth": "workspace:*",
+    "@metrev/database": "workspace:*",
+    "@metrev/domain-contracts": "workspace:*",
+    "@metrev/telemetry": "workspace:*",
+    "@tanstack/react-query": "^5.75.2",
+    "next": "^15.3.1",
+    "next-auth": "5.0.0-beta.30",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "typescript": "^5.8.3"
+  }
+}

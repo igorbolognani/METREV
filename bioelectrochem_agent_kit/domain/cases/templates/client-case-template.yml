@@ -1,0 +1,69 @@
+case_id: CASE-PLACEHOLDER
+case_metadata:
+  created_by: ""
+  created_at: ""
+  case_status: intake_draft
+
+business_context:
+  client_type: ""
+  primary_objective: wastewater_treatment
+  decision_horizon: ""
+  priorities: []
+  hard_constraints: []
+  local_energy_cost_note: ""
+  capex_constraint_level: unknown
+  opex_sensitivity_level: unknown
+
+technology_context:
+  technology_family: microbial_fuel_cell
+  architecture_family: ""
+  membrane_presence: unknown
+  primary_target_output: ""
+
+feed_and_operation:
+  influent_type: ""
+  influent_cod_mg_per_l: null
+  pH: null
+  temperature_c: null
+  conductivity_ms_per_cm: null
+  hydraulic_retention_time_h: null
+  flow_note: ""
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: ""
+    geometry_note: ""
+    surface_note: ""
+  cathode_catalyst_support:
+    material_family: ""
+    catalyst_note: ""
+    product_side_note: ""
+  membrane_or_separator:
+    family: ""
+    note: ""
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: ""
+    sealing_note: ""
+  balance_of_plant:
+    bop_summary: ""
+    maintenance_note: ""
+  sensors_and_analytics:
+    sensing_summary: ""
+    diagnostics_summary: ""
+  operational_biology:
+    biology_summary: ""
+    inoculum_note: ""
+    startup_note: ""
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers: []
+  excluded_suppliers: []
+  supplier_preference_notes: ""
+
+normalization_status:
+  defaults_used: []
+  missing_data: []
+  assumptions: []
+  confidence_notes: []
+  recommended_next_measurements: []

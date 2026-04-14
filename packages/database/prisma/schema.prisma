@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum SupplierPreferenceType {
+  CURRENT
+  PREFERRED
+  EXCLUDED
+}
+
+enum SupplierSourceState {
+  RAW
+  PARSED
+  NORMALIZED
+  REVIEWED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          Role      @default(VIEWER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model CaseRecord {
+  id                  String                   @id
+  technologyFamily    String
+  architectureFamily  String
+  primaryObjective    String
+  rawIntakeSnapshot   Json
+  normalizedCase      Json
+  defaultsUsed        String[]
+  missingData         String[]
+  assumptions         String[]
+  typedEvidence       Json
+  supplierContext     Json
+  createdBy           String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  evaluations         EvaluationRecord[]
+  evidenceRecords     EvidenceRecord[]
+  supplierPreferences CaseSupplierPreference[]
+  auditEvents         AuditEvent[]
+}
+
+model EvaluationRecord {
+  id                     String                  @id
+  caseId                 String
+  decisionOutput         Json
+  auditRecord            Json
+  narrative              String?
+  narrativeMetadata      Json
+  confidenceLevel        String
+  provenanceSummary      Json
+  scoringSummary         Json
+  defaultsUsed           String[]
+  missingData            String[]
+  assumptions            String[]
+  createdAt              DateTime                @default(now())
+  case                   CaseRecord              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  supplierShortlistItems SupplierShortlistItem[]
+  auditEvents            AuditEvent[]
+}
+
+model Supplier {
+  id              String                   @id @default(cuid())
+  normalizedName  String                   @unique
+  displayName     String
+  category        String?
+  region          String?
+  metadata        Json
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  casePreferences CaseSupplierPreference[]
+  shortlistItems  SupplierShortlistItem[]
+  evidenceRecords EvidenceRecord[]
+}
+
+model CaseSupplierPreference {
+  id             String                 @id @default(cuid())
+  caseId         String
+  supplierId     String?
+  supplierLabel  String
+  preferenceType SupplierPreferenceType
+  note           String?
+  sourceState    SupplierSourceState
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  case           CaseRecord             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  supplier       Supplier?              @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@unique([caseId, preferenceType, supplierLabel])
+  @@index([caseId, preferenceType])
+}
+
+model SupplierShortlistItem {
+  id                 String              @id @default(cuid())
+  evaluationId       String
+  supplierId         String?
+  candidateLabel     String
+  category           String
+  fitNote            String
+  missingInformation Json
+  reviewStatus       SupplierSourceState
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  evaluation         EvaluationRecord    @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  supplier           Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId, category])
+}
+
+model EvidenceRecord {
+  id            String     @id
+  caseId        String
+  evidenceType  String
+  title         String
+  strengthLevel String
+  supplierName  String?
+  supplierId    String?
+  payload       Json
+  createdAt     DateTime   @default(now())
+  case          CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  supplier      Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, supplierId])
+}
+
+model AuditEvent {
+  id           String            @id
+  caseId       String?
+  evaluationId String?
+  eventType    String
+  actorRole    String
+  actorId      String?
+  payload      Json
+  createdAt    DateTime          @default(now())
+  case         CaseRecord?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evaluation   EvaluationRecord? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([evaluationId, createdAt])
+}

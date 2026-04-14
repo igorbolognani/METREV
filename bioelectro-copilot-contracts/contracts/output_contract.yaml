@@ -1,0 +1,361 @@
+version: 0.3
+normalized_decision_output:
+  required_sections:
+    - current_stack_diagnosis
+    - prioritized_improvement_options
+    - impact_map
+    - supplier_shortlist
+    - phased_roadmap
+    - assumptions_and_defaults_audit
+    - confidence_and_uncertainty_summary
+  sections:
+    current_stack_diagnosis:
+      type: object
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+      fields:
+        summary:
+          type: string
+          source_state: normalized
+          required: true
+          missing_behavior: invalid_contract
+        block_findings:
+          type: list<diagnosis_block_finding_record>
+          source_state: reviewed
+          required: true
+          missing_behavior: invalid_contract
+        main_weaknesses_or_blind_spots:
+          type: list<string>
+          source_state: reviewed
+          required: true
+          missing_behavior: default_empty_list
+    prioritized_improvement_options:
+      type: list<recommendation_record>
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    impact_map:
+      type: list<impact_map_record>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+    supplier_shortlist:
+      type: list<supplier_shortlist_record>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+    phased_roadmap:
+      type: list<phased_roadmap_record>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+    assumptions_and_defaults_audit:
+      type: object
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+      fields:
+        assumptions:
+          type: list<string>
+          source_state: normalized
+          required: true
+          missing_behavior: default_empty_list
+        defaults_used:
+          type: list<string>
+          source_state: normalized
+          required: true
+          missing_behavior: default_empty_list
+        missing_data:
+          type: list<string>
+          source_state: normalized
+          required: true
+          missing_behavior: default_empty_list
+    confidence_and_uncertainty_summary:
+      type: object
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+      fields:
+        confidence_level:
+          type: enum(low|medium|high)
+          source_state: reviewed
+          required: true
+          missing_behavior: invalid_contract
+        summary:
+          type: string
+          source_state: reviewed
+          required: true
+          missing_behavior: invalid_contract
+        next_tests:
+          type: list<string>
+          source_state: reviewed
+          required: true
+          missing_behavior: default_empty_list
+        provenance_notes:
+          type: list<string>
+          source_state: reviewed
+          required: true
+          missing_behavior: default_empty_list
+        sensitivity_level:
+          type: enum(low|medium|high)
+          source_state: reviewed
+          required: false
+          missing_behavior: omit_when_not_computed
+
+recommendation_record:
+  required_fields:
+    - recommendation_id
+    - linked_diagnosis
+    - rationale
+    - expected_benefit
+    - implementation_effort
+    - economic_plausibility
+    - risk_level
+    - maturity_level
+    - evidence_strength_summary
+    - assumptions
+    - missing_data_dependencies
+    - confidence_level
+  optional_fields:
+    - supplier_candidates
+    - prerequisite_actions
+    - measurement_requests
+    - phase_assignment
+    - rule_refs
+    - evidence_refs
+    - provenance_notes
+    - priority_score
+  fields:
+    recommendation_id:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    linked_diagnosis:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    rationale:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    expected_benefit:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    implementation_effort:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    economic_plausibility:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    risk_level:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    maturity_level:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    evidence_strength_summary:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    assumptions:
+      type: list<string>
+      source_state: normalized
+      required: true
+      missing_behavior: default_empty_list
+    missing_data_dependencies:
+      type: list<string>
+      source_state: normalized
+      required: true
+      missing_behavior: default_empty_list
+    confidence_level:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    supplier_candidates:
+      type: list<string>
+      source_state: normalized
+      required: false
+      missing_behavior: omit_when_no_supplier_candidates
+    prerequisite_actions:
+      type: list<string>
+      source_state: reviewed
+      required: false
+      missing_behavior: default_empty_list
+    measurement_requests:
+      type: list<string>
+      source_state: reviewed
+      required: false
+      missing_behavior: default_empty_list
+    phase_assignment:
+      type: string
+      source_state: reviewed
+      required: false
+      missing_behavior: omit_when_unassigned
+    rule_refs:
+      type: list<string>
+      source_state: reviewed
+      required: false
+      missing_behavior: default_empty_list
+    evidence_refs:
+      type: list<string>
+      source_state: parsed
+      required: false
+      missing_behavior: default_empty_list
+    provenance_notes:
+      type: list<string>
+      source_state: reviewed
+      required: false
+      missing_behavior: default_empty_list
+    priority_score:
+      type: number
+      source_state: reviewed
+      required: false
+      missing_behavior: omit_when_not_scored
+
+impact_map_record:
+  required_fields:
+    - option
+    - technical_impact
+    - economic_plausibility
+    - maturity_or_readiness
+    - dependencies
+    - confidence
+  fields:
+    option:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    technical_impact:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    economic_plausibility:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    maturity_or_readiness:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    dependencies:
+      type: list<string>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+    confidence:
+      type: enum(low|medium|high)
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    priority_score:
+      type: number
+      source_state: reviewed
+      required: false
+      missing_behavior: omit_when_not_scored
+
+supplier_shortlist_record:
+  required_fields:
+    - category
+    - candidate_path
+    - fit_note
+    - missing_information_before_commitment
+  fields:
+    category:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    candidate_path:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    fit_note:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    missing_information_before_commitment:
+      type: list<string>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+
+phased_roadmap_record:
+  required_fields:
+    - phase
+    - title
+    - actions
+  fields:
+    phase:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    title:
+      type: string
+      source_state: reviewed
+      required: true
+      missing_behavior: invalid_contract
+    actions:
+      type: list<string>
+      source_state: reviewed
+      required: true
+      missing_behavior: default_empty_list
+
+canonical_lifecycle:
+  states:
+    raw:
+      produced_by: client_intake_capture
+      validated_by:
+        - packages/domain-contracts/src/schemas.ts#rawCaseInputSchema
+      persisted_as:
+        - audit_record.raw_input_snapshot
+        - case.raw_intake_snapshot
+    parsed:
+      produced_by: apps/api-server/src/routes/cases.ts#rawCaseInputSchema.safeParse
+      validated_by:
+        - packages/domain-contracts/src/schemas.ts#rawCaseInputSchema
+      persisted_as:
+        - transient_only_in_phase_1_runtime
+    normalized:
+      produced_by: packages/domain-contracts/src/normalize.ts#normalizeCaseInput
+      validated_by:
+        - packages/domain-contracts/src/schemas.ts#normalizedCaseInputSchema
+      persisted_as:
+        - evaluation.normalized_case
+        - case.normalized_case
+    reviewed:
+      produced_by: packages/domain-contracts/src/validator.ts#validateDecisionOutputContract
+      validated_by:
+        - packages/domain-contracts/src/schemas.ts#decisionOutputSchema
+        - bioelectro-copilot-contracts/contracts/output_contract.yaml
+      persisted_as:
+        - evaluation.decision_output
+        - evaluation.audit_record
+
+guardrails:
+  - Do not present a single winner when confidence is low.
+  - Surface supplier claims separately from validated evidence.
+  - Make dependencies and uncertainty explicit.
+  - Treat supplier shortlist entries as reviewed candidates only when category, provenance, and missing-information fields remain explicit.

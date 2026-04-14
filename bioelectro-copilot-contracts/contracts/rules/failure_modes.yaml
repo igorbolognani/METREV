@@ -1,0 +1,59 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+
+failure_mode_library:
+  - id: fm_001
+    name: biofilm_instability
+    symptoms:
+      - unstable startup
+      - fluctuating voltage
+      - poor current density
+    likely_causes:
+      - inoculum inconsistency
+      - poor anode compatibility
+      - operating shocks
+    checks:
+      - review case.stack_blocks.operational_biology.inoculum_source
+      - inspect case.stack_blocks.operational_biology.startup_protocol
+      - assess case.stack_blocks.anode_biofilm_support.material_family and surface treatment compatibility
+    candidate_actions:
+      - improve startup protocol
+      - adjust operating stability controls
+      - revisit anode treatment
+
+  - id: fm_002
+    name: cathode_mass_transport_limitation
+    symptoms:
+      - low power density
+      - voltage loss under load
+    likely_causes:
+      - poor gas access
+      - catalyst/support design mismatch
+      - flooding or blockage
+    checks:
+      - inspect case.stack_blocks.cathode_catalyst_support.gas_handling_interface
+      - review case.stack_blocks.cathode_catalyst_support.catalyst_family
+      - compare with benchmark cathode architectures
+    candidate_actions:
+      - improve transport conditions
+      - redesign catalyst/support
+      - reduce blockage risk
+
+  - id: fm_003
+    name: separator_fouling_or_resistance
+    symptoms:
+      - elevated internal resistance
+      - declining performance over time
+    likely_causes:
+      - fouling
+      - unsuitable separator type
+      - incompatible feed composition
+    checks:
+      - inspect fouling patterns
+      - compare resistance trend
+      - review case.stack_blocks.membrane_or_separator.type and crossover control level
+    candidate_actions:
+      - replace or reconfigure separator
+      - improve fouling control
+      - stabilize feed conditions

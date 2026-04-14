@@ -1,0 +1,57 @@
+version: 0.3
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+
+diagnostic_rules:
+  - id: diag_001
+    name: Possible anodic biofilm underperformance
+    trigger:
+      all:
+        - metric: current_density_a_m2
+          operator: "<"
+          value: low_threshold
+        - field: case.stack_blocks.operational_biology.biofilm_maturity
+          operator: in
+          value: [early, unknown]
+    diagnosis: The anodic biofilm may be immature or insufficiently electroactive.
+    confidence: medium
+    expected_effects:
+      - low current extraction
+      - unstable startup
+
+  - id: diag_002
+    name: Cathodic limitation likely
+    trigger:
+      all:
+        - metric: power_density_w_m2
+          operator: "<"
+          value: low_threshold
+        - field: case.stack_blocks.cathode_catalyst_support.mass_transport_limitation_risk
+          operator: "="
+          value: high
+    diagnosis: The cathode may be the main performance bottleneck.
+    confidence: medium
+
+  - id: diag_003
+    name: Membrane or separator transport issue
+    trigger:
+      any:
+        - metric: internal_resistance_ohm
+          operator: ">"
+          value: high_threshold
+        - field: case.stack_blocks.membrane_or_separator.fouling_risk
+          operator: "="
+          value: high
+    diagnosis: Ionic transport losses or fouling may be penalizing performance.
+    confidence: medium
+
+  - id: diag_004
+    name: Low observability limiting confidence
+    trigger:
+      all:
+        - field: case.stack_blocks.sensors_and_analytics.data_quality
+          operator: "="
+          value: low
+    diagnosis: Current instrumentation is insufficient for robust diagnosis.
+    confidence: high

@@ -1,0 +1,41 @@
+version: 0.1
+relations:
+  - from: anode
+    to: biology
+    relation: supports_biofilm_formation
+    rationale: Anode material and morphology affect attachment, EET, and biofilm stability
+
+  - from: anode
+    to: stack
+    relation: influences_internal_resistance
+    rationale: Conductivity, porosity, and geometry contribute to ohmic and transport losses
+
+  - from: cathode
+    to: stack
+    relation: limits_terminal_performance
+    rationale: Cathodic kinetics and transport often dominate voltage and power output
+
+  - from: membrane_separator
+    to: stack
+    relation: controls_ionic_transport
+    rationale: Separator properties affect resistance, selectivity, fouling, and crossover
+
+  - from: membrane_separator
+    to: biology
+    relation: mediates_chemical_environment
+    rationale: Ionic transport and crossover affect microbial stability and local chemistry
+
+  - from: bop
+    to: biology
+    relation: constrains_operating_stability
+    rationale: Flow, mixing, and temperature strongly affect biofilm and microbial performance
+
+  - from: sensors_analytics
+    to: stack
+    relation: determines_observability
+    rationale: Poor sensing reduces diagnosis confidence and actionability
+
+  - from: economics
+    to: improvements
+    relation: constrains_feasible_actions
+    rationale: Budget and maintenance tolerance shape viable interventions

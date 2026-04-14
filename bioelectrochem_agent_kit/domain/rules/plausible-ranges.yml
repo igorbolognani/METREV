@@ -1,0 +1,42 @@
+version: 0.1
+note: These are starter plausibility bands for validation and intake triage, not universal scientific truths.
+
+ranges:
+  pH:
+    low_warning: 5.0
+    high_warning: 9.5
+    action: flag_for_review
+  temperature_c:
+    low_warning: 10
+    high_warning: 45
+    action: flag_for_review
+  conductivity_ms_per_cm:
+    low_warning: 0.5
+    high_warning: 80
+    action: flag_for_review
+  hydraulic_retention_time_h:
+    low_warning: 0.25
+    high_warning: 240
+    action: flag_for_review
+  influent_cod_mg_per_l:
+    low_warning: 50
+    high_warning: 150000
+    action: flag_for_review
+
+cross_field_checks:
+  - name: membrane_free_high_purity_conflict
+    if:
+      membrane_presence: absent
+      primary_objective:
+        any_of:
+          - hydrogen_recovery
+          - nitrogen_recovery
+    then:
+      flag: review_required
+      rationale: Separation-free strategies may conflict with high-purity recovery goals depending on the architecture.
+  - name: low_observability_high_confidence_conflict
+    if:
+      sensing_summary: minimal_visibility_assumed
+    then:
+      flag: confidence_cap_medium
+      rationale: Limited instrumentation should cap confidence unless evidence is unusually strong.

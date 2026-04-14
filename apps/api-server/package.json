@@ -1,0 +1,28 @@
+{
+  "name": "@metrev/api-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@fastify/sensible": "^6.0.3",
+    "@metrev/audit": "workspace:*",
+    "@metrev/auth": "workspace:*",
+    "@metrev/database": "workspace:*",
+    "@metrev/domain-contracts": "workspace:*",
+    "@metrev/llm-adapter": "workspace:*",
+    "@metrev/rule-engine": "workspace:*",
+    "@metrev/telemetry": "workspace:*",
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

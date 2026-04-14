@@ -1,0 +1,12 @@
+version: 0.1
+supplier_normalization:
+  fields:
+    supplier_name:
+      normalize: trim_case
+    region:
+      allowed: [EU, UK, USA, LATAM, APAC, global, unknown]
+    category:
+      allowed: [anode_material, cathode_material, membrane, separator, bop, sensor, service, integrator, other]
+
+  rule:
+    Never compare supplier options without recording category and region.

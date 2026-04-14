@@ -1,0 +1,27 @@
+version: 0.1
+supplier_records:
+  - supplier_id: SUPPLIER_PLACEHOLDER
+    supplier_name: Supplier Placeholder
+    category:
+      - membrane_or_separator
+      - cathode_material
+      - sensing
+    capability_summary: Short factual summary of what this supplier category provides.
+    supported_stack_blocks:
+      - membrane_or_separator
+      - sensors_and_analytics
+    evidence_profile:
+      evidence_refs: []
+      supplier_claim_refs: []
+      internal_validation_refs: []
+    integration_notes:
+      technical_fit_notes: []
+      known_constraints: []
+      commercial_unknowns: []
+    maturity_note: unknown
+    shortlist_readiness:
+      status: candidate_only
+      missing_for_commitment:
+        - pricing
+        - lead_time
+        - compatibility_validation

@@ -1,0 +1,11 @@
+version: 0.1
+supplier_record:
+  supplier_id: SUP-000
+  supplier_name: Example Supplier
+  category: cathode_material
+  region: EU
+  offerings: []
+  evidence_links: []
+  quality_notes: []
+  normalization_notes: []
+  readiness_level: unknown

@@ -1,0 +1,26 @@
+{
+  "name": "@metrev/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "seed:local-users": "tsx src/seed-local-users.ts"
+  },
+  "dependencies": {
+    "@auth/core": "0.41.1",
+    "@metrev/database": "workspace:*",
+    "@metrev/telemetry": "workspace:*",
+    "@metrev/utils": "workspace:*",
+    "bcryptjs": "^3.0.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

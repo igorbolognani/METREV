@@ -1,0 +1,62 @@
+version: 0.1
+scoring_model:
+  objective: Compare candidate improvement paths in a transparent, auditable way.
+  score_scale:
+    min: 1
+    max: 5
+    meaning:
+      1: poor_or_highly_misaligned
+      3: acceptable_but_mixed
+      5: strong_fit_for_current_case
+
+dimensions:
+  technical_fit:
+    weight: 0.24
+    description: Alignment with the case objective, operating regime, and stack context.
+  operability:
+    weight: 0.16
+    description: Day-to-day control, maintainability, and tolerance to real-world disturbance.
+  biological_robustness:
+    weight: 0.12
+    description: Expected resilience of biological behavior given the stated context.
+  evidence_strength:
+    weight: 0.12
+    description: Confidence contribution from evidence quality and relevance.
+  supplier_feasibility:
+    weight: 0.10
+    description: Practical plausibility of sourcing and integrating the option.
+  implementation_effort:
+    weight: 0.10
+    description: Relative complexity and friction of implementing the option.
+  economic_plausibility:
+    weight: 0.10
+    description: CAPEX/OPEX/TCO plausibility under the known economic constraints.
+  dependency_readiness:
+    weight: 0.06
+    description: Whether prerequisite conditions are already in place.
+
+ranking_policy:
+  do_not_rank_as_clear_winner_when:
+    - confidence_level == low
+    - evidence_strength_average < 2.5
+    - critical_missing_fields_present == true
+  require_explanatory_notes_for:
+    - any_score_below_3
+    - any_dimension_weight_above_0.15
+    - any option with high dependency burden
+
+confidence_adjustment:
+  high:
+    conditions:
+      - critical_missing_fields_present == false
+      - defaults_used_count <= 1
+      - evidence_quality_profile in [moderate, strong]
+  medium:
+    conditions:
+      - some defaults_used
+      - some missing_noncritical_data
+  low:
+    conditions:
+      - critical_missing_fields_present == true
+      - biology_or_sensing_is_under_characterized == true
+      - evidence_is_sparse_or_supplier_claim_heavy == true

@@ -1,0 +1,39 @@
+version: 0.2
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+improvement_rules:
+  - id: imp_001
+    linked_diagnosis: diag_001
+    action: Improve anodic surface compatibility and startup protocol.
+    expected_impacts:
+      performance: medium
+      cost: low
+      risk: low
+      maturity: high
+
+  - id: imp_002
+    linked_diagnosis: diag_002
+    action: Redesign the cathode catalyst or support and improve transport conditions.
+    expected_impacts:
+      performance: high
+      cost: medium
+      risk: medium
+      maturity: medium
+
+  - id: imp_003
+    linked_diagnosis: diag_003
+    action: Replace or reconfigure the membrane separator and review fouling control.
+    expected_impacts:
+      performance: medium
+      cost: medium
+      risk: medium
+      maturity: medium
+
+  - id: imp_004
+    linked_diagnosis: diag_004
+    action: Upgrade sensing and data capture for critical variables.
+    expected_impacts:
+      performance: indirect
+      cost: low
+      risk: low
+      maturity: high

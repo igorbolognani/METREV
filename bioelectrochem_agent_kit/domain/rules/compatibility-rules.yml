@@ -1,0 +1,85 @@
+version: 0.1
+rules:
+  - id: arch_biofilm_fit_001
+    title: High-fouling influent should penalize delicate or hard-to-clean architectures
+    applies_when:
+      influent_type_contains_any:
+        - high solids
+        - high fouling
+        - variable industrial wastewater
+    logic:
+      penalize_dimensions:
+        - narrow_hydraulic_path
+        - hard_serviceability
+      raise_flags:
+        - maintenance_risk
+        - operability_risk
+    output_note: Consider architectures and BOP configurations that tolerate solids, shocks, and maintenance access.
+
+  - id: mec_cathode_priority_001
+    title: Hydrogen-oriented MEC objectives increase cathode-side criticality
+    applies_when:
+      technology_family: microbial_electrolysis_cell
+      primary_objective: hydrogen_recovery
+    logic:
+      increase_weight_for:
+        - target_reaction_fit
+        - durability
+        - gas_handling_readiness
+        - crossover_control
+    output_note: Cathode strategy, gas handling, and separator logic become priority design dimensions.
+
+  - id: sensing_confidence_001
+    title: Limited sensing reduces defensibility of strong operational conclusions
+    applies_when:
+      sensing_summary: minimal_visibility_assumed
+    logic:
+      confidence_cap: medium
+      recommend_measurements:
+        - baseline voltage/current logging
+        - key water quality checks
+        - startup trend monitoring
+    output_note: Expand observability before making strong performance or stability claims.
+
+  - id: biology_shock_001
+    title: Uncharacterized biology increases startup and shock-response uncertainty
+    applies_when:
+      biology_summary: biology_not_fully_characterized
+    logic:
+      raise_flags:
+        - startup_risk
+        - biological_resilience_unknown
+      recommend_measurements:
+        - inoculum characterization
+        - startup monitoring
+        - shock-response observations
+    output_note: Biological uncertainty should appear in both confidence notes and phased roadmap.
+
+  - id: retrofit_bop_001
+    title: Retrofit-style cases should emphasize BOP compatibility and serviceability
+    applies_when:
+      priorities_contains_any:
+        - retrofit
+        - low disruption
+        - minimal infrastructure changes
+    logic:
+      increase_weight_for:
+        - retrofit_feasibility
+        - maintenance_load
+        - integration_complexity
+    output_note: Favor options that reduce installation and auxiliary-system friction.
+
+  - id: missing_critical_inputs_001
+    title: Critical missing fields prevent narrow conclusions
+    applies_when:
+      missing_data_contains_any:
+        - technology_family
+        - primary_objective
+        - architecture_family
+        - influent_type
+    logic:
+      confidence_cap: low
+      suppress:
+        - narrow_ranking_claims
+        - specific_performance_claims
+    output_note: The case is too under-specified for strong comparative conclusions.

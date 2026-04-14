@@ -1,0 +1,22 @@
+version: 0.2
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+  evidence: bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml
+assumption_audit:
+  required_fields:
+    - assumption_id
+    - description
+    - reason
+    - affected_outputs
+    - sensitivity_level
+    - status
+  statuses:
+    - active
+    - replaced
+    - invalidated
+  sensitivity_levels:
+    - low
+    - medium
+    - high
+  rule: Any recommendation with medium or high sensitivity must list its driving assumptions explicitly in the audit trail.

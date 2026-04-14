@@ -1,0 +1,63 @@
+version: 0.1
+evidence_record:
+  required_fields:
+    - evidence_id
+    - evidence_type
+    - title
+    - summary
+    - applicability_scope
+    - strength_level
+    - provenance_note
+  optional_fields:
+    - quantitative_metrics
+    - operating_conditions
+    - block_mapping
+    - limitations
+    - contradiction_notes
+    - supplier_name
+    - benchmark_context
+    - tags
+
+enums:
+  evidence_type:
+    - literature_evidence
+    - internal_benchmark
+    - supplier_claim
+    - engineering_assumption
+    - derived_heuristic
+  strength_level:
+    - weak
+    - moderate
+    - strong
+
+guidance:
+  literature_evidence:
+    use_when: External scientific or technical literature is the primary source.
+    caution: Applicability may be narrow and context transfer must be explicit.
+  internal_benchmark:
+    use_when: Project-owned measurement, historical case, or benchmark result is the source.
+    caution: Do not over-generalize beyond matching context.
+  supplier_claim:
+    use_when: A vendor or supplier provided the claim directly.
+    caution: Never present as established fact without validation or corroboration.
+  engineering_assumption:
+    use_when: A practical engineering assumption is needed to keep evaluation moving.
+    caution: Must be visible in output and should reduce confidence when material.
+  derived_heuristic:
+    use_when: A reusable internal heuristic is inferred from accumulated evidence.
+    caution: Must reference its supporting logic and applicability scope.
+
+applicability_scope_fields:
+  - technology_family
+  - stack_block
+  - influent_or_feed_context
+  - operating_regime
+  - scale_context
+  - objective_context
+
+provenance_requirements:
+  - source_category
+  - source_note
+  - date_or_version_if_known
+  - applicability_scope
+  - limitations

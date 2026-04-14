@@ -1,0 +1,47 @@
+version: 0.1
+policy:
+  principle: Defaults are allowed to keep evaluation moving, but they must always remain visible and confidence-aware.
+  mandatory_output_fields:
+    - defaults_used
+    - missing_data
+    - assumptions
+    - confidence_level
+    - recommended_next_measurements
+
+defaults:
+  membrane_presence:
+    default_value: unknown
+    rationale: Absence of clear membrane information should not be collapsed into present or absent.
+    confidence_penalty: medium
+  capex_constraint_level:
+    default_value: unknown
+    rationale: Economic posture must be elicited or left explicit as unknown.
+    confidence_penalty: medium
+  opex_sensitivity_level:
+    default_value: unknown
+    rationale: Operational cost pressure is decision-critical but often under-specified early.
+    confidence_penalty: medium
+  sensing_summary:
+    default_value: minimal_visibility_assumed
+    rationale: Most early cases lack full monitoring detail; assume limited observability unless stated otherwise.
+    confidence_penalty: medium
+  biology_summary:
+    default_value: biology_not_fully_characterized
+    rationale: Biological detail is often missing early and should not be treated as stable.
+    confidence_penalty: high
+
+critical_missing_fields:
+  - technology_family
+  - primary_objective
+  - architecture_family
+  - influent_type
+  - pH
+  - temperature_c
+  - hydraulic_retention_time_h
+
+recommended_behavior:
+  if_critical_missing_fields_present:
+    - reduce confidence
+    - widen uncertainty notes
+    - recommend next measurements
+    - avoid narrow quantitative claims

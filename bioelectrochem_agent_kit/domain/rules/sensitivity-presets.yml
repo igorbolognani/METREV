@@ -1,0 +1,29 @@
+version: 0.1
+presets:
+  sparse_input_case:
+    focus_inputs:
+      - pH
+      - temperature_c
+      - conductivity_ms_per_cm
+      - hydraulic_retention_time_h
+      - biology_summary
+    note: Use when many critical process parameters are missing or weakly characterized.
+  recovery_goal_case:
+    focus_inputs:
+      - membrane_presence
+      - cathode_material_family
+      - gas_handling_readiness
+      - separator_family
+    note: Use when the client is purchasing recovery performance, especially product quality or separation value.
+  retrofit_case:
+    focus_inputs:
+      - bop_summary
+      - architecture_family
+      - maintenance_access
+      - supplier_preference_notes
+    note: Use when implementation friction and compatibility with existing infrastructure are central.
+
+required_output_behavior:
+  - identify which inputs are most likely to flip the ranking
+  - distinguish ranking-sensitive inputs from merely descriptive inputs
+  - recommend next tests or data collection for top-sensitive unknowns

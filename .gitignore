@@ -1,0 +1,17 @@
+node_modules/
+.venv/
+.turbo/
+.next/
+coverage/
+dist/
+.serena/project.local.yml
+.env
+.env.*
+!.env.example
+*.pyc
+__pycache__/
+.pytest_cache/
+.~lock*
+apps/api-server/.tsbuildinfo
+apps/web-ui/.tsbuildinfo
+packages/**/.tsbuildinfo

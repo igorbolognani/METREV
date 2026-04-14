@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@metrev/domain-contracts": ["packages/domain-contracts/src/index.ts"],
+      "@metrev/rule-engine": ["packages/rule-engine/src/index.ts"],
+      "@metrev/audit": ["packages/audit/src/index.ts"],
+      "@metrev/telemetry": ["packages/telemetry/src/index.ts"],
+      "@metrev/llm-adapter": ["packages/llm-adapter/src/index.ts"],
+      "@metrev/auth": ["packages/auth/src/index.ts"],
+      "@metrev/database": ["packages/database/src/index.ts"],
+      "@metrev/utils": ["packages/utils/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", ".next", "coverage"]
+}

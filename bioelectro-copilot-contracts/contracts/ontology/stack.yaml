@@ -1,0 +1,118 @@
+version: 0.3
+domain: bioelectrochemical-decision-support
+
+canonical_entities:
+  case:
+    description: Normalized client or internal evaluation case.
+    fields:
+      case_id: string
+      technology_family:
+        type: enum
+        allowed: [microbial_fuel_cell, microbial_electrolysis_cell, microbial_electrochemical_technology]
+      architecture_family: string
+      primary_objective: string
+      business_context: object
+      technology_context: object
+      feed_and_operation: object
+      stack_blocks: object
+      cross_cutting_layers: object
+
+    nested_fields:
+      business_context:
+        decision_horizon: string
+        deployment_context: string
+        capex_constraint_level: string
+        opex_sensitivity_level: string
+        retrofit_priority: string
+        serviceability_priority: string
+
+      technology_context:
+        scale_context: string
+        current_trl: number
+        current_pain_points: list[string]
+        performance_claims_under_review: list[string]
+        target_maturity_window: string
+
+      feed_and_operation:
+        influent_type: string
+        substrate_profile: string
+        pH: number
+        temperature_c: number
+        hydraulic_retention_time_h: number
+        salinity_or_conductivity_context: string
+        operating_regime: string
+
+      stack_blocks:
+        reactor_architecture:
+          architecture_type: string
+          solids_tolerance: string
+          serviceability_level: string
+        anode_biofilm_support:
+          material_family: string
+          surface_treatment: string
+          biofilm_support_level: string
+        cathode_catalyst_support:
+          reaction_target: string
+          catalyst_family: string
+          mass_transport_limitation_risk: string
+          gas_handling_interface: string
+        membrane_or_separator:
+          type: string
+          fouling_risk: string
+          crossover_control_level: string
+        electrical_interconnect_and_sealing:
+          current_collection_strategy: string
+          sealing_strategy: string
+          corrosion_protection_level: string
+        balance_of_plant:
+          flow_control: string
+          gas_handling_readiness: string
+          dosing_capability: string
+        sensors_and_analytics:
+          data_quality: string
+          voltage_current_logging: string
+          water_quality_coverage: string
+        operational_biology:
+          biofilm_maturity: string
+          contamination_risk: string
+          inoculum_source: string
+          startup_protocol: string
+
+      cross_cutting_layers:
+        technoeconomics:
+          maintenance_burden: string
+          capex_constraint_level: string
+          opex_sensitivity_level: string
+        evidence_and_provenance:
+          evidence_profile: string
+          supplier_claim_fraction: string
+        risk_and_maturity:
+          trl: number
+          scale_up_risk: string
+          serviceability_risk: string
+
+stack_blocks:
+  reactor_architecture:
+    description: Physical and functional reactor configuration.
+  anode_biofilm_support:
+    description: Anodic substrate, geometry, and biofilm-supporting environment.
+  cathode_catalyst_support:
+    description: Cathodic substrate, catalyst family, and interface conditions.
+  membrane_or_separator:
+    description: Ion transport and crossover-management layer.
+  electrical_interconnect_and_sealing:
+    description: Current collection, contacts, sealing, and anti-corrosion interfaces.
+  balance_of_plant:
+    description: Pumps, gas handling, dosing, recirculation, and auxiliary hardware.
+  sensors_and_analytics:
+    description: Instrumentation, diagnostics, data logging, and laboratory validation.
+  operational_biology:
+    description: Inoculum, startup behavior, microbial resilience, and biological operating regime.
+
+cross_cutting_layers:
+  technoeconomics:
+    description: CAPEX, OPEX, replacement cycles, and implementation economics.
+  evidence_and_provenance:
+    description: Evidence quality, provenance, applicability, and contradiction handling.
+  risk_and_maturity:
+    description: TRL, scale-up risk, serviceability risk, and deployment readiness.

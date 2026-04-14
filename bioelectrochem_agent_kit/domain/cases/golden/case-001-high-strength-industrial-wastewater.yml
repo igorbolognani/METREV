@@ -1,0 +1,85 @@
+case_id: GOLDEN-001
+case_metadata:
+  created_by: system
+  created_at: "2026-04-11"
+  case_status: golden_reference
+
+business_context:
+  client_type: industrial_wastewater_operator
+  primary_objective: wastewater_treatment
+  decision_horizon: near_term_pilot
+  priorities:
+    - reduce_treatment_cost
+    - improve_operability
+    - retrofit
+  hard_constraints:
+    - limited_infrastructure_changes
+  local_energy_cost_note: local_energy_cost_not_yet_quantified
+  capex_constraint_level: medium
+  opex_sensitivity_level: high
+
+technology_context:
+  technology_family: microbial_fuel_cell
+  architecture_family: modular_stack
+  membrane_presence: unknown
+  primary_target_output: treatment_performance
+
+feed_and_operation:
+  influent_type: variable high-strength industrial wastewater
+  influent_cod_mg_per_l: 18000
+  pH: 6.8
+  temperature_c: 30
+  conductivity_ms_per_cm: 8.5
+  hydraulic_retention_time_h: 24
+  flow_note: variable loading expected
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: porous_carbon_monolith
+    geometry_note: high surface area, serviceability uncertain
+    surface_note: biofilm-supportive but fouling response unknown
+  cathode_catalyst_support:
+    material_family: oxygen_reduction_cathode
+    catalyst_note: unspecified
+    product_side_note: air-exposed approach assumed
+  membrane_or_separator:
+    family: unknown
+    note: separator strategy not fully documented
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: unspecified
+    sealing_note: maintenance access uncertain
+  balance_of_plant:
+    bop_summary: recirculation and pumping present, cleaning strategy unclear
+    maintenance_note: serviceability is a concern
+  sensors_and_analytics:
+    sensing_summary: minimal_visibility_assumed
+    diagnostics_summary: no electrochemical diagnostics described
+  operational_biology:
+    biology_summary: biology_not_fully_characterized
+    inoculum_note: mixed inoculum, limited long-run evidence
+    startup_note: startup history not fully documented
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers: []
+  excluded_suppliers: []
+  supplier_preference_notes: none provided
+
+normalization_status:
+  defaults_used:
+    - membrane_presence
+    - sensing_summary
+    - biology_summary
+  missing_data:
+    - separator_family
+    - current_collection_strategy_details
+    - detailed_monitoring_plan
+  assumptions:
+    - retrofit preference implies BOP/serviceability importance
+  confidence_notes:
+    - limited sensing reduces operational confidence
+    - uncharacterized biology increases startup uncertainty
+  recommended_next_measurements:
+    - baseline voltage and current logging
+    - cleaning and maintenance pathway definition
+    - separator clarification

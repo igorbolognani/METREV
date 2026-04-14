@@ -1,0 +1,81 @@
+case_id: GOLDEN-002
+case_metadata:
+  created_by: system
+  created_at: "2026-04-11"
+  case_status: golden_reference
+
+business_context:
+  client_type: utility_or_digestion_operator
+  primary_objective: nitrogen_recovery
+  decision_horizon: pilot_to_scale_path
+  priorities:
+    - recovery_value
+    - low_energy
+    - phased_deployment
+  hard_constraints:
+    - product_quality_must_be_defensible
+  local_energy_cost_note: relevant but not fully specified
+  capex_constraint_level: medium
+  opex_sensitivity_level: medium
+
+technology_context:
+  technology_family: microbial_electrolysis_cell
+  architecture_family: dual_chamber
+  membrane_presence: present
+  primary_target_output: recoverable_nitrogen_stream
+
+feed_and_operation:
+  influent_type: digester sidestream concentrate
+  influent_cod_mg_per_l: 2500
+  pH: 8.2
+  temperature_c: 32
+  conductivity_ms_per_cm: 18
+  hydraulic_retention_time_h: 12
+  flow_note: controlled sidestream operation
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: carbon_felt
+    geometry_note: moderate surface area
+    surface_note: startup expected to be manageable
+  cathode_catalyst_support:
+    material_family: hydrogen_evolution_cathode
+    catalyst_note: material family not yet fixed
+    product_side_note: recovery quality is critical
+  membrane_or_separator:
+    family: cation_exchange_membrane
+    note: present but durability and fouling data are not yet complete
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: defined_at_concept_level_only
+    sealing_note: scale-up detail incomplete
+  balance_of_plant:
+    bop_summary: recirculation, gas handling, and dosing expected to be important
+    maintenance_note: gas-side safety and serviceability should be designed early
+  sensors_and_analytics:
+    sensing_summary: moderate_visibility
+    diagnostics_summary: partial process monitoring planned
+  operational_biology:
+    biology_summary: partially_characterized
+    inoculum_note: startup plan exists but shock response data are limited
+    startup_note: pilot data needed
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers: []
+  excluded_suppliers: []
+  supplier_preference_notes: avoid highly bespoke supply chains where possible
+
+normalization_status:
+  defaults_used: []
+  missing_data:
+    - cathode_material_exact_family
+    - membrane_durability_validation
+    - gas_handling_detail
+  assumptions:
+    - separator strategy is central to recovery credibility
+  confidence_notes:
+    - recovery-oriented ranking is likely sensitive to cathode and separator details
+  recommended_next_measurements:
+    - membrane fouling and durability validation
+    - cathode comparison
+    - gas-side purity and handling validation

@@ -1,0 +1,23 @@
+version: 0.2
+canonical_vocabulary_source:
+  evidence: bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml
+evidence_scoring:
+  dimensions:
+    source_rigor:
+      scale: [1, 2, 3, 4, 5]
+    relevance_to_case:
+      scale: [1, 2, 3, 4, 5]
+    measurement_quality:
+      scale: [1, 2, 3, 4, 5]
+    comparability_after_normalization:
+      scale: [1, 2, 3, 4, 5]
+    recency_or_context_fitness:
+      scale: [1, 2, 3, 4, 5]
+  aggregation:
+    method: weighted_average
+    default_weights:
+      source_rigor: 0.25
+      relevance_to_case: 0.30
+      measurement_quality: 0.20
+      comparability_after_normalization: 0.15
+      recency_or_context_fitness: 0.10

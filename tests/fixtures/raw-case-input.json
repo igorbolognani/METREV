@@ -1,0 +1,32 @@
+{
+  "case_id": "CASE-001",
+  "technology_family": "microbial_fuel_cell",
+  "architecture_family": "single_chamber_air_cathode",
+  "primary_objective": "wastewater_treatment",
+  "business_context": {
+    "deployment_context": "industrial pilot retrofit",
+    "capex_constraint_level": "medium",
+    "opex_sensitivity_level": "high"
+  },
+  "technology_context": {
+    "current_pain_points": ["weak monitoring", "unstable startup"],
+    "current_trl": "pilot"
+  },
+  "feed_and_operation": {
+    "influent_type": "high-strength industrial wastewater",
+    "temperature_c": 28,
+    "pH": 7.1
+  },
+  "stack_blocks": {
+    "anode_biofilm_support": {
+      "material_family": "carbon felt"
+    },
+    "cathode_catalyst_support": {
+      "material_family": "carbon cloth"
+    },
+    "balance_of_plant": {
+      "bop_summary": "recirculation loop with manual dosing"
+    }
+  },
+  "evidence_refs": ["literature:pilot-baseline"]
+}

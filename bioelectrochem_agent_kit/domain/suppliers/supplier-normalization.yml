@@ -1,0 +1,31 @@
+version: 0.1
+normalization_rules:
+  supplier_name:
+    guidance: Preserve official supplier name and add aliases only as secondary fields.
+  category_mapping:
+    allowed_categories:
+      - reactor_architecture
+      - anode_material
+      - cathode_material
+      - membrane_or_separator
+      - current_collection_or_sealing
+      - balance_of_plant
+      - sensing_and_analytics
+      - integration_services
+  evidence_typing:
+    guidance: Separate supplier-provided claims from literature and internal validation.
+  shortlist_status:
+    allowed_values:
+      - excluded
+      - candidate_only
+      - shortlisted
+      - validated_for_case
+  commercial_fields:
+    recommended:
+      - pricing_model
+      - lead_time
+      - region_availability
+      - support_model
+      - customizability
+  caution:
+    - Do not promote a supplier to validated_for_case without case-specific fit evidence.

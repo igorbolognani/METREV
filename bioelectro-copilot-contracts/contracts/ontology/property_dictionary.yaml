@@ -1,0 +1,37 @@
+version: 0.1
+properties:
+  - name: current_density_a_m2
+    unit: A/m2
+    category: electrochemical
+    description: Current per projected or normalized active area
+    comparability_notes: Compare only when geometry and normalization basis are compatible
+
+  - name: power_density_w_m2
+    unit: W/m2
+    category: electrochemical
+    description: Power output normalized by relevant area basis
+    comparability_notes: Confirm area basis and operating regime before benchmarking
+
+  - name: coulombic_efficiency_pct
+    unit: "%"
+    category: electrochemical
+    description: Fraction of electrons recovered as useful current
+    comparability_notes: Sensitive to substrate definition and system boundary
+
+  - name: internal_resistance_ohm
+    unit: ohm
+    category: electrochemical
+    description: Lumped resistance indicator
+    comparability_notes: Measurement method and frequency range should be recorded
+
+  - name: cod_removal_pct
+    unit: "%"
+    category: biological
+    description: Fraction of chemical oxygen demand removed
+    comparability_notes: Requires influent/effluent definition and sampling basis
+
+  - name: cost_per_kwh_eur
+    unit: EUR/kWh
+    category: economic
+    description: Estimated cost per useful energy output
+    comparability_notes: Always state assumptions and time horizon
