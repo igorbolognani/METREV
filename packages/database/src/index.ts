@@ -1,12 +1,23 @@
+import { randomUUID } from 'node:crypto';
+
 import { Prisma, PrismaClient } from '@prisma/client';
 
 import {
   caseHistoryResponseSchema,
   evaluationListResponseSchema,
   evaluationResponseSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
   type CaseHistoryResponse,
   type EvaluationListResponse,
   type EvaluationResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type ExternalEvidenceCatalogItemSummary,
+  type ExternalEvidenceCatalogListResponse,
+  type ExternalEvidenceReviewAction,
+  type ExternalEvidenceReviewStatus,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -20,7 +31,33 @@ export interface EvaluationRepository {
   getEvaluation(evaluationId: string): Promise<EvaluationResponse | null>;
   listEvaluations(): Promise<EvaluationListResponse>;
   getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null>;
+  listExternalEvidenceCatalog(
+    input?: ExternalEvidenceCatalogListInput,
+  ): Promise<ExternalEvidenceCatalogListResponse>;
+  getExternalEvidenceCatalogItem(
+    catalogItemId: string,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null>;
+  reviewExternalEvidenceCatalogItem(
+    input: ReviewExternalEvidenceCatalogItemInput,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null>;
   disconnect(): Promise<void>;
+}
+
+export interface ExternalEvidenceCatalogListInput {
+  reviewStatus?: ExternalEvidenceReviewStatus;
+  searchQuery?: string;
+}
+
+export interface ReviewExternalEvidenceCatalogItemInput {
+  catalogItemId: string;
+  action: ExternalEvidenceReviewAction;
+  actorRole: string;
+  actorId?: string;
+  note?: string;
+}
+
+export interface MemoryEvaluationRepositoryOptions {
+  externalEvidenceCatalogItems?: ExternalEvidenceCatalogItemDetail[];
 }
 
 function normalizeStorageMode(value: string | undefined): string {
@@ -102,6 +139,164 @@ function toEvaluationSummary(
   };
 }
 
+function mapExternalEvidenceReviewStatus(
+  value: 'PENDING' | 'ACCEPTED' | 'REJECTED',
+): ExternalEvidenceReviewStatus {
+  switch (value) {
+    case 'ACCEPTED':
+      return 'accepted';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'pending';
+  }
+}
+
+function mapExternalEvidenceSourceType(
+  value:
+    | 'OPENALEX'
+    | 'CROSSREF'
+    | 'SUPPLIER_PROFILE'
+    | 'MARKET_SNAPSHOT'
+    | 'MANUAL',
+) {
+  switch (value) {
+    case 'OPENALEX':
+      return 'openalex';
+    case 'CROSSREF':
+      return 'crossref';
+    case 'SUPPLIER_PROFILE':
+      return 'supplier_profile';
+    case 'MARKET_SNAPSHOT':
+      return 'market_snapshot';
+    default:
+      return 'manual';
+  }
+}
+
+function mapExternalEvidenceSourceState(
+  value: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED',
+) {
+  switch (value) {
+    case 'RAW':
+      return 'raw';
+    case 'NORMALIZED':
+      return 'normalized';
+    case 'REVIEWED':
+      return 'reviewed';
+    default:
+      return 'parsed';
+  }
+}
+
+function toDatabaseExternalEvidenceReviewStatus(
+  value: ExternalEvidenceReviewAction | ExternalEvidenceReviewStatus,
+): 'PENDING' | 'ACCEPTED' | 'REJECTED' {
+  switch (value) {
+    case 'accept':
+    case 'accepted':
+      return 'ACCEPTED';
+    case 'reject':
+    case 'rejected':
+      return 'REJECTED';
+    default:
+      return 'PENDING';
+  }
+}
+
+function createExternalEvidenceSummary(record: {
+  id: string;
+  evidenceType: string;
+  title: string;
+  summary: string;
+  strengthLevel: string;
+  provenanceNote: string;
+  reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED';
+  applicabilityScope: unknown;
+  extractedClaims: unknown;
+  tags: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  sourceRecord: {
+    sourceType:
+      | 'OPENALEX'
+      | 'CROSSREF'
+      | 'SUPPLIER_PROFILE'
+      | 'MARKET_SNAPSHOT'
+      | 'MANUAL';
+    sourceUrl: string | null;
+    sourceCategory: string | null;
+    doi: string | null;
+    publisher: string | null;
+    publishedAt: Date | null;
+  };
+}): ExternalEvidenceCatalogItemSummary {
+  return {
+    id: record.id,
+    title: record.title,
+    summary: record.summary,
+    evidence_type: evidenceTypeSchema.parse(record.evidenceType),
+    strength_level: evidenceStrengthSchema.parse(record.strengthLevel),
+    review_status: mapExternalEvidenceReviewStatus(record.reviewStatus),
+    source_state: mapExternalEvidenceSourceState(record.sourceState),
+    source_type: mapExternalEvidenceSourceType(record.sourceRecord.sourceType),
+    source_category: record.sourceRecord.sourceCategory,
+    source_url: record.sourceRecord.sourceUrl,
+    doi: record.sourceRecord.doi,
+    publisher: record.sourceRecord.publisher,
+    published_at: record.sourceRecord.publishedAt?.toISOString() ?? null,
+    provenance_note: record.provenanceNote,
+    applicability_scope:
+      (record.applicabilityScope as Record<string, unknown>) ?? {},
+    extracted_claims: Array.isArray(record.extractedClaims)
+      ? record.extractedClaims
+      : [],
+    tags: record.tags,
+    created_at: record.createdAt.toISOString(),
+    updated_at: record.updatedAt.toISOString(),
+  };
+}
+
+function createExternalEvidenceDetail(record: {
+  id: string;
+  evidenceType: string;
+  title: string;
+  summary: string;
+  strengthLevel: string;
+  provenanceNote: string;
+  reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED';
+  applicabilityScope: unknown;
+  extractedClaims: unknown;
+  tags: string[];
+  payload: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+  sourceRecord: {
+    sourceType:
+      | 'OPENALEX'
+      | 'CROSSREF'
+      | 'SUPPLIER_PROFILE'
+      | 'MARKET_SNAPSHOT'
+      | 'MANUAL';
+    sourceUrl: string | null;
+    sourceCategory: string | null;
+    doi: string | null;
+    publisher: string | null;
+    publishedAt: Date | null;
+    abstractText: string | null;
+    rawPayload: unknown;
+  };
+}): ExternalEvidenceCatalogItemDetail {
+  return {
+    ...createExternalEvidenceSummary(record),
+    abstract_text: record.sourceRecord.abstractText,
+    payload: record.payload,
+    raw_payload: record.sourceRecord.rawPayload,
+  };
+}
+
 function toCaseHistory(
   evaluations: EvaluationResponse[],
 ): CaseHistoryResponse | null {
@@ -163,6 +358,16 @@ function toCaseHistory(
 
 export class MemoryEvaluationRepository implements EvaluationRepository {
   private readonly evaluations = new Map<string, EvaluationResponse>();
+  private readonly externalEvidenceCatalog = new Map<
+    string,
+    ExternalEvidenceCatalogItemDetail
+  >();
+
+  constructor(options: MemoryEvaluationRepositoryOptions = {}) {
+    for (const item of options.externalEvidenceCatalogItems ?? []) {
+      this.externalEvidenceCatalog.set(item.id, item);
+    }
+  }
 
   async saveEvaluation(
     evaluation: EvaluationResponse,
@@ -195,6 +400,79 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     );
 
     return toCaseHistory(evaluations);
+  }
+
+  async listExternalEvidenceCatalog(
+    input: ExternalEvidenceCatalogListInput = {},
+  ): Promise<ExternalEvidenceCatalogListResponse> {
+    const allItems = [...this.externalEvidenceCatalog.values()];
+    const searchQuery = input.searchQuery?.trim().toLowerCase();
+    const filteredItems = allItems
+      .filter((item) => {
+        if (input.reviewStatus && item.review_status !== input.reviewStatus) {
+          return false;
+        }
+
+        if (!searchQuery) {
+          return true;
+        }
+
+        return [
+          item.title,
+          item.summary,
+          item.publisher ?? '',
+          item.doi ?? '',
+          item.tags.join(' '),
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(searchQuery);
+      })
+      .sort((left, right) => right.updated_at.localeCompare(left.updated_at));
+
+    return externalEvidenceCatalogListResponseSchema.parse({
+      items: filteredItems,
+      summary: {
+        total: allItems.length,
+        pending: allItems.filter((item) => item.review_status === 'pending')
+          .length,
+        accepted: allItems.filter((item) => item.review_status === 'accepted')
+          .length,
+        rejected: allItems.filter((item) => item.review_status === 'rejected')
+          .length,
+      },
+    });
+  }
+
+  async getExternalEvidenceCatalogItem(
+    catalogItemId: string,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null> {
+    return (
+      externalEvidenceCatalogDetailSchema.safeParse(
+        this.externalEvidenceCatalog.get(catalogItemId),
+      ).data ?? null
+    );
+  }
+
+  async reviewExternalEvidenceCatalogItem(
+    input: ReviewExternalEvidenceCatalogItemInput,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null> {
+    const current = this.externalEvidenceCatalog.get(input.catalogItemId);
+
+    if (!current) {
+      return null;
+    }
+
+    const updated = externalEvidenceCatalogDetailSchema.parse({
+      ...current,
+      review_status: input.action === 'accept' ? 'accepted' : 'rejected',
+      source_state: 'reviewed',
+      updated_at: new Date().toISOString(),
+    });
+
+    this.externalEvidenceCatalog.set(updated.id, updated);
+
+    return updated;
   }
 
   async disconnect(): Promise<void> {
@@ -552,6 +830,178 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         });
       },
       { case_id: caseId },
+    );
+  }
+
+  async listExternalEvidenceCatalog(
+    input: ExternalEvidenceCatalogListInput = {},
+  ): Promise<ExternalEvidenceCatalogListResponse> {
+    return withSpan(
+      'database.external_evidence.list',
+      async () => {
+        const reviewStatus = input.reviewStatus
+          ? toDatabaseExternalEvidenceReviewStatus(input.reviewStatus)
+          : undefined;
+        const searchQuery = input.searchQuery?.trim();
+        const where: Prisma.ExternalEvidenceCatalogItemWhereInput = {
+          reviewStatus,
+          OR: searchQuery
+            ? [
+                {
+                  title: { contains: searchQuery, mode: 'insensitive' },
+                },
+                {
+                  summary: { contains: searchQuery, mode: 'insensitive' },
+                },
+                {
+                  sourceRecord: {
+                    is: {
+                      doi: { contains: searchQuery, mode: 'insensitive' },
+                    },
+                  },
+                },
+                {
+                  sourceRecord: {
+                    is: {
+                      publisher: {
+                        contains: searchQuery,
+                        mode: 'insensitive',
+                      },
+                    },
+                  },
+                },
+              ]
+            : undefined,
+        };
+
+        const [records, total, pending, accepted, rejected] =
+          await this.prisma.$transaction([
+            this.prisma.externalEvidenceCatalogItem.findMany({
+              where,
+              include: { sourceRecord: true },
+              orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+            }),
+            this.prisma.externalEvidenceCatalogItem.count(),
+            this.prisma.externalEvidenceCatalogItem.count({
+              where: { reviewStatus: 'PENDING' },
+            }),
+            this.prisma.externalEvidenceCatalogItem.count({
+              where: { reviewStatus: 'ACCEPTED' },
+            }),
+            this.prisma.externalEvidenceCatalogItem.count({
+              where: { reviewStatus: 'REJECTED' },
+            }),
+          ]);
+
+        return externalEvidenceCatalogListResponseSchema.parse({
+          items: records.map((record) => createExternalEvidenceSummary(record)),
+          summary: {
+            total,
+            pending,
+            accepted,
+            rejected,
+          },
+        });
+      },
+      {
+        review_status: input.reviewStatus ?? 'all',
+        search_query: input.searchQuery ?? '',
+      },
+    );
+  }
+
+  async getExternalEvidenceCatalogItem(
+    catalogItemId: string,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null> {
+    return withSpan(
+      'database.external_evidence.get',
+      async () => {
+        const record = await this.prisma.externalEvidenceCatalogItem.findUnique(
+          {
+            where: { id: catalogItemId },
+            include: { sourceRecord: true },
+          },
+        );
+
+        if (!record) {
+          return null;
+        }
+
+        return externalEvidenceCatalogDetailSchema.parse(
+          createExternalEvidenceDetail(record),
+        );
+      },
+      { catalog_item_id: catalogItemId },
+    );
+  }
+
+  async reviewExternalEvidenceCatalogItem(
+    input: ReviewExternalEvidenceCatalogItemInput,
+  ): Promise<ExternalEvidenceCatalogItemDetail | null> {
+    return withSpan(
+      'database.external_evidence.review',
+      async () => {
+        const updated = await this.prisma.$transaction(async (tx) => {
+          const current = await tx.externalEvidenceCatalogItem.findUnique({
+            where: { id: input.catalogItemId },
+            include: { sourceRecord: true },
+          });
+
+          if (!current) {
+            return null;
+          }
+
+          const nextReviewStatus = toDatabaseExternalEvidenceReviewStatus(
+            input.action,
+          );
+          const nextSourceState = 'REVIEWED';
+
+          const record = await tx.externalEvidenceCatalogItem.update({
+            where: { id: input.catalogItemId },
+            data: {
+              reviewStatus: nextReviewStatus,
+              sourceState: nextSourceState,
+            },
+            include: { sourceRecord: true },
+          });
+
+          await tx.auditEvent.create({
+            data: {
+              id: randomUUID(),
+              eventType: 'external_evidence_reviewed',
+              actorRole: input.actorRole,
+              actorId: input.actorId,
+              payload: toPrismaJsonObject({
+                catalog_item_id: input.catalogItemId,
+                source_type: mapExternalEvidenceSourceType(
+                  record.sourceRecord.sourceType,
+                ),
+                previous_review_status: mapExternalEvidenceReviewStatus(
+                  current.reviewStatus,
+                ),
+                next_review_status: mapExternalEvidenceReviewStatus(
+                  record.reviewStatus,
+                ),
+                note: input.note,
+              }),
+            },
+          });
+
+          return record;
+        });
+
+        if (!updated) {
+          return null;
+        }
+
+        return externalEvidenceCatalogDetailSchema.parse(
+          createExternalEvidenceDetail(updated),
+        );
+      },
+      {
+        catalog_item_id: input.catalogItemId,
+        action: input.action,
+      },
     );
   }
 

@@ -38,7 +38,8 @@ export default async function NewCasePage() {
         <p className="muted">
           This form intentionally surfaces only a minimal slice. The runtime
           still records defaults, missing data, and confidence changes before
-          presenting a recommendation package.
+          presenting a recommendation package. A validated wastewater-treatment
+          golden-case preset is available below for deterministic smoke testing.
         </p>
         <CaseForm />
       </section>

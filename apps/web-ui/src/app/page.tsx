@@ -1,7 +1,8 @@
 import Link from 'next/link';
 
-import { requireAuthenticatedSession } from '@/lib/require-session';
+import { ExternalEvidenceQueue } from '@/components/external-evidence-queue';
 import { RecentEvaluations } from '@/components/recent-evaluations';
+import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function HomePage() {
   const session = await requireAuthenticatedSession('/');
@@ -21,12 +22,13 @@ export default async function HomePage() {
           <Link className="button" href="/cases/new">
             Start a case evaluation
           </Link>
-          <Link className="button secondary" href="https://fastify.dev">
-            Runtime stack reference
+          <Link className="button secondary" href="/evidence/review">
+            Review imported evidence
           </Link>
         </div>
       </section>
 
+      <ExternalEvidenceQueue />
       <RecentEvaluations />
     </main>
   );

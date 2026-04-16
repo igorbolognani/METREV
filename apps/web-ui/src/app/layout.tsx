@@ -32,6 +32,7 @@ export default async function RootLayout({
               <nav className="site-nav" aria-label="Primary">
                 <Link href="/">Dashboard</Link>
                 <Link href="/cases/new">New case</Link>
+                <Link href="/evidence/review">Evidence review</Link>
               </nav>
 
               <div className="stack compact auth-meta">

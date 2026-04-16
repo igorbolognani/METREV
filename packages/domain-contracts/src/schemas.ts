@@ -28,6 +28,29 @@ export const evidenceTypeSchema = z.enum([
 
 export const evidenceStrengthSchema = z.enum(['weak', 'moderate', 'strong']);
 
+export const externalEvidenceReviewStatusSchema = z.enum([
+  'pending',
+  'accepted',
+  'rejected',
+]);
+
+export const externalEvidenceReviewActionSchema = z.enum(['accept', 'reject']);
+
+export const externalEvidenceSourceTypeSchema = z.enum([
+  'openalex',
+  'crossref',
+  'supplier_profile',
+  'market_snapshot',
+  'manual',
+]);
+
+export const externalEvidenceSourceStateSchema = z.enum([
+  'raw',
+  'parsed',
+  'normalized',
+  'reviewed',
+]);
+
 export const narrativeModeSchema = z.enum([
   'disabled',
   'stub',
@@ -442,6 +465,50 @@ export const caseHistoryResponseSchema = z.object({
   audit_events: z.array(auditEventSchema),
 });
 
+export const externalEvidenceCatalogSummarySchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  evidence_type: evidenceTypeSchema,
+  strength_level: evidenceStrengthSchema,
+  review_status: externalEvidenceReviewStatusSchema,
+  source_state: externalEvidenceSourceStateSchema,
+  source_type: externalEvidenceSourceTypeSchema,
+  source_category: z.string().nullable(),
+  source_url: z.string().nullable(),
+  doi: z.string().nullable(),
+  publisher: z.string().nullable(),
+  published_at: z.string().nullable(),
+  provenance_note: z.string().min(1),
+  applicability_scope: flexibleObjectSchema.default({}),
+  extracted_claims: z.array(z.unknown()).default([]),
+  tags: z.array(z.string()).default([]),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const externalEvidenceCatalogDetailSchema =
+  externalEvidenceCatalogSummarySchema.extend({
+    abstract_text: z.string().nullable(),
+    payload: z.unknown(),
+    raw_payload: z.unknown(),
+  });
+
+export const externalEvidenceCatalogListResponseSchema = z.object({
+  items: z.array(externalEvidenceCatalogSummarySchema),
+  summary: z.object({
+    total: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    accepted: z.number().int().nonnegative(),
+    rejected: z.number().int().nonnegative(),
+  }),
+});
+
+export const externalEvidenceReviewRequestSchema = z.object({
+  action: externalEvidenceReviewActionSchema,
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
 export type RawCaseInput = z.infer<typeof rawCaseInputSchema>;
 export type SupplierContext = z.infer<typeof supplierContextSchema>;
 export type RawEvidenceRecord = z.infer<typeof rawEvidenceRecordSchema>;
@@ -461,3 +528,27 @@ export type CaseSnapshot = z.infer<typeof caseSnapshotSchema>;
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type CaseHistoryResponse = z.infer<typeof caseHistoryResponseSchema>;
 export type ConfidenceLevel = z.infer<typeof confidenceLevelSchema>;
+export type ExternalEvidenceReviewStatus = z.infer<
+  typeof externalEvidenceReviewStatusSchema
+>;
+export type ExternalEvidenceReviewAction = z.infer<
+  typeof externalEvidenceReviewActionSchema
+>;
+export type ExternalEvidenceSourceType = z.infer<
+  typeof externalEvidenceSourceTypeSchema
+>;
+export type ExternalEvidenceSourceState = z.infer<
+  typeof externalEvidenceSourceStateSchema
+>;
+export type ExternalEvidenceCatalogItemSummary = z.infer<
+  typeof externalEvidenceCatalogSummarySchema
+>;
+export type ExternalEvidenceCatalogItemDetail = z.infer<
+  typeof externalEvidenceCatalogDetailSchema
+>;
+export type ExternalEvidenceCatalogListResponse = z.infer<
+  typeof externalEvidenceCatalogListResponseSchema
+>;
+export type ExternalEvidenceReviewRequest = z.infer<
+  typeof externalEvidenceReviewRequestSchema
+>;

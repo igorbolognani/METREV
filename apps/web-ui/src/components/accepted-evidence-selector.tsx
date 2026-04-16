@@ -1,0 +1,133 @@
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+
+import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
+
+import { fetchExternalEvidenceCatalog } from '@/lib/api';
+
+function formatToken(value: string): string {
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
+export function AcceptedEvidenceSelector({
+  selectedEvidence,
+  onSelectionChange,
+}: {
+  selectedEvidence: ExternalEvidenceCatalogItemSummary[];
+  onSelectionChange: (items: ExternalEvidenceCatalogItemSummary[]) => void;
+}) {
+  const query = useQuery({
+    queryKey: ['external-evidence', 'accepted-intake-selector'],
+    queryFn: () => fetchExternalEvidenceCatalog({ status: 'accepted' }),
+  });
+
+  const selectedIds = new Set(selectedEvidence.map((item) => item.id));
+
+  function toggleItem(item: ExternalEvidenceCatalogItemSummary) {
+    if (selectedIds.has(item.id)) {
+      onSelectionChange(
+        selectedEvidence.filter((entry) => entry.id !== item.id),
+      );
+      return;
+    }
+
+    onSelectionChange([...selectedEvidence, item]);
+  }
+
+  return (
+    <section className="panel nested-panel grid">
+      <div className="stack split compact">
+        <div>
+          <span className="badge">Reviewed external evidence</span>
+          <h2>Accepted catalog records</h2>
+        </div>
+        <span className="badge subtle">{selectedEvidence.length} selected</span>
+      </div>
+      <p className="muted">
+        Only accepted catalog evidence can enter the intake flow. Selection is
+        explicit and additive: reviewed catalog evidence is attached alongside
+        any manual typed evidence you enter below.
+      </p>
+
+      {query.isLoading ? (
+        <p className="muted">Loading accepted catalog evidence...</p>
+      ) : query.error ? (
+        <p className="error">{query.error.message}</p>
+      ) : !query.data || query.data.items.length === 0 ? (
+        <div className="grid">
+          <p className="muted empty-state">
+            No accepted external-evidence records are available yet. Review the
+            queue first before attaching catalog evidence to a case.
+          </p>
+          <div className="hero-actions">
+            <Link className="button secondary" href="/evidence/review">
+              Open evidence review queue
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="preset-grid">
+          {query.data.items.map((item) => {
+            const isSelected = selectedIds.has(item.id);
+
+            return (
+              <article
+                className={`preset-card${isSelected ? ' active' : ''}`}
+                key={item.id}
+              >
+                <div className="stack split compact">
+                  <h3>{item.title}</h3>
+                  <span className="badge subtle">
+                    {formatToken(item.source_type)}
+                  </span>
+                </div>
+                <p className="muted">{item.summary}</p>
+                <div className="detail-grid two-columns">
+                  <div className="detail-item">
+                    <span className="muted">Strength</span>
+                    <strong>{formatToken(item.strength_level)}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span className="muted">Publisher</span>
+                    <strong>{item.publisher ?? 'Not stated'}</strong>
+                  </div>
+                </div>
+                <div className="section-group">
+                  <h4>Tags</h4>
+                  <ul className="pill-list">
+                    {item.tags.map((tag) => (
+                      <li className="pill" key={tag}>
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="hero-actions">
+                  <button
+                    className={isSelected ? '' : 'secondary'}
+                    type="button"
+                    onClick={() => toggleItem(item)}
+                  >
+                    {isSelected ? 'Included in intake' : 'Include evidence'}
+                  </button>
+                  <Link
+                    className="button secondary"
+                    href={`/evidence/review/${item.id}`}
+                  >
+                    Inspect record
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

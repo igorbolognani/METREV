@@ -11,6 +11,7 @@ import {
 import { authPlugin } from './plugins/auth';
 import { registerCaseRoutes } from './routes/cases';
 import { registerEvaluationRoutes } from './routes/evaluations';
+import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
 
 declare module 'fastify' {
@@ -43,6 +44,9 @@ export async function buildApp(
   await registerHealthRoutes(app);
   await app.register(registerCaseRoutes, { prefix: '/api/cases' });
   await app.register(registerEvaluationRoutes, { prefix: '/api/evaluations' });
+  await app.register(registerExternalEvidenceRoutes, {
+    prefix: '/api/external-evidence',
+  });
 
   app.addHook('onClose', async () => {
     await repository.disconnect();

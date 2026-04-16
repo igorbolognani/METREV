@@ -4,127 +4,172 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import type { RawCaseInput } from '@metrev/domain-contracts';
+import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
+import { AcceptedEvidenceSelector } from '@/components/accepted-evidence-selector';
 import { evaluateCase } from '@/lib/api';
+import {
+    buildCaseInputFromFormValues,
+    caseIntakePresets,
+    defaultCaseIntakeFormValues,
+    findCaseIntakePreset,
+} from '@/lib/case-intake';
 
-type EvidenceRecordInput = NonNullable<
-  RawCaseInput['evidence_records']
->[number];
-
-function parseOptionalNumber(value: string): number | undefined {
-  if (!value.trim()) {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+function formatToken(value: string): string {
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
 }
 
 export function CaseForm() {
   const router = useRouter();
-  const [caseId, setCaseId] = useState('');
-  const [technologyFamily, setTechnologyFamily] = useState(
-    'microbial_fuel_cell',
-  );
-  const [architectureFamily, setArchitectureFamily] = useState('');
-  const [primaryObjective, setPrimaryObjective] = useState(
-    'wastewater_treatment',
-  );
-  const [deploymentContext, setDeploymentContext] = useState('');
-  const [painPoints, setPainPoints] = useState('');
-  const [influentType, setInfluentType] = useState('');
-  const [temperature, setTemperature] = useState('');
-  const [ph, setPh] = useState('');
-  const [preferredSuppliers, setPreferredSuppliers] = useState('');
-  const [evidenceType, setEvidenceType] =
-    useState<EvidenceRecordInput['evidence_type']>('internal_benchmark');
-  const [evidenceTitle, setEvidenceTitle] = useState('');
-  const [evidenceSummary, setEvidenceSummary] = useState('');
-  const [evidenceStrength, setEvidenceStrength] =
-    useState<EvidenceRecordInput['strength_level']>('moderate');
+  const [formValues, setFormValues] = useState(defaultCaseIntakeFormValues);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [selectedCatalogEvidence, setSelectedCatalogEvidence] = useState<
+    ExternalEvidenceCatalogItemSummary[]
+  >([]);
 
   const mutation = useMutation({
-    mutationFn: async (payload: RawCaseInput) => evaluateCase(payload),
+    mutationFn: evaluateCase,
     onSuccess: (result) => {
       router.push(`/evaluations/${result.evaluation_id}`);
     },
   });
 
+  const activePreset = findCaseIntakePreset(activePresetId);
+
+  function updateField<Field extends keyof typeof formValues>(
+    field: Field,
+    value: (typeof formValues)[Field],
+  ) {
+    setFormValues((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function applyPreset(presetId: string) {
+    const preset = findCaseIntakePreset(presetId);
+    if (!preset) {
+      return;
+    }
+
+    setFormValues(preset.formValues);
+    setActivePresetId(preset.id);
+    setSelectedCatalogEvidence([]);
+    mutation.reset();
+  }
+
+  function resetForm() {
+    setFormValues(defaultCaseIntakeFormValues);
+    setActivePresetId(null);
+    setSelectedCatalogEvidence([]);
+    mutation.reset();
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const payload: RawCaseInput = {
-      case_id: caseId || undefined,
-      technology_family: technologyFamily,
-      architecture_family: architectureFamily || undefined,
-      primary_objective: primaryObjective,
-      business_context: {
-        deployment_context: deploymentContext || undefined,
-      },
-      technology_context: {
-        current_pain_points: painPoints
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-      },
-      feed_and_operation: {
-        influent_type: influentType || undefined,
-        temperature_c: parseOptionalNumber(temperature),
-        pH: parseOptionalNumber(ph),
-      },
-      supplier_context: {
-        current_suppliers: [],
-        preferred_suppliers: preferredSuppliers
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-        excluded_suppliers: [],
-      },
-      evidence_records:
-        evidenceTitle.trim() && evidenceSummary.trim()
-          ? [
-              {
-                evidence_type: evidenceType,
-                title: evidenceTitle.trim(),
-                summary: evidenceSummary.trim(),
-                applicability_scope: {
-                  architecture_family: architectureFamily || 'unspecified',
-                  primary_objective: primaryObjective,
-                },
-                strength_level: evidenceStrength,
-                provenance_note:
-                  'Captured directly during runtime intake and preserved as typed evidence.',
-                quantitative_metrics: {},
-                operating_conditions: {},
-                block_mapping: [],
-                limitations: [],
-                contradiction_notes: [],
-                tags: ['runtime-intake'],
-              },
-            ]
-          : undefined,
-    };
+    const payload = buildCaseInputFromFormValues(
+      formValues,
+      activePreset,
+      selectedCatalogEvidence,
+    );
 
     await mutation.mutateAsync(payload);
   }
 
   return (
     <form className="grid" onSubmit={handleSubmit}>
+      <section className="panel nested-panel grid">
+        <div className="stack split compact">
+          <div>
+            <span className="badge">Golden cases</span>
+            <h2>Validated intake presets</h2>
+          </div>
+          {activePreset ? (
+            <span className="badge subtle">Preset active</span>
+          ) : null}
+        </div>
+        <p className="muted">
+          Each preset injects structured stack blocks, measured metrics,
+          supplier context, and typed-evidence metadata beyond the visible form
+          fields so the deterministic evaluation can reach a richer rule path.
+          Visible edits remain authoritative for the inputs you can change here.
+        </p>
+        <div className="preset-grid">
+          {caseIntakePresets.map((preset) => {
+            const isActive = activePresetId === preset.id;
+
+            return (
+              <article
+                className={`preset-card${isActive ? ' active' : ''}`}
+                key={preset.id}
+              >
+                <div className="stack split compact">
+                  <h3>{preset.label}</h3>
+                  <span className="badge subtle">
+                    {formatToken(preset.formValues.primaryObjective)}
+                  </span>
+                </div>
+                <p className="muted">{preset.description}</p>
+                <p className="muted">
+                  {formatToken(preset.formValues.technologyFamily)} ·{' '}
+                  {formatToken(preset.formValues.architectureFamily)}
+                </p>
+                <div className="section-group">
+                  <h4>Focus areas</h4>
+                  <ul className="pill-list">
+                    {preset.focusAreas.map((entry) => (
+                      <li className="pill" key={entry}>
+                        {entry}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="muted">
+                  Expected highlights:{' '}
+                  {preset.expectedRecommendationIds.join(', ')}
+                </p>
+                <p className="muted">Source: {preset.sourceReference}</p>
+                <div className="hero-actions">
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => applyPreset(preset.id)}
+                  >
+                    {isActive ? 'Reload preset' : 'Load preset'}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="hero-actions">
+          <button className="secondary" type="button" onClick={resetForm}>
+            Reset form
+          </button>
+        </div>
+      </section>
+
       <div className="grid two">
         <label>
           Case identifier
           <input
-            value={caseId}
-            onChange={(event) => setCaseId(event.target.value)}
+            value={formValues.caseId}
+            onChange={(event) => updateField('caseId', event.target.value)}
             placeholder="optional"
           />
         </label>
         <label>
           Technology family
           <select
-            value={technologyFamily}
-            onChange={(event) => setTechnologyFamily(event.target.value)}
+            value={formValues.technologyFamily}
+            onChange={(event) =>
+              updateField('technologyFamily', event.target.value)
+            }
           >
             <option value="microbial_fuel_cell">Microbial fuel cell</option>
             <option value="microbial_electrolysis_cell">
@@ -141,16 +186,20 @@ export function CaseForm() {
         <label>
           Architecture family
           <input
-            value={architectureFamily}
-            onChange={(event) => setArchitectureFamily(event.target.value)}
+            value={formValues.architectureFamily}
+            onChange={(event) =>
+              updateField('architectureFamily', event.target.value)
+            }
             placeholder="single_chamber, two_chamber, modular..."
           />
         </label>
         <label>
           Primary objective
           <select
-            value={primaryObjective}
-            onChange={(event) => setPrimaryObjective(event.target.value)}
+            value={formValues.primaryObjective}
+            onChange={(event) =>
+              updateField('primaryObjective', event.target.value)
+            }
           >
             <option value="wastewater_treatment">Wastewater treatment</option>
             <option value="hydrogen_recovery">Hydrogen recovery</option>
@@ -166,8 +215,10 @@ export function CaseForm() {
       <label>
         Deployment context
         <input
-          value={deploymentContext}
-          onChange={(event) => setDeploymentContext(event.target.value)}
+          value={formValues.deploymentContext}
+          onChange={(event) =>
+            updateField('deploymentContext', event.target.value)
+          }
           placeholder="pilot retrofit, industrial validation, lab scale..."
         />
       </label>
@@ -175,8 +226,8 @@ export function CaseForm() {
       <label>
         Current pain points
         <textarea
-          value={painPoints}
-          onChange={(event) => setPainPoints(event.target.value)}
+          value={formValues.painPoints}
+          onChange={(event) => updateField('painPoints', event.target.value)}
           placeholder="comma-separated issues such as high internal resistance, weak monitoring, unstable startup"
         />
       </label>
@@ -184,8 +235,10 @@ export function CaseForm() {
       <label>
         Preferred suppliers
         <input
-          value={preferredSuppliers}
-          onChange={(event) => setPreferredSuppliers(event.target.value)}
+          value={formValues.preferredSuppliers}
+          onChange={(event) =>
+            updateField('preferredSuppliers', event.target.value)
+          }
           placeholder="comma-separated shortlist candidates"
         />
       </label>
@@ -204,10 +257,11 @@ export function CaseForm() {
           <label>
             Evidence type
             <select
-              value={evidenceType}
+              value={formValues.evidenceType}
               onChange={(event) =>
-                setEvidenceType(
-                  event.target.value as EvidenceRecordInput['evidence_type'],
+                updateField(
+                  'evidenceType',
+                  event.target.value as typeof formValues.evidenceType,
                 )
               }
             >
@@ -223,10 +277,11 @@ export function CaseForm() {
           <label>
             Strength level
             <select
-              value={evidenceStrength}
+              value={formValues.evidenceStrength}
               onChange={(event) =>
-                setEvidenceStrength(
-                  event.target.value as EvidenceRecordInput['strength_level'],
+                updateField(
+                  'evidenceStrength',
+                  event.target.value as typeof formValues.evidenceStrength,
                 )
               }
             >
@@ -240,8 +295,10 @@ export function CaseForm() {
         <label>
           Evidence title
           <input
-            value={evidenceTitle}
-            onChange={(event) => setEvidenceTitle(event.target.value)}
+            value={formValues.evidenceTitle}
+            onChange={(event) =>
+              updateField('evidenceTitle', event.target.value)
+            }
             placeholder="Pilot baseline, supplier datasheet, internal trial..."
           />
         </label>
@@ -249,27 +306,36 @@ export function CaseForm() {
         <label>
           Evidence summary
           <textarea
-            value={evidenceSummary}
-            onChange={(event) => setEvidenceSummary(event.target.value)}
+            value={formValues.evidenceSummary}
+            onChange={(event) =>
+              updateField('evidenceSummary', event.target.value)
+            }
             placeholder="Short description of the evidence and why it matters to this decision run"
           />
         </label>
       </section>
 
+      <AcceptedEvidenceSelector
+        selectedEvidence={selectedCatalogEvidence}
+        onSelectionChange={setSelectedCatalogEvidence}
+      />
+
       <div className="grid two">
         <label>
           Influent type
           <input
-            value={influentType}
-            onChange={(event) => setInfluentType(event.target.value)}
+            value={formValues.influentType}
+            onChange={(event) =>
+              updateField('influentType', event.target.value)
+            }
             placeholder="industrial wastewater, sidestream, synthetic feed..."
           />
         </label>
         <label>
           Temperature (°C)
           <input
-            value={temperature}
-            onChange={(event) => setTemperature(event.target.value)}
+            value={formValues.temperature}
+            onChange={(event) => updateField('temperature', event.target.value)}
             placeholder="25"
           />
         </label>
@@ -278,8 +344,8 @@ export function CaseForm() {
       <label>
         pH
         <input
-          value={ph}
-          onChange={(event) => setPh(event.target.value)}
+          value={formValues.ph}
+          onChange={(event) => updateField('ph', event.target.value)}
           placeholder="7.0"
         />
       </label>
