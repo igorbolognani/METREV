@@ -64,6 +64,9 @@ Use the maintained root workflow surface:
 - `.github/prompts/plan-feature.prompt.md`
 - `.github/prompts/ship-change.prompt.md`
 
+The default autonomous one-shot path is `.github/prompts/ship-change.prompt.md`, which now uses the root `workflow-orchestrator` agent.
+The staged/manual path remains available through the clarify, start-feature, and plan prompts when tighter human control is preferable.
+
 ## Core commands
 
 - copy `.env.example` to `.env` before running the local runtime

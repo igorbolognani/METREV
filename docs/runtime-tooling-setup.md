@@ -38,7 +38,8 @@ This document separates repository-managed integration from local-machine setup 
 
 - This repository does not require Spec Kit, a Spec Kit MCP server, or a Spec Kit VS Code extension.
 - The supported workflow is the root internal surface: `AGENTS.md`, `.github/copilot-instructions.md`, `docs/internal-feature-workflow.md`, `specs/_templates/`, the root agents, the root prompts, and the root `spec-workflow` skill.
-- Use `.github/prompts/clarify-feature.prompt.md` to close blocking questions, `.github/prompts/start-feature.prompt.md` to bootstrap a durable feature pack, `.github/prompts/plan-feature.prompt.md` for planning, and `.github/prompts/ship-change.prompt.md` for end-to-end delivery from understanding through validation.
+- Use `.github/prompts/clarify-feature.prompt.md` to close blocking questions, `.github/prompts/start-feature.prompt.md` to bootstrap a durable feature pack, `.github/prompts/plan-feature.prompt.md` for staged planning, and `.github/prompts/ship-change.prompt.md` as the autonomous one-shot entrypoint.
+- The autonomous one-shot path is backed by the root `workflow-orchestrator` agent and should preserve the current runtime invariants around Supabase, Prisma, Auth.js, telemetry, and quickstart flows unless a task explicitly changes them.
 - If `specify` or `specify init` is not installed locally, that is expected in this repository. The root internal workflow replaces external Spec Kit tooling here.
 
 ## Validation rule

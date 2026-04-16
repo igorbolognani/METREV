@@ -91,6 +91,7 @@ For domain and runtime decision behavior, prefer this order:
 
 - Use the root prompt, agent, and skill files before relying on nested reference assets.
 - Use `.github/prompts/clarify-feature.prompt.md` to close blocking questions before planning and `.github/prompts/start-feature.prompt.md` to bootstrap a new feature pack from the maintained root templates.
+- Use `.github/prompts/ship-change.prompt.md` as the autonomous one-shot entrypoint when you want the repository to drive the full internal workflow end to end.
 - Use Context7 workflow whenever library or framework behavior depends on current external docs.
 - Treat GitHub MCP as the first supported root MCP integration.
 - Treat Context7 and Serena as repo-supported integrations only after root workspace config and setup docs exist.

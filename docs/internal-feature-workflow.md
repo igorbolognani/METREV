@@ -85,6 +85,10 @@ Use the root prompts in this order when helpful:
 3. `.github/prompts/plan-feature.prompt.md`
 4. `.github/prompts/ship-change.prompt.md`
 
+The default autonomous one-shot entrypoint is `.github/prompts/ship-change.prompt.md`.
+That prompt is backed by the root `workflow-orchestrator` agent and should compose the staged workflow for medium and large changes without external Spec Kit tooling.
+The staged prompts remain the manual path when tighter control over clarification, bootstrap, or planning is preferable.
+
 If `specify` or `specify init` is not installed locally, that is expected here.
 This internal workflow replaces external Spec Kit tooling in this repository.
 
@@ -106,6 +110,15 @@ This internal workflow replaces external Spec Kit tooling in this repository.
    Run objective checks and record what was actually verified.
 8. Promote approved canonical changes.
    If planning-only contract notes imply real schema or vocabulary changes, promote them into `bioelectro-copilot-contracts/contracts/`, aligned tests, and any affected docs before calling the work complete.
+
+## Runtime invariants the autonomous path should preserve
+
+- Supabase remains supported as hosted PostgreSQL for the current runtime, not as an Auth.js replacement.
+- Prisma migrations keep preferring `DIRECT_URL` through `packages/database/scripts/run-prisma-with-direct-url.mjs`.
+- `packages/database/prisma/schema.prisma` and `packages/database/prisma.config.ts` stay aligned around runtime `DATABASE_URL` and migration `DIRECT_URL` semantics.
+- `apps/web-ui/src/instrumentation.ts` stays no-op until web telemetry work is explicitly in scope and validated.
+- API telemetry remains active through `packages/telemetry/src/node-sdk.ts` unless telemetry work is explicitly requested.
+- The validated quickstart and local-view scripts in `package.json` remain functional unless a change explicitly reworks and re-validates them.
 
 ## Planning-only contract rule
 

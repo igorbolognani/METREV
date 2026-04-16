@@ -1,7 +1,8 @@
 ---
 name: ship-change
-description: 'Drive a repository change end to end with goal framing, implementation, validation, review, and final readiness checks.'
+description: 'Autonomously drive a repository change end to end with the internal feature workflow, from clarification through validation.'
 argument-hint: 'Describe the bug, feature, refactor, or integration change to deliver end to end'
+agent: 'workflow-orchestrator'
 ---
 
 Execute the requested work in this repository end to end.
@@ -26,5 +27,6 @@ Constraints:
 - Preserve the root repository truth model and internal spec-first workflow.
 - Use `docs/internal-feature-workflow.md` and `specs/_templates/` instead of external Spec Kit tooling.
 - Keep feature-level contract notes planning-only, cite canonical owner files, and do not bypass `bioelectro-copilot-contracts/contracts/`.
+- Preserve the currently validated runtime invariants unless the task explicitly changes them and re-validates the affected flow.
 - Prefer minimal diffs and explicit validation.
 - Do not claim success for checks that were not actually run.
