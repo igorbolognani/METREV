@@ -107,12 +107,22 @@ main {
   padding: 18px;
 }
 
+.section-group {
+  display: grid;
+  gap: 10px;
+}
+
 .hero h1,
 .panel h1,
 .panel h2,
 .panel h3 {
   margin: 0;
   font-family: 'IBM Plex Serif', Georgia, serif;
+}
+
+.panel h4 {
+  margin: 0;
+  font-size: 0.98rem;
 }
 
 .hero-actions,
@@ -129,6 +139,144 @@ main {
 
 .compact {
   gap: 8px;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.detail-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+}
+
+.roadmap-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.roadmap-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 10px 30px rgba(30, 29, 26, 0.04);
+}
+
+.preset-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.preset-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: white;
+}
+
+.preset-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px rgba(31, 111, 95, 0.1);
+}
+
+.cockpit-hero {
+  gap: 20px;
+}
+
+.cockpit-strip {
+  display: grid;
+  gap: 12px;
+}
+
+.metric-card,
+.lens-card,
+.history-card,
+.finding-card,
+.option-row {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+}
+
+.metric-card strong {
+  font-size: 1.1rem;
+  font-family: 'IBM Plex Serif', Georgia, serif;
+}
+
+.option-matrix,
+.lens-stack,
+.history-rail,
+.finding-board {
+  display: grid;
+  gap: 14px;
+}
+
+.option-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.score-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: #e8dfd0;
+  overflow: hidden;
+}
+
+.score-track.compact-track {
+  height: 8px;
+}
+
+.score-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1f6f5f 0%, #86cdb8 100%);
+}
+
+.finding-card.attention {
+  background: #fff8ed;
+  border-color: #d5b07b;
+}
+
+.finding-card.documented {
+  background: #fdfbf6;
+}
+
+.disclosure {
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  background: #f7f1e4;
+  overflow: hidden;
+}
+
+.disclosure summary {
+  cursor: pointer;
+  padding: 16px 18px;
+  font-weight: 700;
+  font-family: 'IBM Plex Serif', Georgia, serif;
+}
+
+.disclosure-content {
+  padding: 0 18px 18px;
 }
 
 .button,
@@ -154,9 +302,86 @@ button.secondary {
   gap: 16px;
 }
 
+.list-block {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.pill-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: white;
+  color: var(--ink);
+}
+
+.empty-state {
+  margin: 0;
+}
+
+.section-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.secondary-link {
+  font-weight: 600;
+}
+
+.code-block {
+  margin: 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f3eee2;
+  color: var(--ink);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (min-width: 900px) {
   .grid.two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cockpit-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-grid.two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roadmap-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .finding-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  .cockpit-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -238,6 +463,10 @@ textarea {
   }
 
   .auth-meta {
+    align-items: flex-start;
+  }
+
+  .stack.split {
     align-items: flex-start;
   }
 }

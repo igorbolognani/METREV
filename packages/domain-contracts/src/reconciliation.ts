@@ -25,7 +25,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     contract_source:
       'bioelectro-copilot-contracts/contracts/ontology/stack.yaml#canonical_entities.case.fields.technology_family',
     runtime_path: 'normalized_case.technology_family',
-    ui_surface: 'apps/web-ui/src/components/case-form.tsx#technologyFamily',
+    ui_surface: 'apps/web-ui/src/components/case-form.tsx#CaseForm',
     note: 'Canonical runtime value uses microbial_electrochemical_technology; the legacy hybrid_or_other_met label is treated only as an intake alias during normalization.',
   },
   {
@@ -35,7 +35,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     contract_source:
       'bioelectro-copilot-contracts/contracts/ontology/stack.yaml#canonical_entities.case.nested_fields.stack_blocks.reactor_architecture',
     runtime_path: 'normalized_case.stack_blocks.reactor_architecture',
-    ui_surface: 'apps/web-ui/src/components/case-form.tsx#architectureFamily',
+    ui_surface: 'apps/web-ui/src/components/case-form.tsx#CaseForm',
     note: 'Runtime fills canonical architecture_type/serviceability/solids_tolerance fields while preserving legacy notes as supplemental context.',
   },
   {
@@ -46,7 +46,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
       'bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml',
     runtime_path:
       'normalized_case.cross_cutting_layers.evidence_and_provenance.typed_evidence',
-    ui_surface: 'apps/web-ui/src/components/case-form.tsx#evidenceRecords',
+    ui_surface: 'apps/web-ui/src/components/case-form.tsx#CaseForm',
     note: 'Supplier claims remain typed evidence, never silently upgraded to validated evidence.',
   },
   {
@@ -56,7 +56,8 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
       'bioelectro-copilot-contracts/contracts/rules/defaults.yaml',
     runtime_path:
       'normalized_case.defaults_used | normalized_case.missing_data | decision_output.assumptions_and_defaults_audit',
-    ui_surface: 'apps/web-ui/src/components/evaluation-result-view.tsx',
+    ui_surface:
+      'apps/web-ui/src/components/evaluation-cockpit.tsx#EvaluationCockpit',
     note: 'Defaults and missing-data flags must stay visible in both decision output and history views.',
   },
   {
@@ -66,7 +67,8 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     contract_source:
       'bioelectro-copilot-contracts/contracts/output_contract.yaml#normalized_decision_output.required_sections',
     runtime_path: 'decision_output',
-    ui_surface: 'apps/web-ui/src/components/evaluation-result-view.tsx',
+    ui_surface:
+      'apps/web-ui/src/components/evaluation-cockpit.tsx#EvaluationCockpit',
     note: 'UI rendering and runtime validation must fail if any canonical output section drifts.',
   },
 ];
