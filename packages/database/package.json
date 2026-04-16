@@ -12,7 +12,9 @@
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "node scripts/run-prisma-with-direct-url.mjs migrate dev",
-    "prisma:migrate:deploy": "node scripts/run-prisma-with-direct-url.mjs migrate deploy"
+    "prisma:migrate:deploy": "node scripts/run-prisma-with-direct-url.mjs migrate deploy",
+    "ingest:literature:openalex": "node scripts/ingest-openalex-literature.mjs",
+    "ingest:literature:crossref": "node scripts/ingest-crossref-literature.mjs"
   },
   "dependencies": {
     "@metrev/domain-contracts": "workspace:*",

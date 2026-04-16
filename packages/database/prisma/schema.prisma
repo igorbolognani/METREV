@@ -26,6 +26,33 @@ enum SupplierSourceState {
   REVIEWED
 }
 
+enum ExternalSourceType {
+  OPENALEX
+  CROSSREF
+  SUPPLIER_PROFILE
+  MARKET_SNAPSHOT
+  MANUAL
+}
+
+enum IngestionRunStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+enum ExternalSourceState {
+  RAW
+  PARSED
+  NORMALIZED
+  REVIEWED
+}
+
+enum ExternalEvidenceReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -130,6 +157,67 @@ model Supplier {
   casePreferences CaseSupplierPreference[]
   shortlistItems  SupplierShortlistItem[]
   evidenceRecords EvidenceRecord[]
+}
+
+model ExternalSourceRecord {
+  id                   String                        @id @default(cuid())
+  sourceType           ExternalSourceType
+  sourceKey            String
+  sourceUrl            String?
+  title                String
+  sourceCategory       String?
+  doi                  String?
+  publisher            String?
+  publishedAt          DateTime?
+  asOf                 DateTime?
+  abstractText         String?                       @db.Text
+  rawPayload           Json
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  catalogEvidenceItems ExternalEvidenceCatalogItem[]
+
+  @@unique([sourceType, sourceKey])
+  @@index([sourceType, publishedAt])
+  @@index([doi])
+}
+
+model ExternalEvidenceCatalogItem {
+  id                 String                       @id @default(cuid())
+  sourceRecordId     String
+  evidenceType       String
+  title              String
+  summary            String                       @db.Text
+  strengthLevel      String
+  provenanceNote     String                       @db.Text
+  reviewStatus       ExternalEvidenceReviewStatus @default(PENDING)
+  sourceState        ExternalSourceState          @default(PARSED)
+  applicabilityScope Json
+  extractedClaims    Json
+  tags               String[]
+  payload            Json
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  sourceRecord       ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceRecordId, evidenceType, title])
+  @@index([reviewStatus, evidenceType])
+}
+
+model IngestionRun {
+  id             String             @id @default(cuid())
+  sourceType     ExternalSourceType
+  triggerMode    String
+  query          String?
+  status         IngestionRunStatus
+  recordsFetched Int                @default(0)
+  recordsStored  Int                @default(0)
+  summary        Json
+  startedAt      DateTime
+  completedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([sourceType, startedAt])
 }
 
 model CaseSupplierPreference {
