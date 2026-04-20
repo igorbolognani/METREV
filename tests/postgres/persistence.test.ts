@@ -2,9 +2,13 @@ import fixture from '../fixtures/raw-case-input.json';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { defaultSessionCookieName, type SessionActor, type SessionResolver } from '@metrev/auth';
-import { buildApp } from '../../apps/api-server/src/app';
+import {
+    defaultSessionCookieName,
+    type SessionActor,
+    type SessionResolver,
+} from '@metrev/auth';
 import { disconnectPrismaClient, getPrismaClient } from '@metrev/database';
+import { buildApp } from '../../apps/api-server/src/app';
 
 const caseId = 'CASE-POSTGRES-SUITE';
 const supplierNames = [
@@ -169,6 +173,7 @@ describe('postgres-backed persistence flow', () => {
       const evaluation = await prisma.evaluationRecord.findUnique({
         where: { id: created.evaluation_id },
         include: {
+          simulationArtifact: true,
           supplierShortlistItems: {
             include: { supplier: true },
           },
@@ -187,6 +192,12 @@ describe('postgres-backed persistence flow', () => {
       });
 
       expect(evaluation).not.toBeNull();
+      expect(evaluation?.simulationArtifact).toEqual(
+        expect.objectContaining({
+          status: 'completed',
+          modelVersion: expect.any(String),
+        }),
+      );
       expect(evaluation?.case.supplierPreferences).toHaveLength(3);
       expect(evaluation?.supplierShortlistItems).toHaveLength(3);
       expect(
@@ -214,8 +225,19 @@ describe('postgres-backed persistence flow', () => {
         }),
       );
       expect(
-        linkedEvidence.find((entry) => entry.supplier?.displayName === 'Preferred Supplier'),
+        linkedEvidence.find(
+          (entry) => entry.supplier?.displayName === 'Preferred Supplier',
+        ),
       ).toBeTruthy();
+
+      const simulationAuditEvent = await prisma.auditEvent.findFirst({
+        where: {
+          evaluationId: created.evaluation_id,
+          eventType: 'simulation_enrichment_completed',
+        },
+      });
+
+      expect(simulationAuditEvent).not.toBeNull();
     } finally {
       await app.close();
     }

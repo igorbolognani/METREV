@@ -18,6 +18,37 @@ export const primaryObjectiveSchema = z.enum([
 
 export const confidenceLevelSchema = z.enum(['low', 'medium', 'high']);
 
+export const signalSourceKindSchema = z.enum([
+  'measured',
+  'inferred',
+  'modeled',
+  'unavailable',
+]);
+
+export const simulationEnrichmentStatusSchema = z.enum([
+  'disabled',
+  'insufficient_data',
+  'completed',
+  'failed',
+]);
+
+export const decisionRelevanceSchema = z.enum(['informational', 'rule_input']);
+
+export const simulationSeriesTypeSchema = z.enum([
+  'trend_line',
+  'scatter',
+  'heatmap',
+  'sensitivity_plot',
+  'operating_window',
+  'polarization_curve',
+  'power_curve',
+]);
+
+export const simulationExecutionModeSchema = z.enum([
+  'internal_model',
+  'future_sidecar',
+]);
+
 export const evidenceTypeSchema = z.enum([
   'literature_evidence',
   'internal_benchmark',
@@ -78,6 +109,13 @@ export const agentStageStatusSchema = z.enum([
 ]);
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
+
+const scalarValueSchema = z.union([
+  z.number(),
+  z.string(),
+  z.boolean(),
+  z.null(),
+]);
 
 export const supplierContextSchema = z
   .object({
@@ -357,6 +395,81 @@ export const confidenceAndUncertaintySummarySchema = z.object({
   sensitivity_level: z.enum(['low', 'medium', 'high']).optional(),
 });
 
+export const simulationAxisSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().nullable().default(null),
+});
+
+export const simulationSeriesPointSchema = z.object({
+  x: z.number(),
+  y: z.number().nullable(),
+  z: z.number().nullable().optional(),
+  label: z.string().optional(),
+  note: z.string().optional(),
+  meta: flexibleObjectSchema.default({}),
+});
+
+export const derivedObservationSchema = z.object({
+  observation_id: z.string().min(1),
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: scalarValueSchema,
+  unit: z.string().nullable().default(null),
+  source_kind: signalSourceKindSchema,
+  confidence_level: confidenceLevelSchema,
+  decision_relevance: decisionRelevanceSchema,
+  provenance_note: z.string().min(1),
+  assumptions: z.array(z.string()).default([]),
+  missing_dependencies: z.array(z.string()).default([]),
+});
+
+export const simulationSeriesSchema = z.object({
+  series_id: z.string().min(1),
+  title: z.string().min(1),
+  series_type: simulationSeriesTypeSchema,
+  x_axis: simulationAxisSchema,
+  y_axis: simulationAxisSchema,
+  points: z.array(simulationSeriesPointSchema).default([]),
+  source_kind: signalSourceKindSchema,
+  provenance_note: z.string().min(1),
+});
+
+export const simulationConfidenceSchema = z.object({
+  level: confidenceLevelSchema,
+  score: z.number().min(0).max(100),
+  drivers: z.array(z.string()).default([]),
+});
+
+export const simulationProvenanceSchema = z.object({
+  provider: z.string().min(1),
+  execution_mode: simulationExecutionModeSchema,
+  source_version: z.string().min(1),
+  generated_at: z.string().min(1),
+  source_refs: z.array(z.string()).default([]),
+  note: z.string().optional(),
+});
+
+export const simulationSummarySchema = z.object({
+  status: simulationEnrichmentStatusSchema,
+  model_version: z.string().min(1),
+  confidence_level: confidenceLevelSchema,
+  derived_observation_count: z.number().int().nonnegative(),
+  has_series: z.boolean(),
+});
+
+export const simulationEnrichmentSchema = z.object({
+  status: simulationEnrichmentStatusSchema,
+  model_version: z.string().min(1),
+  input_snapshot: flexibleObjectSchema.default({}),
+  derived_observations: z.array(derivedObservationSchema).default([]),
+  series: z.array(simulationSeriesSchema).default([]),
+  assumptions: z.array(z.string()).default([]),
+  confidence: simulationConfidenceSchema,
+  provenance: simulationProvenanceSchema,
+  failure_detail: flexibleObjectSchema.optional(),
+});
+
 export const decisionOutputSchema = z.object({
   current_stack_diagnosis: currentStackDiagnosisSchema,
   prioritized_improvement_options: z.array(recommendationRecordSchema),
@@ -416,6 +529,7 @@ export const evaluationResponseSchema = z.object({
   audit_record: auditRecordSchema,
   narrative: z.string().nullable(),
   narrative_metadata: narrativeMetadataSchema,
+  simulation_enrichment: simulationEnrichmentSchema.optional(),
 });
 
 export const evaluationSummarySchema = z.object({
@@ -427,6 +541,7 @@ export const evaluationSummarySchema = z.object({
   primary_objective: primaryObjectiveSchema,
   summary: z.string().min(1),
   narrative_available: z.boolean(),
+  simulation_summary: simulationSummarySchema.optional(),
 });
 
 export const evaluationListResponseSchema = z.object({
@@ -528,6 +643,20 @@ export type CaseSnapshot = z.infer<typeof caseSnapshotSchema>;
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type CaseHistoryResponse = z.infer<typeof caseHistoryResponseSchema>;
 export type ConfidenceLevel = z.infer<typeof confidenceLevelSchema>;
+export type SignalSourceKind = z.infer<typeof signalSourceKindSchema>;
+export type SimulationEnrichmentStatus = z.infer<
+  typeof simulationEnrichmentStatusSchema
+>;
+export type DecisionRelevance = z.infer<typeof decisionRelevanceSchema>;
+export type SimulationSeriesType = z.infer<typeof simulationSeriesTypeSchema>;
+export type SimulationAxis = z.infer<typeof simulationAxisSchema>;
+export type SimulationSeriesPoint = z.infer<typeof simulationSeriesPointSchema>;
+export type DerivedObservation = z.infer<typeof derivedObservationSchema>;
+export type SimulationSeries = z.infer<typeof simulationSeriesSchema>;
+export type SimulationConfidence = z.infer<typeof simulationConfidenceSchema>;
+export type SimulationProvenance = z.infer<typeof simulationProvenanceSchema>;
+export type SimulationSummary = z.infer<typeof simulationSummarySchema>;
+export type SimulationEnrichment = z.infer<typeof simulationEnrichmentSchema>;
 export type ExternalEvidenceReviewStatus = z.infer<
   typeof externalEvidenceReviewStatusSchema
 >;

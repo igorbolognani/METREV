@@ -127,7 +127,7 @@ model CaseRecord {
 }
 
 model EvaluationRecord {
-  id                     String                  @id
+  id                     String                    @id
   caseId                 String
   decisionOutput         Json
   auditRecord            Json
@@ -139,10 +139,30 @@ model EvaluationRecord {
   defaultsUsed           String[]
   missingData            String[]
   assumptions            String[]
-  createdAt              DateTime                @default(now())
-  case                   CaseRecord              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt              DateTime                  @default(now())
+  case                   CaseRecord                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  simulationArtifact     SimulationArtifactRecord?
   supplierShortlistItems SupplierShortlistItem[]
   auditEvents            AuditEvent[]
+}
+
+model SimulationArtifactRecord {
+  id                  String           @id @default(cuid())
+  evaluationId        String           @unique
+  status              String
+  modelVersion        String
+  inputSnapshot       Json
+  derivedObservations Json
+  series              Json
+  assumptions         Json
+  confidence          Json
+  provenance          Json
+  failureDetail       Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  evaluation          EvaluationRecord @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
 
 model Supplier {

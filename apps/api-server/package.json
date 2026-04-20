@@ -16,6 +16,7 @@
     "@metrev/auth": "workspace:*",
     "@metrev/database": "workspace:*",
     "@metrev/domain-contracts": "workspace:*",
+    "@metrev/electrochem-models": "workspace:*",
     "@metrev/llm-adapter": "workspace:*",
     "@metrev/rule-engine": "workspace:*",
     "@metrev/telemetry": "workspace:*",

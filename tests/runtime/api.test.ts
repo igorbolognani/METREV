@@ -3,15 +3,15 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  evaluationResponseSchema,
-  type ExternalEvidenceCatalogItemDetail,
+    evaluationResponseSchema,
+    type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -139,6 +139,8 @@ describe('api runtime flow', () => {
     expect(created.narrative_metadata.status).toBe('generated');
     expect(created.audit_record.raw_input_snapshot.case_id).toBe('CASE-001');
     expect(created.audit_record.agent_pipeline_trace.length).toBeGreaterThan(0);
+    expect(created.simulation_enrichment?.status).toBe('completed');
+    expect(created.simulation_enrichment?.series.length).toBeGreaterThan(0);
     expect(created.audit_record.actor_id).toBe('user-analyst-001');
     expect(created.audit_record.actor_role).toBe('ANALYST');
 
@@ -169,6 +171,10 @@ describe('api runtime flow', () => {
         expect.objectContaining({
           evaluation_id: created.evaluation_id,
           case_id: created.case_id,
+          simulation_summary: expect.objectContaining({
+            status: 'completed',
+            has_series: true,
+          }),
         }),
       ],
     });
@@ -189,8 +195,20 @@ describe('api runtime flow', () => {
       evaluations: [
         expect.objectContaining({
           evaluation_id: created.evaluation_id,
+          simulation_summary: expect.objectContaining({
+            status: 'completed',
+          }),
         }),
       ],
+    });
+
+    expect(historyResponse.json()).toMatchObject({
+      audit_events: expect.arrayContaining([
+        expect.objectContaining({
+          event_type: 'simulation_enrichment_completed',
+          evaluation_id: created.evaluation_id,
+        }),
+      ]),
     });
 
     await app.close();

@@ -1,9 +1,9 @@
 import './globals.css';
 
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { auth, signOut } from '@/auth';
+import { PrimaryNav } from '@/components/primary-nav';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
@@ -25,15 +25,11 @@ export default async function RootLayout({
           <header className="site-header">
             <div className="site-header-inner">
               <div className="grid compact-grid">
-                <span className="badge">Authenticated runtime</span>
-                <strong>METREV analyst workspace</strong>
+                <span className="badge">Analyst runtime</span>
+                <strong>METREV technical workspace</strong>
               </div>
 
-              <nav className="site-nav" aria-label="Primary">
-                <Link href="/">Dashboard</Link>
-                <Link href="/cases/new">New case</Link>
-                <Link href="/evidence/review">Evidence review</Link>
-              </nav>
+              <PrimaryNav />
 
               <div className="stack compact auth-meta">
                 <span className="badge subtle">{session.user.role}</span>

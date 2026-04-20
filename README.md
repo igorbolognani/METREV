@@ -41,6 +41,17 @@ The runnable implementation now lives in the workspace monorepo layers:
 
 The runtime must continue adapting the domain and contract layers instead of introducing a parallel vocabulary.
 
+## Runtime authority
+
+The current runtime uses one explicit authority split:
+
+- semantic meaning starts in `bioelectrochem_agent_kit/domain/`
+- validation and serialization boundaries start in `bioelectro-copilot-contracts/contracts/`
+- executed deterministic rules are currently loaded contract-first through `packages/domain-contracts/src/loaders.ts`
+- the domain case template remains runtime-loaded from `bioelectrochem_agent_kit/domain/cases/templates/client-case-template.yml`
+
+This means the live runtime does not treat every domain or contract asset as equally executed. In particular, `stack.md`, `bioelectrochem_agent_kit/domain/ontology/component-graph.yml`, `bioelectro-copilot-contracts/contracts/ontology/relations.yaml`, and the contract report templates are reference-only or future-facing until a validated runtime consumer exists.
+
 ## Internal feature workflow
 
 For medium and large changes, use a maintained feature folder under `specs/NNN-feature-slug/`.
@@ -99,6 +110,7 @@ Use this setup when you want the monorepo to run against Supabase Postgres:
 `DATABASE_URL` is used by the runtime, while `DIRECT_URL` is used by Prisma migrations.
 The committed `db:migrate:*` scripts automatically prefer `DIRECT_URL` when it is defined, so Supabase migrations do not hang on the pooled runtime URL.
 The checked-in `.env.example` keeps local Postgres defaults so fresh clones still boot without Supabase.
+The current repository keeps Prisma 6.19.x aligned by retaining `url = env("DATABASE_URL")` inside `packages/database/prisma/schema.prisma` while `packages/database/prisma.config.ts` and `packages/database/scripts/run-prisma-with-direct-url.mjs` keep runtime and migration URL behavior explicit.
 
 If you want browser-only env values available to Next.js, create `apps/web-ui/.env.local` with:
 
@@ -169,16 +181,17 @@ This workspace can be published safely after local validation.
 
 ## Current MVP status
 
-- Completed and validated: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards on the dashboard, evaluation, and new-case pages, PostgreSQL-only runtime startup, committed migrations plus deterministic seeds, PostgreSQL-backed persistence tests, and local Jaeger trace visibility for sign-in, evaluation, persistence, and history flows.
-- Still open for deeper data-layer expansion: the current schema keeps governance-critical fields explicit and first-class supplier relations persisted, but Phase 3 from the supplemental plan goes beyond the present MVP by asking for fully relational modeling of materials, components, benchmarks, metrics, ingestion, extraction, normalization, and review entities that are still partly stored in structured JSON columns today.
+- Completed and validated: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards on the dashboard, evaluation, and new-case pages, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, an analyst workbench with summary, evidence, modeling, audit, and comparison modes, PostgreSQL-backed persistence tests, and local Jaeger trace visibility for sign-in, evaluation, persistence, and history flows.
+- Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, and deeper relational expansion of all materials, benchmark, extraction, and normalization entities that still live partly in structured JSON columns.
 
 ## Analyst Flow
 
 1. Open `/login` and authenticate with a seeded analyst account.
 2. After sign-in, Auth.js redirects back to the requested page through the normalized `callbackUrl`, and protected routes reject anonymous access before rendering.
 3. Use `/cases/new` to submit a decision run; analyst role checks happen before the form is shown.
-4. Review the generated evaluation detail page and case history while the shared session cookie authorizes both the Next.js UI and the Fastify API.
-5. Use the header sign-out action to clear the session and return the browser to `/login`.
+4. Review the generated evaluation workbench and case history while the shared session cookie authorizes both the Next.js UI and the Fastify API.
+5. Use the evidence review surface to accept or reject imported catalog records before they can re-enter intake.
+6. Use the header sign-out action to clear the session and return the browser to `/login`.
 
 ## Archive
 

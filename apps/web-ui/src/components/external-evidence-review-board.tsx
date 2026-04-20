@@ -7,6 +7,7 @@ import Link from 'next/link';
 
 import type { ExternalEvidenceReviewStatus } from '@metrev/domain-contracts';
 
+import { PanelTabs } from '@/components/workbench/panel-tabs';
 import { fetchExternalEvidenceCatalog } from '@/lib/api';
 
 function formatToken(value: string): string {
@@ -18,6 +19,13 @@ function formatToken(value: string): string {
 }
 
 type ReviewFilter = ExternalEvidenceReviewStatus | 'all';
+
+const reviewTabs = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'rejected', label: 'Rejected' },
+] as const;
 
 export function ExternalEvidenceReviewBoard() {
   const [filter, setFilter] = useState<ReviewFilter>('all');
@@ -35,52 +43,74 @@ export function ExternalEvidenceReviewBoard() {
 
   return (
     <div className="grid">
-      <section className="hero cockpit-hero">
-        <div className="stack split compact">
-          <div className="section-group">
-            <span className="badge">Evidence review queue</span>
-            <h1>Imported catalog control surface</h1>
-            <p className="muted">
-              Review imported literature metadata before it can enter the case
-              intake flow. The gate is explicit: analysts accept or reject, then
-              accepted records become eligible for intake selection.
+      <section className="hero workspace-masthead">
+        <div>
+          <span className="badge">Evidence review</span>
+          <h1>Imported evidence control surface</h1>
+          <p className="muted">
+            Review imported literature metadata before it can enter the intake
+            flow. Accepted records remain explicit and selectable; rejected or
+            pending records stay blocked from deterministic evaluation.
+          </p>
+        </div>
+        <div className="workspace-chip-list">
+          <span className="meta-chip meta-chip--copper">review-gated</span>
+          <span className="meta-chip">local-first evidence</span>
+          <span className="meta-chip">intake-safe only</span>
+        </div>
+      </section>
+
+      {query.data ? (
+        <section
+          className="workspace-summary-grid"
+          aria-label="Evidence review overview"
+        >
+          <article className="workspace-summary-card workspace-summary-card--copper">
+            <span>Pending review</span>
+            <strong>{query.data.summary.pending}</strong>
+            <p>
+              Records blocked from intake until an analyst accepts or rejects
+              them.
             </p>
+          </article>
+          <article className="workspace-summary-card">
+            <span>Accepted</span>
+            <strong>{query.data.summary.accepted}</strong>
+            <p>Eligible for explicit intake selection.</p>
+          </article>
+          <article className="workspace-summary-card">
+            <span>Rejected</span>
+            <strong>{query.data.summary.rejected}</strong>
+            <p>Kept visible for auditability, but excluded from intake.</p>
+          </article>
+          <article className="workspace-summary-card workspace-summary-card--wide">
+            <span>Review posture</span>
+            <strong>{query.data.summary.total} persisted records</strong>
+            <p className="muted">
+              Use this surface to decide whether imported records are strong
+              enough and scoped enough to enter analyst drafting.
+            </p>
+            <Link className="button secondary" href="/cases/new">
+              Open drafting workspace
+            </Link>
+          </article>
+        </section>
+      ) : null}
+
+      <section className="panel grid">
+        <div className="stack split compact">
+          <div>
+            <span className="badge">Queue filters</span>
+            <h2>Search and triage</h2>
           </div>
           <div className="hero-actions">
             <Link className="button secondary" href="/cases/new">
-              Open case intake
+              Open drafting workspace
             </Link>
           </div>
         </div>
 
-        {query.data ? (
-          <div className="cockpit-strip">
-            <article className="metric-card">
-              <span className="muted">Total catalog items</span>
-              <strong>{query.data.summary.total}</strong>
-              <p className="muted">Persisted imported records</p>
-            </article>
-            <article className="metric-card">
-              <span className="muted">Pending review</span>
-              <strong>{query.data.summary.pending}</strong>
-              <p className="muted">Records blocked from intake</p>
-            </article>
-            <article className="metric-card">
-              <span className="muted">Accepted</span>
-              <strong>{query.data.summary.accepted}</strong>
-              <p className="muted">Eligible for intake selection</p>
-            </article>
-            <article className="metric-card">
-              <span className="muted">Rejected</span>
-              <strong>{query.data.summary.rejected}</strong>
-              <p className="muted">Explicitly excluded from intake</p>
-            </article>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="panel grid">
-        <div className="grid two">
+        <div className="grid two workspace-filter-grid">
           <label>
             Search catalog
             <input
@@ -89,22 +119,14 @@ export function ExternalEvidenceReviewBoard() {
               placeholder="title, DOI, publisher, summary"
             />
           </label>
-          <div className="section-group">
-            <h3>Filter by review state</h3>
-            <div className="hero-actions">
-              {(['all', 'pending', 'accepted', 'rejected'] as const).map(
-                (value) => (
-                  <button
-                    className={filter === value ? '' : 'secondary'}
-                    key={value}
-                    type="button"
-                    onClick={() => setFilter(value)}
-                  >
-                    {formatToken(value)}
-                  </button>
-                ),
-              )}
-            </div>
+          <div className="section-group workspace-filter-tabs">
+            <h3>Review state</h3>
+            <PanelTabs
+              activeTab={filter}
+              label="Evidence review state"
+              onChange={setFilter}
+              tabs={reviewTabs}
+            />
           </div>
         </div>
 
@@ -113,27 +135,25 @@ export function ExternalEvidenceReviewBoard() {
         ) : query.error ? (
           <p className="error">{query.error.message}</p>
         ) : !query.data || query.data.items.length === 0 ? (
-          <p className="muted empty-state">
-            No catalog items matched the current filter.
-          </p>
+          <div className="workspace-empty-panel">
+            <strong>No catalog items matched the current filter</strong>
+            <p>
+              Adjust the query or switch the review-state tab to widen the
+              queue.
+            </p>
+          </div>
         ) : (
-          <div className="lens-stack">
+          <div className="workspace-card-grid workspace-card-grid--narrow">
             {query.data.items.map((item) => (
-              <article className="lens-card" key={item.id}>
-                <div className="stack split compact">
-                  <div className="section-group">
-                    <h3>{item.title}</h3>
-                    <p className="muted">{item.summary}</p>
-                  </div>
-                  <div className="stack compact">
-                    <span className="badge subtle">
-                      {formatToken(item.review_status)}
-                    </span>
-                    <span className="badge subtle">
-                      {formatToken(item.source_type)}
-                    </span>
-                  </div>
+              <article className="workspace-card" key={item.id}>
+                <div className="workspace-card__meta">
+                  <span className="badge subtle">
+                    {formatToken(item.review_status)}
+                  </span>
+                  <span className="muted">{formatToken(item.source_type)}</span>
                 </div>
+                <h3>{item.title}</h3>
+                <p>{item.summary}</p>
                 <div className="detail-grid two-columns">
                   <div className="detail-item">
                     <span className="muted">Evidence type</span>
@@ -152,15 +172,12 @@ export function ExternalEvidenceReviewBoard() {
                     <strong>{item.published_at ?? 'Not stated'}</strong>
                   </div>
                 </div>
-                <div className="section-group">
-                  <h4>Tags</h4>
-                  <ul className="pill-list">
-                    {item.tags.map((tag) => (
-                      <li className="pill" key={tag}>
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="workspace-chip-list compact">
+                  {item.tags.slice(0, 4).map((tag) => (
+                    <span className="meta-chip meta-chip--copper" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
                 </div>
                 <div className="hero-actions">
                   <Link
@@ -168,6 +185,9 @@ export function ExternalEvidenceReviewBoard() {
                     href={`/evidence/review/${item.id}`}
                   >
                     Open review detail
+                  </Link>
+                  <Link className="button secondary" href="/cases/new">
+                    Intake surface
                   </Link>
                 </div>
               </article>

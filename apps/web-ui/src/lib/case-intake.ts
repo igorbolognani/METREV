@@ -13,11 +13,19 @@ export interface CaseIntakeFormValues {
   architectureFamily: string;
   primaryObjective: string;
   deploymentContext: string;
+  decisionHorizon: string;
+  currentTrl: string;
   painPoints: string;
   influentType: string;
+  substrateProfile: string;
   temperature: string;
   ph: string;
+  conductivity: string;
+  hydraulicRetentionTime: string;
   preferredSuppliers: string;
+  currentSuppliers: string;
+  membranePresence: string;
+  assumptionsNote: string;
   evidenceType: EvidenceRecordInput['evidence_type'];
   evidenceTitle: string;
   evidenceSummary: string;
@@ -41,11 +49,19 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
   architectureFamily: '',
   primaryObjective: 'wastewater_treatment',
   deploymentContext: '',
+  decisionHorizon: '',
+  currentTrl: '',
   painPoints: '',
   influentType: '',
+  substrateProfile: '',
   temperature: '',
   ph: '',
+  conductivity: '',
+  hydraulicRetentionTime: '',
   preferredSuppliers: '',
+  currentSuppliers: '',
+  membranePresence: '',
+  assumptionsNote: '',
   evidenceType: 'internal_benchmark',
   evidenceTitle: '',
   evidenceSummary: '',
@@ -138,6 +154,11 @@ export function buildCaseInputFromFormValues(
   preset?: CaseIntakePreset,
   selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[] = [],
 ): RawCaseInput {
+  const assumptions = dedupeStrings([
+    ...(preset?.payload.assumptions ?? []),
+    ...splitCommaSeparated(values.assumptionsNote),
+  ]);
+  const currentSuppliers = splitCommaSeparated(values.currentSuppliers);
   const preferredSuppliers = splitCommaSeparated(values.preferredSuppliers);
   const painPoints = splitCommaSeparated(values.painPoints);
   const presetPayload = preset?.payload;
@@ -150,22 +171,40 @@ export function buildCaseInputFromFormValues(
     primary_objective: values.primaryObjective,
     business_context: {
       ...presetPayload?.business_context,
+      decision_horizon:
+        values.decisionHorizon.trim() ||
+        presetPayload?.business_context?.decision_horizon,
       deployment_context: values.deploymentContext.trim() || undefined,
     },
     technology_context: {
       ...presetPayload?.technology_context,
+      current_trl:
+        values.currentTrl.trim() ||
+        presetPayload?.technology_context?.current_trl,
+      membrane_presence:
+        values.membranePresence.trim() ||
+        presetPayload?.technology_context?.membrane_presence,
       current_pain_points: painPoints,
     },
     feed_and_operation: {
       ...presetPayload?.feed_and_operation,
       influent_type: values.influentType.trim() || undefined,
+      substrate_profile:
+        values.substrateProfile.trim() ||
+        presetPayload?.feed_and_operation?.substrate_profile,
       temperature_c: parseOptionalNumber(values.temperature),
       pH: parseOptionalNumber(values.ph),
+      conductivity_ms_per_cm: parseOptionalNumber(values.conductivity),
+      hydraulic_retention_time_h: parseOptionalNumber(
+        values.hydraulicRetentionTime,
+      ),
     },
     supplier_context: {
       ...presetPayload?.supplier_context,
       current_suppliers:
-        presetPayload?.supplier_context?.current_suppliers ?? [],
+        currentSuppliers.length > 0
+          ? currentSuppliers
+          : (presetPayload?.supplier_context?.current_suppliers ?? []),
       preferred_suppliers: preferredSuppliers,
       excluded_suppliers:
         presetPayload?.supplier_context?.excluded_suppliers ?? [],
@@ -175,6 +214,7 @@ export function buildCaseInputFromFormValues(
       preset,
       selectedCatalogEvidence,
     ),
+    assumptions: assumptions.length > 0 ? assumptions : undefined,
   };
 }
 
@@ -207,12 +247,22 @@ export const wastewaterGoldenCasePreset: CaseIntakePreset = {
     primaryObjective: 'wastewater_treatment',
     deploymentContext:
       'industrial pilot retrofit at the equalization-tank sidestream',
+    decisionHorizon: '12-month retrofit validation window',
+    currentTrl: 'pilot',
     painPoints:
       'weak monitoring, unstable startup, high internal resistance, cathode flooding risk',
     influentType: 'high-strength food-processing wastewater',
+    substrateProfile:
+      'readily biodegradable organics with intermittent solids carryover',
     temperature: '29',
     ph: '7.1',
+    conductivity: '7.2',
+    hydraulicRetentionTime: '18',
     preferredSuppliers: 'Econic, OpenCell Systems, BioVolt Process',
+    currentSuppliers: 'Legacy carbon felt integrator',
+    membranePresence: 'absent',
+    assumptionsNote:
+      'Pilot skid footprint remains fixed for the current phase.',
     evidenceType: 'internal_benchmark',
     evidenceTitle: wastewaterEvidenceTitle,
     evidenceSummary: wastewaterEvidenceSummary,
@@ -407,13 +457,21 @@ export const nitrogenRecoveryGoldenCasePreset: CaseIntakePreset = {
     architectureFamily: 'dual_chamber',
     primaryObjective: 'nitrogen_recovery',
     deploymentContext: 'digester sidestream pilot-to-scale validation',
+    decisionHorizon: 'pilot_to_scale_path',
+    currentTrl: 'pilot',
     painPoints:
       'membrane durability uncertainty, gas handling detail incomplete, product quality needs validation',
     influentType: 'digester sidestream concentrate',
+    substrateProfile: '',
     temperature: '32',
     ph: '8.2',
+    conductivity: '18',
+    hydraulicRetentionTime: '12',
     preferredSuppliers:
       'DuPont Water Solutions, Veolia Water Technologies, Evoqua Water Technologies',
+    currentSuppliers: '',
+    membranePresence: 'present',
+    assumptionsNote: 'Separator strategy is central to recovery credibility.',
     evidenceType: 'literature_evidence',
     evidenceTitle: nitrogenRecoveryEvidenceTitle,
     evidenceSummary: nitrogenRecoveryEvidenceSummary,

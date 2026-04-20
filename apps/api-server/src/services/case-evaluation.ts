@@ -15,6 +15,7 @@ import {
   type RawCaseInput,
   type RawEvidenceRecord,
 } from '@metrev/domain-contracts';
+import { evaluateSimulationEnrichment } from '@metrev/electrochem-models';
 import { generateNarrative } from '@metrev/llm-adapter';
 import { runCaseEvaluation } from '@metrev/rule-engine';
 import { withSpan } from '@metrev/telemetry';
@@ -27,6 +28,7 @@ export interface CreatePersistedCaseEvaluationInput {
   evaluationRepository: EvaluationRepository;
   logger: RuntimeLogger;
   environment?: string;
+  simulationMode?: string;
 }
 
 const catalogEvidenceIdPrefix = 'catalog:';
@@ -164,7 +166,23 @@ export async function createPersistedCaseEvaluation(
         input.evaluationRepository,
       );
       const normalizedCase = normalizeCaseInput(sanitizedRawInput);
-      const decisionOutput = runCaseEvaluation(normalizedCase);
+      const simulationEnrichment = await withSpan(
+        'case.evaluate.simulation_enrichment',
+        () =>
+          Promise.resolve(
+            evaluateSimulationEnrichment({
+              normalizedCase,
+              mode: input.simulationMode ?? process.env.METREV_SIMULATION_MODE,
+            }),
+          ),
+        {
+          case_id: normalizedCase.case_id,
+          technology_family: normalizedCase.technology_family,
+        },
+      );
+      const decisionOutput = runCaseEvaluation(normalizedCase, {
+        derivedObservations: simulationEnrichment.derived_observations,
+      });
       const validation = validateDecisionOutputContract({
         decisionOutput,
         environment: input.environment,
@@ -184,6 +202,7 @@ export async function createPersistedCaseEvaluation(
         decisionOutput: reviewedDecisionOutput,
         normalizedCase,
         rawInput: sanitizedRawInput,
+        simulationEnrichment,
       });
 
       return evaluationResponseSchema.parse({
@@ -194,6 +213,7 @@ export async function createPersistedCaseEvaluation(
         audit_record: auditRecord,
         narrative: narrativeResult.narrative,
         narrative_metadata: narrativeResult.narrativeMetadata,
+        simulation_enrichment: simulationEnrichment,
       });
     },
     {

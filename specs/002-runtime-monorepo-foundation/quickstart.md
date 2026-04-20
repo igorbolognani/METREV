@@ -53,11 +53,25 @@ That command family uses the validated alternate ports from the earlier local sm
 - The committed `.vscode/mcp.template.jsonc` contains verified launcher examples for Context7 and Serena only.
 - Context7 and Serena require local machine setup beyond repo files.
 - The Context7 template entry uses a dedicated `context7-api-key` prompt input for local MCP setups that require an API key.
+- Keep one authority per MCP server across `Workspace`, `User`, and `Extensions`.
+- For this repository, keep `github` only in the workspace-owned `.vscode/mcp.json` and do not duplicate it in the VS Code user profile.
+- If Context7 is already being provided by a VS Code extension, do not also copy the `context7` template entry into user or workspace MCP config.
+- Use GitHub MCP for repository-native workflow context and Context7 for current external library or framework docs.
 - The root internal spec-first workflow is self-contained; no Spec Kit MCP server or extension is required for planning or delivery.
 - Use `docs/internal-feature-workflow.md` and `specs/_templates/` when you need to start or extend a maintained feature pack.
 - Use `.github/prompts/clarify-feature.prompt.md` before planning when the request is still underspecified and `.github/prompts/start-feature.prompt.md` when you need a root-owned feature scaffold.
 - Use `.github/prompts/ship-change.prompt.md` when you want one root prompt to drive understanding, planning, implementation, validation, review, and final verification in one pass.
 - Do not rely on the original executive PDF or DOCX once `stack.md`, ADRs, and specs are in place.
+
+## VS Code MCP verification
+
+1. Open the command palette and run `MCP: List Servers`.
+2. Confirm that `github` appears once and is tied to the workspace configuration.
+3. Confirm that `context7` appears once from its chosen local authority, such as an extension provider or a user-level MCP entry.
+4. Open Copilot Chat, switch to `Agent`, and inspect `Configure tools`.
+5. Run one GitHub-only task such as listing repository or pull request context.
+6. Run one Context7-only task that asks for current framework or library documentation.
+7. Run one hybrid task that needs both local repository context and current external documentation.
 
 ## Environment notes
 

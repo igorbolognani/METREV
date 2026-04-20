@@ -5,6 +5,7 @@ import type {
   DecisionOutput,
   NormalizedCaseInput,
   RawCaseInput,
+  SimulationEnrichment,
 } from '@metrev/domain-contracts';
 import { buildBioelectroAgentPipelineTrace } from '@metrev/domain-contracts';
 
@@ -14,6 +15,7 @@ export function createAuditRecord(input: {
   decisionOutput: DecisionOutput;
   normalizedCase: NormalizedCaseInput;
   rawInput: RawCaseInput;
+  simulationEnrichment?: SimulationEnrichment;
 }): AuditRecord {
   const typedEvidence =
     input.normalizedCase.cross_cutting_layers.evidence_and_provenance
@@ -43,6 +45,7 @@ export function createAuditRecord(input: {
       rawInput: input.rawInput,
       normalizedCase: input.normalizedCase,
       decisionOutput: input.decisionOutput,
+      simulationEnrichment: input.simulationEnrichment,
     }),
   };
 }

@@ -8,6 +8,9 @@ export default defineConfig({
       '@metrev/domain-contracts': fileURLToPath(
         new URL('./packages/domain-contracts/src/index.ts', import.meta.url),
       ),
+      '@metrev/electrochem-models': fileURLToPath(
+        new URL('./packages/electrochem-models/src/index.ts', import.meta.url),
+      ),
       '@metrev/rule-engine': fileURLToPath(
         new URL('./packages/rule-engine/src/index.ts', import.meta.url),
       ),
@@ -29,14 +32,52 @@ export default defineConfig({
       '@metrev/utils': fileURLToPath(
         new URL('./packages/utils/src/index.ts', import.meta.url),
       ),
+      '@': fileURLToPath(new URL('./apps/web-ui/src', import.meta.url)),
+      react: fileURLToPath(
+        new URL('./apps/web-ui/node_modules/react/index.js', import.meta.url),
+      ),
+      'react/jsx-runtime': fileURLToPath(
+        new URL(
+          './apps/web-ui/node_modules/react/jsx-runtime.js',
+          import.meta.url,
+        ),
+      ),
+      'react/jsx-dev-runtime': fileURLToPath(
+        new URL(
+          './apps/web-ui/node_modules/react/jsx-dev-runtime.js',
+          import.meta.url,
+        ),
+      ),
+      'react-dom': fileURLToPath(
+        new URL(
+          './apps/web-ui/node_modules/react-dom/index.js',
+          import.meta.url,
+        ),
+      ),
+      'react-dom/server': fileURLToPath(
+        new URL(
+          './apps/web-ui/node_modules/react-dom/server.node.js',
+          import.meta.url,
+        ),
+      ),
+      '@tanstack/react-query': fileURLToPath(
+        new URL(
+          './apps/web-ui/node_modules/@tanstack/react-query/build/modern/index.js',
+          import.meta.url,
+        ),
+      ),
     },
   },
   test: {
-    include: ['tests/runtime/**/*.test.ts'],
+    include: ['tests/runtime/**/*.test.ts', 'tests/web-ui/**/*.test.tsx'],
     environment: 'node',
     coverage: {
       reporter: ['text', 'html'],
-      include: ['packages/**/*.ts', 'apps/api-server/src/**/*.ts'],
+      include: [
+        'packages/**/*.ts',
+        'apps/api-server/src/**/*.ts',
+        'apps/web-ui/src/**/*.tsx',
+      ],
     },
   },
 });

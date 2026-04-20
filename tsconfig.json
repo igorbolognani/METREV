@@ -15,6 +15,9 @@
     "jsx": "react-jsx",
     "paths": {
       "@metrev/domain-contracts": ["./packages/domain-contracts/src/index.ts"],
+      "@metrev/electrochem-models": [
+        "./packages/electrochem-models/src/index.ts"
+      ],
       "@metrev/rule-engine": ["./packages/rule-engine/src/index.ts"],
       "@metrev/audit": ["./packages/audit/src/index.ts"],
       "@metrev/telemetry": ["./packages/telemetry/src/index.ts"],

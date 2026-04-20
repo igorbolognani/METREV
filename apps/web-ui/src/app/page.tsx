@@ -1,7 +1,6 @@
 import Link from 'next/link';
 
-import { ExternalEvidenceQueue } from '@/components/external-evidence-queue';
-import { RecentEvaluations } from '@/components/recent-evaluations';
+import { DashboardWorkspace } from '@/components/dashboard-workspace';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function HomePage() {
@@ -9,27 +8,27 @@ export default async function HomePage() {
 
   return (
     <main>
-      <section className="hero">
-        <span className="badge">Auditable decision runtime</span>
-        <h1>METREV decision-support runtime</h1>
-        <p className="muted">
-          Signed in as {session.user.email} with {session.user.role} access.
-          Intake, normalization, deterministic evaluation, provenance capture,
-          and history retrieval are connected through one authenticated runtime
-          path grounded in the canonical domain and contract assets.
-        </p>
+      <section className="hero workspace-banner">
+        <div>
+          <span className="badge">Authenticated runtime</span>
+          <h1>METREV analyst workspace</h1>
+          <p className="muted">
+            Signed in as {session.user.email} with {session.user.role} access.
+            The full analyst journey now starts from one denser workspace home
+            for drafting, review, evidence control, and saved-run inspection.
+          </p>
+        </div>
         <div className="hero-actions">
           <Link className="button" href="/cases/new">
-            Start a case evaluation
+            Open input deck
           </Link>
           <Link className="button secondary" href="/evidence/review">
-            Review imported evidence
+            Open evidence review
           </Link>
         </div>
       </section>
 
-      <ExternalEvidenceQueue />
-      <RecentEvaluations />
+      <DashboardWorkspace />
     </main>
   );
 }

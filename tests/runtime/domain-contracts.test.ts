@@ -3,11 +3,18 @@ import fixture from '../fixtures/raw-case-input.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-  createRawInputFromDomainTemplate,
-  loadContractInputDefinition,
-  normalizeCaseInput,
-  normalizedCaseInputSchema,
-  rawCaseInputSchema,
+    canonicalOutputSections,
+    createRawInputFromDomainTemplate,
+    loadContractInputDefinition,
+    loadContractOutputDefinition,
+    normalizeCaseInput,
+    normalizedCaseInputSchema,
+    rawCaseInputSchema,
+    runtimeAuthorityDecision,
+    runtimeFutureFacingReferenceFiles,
+    runtimeLoadedCanonicalFiles,
+    runtimeReferenceOnlyFiles,
+    runtimeValidationReferenceFiles,
 } from '@metrev/domain-contracts';
 
 describe('domain-contract runtime alignment', () => {
@@ -101,6 +108,52 @@ describe('domain-contract runtime alignment', () => {
         'architecture_family',
         'primary_objective',
       ]),
+    );
+  });
+
+  it('keeps the executed authority split explicit and reviewable', () => {
+    expect(runtimeAuthorityDecision.executed_rule_authority).toBe(
+      'contract-first',
+    );
+    expect(runtimeLoadedCanonicalFiles).toEqual(
+      expect.arrayContaining([
+        'bioelectrochem_agent_kit/domain/cases/templates/client-case-template.yml',
+        'bioelectro-copilot-contracts/contracts/rules/defaults.yaml',
+        'bioelectro-copilot-contracts/contracts/rules/compatibility.yaml',
+        'bioelectro-copilot-contracts/contracts/rules/diagnostics.yaml',
+        'bioelectro-copilot-contracts/contracts/rules/improvements.yaml',
+        'bioelectro-copilot-contracts/contracts/rules/scoring.yaml',
+        'bioelectro-copilot-contracts/contracts/rules/sensitivity.yaml',
+        'bioelectro-copilot-contracts/contracts/output_contract.yaml',
+      ]),
+    );
+    expect(runtimeValidationReferenceFiles).toEqual(
+      expect.arrayContaining([
+        'bioelectro-copilot-contracts/contracts/input_schema.yaml',
+        'bioelectro-copilot-contracts/contracts/ontology/stack.yaml',
+        'bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml',
+        'bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml',
+      ]),
+    );
+    expect(runtimeReferenceOnlyFiles).toContain('stack.md');
+    expect(runtimeFutureFacingReferenceFiles).toEqual(
+      expect.arrayContaining([
+        'bioelectrochem_agent_kit/domain/ontology/component-graph.yml',
+        'bioelectro-copilot-contracts/contracts/ontology/relations.yaml',
+        'bioelectro-copilot-contracts/contracts/reports/consulting_report_template.md',
+        'bioelectro-copilot-contracts/contracts/reports/diagnostic_summary_template.md',
+      ]),
+    );
+  });
+
+  it('keeps canonical output sections aligned with the hardened output contract', () => {
+    const contractOutput = loadContractOutputDefinition();
+
+    expect(contractOutput.normalized_decision_output.required_sections).toEqual(
+      expect.arrayContaining(canonicalOutputSections),
+    );
+    expect(canonicalOutputSections).toHaveLength(
+      contractOutput.normalized_decision_output.required_sections.length,
     );
   });
 });

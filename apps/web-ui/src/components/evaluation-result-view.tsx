@@ -8,8 +8,12 @@ import { EvaluationCockpit } from '@/components/evaluation-cockpit';
 
 export function EvaluationResultView({
   evaluationId,
+  initialTab = 'summary',
+  initialComparisonEvaluationId = null,
 }: {
   evaluationId: string;
+  initialTab?: 'summary' | 'evidence' | 'modeling' | 'audit';
+  initialComparisonEvaluationId?: string | null;
 }) {
   const query = useQuery({
     queryKey: ['evaluation', evaluationId],
@@ -43,6 +47,8 @@ export function EvaluationResultView({
       history={historyQuery.data}
       historyError={historyQuery.error?.message}
       historyLoading={historyQuery.isLoading}
+      initialComparisonEvaluationId={initialComparisonEvaluationId}
+      initialTab={initialTab}
     />
   );
 }

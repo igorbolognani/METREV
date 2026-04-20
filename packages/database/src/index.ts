@@ -3,21 +3,22 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 import {
-  caseHistoryResponseSchema,
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  evidenceStrengthSchema,
-  evidenceTypeSchema,
-  externalEvidenceCatalogDetailSchema,
-  externalEvidenceCatalogListResponseSchema,
-  type CaseHistoryResponse,
-  type EvaluationListResponse,
-  type EvaluationResponse,
-  type ExternalEvidenceCatalogItemDetail,
-  type ExternalEvidenceCatalogItemSummary,
-  type ExternalEvidenceCatalogListResponse,
-  type ExternalEvidenceReviewAction,
-  type ExternalEvidenceReviewStatus,
+    caseHistoryResponseSchema,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    evidenceStrengthSchema,
+    evidenceTypeSchema,
+    externalEvidenceCatalogDetailSchema,
+    externalEvidenceCatalogListResponseSchema,
+    simulationEnrichmentSchema,
+    type CaseHistoryResponse,
+    type EvaluationListResponse,
+    type EvaluationResponse,
+    type ExternalEvidenceCatalogItemDetail,
+    type ExternalEvidenceCatalogItemSummary,
+    type ExternalEvidenceCatalogListResponse,
+    type ExternalEvidenceReviewAction,
+    type ExternalEvidenceReviewStatus,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -136,6 +137,64 @@ function toEvaluationSummary(
     primary_objective: evaluation.normalized_case.primary_objective,
     summary: evaluation.decision_output.current_stack_diagnosis.summary,
     narrative_available: Boolean(evaluation.narrative),
+    simulation_summary: evaluation.simulation_enrichment
+      ? {
+          status: evaluation.simulation_enrichment.status,
+          model_version: evaluation.simulation_enrichment.model_version,
+          confidence_level: evaluation.simulation_enrichment.confidence.level,
+          derived_observation_count:
+            evaluation.simulation_enrichment.derived_observations.length,
+          has_series: evaluation.simulation_enrichment.series.length > 0,
+        }
+      : undefined,
+  };
+}
+
+function fromSimulationArtifactRecord(record: {
+  status: string;
+  modelVersion: string;
+  inputSnapshot: unknown;
+  derivedObservations: unknown;
+  series: unknown;
+  assumptions: unknown;
+  confidence: unknown;
+  provenance: unknown;
+  failureDetail: unknown;
+}) {
+  return simulationEnrichmentSchema.parse({
+    status: record.status,
+    model_version: record.modelVersion,
+    input_snapshot: record.inputSnapshot,
+    derived_observations: record.derivedObservations,
+    series: record.series,
+    assumptions: record.assumptions,
+    confidence: record.confidence,
+    provenance: record.provenance,
+    failure_detail: record.failureDetail ?? undefined,
+  });
+}
+
+type PersistedSimulationSummary = NonNullable<
+  EvaluationListResponse['items'][number]['simulation_summary']
+>;
+
+function toSimulationSummaryFromArtifact(record: {
+  status: string;
+  modelVersion: string;
+  confidence: unknown;
+  derivedObservations: unknown;
+  series: unknown;
+}): PersistedSimulationSummary {
+  return {
+    status: record.status as PersistedSimulationSummary['status'],
+    model_version: record.modelVersion,
+    confidence_level:
+      ((record.confidence as Record<string, unknown>)
+        .level as PersistedSimulationSummary['confidence_level']) ?? 'low',
+    derived_observation_count: Array.isArray(record.derivedObservations)
+      ? record.derivedObservations.length
+      : 0,
+    has_series: Array.isArray(record.series) ? record.series.length > 0 : false,
   };
 }
 
@@ -318,23 +377,54 @@ function toCaseHistory(
     ).values(),
   );
 
-  const auditEvents = sorted.map((evaluation) => ({
-    event_id: evaluation.audit_record.audit_id,
-    case_id: evaluation.case_id,
-    evaluation_id: evaluation.evaluation_id,
-    event_type: 'evaluation_completed',
-    actor_role: evaluation.audit_record.actor_role,
-    actor_id: evaluation.audit_record.actor_id,
-    payload: {
-      confidence_level:
-        evaluation.decision_output.confidence_and_uncertainty_summary
-          .confidence_level,
-      summary: evaluation.audit_record.summary,
-      missing_data_count: evaluation.audit_record.missing_data_count,
-      defaults_count: evaluation.audit_record.defaults_count,
-    },
-    created_at: evaluation.audit_record.timestamp,
-  }));
+  const auditEvents = sorted
+    .flatMap((evaluation) => {
+      const baseEvents = [
+        {
+          event_id: evaluation.audit_record.audit_id,
+          case_id: evaluation.case_id,
+          evaluation_id: evaluation.evaluation_id,
+          event_type: 'evaluation_completed',
+          actor_role: evaluation.audit_record.actor_role,
+          actor_id: evaluation.audit_record.actor_id,
+          payload: {
+            confidence_level:
+              evaluation.decision_output.confidence_and_uncertainty_summary
+                .confidence_level,
+            summary: evaluation.audit_record.summary,
+            missing_data_count: evaluation.audit_record.missing_data_count,
+            defaults_count: evaluation.audit_record.defaults_count,
+          },
+          created_at: evaluation.audit_record.timestamp,
+        },
+      ];
+
+      if (!evaluation.simulation_enrichment) {
+        return baseEvents;
+      }
+
+      return [
+        ...baseEvents,
+        {
+          event_id: `${evaluation.audit_record.audit_id}:simulation`,
+          case_id: evaluation.case_id,
+          evaluation_id: evaluation.evaluation_id,
+          event_type: `simulation_enrichment_${evaluation.simulation_enrichment.status}`,
+          actor_role: evaluation.audit_record.actor_role,
+          actor_id: evaluation.audit_record.actor_id,
+          payload: {
+            model_version: evaluation.simulation_enrichment.model_version,
+            confidence_level: evaluation.simulation_enrichment.confidence.level,
+            derived_observation_count:
+              evaluation.simulation_enrichment.derived_observations.length,
+            series_count: evaluation.simulation_enrichment.series.length,
+            failure_detail: evaluation.simulation_enrichment.failure_detail,
+          },
+          created_at: evaluation.audit_record.timestamp,
+        },
+      ];
+    })
+    .sort((left, right) => left.created_at.localeCompare(right.created_at));
 
   return caseHistoryResponseSchema.parse({
     case: {
@@ -581,6 +671,39 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             },
           });
 
+          if (evaluation.simulation_enrichment) {
+            await database.simulationArtifactRecord.create({
+              data: {
+                evaluationId: evaluation.evaluation_id,
+                status: evaluation.simulation_enrichment.status,
+                modelVersion: evaluation.simulation_enrichment.model_version,
+                inputSnapshot: toPrismaJsonObject(
+                  evaluation.simulation_enrichment.input_snapshot,
+                ),
+                derivedObservations: toRequiredPrismaJsonValue(
+                  evaluation.simulation_enrichment.derived_observations,
+                ),
+                series: toRequiredPrismaJsonValue(
+                  evaluation.simulation_enrichment.series,
+                ),
+                assumptions: toRequiredPrismaJsonValue(
+                  evaluation.simulation_enrichment.assumptions,
+                ),
+                confidence: toPrismaJsonObject(
+                  evaluation.simulation_enrichment.confidence,
+                ),
+                provenance: toPrismaJsonObject(
+                  evaluation.simulation_enrichment.provenance,
+                ),
+                failureDetail: evaluation.simulation_enrichment.failure_detail
+                  ? toPrismaJsonObject(
+                      evaluation.simulation_enrichment.failure_detail,
+                    )
+                  : Prisma.JsonNull,
+              },
+            });
+          }
+
           const supplierIds = new Map<string, string>();
 
           for (const supplier of supplierPlan.suppliers) {
@@ -703,6 +826,30 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               }),
             },
           });
+
+          if (evaluation.simulation_enrichment) {
+            await database.auditEvent.create({
+              data: {
+                id: randomUUID(),
+                caseId: evaluation.case_id,
+                evaluationId: evaluation.evaluation_id,
+                eventType: `simulation_enrichment_${evaluation.simulation_enrichment.status}`,
+                actorRole: evaluation.audit_record.actor_role,
+                actorId: evaluation.audit_record.actor_id,
+                payload: toPrismaJsonObject({
+                  model_version: evaluation.simulation_enrichment.model_version,
+                  confidence_level:
+                    evaluation.simulation_enrichment.confidence.level,
+                  derived_observation_count:
+                    evaluation.simulation_enrichment.derived_observations
+                      .length,
+                  series_count: evaluation.simulation_enrichment.series.length,
+                  failure_detail:
+                    evaluation.simulation_enrichment.failure_detail,
+                }),
+              },
+            });
+          }
         });
 
         return evaluation;
@@ -722,7 +869,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
       async () => {
         const record = await this.prisma.evaluationRecord.findUnique({
           where: { id: evaluationId },
-          include: { case: true },
+          include: { case: true, simulationArtifact: true },
         });
 
         if (!record) {
@@ -737,6 +884,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           audit_record: record.auditRecord,
           narrative: record.narrative,
           narrative_metadata: record.narrativeMetadata,
+          simulation_enrichment: record.simulationArtifact
+            ? fromSimulationArtifactRecord(record.simulationArtifact)
+            : undefined,
         });
       },
       { evaluation_id: evaluationId },
@@ -746,7 +896,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
   async listEvaluations(): Promise<EvaluationListResponse> {
     return withSpan('database.evaluation.list', async () => {
       const records = await this.prisma.evaluationRecord.findMany({
-        include: { case: true },
+        include: { case: true, simulationArtifact: true },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -762,6 +912,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             (record.decisionOutput as Record<string, Record<string, string>>)
               .current_stack_diagnosis?.summary ?? 'Evaluation completed',
           narrative_available: Boolean(record.narrative),
+          simulation_summary: record.simulationArtifact
+            ? toSimulationSummaryFromArtifact(record.simulationArtifact)
+            : undefined,
         })),
       });
     });
@@ -775,6 +928,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           where: { id: caseId },
           include: {
             evaluations: {
+              include: { simulationArtifact: true },
               orderBy: { createdAt: 'asc' },
             },
             evidenceRecords: true,
@@ -813,6 +967,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               (record.decisionOutput as Record<string, Record<string, string>>)
                 .current_stack_diagnosis?.summary ?? 'Evaluation completed',
             narrative_available: Boolean(record.narrative),
+            simulation_summary: record.simulationArtifact
+              ? toSimulationSummaryFromArtifact(record.simulationArtifact)
+              : undefined,
           })),
           evidence_records: caseRecord.evidenceRecords.map(
             (record) => record.payload,

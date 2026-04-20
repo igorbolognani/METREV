@@ -10,6 +10,7 @@ import {
   loadContractSensitivityPolicy,
   type ConfidenceLevel,
   type DecisionOutput,
+  type DerivedObservation,
   type NormalizedCaseInput,
   type RecommendationRecord,
 } from '@metrev/domain-contracts';
@@ -50,6 +51,18 @@ const metricThresholds: Record<
   cod_removal_pct: { low_threshold: 60 },
 };
 
+const derivedObservationRuleInputKeys = new Set([
+  'current_density_a_m2',
+  'power_density_w_m2',
+  'internal_resistance_ohm',
+  'cod_removal_pct',
+  'nitrogen_recovery_proxy_pct',
+  'hydrogen_recovery_proxy_rate',
+  'operating_window_temperature_c',
+  'operating_window_ph',
+  'operating_window_conductivity_ms_per_cm',
+]);
+
 const placeholderTokens = new Set([
   'unknown',
   'needs_classification',
@@ -67,6 +80,7 @@ function toConfidenceLevel(input: {
   supplierClaimFraction: string;
   highSeverityMatches: number;
   lowObservability: boolean;
+  modeledObservationCount: number;
 }): ConfidenceLevel {
   let score = 0.6;
 
@@ -78,6 +92,8 @@ function toConfidenceLevel(input: {
   if (input.lowObservability) {
     score -= 0.08;
   }
+
+  score -= Math.min(0.08, input.modeledObservationCount * 0.02);
 
   if (input.supplierClaimFraction === 'high') {
     score -= 0.08;
@@ -94,6 +110,56 @@ function toConfidenceLevel(input: {
   }
 
   return confidenceLevelSchema.Enum.low;
+}
+
+function toResolvedMetricContext(input: {
+  normalizedCase: NormalizedCaseInput;
+  derivedObservations?: DerivedObservation[];
+}): {
+  resolvedCase: NormalizedCaseInput;
+  modeledRuleInputsUsed: DerivedObservation[];
+} {
+  const resolvedMetrics = {
+    ...input.normalizedCase.measured_metrics,
+  };
+  const modeledRuleInputsUsed: DerivedObservation[] = [];
+
+  for (const observation of input.derivedObservations ?? []) {
+    if (observation.decision_relevance !== 'rule_input') {
+      continue;
+    }
+
+    if (!derivedObservationRuleInputKeys.has(observation.key)) {
+      continue;
+    }
+
+    if (observation.source_kind === 'unavailable') {
+      continue;
+    }
+
+    if (
+      typeof observation.value !== 'number' ||
+      !Number.isFinite(observation.value)
+    ) {
+      continue;
+    }
+
+    const measuredValue = resolvedMetrics[observation.key];
+    if (typeof measuredValue === 'number' && Number.isFinite(measuredValue)) {
+      continue;
+    }
+
+    resolvedMetrics[observation.key] = observation.value;
+    modeledRuleInputsUsed.push(observation);
+  }
+
+  return {
+    resolvedCase: {
+      ...input.normalizedCase,
+      measured_metrics: resolvedMetrics,
+    },
+    modeledRuleInputsUsed,
+  };
 }
 
 function describeBlock(
@@ -556,21 +622,27 @@ function determineSensitivityLevel(
 
 export function runCaseEvaluation(
   normalizedCase: NormalizedCaseInput,
+  input: {
+    derivedObservations?: DerivedObservation[];
+  } = {},
 ): DecisionOutput {
-  const missingData = normalizedCase.missing_data;
-  const defaultsUsed = normalizedCase.defaults_used;
+  const { resolvedCase, modeledRuleInputsUsed } = toResolvedMetricContext({
+    normalizedCase,
+    derivedObservations: input.derivedObservations,
+  });
+  const missingData = resolvedCase.missing_data;
+  const defaultsUsed = resolvedCase.defaults_used;
   const evidenceProfile =
-    normalizedCase.cross_cutting_layers.evidence_and_provenance
-      .evidence_profile;
+    resolvedCase.cross_cutting_layers.evidence_and_provenance.evidence_profile;
   const typedEvidence =
-    normalizedCase.cross_cutting_layers.evidence_and_provenance.typed_evidence;
+    resolvedCase.cross_cutting_layers.evidence_and_provenance.typed_evidence;
 
   const compatibilityMatches = compatibilityRules.filter((rule) =>
-    evaluateCondition(normalizedCase, rule.condition as RuleCondition),
+    evaluateCondition(resolvedCase, rule.condition as RuleCondition),
   );
   const triggeredDiagnostics: TriggeredDiagnostic[] = diagnosticRules
     .filter((rule) =>
-      evaluateCondition(normalizedCase, rule.trigger as RuleCondition),
+      evaluateCondition(resolvedCase, rule.trigger as RuleCondition),
     )
     .map((rule) => ({
       id: rule.id,
@@ -591,10 +663,11 @@ export function runCaseEvaluation(
       (rule) => rule.severity === 'high',
     ).length,
     lowObservability:
-      normalizedCase.stack_blocks.sensors_and_analytics.data_quality === 'low',
+      resolvedCase.stack_blocks.sensors_and_analytics.data_quality === 'low',
+    modeledObservationCount: modeledRuleInputsUsed.length,
   });
 
-  const blockFindings = Object.entries(normalizedCase.stack_blocks).map(
+  const blockFindings = Object.entries(resolvedCase.stack_blocks).map(
     ([blockName, value]) =>
       describeBlock(blockName, value as Record<string, unknown>),
   );
@@ -622,7 +695,7 @@ export function runCaseEvaluation(
     !isNonEmptyString(normalizedCase.feed_and_operation.influent_type)
       ? 'Influent context is incomplete, which weakens compatibility reasoning.'
       : undefined,
-    !Object.keys(normalizedCase.stack_blocks.sensors_and_analytics).length
+    !Object.keys(resolvedCase.stack_blocks.sensors_and_analytics).length
       ? 'Observability is weak, so validation coverage should be improved before strong conclusions.'
       : undefined,
     compatibilityMatches.some((rule) => rule.severity === 'high')
@@ -631,10 +704,13 @@ export function runCaseEvaluation(
     typedEvidence.length === 0
       ? 'No typed evidence records were supplied, so confidence depends on defaults and explicit missing-data handling.'
       : undefined,
+    modeledRuleInputsUsed.length > 0
+      ? `Deterministic evaluation used ${modeledRuleInputsUsed.length} modeled derived observations because measured anchors were unavailable for those signals.`
+      : undefined,
   ]);
 
   const supplierCandidates =
-    normalizedCase.cross_cutting_layers.risk_and_maturity.supplier_context
+    resolvedCase.cross_cutting_layers.risk_and_maturity.supplier_context
       .preferred_suppliers;
 
   const recommendations: RecommendationRecord[] = [];
@@ -650,9 +726,9 @@ export function runCaseEvaluation(
           'Improves confidence, reduces false precision, and protects follow-on engineering and procurement decisions.',
         confidenceLevel,
         missingDataDependencies: missingData,
-        assumptions: normalizedCase.assumptions,
+        assumptions: resolvedCase.assumptions,
         ruleRefs: ['defaults_policy'],
-        evidenceRefs: normalizedCase.evidence_refs,
+        evidenceRefs: resolvedCase.evidence_refs,
         supplierCandidates,
         phaseAssignment: 'Phase 1',
         implementationEffort: 'low',
@@ -706,9 +782,9 @@ export function runCaseEvaluation(
           diagnostic.expectedEffects.join(', ') || diagnostic.diagnosis,
         confidenceLevel,
         missingDataDependencies: missingData.slice(0, 2),
-        assumptions: normalizedCase.assumptions,
+        assumptions: resolvedCase.assumptions,
         ruleRefs: [diagnostic.id, improvement.id],
-        evidenceRefs: normalizedCase.evidence_refs,
+        evidenceRefs: resolvedCase.evidence_refs,
         supplierCandidates,
         phaseAssignment,
         implementationEffort: phaseAssignment === 'Phase 1' ? 'low' : 'medium',
@@ -730,7 +806,7 @@ export function runCaseEvaluation(
     !recommendations.some(
       (recommendation) => recommendation.recommendation_id === 'imp_004',
     ) &&
-    normalizedCase.stack_blocks.sensors_and_analytics.data_quality !== 'high'
+    resolvedCase.stack_blocks.sensors_and_analytics.data_quality !== 'high'
   ) {
     recommendations.push(
       buildRecommendation({
@@ -747,9 +823,9 @@ export function runCaseEvaluation(
               entry.includes('sensor') || entry.includes('measurement'),
           ),
         ),
-        assumptions: normalizedCase.assumptions,
+        assumptions: resolvedCase.assumptions,
         ruleRefs: ['diag_004'],
-        evidenceRefs: normalizedCase.evidence_refs,
+        evidenceRefs: resolvedCase.evidence_refs,
         supplierCandidates,
         phaseAssignment: 'Phase 1',
         implementationEffort: 'low',
@@ -775,10 +851,10 @@ export function runCaseEvaluation(
         expectedBenefit:
           'Preserves a traceable baseline and avoids unnecessary structural change when no deterministic bottleneck dominates.',
         confidenceLevel,
-        missingDataDependencies: normalizedCase.missing_data,
-        assumptions: normalizedCase.assumptions,
+        missingDataDependencies: resolvedCase.missing_data,
+        assumptions: resolvedCase.assumptions,
         ruleRefs: [],
-        evidenceRefs: normalizedCase.evidence_refs,
+        evidenceRefs: resolvedCase.evidence_refs,
         supplierCandidates,
         phaseAssignment: 'Phase 2',
         implementationEffort: 'low',
@@ -799,22 +875,25 @@ export function runCaseEvaluation(
       ...recommendation,
       priority_score: computePriorityScore({
         recommendation,
-        normalizedCase,
+        normalizedCase: resolvedCase,
       }),
     }))
     .sort(
       (left, right) => (right.priority_score ?? 0) - (left.priority_score ?? 0),
     );
 
-  const sensitivityLevel = determineSensitivityLevel(normalizedCase);
+  const sensitivityLevel = determineSensitivityLevel(resolvedCase);
   const provenanceNotes = dedupeStrings([
     `${typedEvidence.length} typed evidence records were processed in deterministic evaluation mode.`,
-    normalizedCase.cross_cutting_layers.evidence_and_provenance
+    resolvedCase.cross_cutting_layers.evidence_and_provenance
       .supplier_claim_fraction !== 'none'
       ? 'Supplier claims remained separated from validated evidence and lowered confidence accordingly.'
       : undefined,
     `${triggeredDiagnostics.length} diagnostic rules and ${compatibilityMatches.length} compatibility rules matched the current case.`,
     `Evidence profile is ${evidenceProfile}.`,
+    modeledRuleInputsUsed.length > 0
+      ? `Modeled derived observations supplemented missing measured signals for ${modeledRuleInputsUsed.map((item) => item.key).join(', ')}.`
+      : undefined,
     sensitivityLevel === 'high'
       ? 'Recommendation ranking is highly sensitive to missing inputs and assumption shifts.'
       : sensitivityLevel === 'medium'
@@ -837,7 +916,7 @@ export function runCaseEvaluation(
 
   const decisionOutput = decisionOutputSchema.parse({
     current_stack_diagnosis: {
-      summary: `Case ${normalizedCase.case_id} targets ${normalizedCase.primary_objective} using ${normalizedCase.technology_family} with architecture ${normalizedCase.architecture_family}. ${triggeredDiagnostics.length} diagnostics and ${compatibilityMatches.length} compatibility checks were triggered under an ${evidenceProfile} evidence profile.`,
+      summary: `Case ${resolvedCase.case_id} targets ${resolvedCase.primary_objective} using ${resolvedCase.technology_family} with architecture ${resolvedCase.architecture_family}. ${triggeredDiagnostics.length} diagnostics and ${compatibilityMatches.length} compatibility checks were triggered under an ${evidenceProfile} evidence profile.${modeledRuleInputsUsed.length > 0 ? ` ${modeledRuleInputsUsed.length} modeled signals supplemented missing measured anchors.` : ''}`,
       block_findings: [
         ...blockFindings,
         ...ruleFindings,
@@ -866,14 +945,14 @@ export function runCaseEvaluation(
       priority_score: recommendation.priority_score,
     })),
     supplier_shortlist: buildSupplierShortlist(
-      normalizedCase,
+      resolvedCase,
       enrichedRecommendations,
     ),
     phased_roadmap: phasedRoadmap,
     assumptions_and_defaults_audit: {
-      assumptions: normalizedCase.assumptions,
-      defaults_used: normalizedCase.defaults_used,
-      missing_data: normalizedCase.missing_data,
+      assumptions: resolvedCase.assumptions,
+      defaults_used: resolvedCase.defaults_used,
+      missing_data: resolvedCase.missing_data,
     },
     confidence_and_uncertainty_summary: {
       confidence_level: confidenceLevel,

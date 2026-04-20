@@ -17,16 +17,33 @@ This document separates repository-managed integration from local-machine setup 
 
 ## Local-machine setup
 
+### MCP authority model
+
+- Keep one authority per MCP server across `Workspace`, `User`, and `Extensions` to avoid duplicate entries and ambiguous behavior in the VS Code MCP UI.
+- `Workspace` owns repository-shared MCP servers. In this repository, `github` belongs in the root `.vscode/mcp.json`.
+- `User` owns personal MCP servers that are not already defined by the workspace.
+- `Extensions` may provide local MCP servers directly in the editor. If an extension already exposes a server such as Context7, keep that extension-provided server as the only authority for that server name.
+- Do not define the same MCP server in more than one place at the same time. For example, do not keep `github` in both `.vscode/mcp.json` and `~/.config/Code/User/mcp.json`.
+
 ### GitHub MCP
 
 - Supported as the default root MCP integration.
 - Activated in `.vscode/mcp.json` as the only live-by-default server.
+- If the VS Code user profile also defines `github`, remove the user-level duplicate and keep the workspace entry as the single source of truth for this repository.
+
+### Prisma runtime and migration posture
+
+- The current repository is pinned to a Prisma 6.19.x posture that keeps `url = env("DATABASE_URL")` inside `packages/database/prisma/schema.prisma`.
+- `packages/database/prisma.config.ts` remains the repository-owned place for aligning runtime `DATABASE_URL` and migration-friendly `DIRECT_URL` semantics.
+- `packages/database/scripts/run-prisma-with-direct-url.mjs` remains the required wrapper for migration commands so hosted PostgreSQL deployments can use `DIRECT_URL` safely.
+- If editor diagnostics suggest removing `url` from `schema.prisma`, treat that as a version-mismatch warning until `pnpm prisma:generate`, `pnpm run db:migrate:deploy`, and CI all validate a different posture in this repository.
 
 ### Context7
 
 - Supported via the root `.vscode/mcp.template.jsonc` using the official local launcher `npx -y @upstash/context7-mcp@latest`.
 - The template maps `context7-api-key` to `CONTEXT7_API_KEY` because Upstash documents API-key-backed local MCP usage.
 - Recommended local setup is `npx ctx7 setup --mcp` before copying the template entry into a live user or workspace MCP config.
+- If VS Code already exposes Context7 through an installed extension provider, keep that extension-provided server as the only Context7 authority instead of duplicating the same server through `User` or `Workspace` MCP config.
 
 ### Serena
 
@@ -42,6 +59,21 @@ This document separates repository-managed integration from local-machine setup 
 - The autonomous one-shot path is backed by the root `workflow-orchestrator` agent and should preserve the current runtime invariants around Supabase, Prisma, Auth.js, telemetry, and quickstart flows unless a task explicitly changes them.
 - If `specify` or `specify init` is not installed locally, that is expected in this repository. The root internal workflow replaces external Spec Kit tooling here.
 
+## Coordinated MCP use
+
+- Use GitHub MCP for repository-native context and actions such as repositories, issues, pull requests, and other GitHub workflow surfaces.
+- Use Context7 when the task depends on current external library or framework documentation, setup, configuration, or version-specific APIs.
+- Use both together when a task needs repository context plus current external docs. For example, inspect the local implementation with GitHub MCP or workspace tools first, then fetch the current library behavior with Context7 before changing code.
+- In this repository, GitHub MCP is the root default. Context7 remains a local, optional complement rather than a second default server in the committed workspace config.
+
 ## Validation rule
 
 - A tool is not considered integrated until its repo config, setup steps, and success criteria are all documented.
+
+## VS Code verification
+
+1. Run `MCP: List Servers` from the VS Code command palette.
+2. Confirm that `github` appears once and is sourced from the workspace for this repository.
+3. Confirm that `context7` appears once from its chosen local authority, such as an extension provider or a user-level MCP entry.
+4. Open Copilot Chat, switch to `Agent`, and inspect `Configure tools`.
+5. Validate one GitHub-only task, one Context7-only task, and one hybrid task before treating the setup as complete.

@@ -13,4 +13,3 @@ export const domainRootPath = resolve(
   repoRoot,
   'bioelectrochem_agent_kit/domain',
 );
-export const stackBriefPath = resolve(repoRoot, 'stack.md');

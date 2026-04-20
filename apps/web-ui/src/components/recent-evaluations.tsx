@@ -60,6 +60,12 @@ export function RecentEvaluations() {
             <p className="muted">
               {item.technology_family} for {item.primary_objective}
             </p>
+            <p className="muted">
+              Model status:{' '}
+              {item.simulation_summary
+                ? item.simulation_summary.status
+                : 'unavailable'}
+            </p>
             <div className="hero-actions">
               <Link
                 className="button secondary"

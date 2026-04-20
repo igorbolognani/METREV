@@ -32,17 +32,18 @@ export default async function NewCasePage() {
 
   return (
     <main>
-      <section className="panel">
-        <span className="badge">Case intake</span>
-        <h1>New decision run</h1>
+      <section className="hero workspace-banner">
+        <span className="badge">Input workspace</span>
+        <h1>Draft a new deterministic evaluation</h1>
         <p className="muted">
-          This form intentionally surfaces only a minimal slice. The runtime
-          still records defaults, missing data, and confidence changes before
-          presenting a recommendation package. A validated wastewater-treatment
-          golden-case preset is available below for deterministic smoke testing.
+          Configure context, operating envelope, and supporting evidence in a
+          denser drafting surface before handing the case into the decision
+          workspace. Golden-case presets remain available for deterministic
+          smoke validation.
         </p>
-        <CaseForm />
       </section>
+
+      <CaseForm />
     </main>
   );
 }

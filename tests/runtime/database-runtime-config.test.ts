@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { assertRuntimeDatabaseConfiguration } from '@metrev/database';
@@ -44,6 +47,31 @@ describe('runtime database configuration', () => {
 
     expect(() => assertRuntimeDatabaseConfiguration()).toThrow(
       /requires PostgreSQL-backed persistence/i,
+    );
+  });
+
+  it('keeps the validated Prisma 6.19 datasource posture in the checked-in files', () => {
+    const repoRoot = resolve(__dirname, '../..');
+    const schema = readFileSync(
+      resolve(repoRoot, 'packages/database/prisma/schema.prisma'),
+      'utf8',
+    );
+    const prismaConfig = readFileSync(
+      resolve(repoRoot, 'packages/database/prisma.config.ts'),
+      'utf8',
+    );
+    const migrateWrapper = readFileSync(
+      resolve(
+        repoRoot,
+        'packages/database/scripts/run-prisma-with-direct-url.mjs',
+      ),
+      'utf8',
+    );
+
+    expect(schema).toMatch(/url\s*=\s*env\("DATABASE_URL"\)/);
+    expect(prismaConfig).toMatch(/directUrl:/);
+    expect(migrateWrapper).toMatch(
+      /DIRECT_URL\?\.trim\(\) \|\| process\.env\.DATABASE_URL\?\.trim\(\)/,
     );
   });
 });

@@ -1,24 +1,35 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import * as React from 'react';
 
 import type {
-    CaseHistoryResponse,
-    EvaluationResponse,
+  CaseHistoryResponse,
+  EvaluationResponse,
 } from '@metrev/domain-contracts';
 
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
-function formatToken(value: string): string {
-  return value
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
-}
+import { AuditTimeline } from '@/components/workbench/audit-timeline';
+import { LineChart } from '@/components/workbench/line-chart';
+import { PanelTabs } from '@/components/workbench/panel-tabs';
+import { RangeMeter } from '@/components/workbench/range-meter';
+import { SignalBadge } from '@/components/workbench/signal-badge';
+import { Sparkline } from '@/components/workbench/sparkline';
+import { fetchEvaluation } from '@/lib/api';
+import {
+  buildDecisionWorkspaceOverview,
+  buildHistorySignalSeries,
+  confidenceBadgeTone,
+  coreMetricDefinitions,
+  evidenceSourceKind,
+  formatScalarValue,
+  formatTimestamp,
+  formatToken,
+  latestSimulationStatus,
+  resolveMetricDisplay,
+  scorePercent,
+  sortByNewest,
+} from '@/lib/evaluation-workbench';
 
 function renderStringList(items: string[], emptyMessage: string) {
   if (items.length === 0) {
@@ -34,45 +45,24 @@ function renderStringList(items: string[], emptyMessage: string) {
   );
 }
 
-function renderPills(items: string[], emptyMessage: string) {
-  if (items.length === 0) {
-    return <p className="muted empty-state">{emptyMessage}</p>;
-  }
-
-  return (
-    <ul className="pill-list">
-      {items.map((entry) => (
-        <li key={entry} className="pill">
-          {entry}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function sortByNewest<T extends { created_at: string }>(items: T[]): T[] {
-  return [...items].sort((left, right) =>
-    right.created_at.localeCompare(left.created_at),
-  );
-}
-
-function scorePercent(score: number | undefined): string {
-  const safeScore = Math.max(0, Math.min(100, Math.round(score ?? 0)));
-  return `${safeScore}%`;
-}
-
 export function EvaluationCockpit({
   evaluationId,
   evaluation,
   history,
   historyLoading,
   historyError,
+  initialTab = 'summary',
+  initialComparisonEvaluationId = null,
+  comparisonEvaluation,
 }: {
   evaluationId: string;
   evaluation: EvaluationResponse;
   history?: CaseHistoryResponse;
   historyLoading: boolean;
   historyError?: string;
+  initialTab?: 'summary' | 'evidence' | 'modeling' | 'audit';
+  initialComparisonEvaluationId?: string | null;
+  comparisonEvaluation?: EvaluationResponse | null;
 }) {
   const decisionOutput = evaluation.decision_output;
   const confidenceSummary = decisionOutput.confidence_and_uncertainty_summary;
@@ -87,9 +77,6 @@ export function EvaluationCockpit({
   const attentionFindings = diagnosis.block_findings.filter(
     (finding) => finding.status !== 'documented',
   );
-  const documentedFindings = diagnosis.block_findings.filter(
-    (finding) => finding.status === 'documented',
-  );
   const caseHistoryEvaluations = history
     ? sortByNewest(history.evaluations)
     : [];
@@ -97,638 +84,810 @@ export function EvaluationCockpit({
     (item) => item.evaluation_id !== evaluationId,
   );
   const caseAuditEvents = history ? sortByNewest(history.audit_events) : [];
+  const [activeCenterTab, setActiveCenterTab] = React.useState<
+    'summary' | 'evidence' | 'modeling' | 'audit'
+  >(initialTab);
+  const [comparisonEvaluationId, setComparisonEvaluationId] = React.useState<
+    string | null
+  >(initialComparisonEvaluationId);
+  const compareQuery = useQuery({
+    queryKey: ['comparison-evaluation', comparisonEvaluationId],
+    queryFn: () => fetchEvaluation(comparisonEvaluationId as string),
+    enabled: Boolean(comparisonEvaluationId) && !comparisonEvaluation,
+  });
+  const metricCards = React.useMemo(
+    () =>
+      coreMetricDefinitions.map((metric) => ({
+        ...metric,
+        display: resolveMetricDisplay(evaluation, metric.key),
+      })),
+    [evaluation],
+  );
+  const decisionOverview = React.useMemo(
+    () => buildDecisionWorkspaceOverview(evaluation),
+    [evaluation],
+  );
+  const historySignals = buildHistorySignalSeries(history);
+  const simulationStatus = latestSimulationStatus(evaluation);
+  const selectedComparison = comparisonEvaluation ?? compareQuery.data;
+
+  const tabs = [
+    { id: 'summary', label: 'Summary' },
+    {
+      id: 'evidence',
+      label: 'Evidence',
+      badge: typedEvidence.length,
+    },
+    {
+      id: 'modeling',
+      label: 'Modeling',
+      badge: evaluation.simulation_enrichment?.derived_observations.length ?? 0,
+    },
+    {
+      id: 'audit',
+      label: 'Audit',
+      badge: caseAuditEvents.length,
+    },
+  ] as const;
+
+  const topComparisonMetrics = [
+    'current_density_a_m2',
+    'power_density_w_m2',
+    'internal_resistance_ohm',
+    'cod_removal_pct',
+  ] as const;
 
   return (
-    <div className="grid">
-      <section className="hero cockpit-hero">
-        <div className="stack split compact">
-          <div className="section-group">
-            <span className="badge">Decision cockpit</span>
-            <h1>{evaluation.case_id} analyst briefing</h1>
-            <p className="muted">{diagnosis.summary}</p>
-          </div>
-          <div className="stack compact">
-            <span className="badge">
-              {confidenceSummary.confidence_level} confidence
-            </span>
-            <span className="badge subtle">
-              sensitivity {confidenceSummary.sensitivity_level ?? 'not stated'}
-            </span>
-          </div>
-        </div>
-
-        <div className="cockpit-strip">
-          <article className="metric-card">
-            <span className="muted">Lead action</span>
-            <strong>
-              {topRecommendation
-                ? formatToken(topRecommendation.recommendation_id)
-                : 'Not available'}
-            </strong>
-            <p className="muted">
-              {topRecommendation?.phase_assignment ?? 'No phase assigned'}
-            </p>
-          </article>
-          <article className="metric-card">
-            <span className="muted">Attention findings</span>
-            <strong>{attentionFindings.length}</strong>
-            <p className="muted">
-              {diagnosis.block_findings.length} total findings
-            </p>
-          </article>
-          <article className="metric-card">
-            <span className="muted">Typed evidence</span>
-            <strong>{typedEvidence.length}</strong>
-            <p className="muted">
-              Records carried into deterministic evaluation
-            </p>
-          </article>
-          <article className="metric-card">
-            <span className="muted">Missing data</span>
-            <strong>{missingData.length}</strong>
-            <p className="muted">Defaults used: {defaultsUsed.length}</p>
-          </article>
-          <article className="metric-card">
-            <span className="muted">History depth</span>
-            <strong>{caseHistoryEvaluations.length}</strong>
-            <p className="muted">Stored runs for this case</p>
-          </article>
-          <article className="metric-card">
-            <span className="muted">Shortlist lanes</span>
-            <strong>{decisionOutput.supplier_shortlist.length}</strong>
-            <p className="muted">Candidate paths under review</p>
-          </article>
-        </div>
-
-        <div className="grid two">
-          <section className="panel nested-panel compact-panel grid">
-            <div className="stack split compact">
-              <h2>Lead action</h2>
-              {topRecommendation ? (
-                <span className="badge subtle">
-                  score {topRecommendation.priority_score?.toFixed(0) ?? 'n/a'}
-                </span>
-              ) : null}
-            </div>
-            {topRecommendation ? (
-              <>
-                <div className="stack split compact">
-                  <h3>{formatToken(topRecommendation.recommendation_id)}</h3>
-                  <span className="badge subtle">
-                    {topRecommendation.recommendation_id}
-                  </span>
-                </div>
-                <p>{topRecommendation.rationale}</p>
-                <div className="score-track">
-                  <span
-                    className="score-fill"
-                    style={{
-                      width: scorePercent(topRecommendation.priority_score),
-                    }}
-                  />
-                </div>
-                <div className="detail-grid two-columns">
-                  <div className="detail-item">
-                    <span className="muted">Expected benefit</span>
-                    <strong>{topRecommendation.expected_benefit}</strong>
-                  </div>
-                  <div className="detail-item">
-                    <span className="muted">Phase</span>
-                    <strong>
-                      {topRecommendation.phase_assignment ?? 'Unassigned'}
-                    </strong>
-                  </div>
-                  <div className="detail-item">
-                    <span className="muted">Confidence</span>
-                    <strong>
-                      {formatToken(topRecommendation.confidence_level)}
-                    </strong>
-                  </div>
-                  <div className="detail-item">
-                    <span className="muted">Implementation effort</span>
-                    <strong>
-                      {formatToken(topRecommendation.implementation_effort)}
-                    </strong>
-                  </div>
-                </div>
-                <div className="grid two">
-                  <div className="section-group">
-                    <h4>Supplier candidates</h4>
-                    {renderPills(
-                      topRecommendation.supplier_candidates ?? [],
-                      'No supplier candidates are attached to the current lead action.',
-                    )}
-                  </div>
-                  <div className="section-group">
-                    <h4>Missing-data dependencies</h4>
-                    {renderStringList(
-                      topRecommendation.missing_data_dependencies,
-                      'This lead action is not currently blocked by additional missing data.',
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="muted empty-state">
-                No prioritized action was generated for this evaluation.
-              </p>
-            )}
-          </section>
-
-          <section className="panel nested-panel compact-panel grid">
-            <div className="stack split compact">
-              <h2>Decision posture</h2>
-              <span className="badge subtle">
-                {recommendations.length} ranked options
-              </span>
-            </div>
-            <p>{confidenceSummary.summary}</p>
-            <div className="detail-grid two-columns">
-              <div className="detail-item">
-                <span className="muted">Case created</span>
-                <strong>
-                  {formatTimestamp(evaluation.audit_record.timestamp)}
-                </strong>
-              </div>
-              <div className="detail-item">
-                <span className="muted">Narrative mode</span>
-                <strong>{evaluation.narrative_metadata.mode}</strong>
-              </div>
-            </div>
-            <div className="grid two">
-              <div className="section-group">
-                <h4>Confidence drivers</h4>
-                {renderStringList(
-                  confidenceSummary.provenance_notes.slice(0, 4),
-                  'No explicit confidence drivers were recorded for this run.',
-                )}
-              </div>
-              <div className="section-group">
-                <h4>Next tests</h4>
-                {renderStringList(
-                  confidenceSummary.next_tests,
-                  'No follow-up validation tests were recorded for this evaluation.',
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="stack split compact">
+    <div className="workbench-shell" data-testid="evaluation-workbench">
+      <aside className="wb-pane wb-pane-left">
+        <div className="wb-pane-header">
           <div>
-            <span className="badge">Recommendation matrix</span>
-            <h2>Ranked decision options</h2>
+            <span className="badge">Run brief</span>
+            <h2>Context and traceability</h2>
           </div>
           <Link className="button secondary" href="/cases/new">
-            Run another evaluation
+            New evaluation
           </Link>
         </div>
 
-        <div className="option-matrix">
-          {recommendations.map((option) => (
-            <article className="option-row" key={option.recommendation_id}>
-              <div className="stack split compact">
-                <div className="section-group">
-                  <span className="option-eyebrow">
-                    {option.phase_assignment ?? 'Unassigned'}
-                  </span>
-                  <div className="stack split compact">
-                    <h3>{formatToken(option.recommendation_id)}</h3>
-                    <span className="badge subtle">
-                      {option.recommendation_id}
+        <div className="wb-section-grid">
+          {decisionOverview.briefCards.map((card) => (
+            <article className="wb-card" key={card.key}>
+              <span className="option-eyebrow">{card.label}</span>
+              <strong>{card.value}</strong>
+              <p className="muted">{card.detail}</p>
+            </article>
+          ))}
+
+          <article className="wb-card">
+            <span className="option-eyebrow">Measured metrics</span>
+            <div className="wb-signal-list">
+              {metricCards.map((metric) => (
+                <div className="wb-signal-row" key={metric.key}>
+                  <div>
+                    <strong>{metric.label}</strong>
+                    <p className="muted">{metric.display.note}</p>
+                  </div>
+                  <div className="wb-signal-meta">
+                    <SignalBadge kind={metric.display.sourceKind} />
+                    <span className="wb-metric-value">
+                      {metric.display.value}
                     </span>
                   </div>
-                  <p>{option.rationale}</p>
                 </div>
-                <div className="stack compact">
-                  <span className="badge subtle">
-                    score {option.priority_score?.toFixed(0) ?? 'n/a'}
+              ))}
+            </div>
+          </article>
+
+          <article className="wb-card">
+            <span className="option-eyebrow">Traceability ledger</span>
+            <div className="section-group">
+              <h3>Defaults</h3>
+              {renderStringList(
+                defaultsUsed,
+                'No defaults were recorded for this evaluation.',
+              )}
+            </div>
+            <div className="section-group">
+              <h3>Missing data</h3>
+              {renderStringList(
+                missingData,
+                'No missing-data items were recorded for this evaluation.',
+              )}
+            </div>
+          </article>
+
+          <details className="disclosure">
+            <summary>Raw intake snapshot</summary>
+            <div className="disclosure-content grid">
+              <pre className="wb-json-block">
+                {JSON.stringify(
+                  evaluation.audit_record.raw_input_snapshot,
+                  null,
+                  2,
+                )}
+              </pre>
+            </div>
+          </details>
+        </div>
+      </aside>
+
+      <section className="wb-pane wb-pane-center">
+        <section className="hero cockpit-hero wb-hero">
+          <div className="stack split compact">
+            <div className="section-group">
+              <span className="badge">Decision workspace</span>
+              <h1>{evaluation.case_id} analyst workbench</h1>
+              <p className="muted">{diagnosis.summary}</p>
+            </div>
+            <div className="stack compact">
+              <span
+                className={`wb-tone-badge ${confidenceBadgeTone(confidenceSummary.confidence_level)}`}
+              >
+                {confidenceSummary.confidence_level} confidence
+              </span>
+              <span
+                className={`wb-tone-badge ${simulationStatus === 'completed' ? 'accent' : simulationStatus === 'unavailable' ? 'muted' : 'warning'}`}
+              >
+                model {formatToken(simulationStatus)}
+              </span>
+            </div>
+          </div>
+
+          <div className="wb-hero-grid">
+            <article className="wb-story-card wb-story-card--lead">
+              <span className="option-eyebrow">Next best move</span>
+              <div className="stack split compact">
+                <h2>{decisionOverview.leadAction.title}</h2>
+                <div className="workspace-chip-list">
+                  <span className="meta-chip">
+                    {decisionOverview.leadAction.phase}
                   </span>
-                  <span className="badge subtle">
-                    {formatToken(option.confidence_level)} confidence
+                  <span className="meta-chip">
+                    {decisionOverview.leadAction.scoreLabel}
+                  </span>
+                  <span className="meta-chip">
+                    {decisionOverview.leadAction.confidenceLabel} confidence
                   </span>
                 </div>
               </div>
-
-              <div className="score-track compact-track">
-                <span
-                  className="score-fill"
-                  style={{ width: scorePercent(option.priority_score) }}
-                />
-              </div>
-
+              <p>{decisionOverview.leadAction.rationale}</p>
               <div className="detail-grid two-columns">
                 <div className="detail-item">
                   <span className="muted">Expected benefit</span>
-                  <strong>{option.expected_benefit}</strong>
-                </div>
-                <div className="detail-item">
-                  <span className="muted">Linked diagnosis</span>
-                  <strong>{option.linked_diagnosis}</strong>
+                  <strong>{decisionOverview.leadAction.benefitLabel}</strong>
                 </div>
                 <div className="detail-item">
                   <span className="muted">Implementation effort</span>
-                  <strong>{formatToken(option.implementation_effort)}</strong>
-                </div>
-                <div className="detail-item">
-                  <span className="muted">Risk level</span>
-                  <strong>{formatToken(option.risk_level)}</strong>
-                </div>
-                <div className="detail-item">
-                  <span className="muted">Economic plausibility</span>
-                  <strong>{formatToken(option.economic_plausibility)}</strong>
-                </div>
-                <div className="detail-item">
-                  <span className="muted">Evidence strength</span>
-                  <strong>{option.evidence_strength_summary}</strong>
+                  <strong>{decisionOverview.leadAction.effortLabel}</strong>
                 </div>
               </div>
-
-              <details className="disclosure">
-                <summary>Evidence, dependencies, and assumptions</summary>
-                <div className="disclosure-content grid">
-                  <div className="grid two">
-                    <div className="section-group">
-                      <h4>Prerequisite actions</h4>
-                      {renderStringList(
-                        option.prerequisite_actions ?? [],
-                        'No prerequisite actions were recorded for this option.',
-                      )}
-                    </div>
-                    <div className="section-group">
-                      <h4>Measurement requests</h4>
-                      {renderStringList(
-                        option.measurement_requests ?? [],
-                        'No additional measurement requests were recorded.',
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid two">
-                    <div className="section-group">
-                      <h4>Assumptions</h4>
-                      {renderStringList(
-                        option.assumptions,
-                        'No explicit assumptions were recorded for this option.',
-                      )}
-                    </div>
-                    <div className="section-group">
-                      <h4>Supplier candidates</h4>
-                      {renderPills(
-                        option.supplier_candidates ?? [],
-                        'No supplier candidates were attached to this option.',
-                      )}
-                    </div>
-                  </div>
-                  {(option.rule_refs?.length ?? 0) > 0 ? (
-                    <p className="muted">
-                      Rule refs: {option.rule_refs?.join(', ')}
-                    </p>
-                  ) : null}
-                  {(option.evidence_refs?.length ?? 0) > 0 ? (
-                    <p className="muted">
-                      Evidence refs: {option.evidence_refs?.join(', ')}
-                    </p>
-                  ) : null}
-                  {(option.provenance_notes?.length ?? 0) > 0 ? (
-                    <p className="muted">
-                      Provenance notes: {option.provenance_notes?.join(' ')}
-                    </p>
-                  ) : null}
+              <div className="grid two">
+                <div className="section-group">
+                  <h4>Blocking dependencies</h4>
+                  {renderStringList(
+                    decisionOverview.leadAction.blockers,
+                    'No explicit blocker is attached to the current lead action.',
+                  )}
                 </div>
-              </details>
+                <div className="section-group">
+                  <h4>Immediate tests</h4>
+                  {renderStringList(
+                    decisionOverview.leadAction.measurementRequests,
+                    'No additional measurement request is attached to the current lead action.',
+                  )}
+                </div>
+              </div>
+              {decisionOverview.leadAction.supplierCandidates.length > 0 ? (
+                <p className="muted">
+                  Supplier candidates:{' '}
+                  {decisionOverview.leadAction.supplierCandidates.join(', ')}
+                </p>
+              ) : null}
             </article>
-          ))}
-        </div>
-      </section>
 
-      <div className="grid two">
-        <section className="panel">
-          <div className="stack split compact">
-            <div>
-              <span className="badge">Diagnosis board</span>
-              <h2>Current diagnosis</h2>
-            </div>
-            <span className="badge subtle">
-              {attentionFindings.length} attention items
-            </span>
-          </div>
-
-          <div className="finding-board">
-            {attentionFindings.length > 0 ? (
-              attentionFindings.map((finding) => (
-                <article
-                  className="finding-card attention"
-                  key={`${finding.block}-${finding.finding}`}
-                >
-                  <div className="stack split compact">
-                    <h3>{formatToken(finding.block)}</h3>
-                    <div className="stack compact">
-                      <span className="badge subtle">
-                        {formatToken(finding.status)}
-                      </span>
-                      {finding.severity ? (
-                        <span className="badge subtle">
-                          {formatToken(finding.severity)} severity
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p>{finding.finding}</p>
-                  {finding.rule_refs.length > 0 ? (
-                    <p className="muted">
-                      Rule refs: {finding.rule_refs.join(', ')}
-                    </p>
-                  ) : null}
-                </article>
-              ))
-            ) : (
-              <p className="muted empty-state">
-                No attention-level diagnosis findings were recorded for this
-                run.
-              </p>
-            )}
-          </div>
-
-          <div className="section-group">
-            <h3>Main weaknesses and blind spots</h3>
-            {renderStringList(
-              diagnosis.main_weaknesses_or_blind_spots,
-              'No major blind spots were recorded for this run.',
-            )}
-          </div>
-
-          <details className="disclosure">
-            <summary>Documented stack context</summary>
-            <div className="disclosure-content grid">
-              <div className="finding-board">
-                {documentedFindings.map((finding) => (
-                  <article
-                    className="finding-card documented"
-                    key={`${finding.block}-${finding.finding}`}
-                  >
-                    <div className="stack split compact">
-                      <h3>{formatToken(finding.block)}</h3>
-                      <span className="badge subtle">Documented</span>
-                    </div>
-                    <p>{finding.finding}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </details>
-        </section>
-
-        <section className="panel">
-          <div className="stack split compact">
-            <div>
-              <span className="badge">Decision lenses</span>
-              <h2>Impact and supplier context</h2>
-            </div>
-            <span className="badge subtle">
-              {decisionOutput.impact_map.length} impact rows
-            </span>
-          </div>
-
-          <div className="lens-stack">
-            {decisionOutput.impact_map.map((entry) => (
-              <article className="lens-card" key={entry.option}>
-                <div className="stack split compact">
-                  <h3>{formatToken(entry.option)}</h3>
-                  <span className="badge subtle">
-                    {entry.priority_score?.toFixed(0) ?? 'n/a'}
-                  </span>
-                </div>
-                <p className="muted">{entry.technical_impact}</p>
-                <div className="grid two">
-                  <div className="detail-item">
-                    <span className="muted">Economic case</span>
-                    <strong>{entry.economic_plausibility}</strong>
-                  </div>
-                  <div className="detail-item">
-                    <span className="muted">Readiness</span>
-                    <strong>{entry.maturity_or_readiness}</strong>
-                  </div>
-                </div>
+            {decisionOverview.heroCards.map((card) => (
+              <article
+                className={`wb-story-card wb-story-card--${card.tone}`}
+                key={card.key}
+              >
+                <span className="option-eyebrow">{card.label}</span>
+                <strong className="wb-story-stat">{card.value}</strong>
+                <p className="muted">{card.detail}</p>
               </article>
             ))}
           </div>
 
-          <div className="section-group">
-            <h3>Supplier shortlist</h3>
-            <div className="lens-stack">
-              {decisionOutput.supplier_shortlist.map((entry) => (
-                <article
-                  className="lens-card"
-                  key={`${entry.category}-${entry.candidate_path}`}
-                >
-                  <div className="stack split compact">
-                    <h4>{formatToken(entry.category)}</h4>
-                    <span className="badge subtle">Candidate path</span>
-                  </div>
-                  <p>{entry.candidate_path}</p>
-                  <p className="muted">{entry.fit_note}</p>
-                  {renderStringList(
-                    entry.missing_information_before_commitment,
-                    'No blocking information gaps were recorded for this shortlist entry.',
-                  )}
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <section className="panel">
-        <div className="stack split compact">
-          <div>
-            <span className="badge">Execution path</span>
-            <h2>Phased roadmap</h2>
-          </div>
-          <span className="badge subtle">
-            {decisionOutput.phased_roadmap.length} phases
-          </span>
-        </div>
-        <div className="roadmap-grid">
-          {decisionOutput.phased_roadmap.map((entry) => (
-            <article className="roadmap-card" key={entry.phase}>
-              <span className="badge">{entry.phase}</span>
-              <h3>{entry.title}</h3>
-              {entry.actions.length > 0 ? (
-                <ul className="list-block">
-                  {entry.actions.map((action) => (
-                    <li key={action}>{action}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted empty-state">
-                  No actions were assigned to this phase for the current run.
-                </p>
-              )}
+          <div className="cockpit-strip wb-kpi-grid">
+            <article className="metric-card">
+              <span className="muted">Execution phase</span>
+              <strong>{decisionOverview.leadAction.phase}</strong>
+              <p className="muted">{decisionOverview.leadAction.scoreLabel}</p>
             </article>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid two">
-        <section className="panel">
-          <div>
-            <span className="badge">Traceability</span>
-            <h2>Defaults, gaps, and assumptions</h2>
+            <article className="metric-card">
+              <span className="muted">Attention findings</span>
+              <strong>{attentionFindings.length}</strong>
+              <p className="muted">
+                {diagnosis.block_findings.length} total findings
+              </p>
+            </article>
+            <article className="metric-card">
+              <span className="muted">Typed evidence</span>
+              <strong>{typedEvidence.length}</strong>
+              <p className="muted">
+                Records carried into deterministic evaluation
+              </p>
+            </article>
+            <article className="metric-card">
+              <span className="muted">Missing data</span>
+              <strong>{missingData.length}</strong>
+              <p className="muted">Defaults used: {defaultsUsed.length}</p>
+            </article>
+            <article className="metric-card">
+              <span className="muted">History depth</span>
+              <strong>{caseHistoryEvaluations.length}</strong>
+              <p className="muted">Stored runs for this case</p>
+            </article>
+            <article className="metric-card">
+              <span className="muted">Model coverage</span>
+              <strong>
+                {evaluation.simulation_enrichment?.derived_observations
+                  .length ?? 0}
+              </strong>
+              <p className="muted">Derived observations available</p>
+            </article>
           </div>
-          <div className="section-group">
-            <h3>Defaults used</h3>
-            {renderStringList(
-              defaultsUsed,
-              'No defaults were recorded for this evaluation.',
-            )}
-          </div>
-          <div className="section-group">
-            <h3>Missing data</h3>
-            {renderStringList(
-              missingData,
-              'No missing-data items were recorded for this evaluation.',
-            )}
-          </div>
-          <div className="section-group">
-            <h3>Assumptions</h3>
-            {renderStringList(
-              decisionOutput.assumptions_and_defaults_audit.assumptions,
-              'No assumptions were recorded for this evaluation.',
-            )}
-          </div>
+          <PanelTabs
+            activeTab={activeCenterTab}
+            tabs={tabs}
+            onChange={setActiveCenterTab}
+            label="Evaluation workbench panels"
+          />
         </section>
 
-        <section className="panel">
-          <div>
-            <span className="badge">Secondary detail</span>
-            <h2>Evidence and runtime trace</h2>
-          </div>
+        <section className="wb-panel-body">
+          {activeCenterTab === 'summary' ? (
+            <div className="wb-section-grid">
+              <section className="panel nested-panel compact-panel grid">
+                <div className="stack split compact">
+                  <h2>Execution focus</h2>
+                  <span className="badge subtle">
+                    {decisionOverview.leadAction.phase}
+                  </span>
+                </div>
+                <div className="stack split compact">
+                  <h3>{decisionOverview.leadAction.title}</h3>
+                  <span className="badge subtle">
+                    {decisionOverview.leadAction.confidenceLabel} confidence
+                  </span>
+                </div>
+                <p>{decisionOverview.leadAction.rationale}</p>
+                {topRecommendation ? (
+                  <div className="score-track">
+                    <span
+                      className="score-fill"
+                      style={{
+                        width: scorePercent(topRecommendation.priority_score),
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <div className="detail-grid two-columns">
+                  <div className="detail-item">
+                    <span className="muted">Expected benefit</span>
+                    <strong>{decisionOverview.leadAction.benefitLabel}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span className="muted">Implementation effort</span>
+                    <strong>{decisionOverview.leadAction.effortLabel}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span className="muted">Priority</span>
+                    <strong>{decisionOverview.leadAction.scoreLabel}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span className="muted">Supplier candidates</span>
+                    <strong>
+                      {decisionOverview.leadAction.supplierCandidates.length > 0
+                        ? decisionOverview.leadAction.supplierCandidates.join(
+                            ', ',
+                          )
+                        : 'No supplier candidate attached'}
+                    </strong>
+                  </div>
+                </div>
+                <div className="grid two">
+                  <div className="section-group">
+                    <h4>Blocking dependencies</h4>
+                    {renderStringList(
+                      decisionOverview.leadAction.blockers,
+                      'No blocking dependency is attached to the current lead action.',
+                    )}
+                  </div>
+                  <div className="section-group">
+                    <h4>Measurement requests</h4>
+                    {renderStringList(
+                      decisionOverview.leadAction.measurementRequests,
+                      'No additional measurement request is attached to the current lead action.',
+                    )}
+                  </div>
+                </div>
+              </section>
 
-          <details className="disclosure" open>
-            <summary>Narrative and confidence context</summary>
-            <div className="disclosure-content grid">
-              <div className="detail-grid two-columns">
-                <div className="detail-item">
-                  <span className="muted">Narrative mode</span>
-                  <strong>{evaluation.narrative_metadata.mode}</strong>
+              <section className="panel nested-panel compact-panel grid">
+                <div className="stack split compact">
+                  <h2>Validation pressure</h2>
+                  <span className="badge subtle">
+                    {decisionOverview.attentionItems.length} active findings
+                  </span>
                 </div>
-                <div className="detail-item">
-                  <span className="muted">Status</span>
-                  <strong>{evaluation.narrative_metadata.status}</strong>
+                <p>{confidenceSummary.summary}</p>
+                <div className="grid two">
+                  <div className="section-group">
+                    <h4>Next tests</h4>
+                    {renderStringList(
+                      confidenceSummary.next_tests,
+                      'No follow-up validation tests were recorded for this evaluation.',
+                    )}
+                  </div>
+                  <div className="section-group">
+                    <h4>Confidence drivers</h4>
+                    {renderStringList(
+                      confidenceSummary.provenance_notes.slice(0, 4),
+                      'No explicit confidence drivers were recorded for this run.',
+                    )}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="muted">Provider</span>
-                  <strong>
-                    {evaluation.narrative_metadata.provider ?? 'Not set'}
-                  </strong>
-                </div>
-                <div className="detail-item">
-                  <span className="muted">Model</span>
-                  <strong>
-                    {evaluation.narrative_metadata.model ?? 'Not set'}
-                  </strong>
-                </div>
-              </div>
-              {evaluation.narrative ? <p>{evaluation.narrative}</p> : null}
-            </div>
-          </details>
-
-          <details className="disclosure">
-            <summary>Typed evidence and provenance</summary>
-            <div className="disclosure-content grid">
-              {renderStringList(
-                confidenceSummary.provenance_notes,
-                'No additional provenance notes were recorded for this evaluation.',
-              )}
-              <div className="lens-stack">
-                {typedEvidence.length > 0 ? (
-                  typedEvidence.map((record) => (
-                    <article className="lens-card" key={record.evidence_id}>
-                      <div className="stack split compact">
-                        <h3>{record.title}</h3>
-                        <span className="badge subtle">
-                          {record.evidence_id}
-                        </span>
-                      </div>
-                      <p>{record.summary}</p>
-                      <p className="muted">
-                        {record.evidence_type} · {record.strength_level}
-                      </p>
-                      <p className="muted">
-                        Provenance note: {record.provenance_note}
-                      </p>
-                      <div className="grid two">
-                        <div className="section-group">
-                          <h4>Tags</h4>
-                          {renderPills(
-                            record.tags,
-                            'No tags were attached to this evidence record.',
-                          )}
+                {decisionOverview.attentionItems.length > 0 ? (
+                  <div className="finding-board">
+                    {decisionOverview.attentionItems.map((item) => (
+                      <article
+                        className="finding-card attention"
+                        key={item.key}
+                      >
+                        <div className="stack split compact">
+                          <h3>{item.block}</h3>
+                          <span className="badge subtle">{item.severity}</span>
                         </div>
-                        <div className="section-group">
-                          <h4>Block mapping</h4>
-                          {renderPills(
-                            record.block_mapping,
-                            'No block mapping was recorded for this evidence record.',
-                          )}
+                        <p>{item.finding}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="wb-empty-panel">
+                    <strong>No active blocker recorded</strong>
+                    <p>
+                      The deterministic run did not leave any unresolved
+                      attention-level finding in the current diagnosis set.
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              <section className="panel grid">
+                <div className="stack split compact">
+                  <div>
+                    <span className="badge">Execution path</span>
+                    <h2>Phased roadmap</h2>
+                  </div>
+                  <span className="badge subtle">
+                    {decisionOverview.roadmap.length} phases
+                  </span>
+                </div>
+                <div className="roadmap-grid">
+                  {decisionOverview.roadmap.map((step) => (
+                    <article className="roadmap-card" key={step.phase}>
+                      <span className="badge">{step.phase}</span>
+                      <h3>{step.title}</h3>
+                      <p>{step.detail}</p>
+                      <p className="muted">
+                        {step.actionCount > 0
+                          ? `${step.actionCount} planned action${step.actionCount === 1 ? '' : 's'}`
+                          : 'No concrete action is attached yet.'}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel grid">
+                <div className="stack split compact">
+                  <div>
+                    <span className="badge">Impact map</span>
+                    <h2>Priority options in context</h2>
+                  </div>
+                  <span className="badge subtle">
+                    {decisionOverview.impactMap.length} surfaced options
+                  </span>
+                </div>
+                <div className="lens-stack">
+                  {decisionOverview.impactMap.map((entry) => (
+                    <article className="lens-card" key={entry.key}>
+                      <div className="stack split compact">
+                        <h3>{entry.title}</h3>
+                        <span className="badge subtle">{entry.scoreLabel}</span>
+                      </div>
+                      <p>{entry.impact}</p>
+                      <div className="detail-grid two-columns">
+                        <div className="detail-item">
+                          <span className="muted">Economic case</span>
+                          <strong>{entry.economic}</strong>
+                        </div>
+                        <div className="detail-item">
+                          <span className="muted">Readiness</span>
+                          <strong>{entry.readiness}</strong>
                         </div>
                       </div>
                     </article>
-                  ))
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel grid">
+                <div className="stack split compact">
+                  <div>
+                    <span className="badge">Target-range metrics</span>
+                    <h2>Rapid operating read</h2>
+                  </div>
+                  <span className="badge subtle">visual-first</span>
+                </div>
+                <div className="wb-metric-grid">
+                  {metricCards.map((metric) => (
+                    <article className="wb-card" key={metric.key}>
+                      <div className="stack split compact">
+                        <strong>{metric.label}</strong>
+                        <SignalBadge kind={metric.display.sourceKind} />
+                      </div>
+                      <div className="wb-metric-xl">{metric.display.value}</div>
+                      <RangeMeter
+                        value={metric.display.numericValue}
+                        min={metric.target[0] * 0.5}
+                        max={metric.target[1] * 1.4}
+                        target={metric.target}
+                      />
+                      <p className="muted">{metric.display.note}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel grid">
+                <div className="stack split compact">
+                  <div>
+                    <span className="badge">Recommendation matrix</span>
+                    <h2>Ranked decision options</h2>
+                  </div>
+                  <span className="badge subtle">
+                    {recommendations.length} options
+                  </span>
+                </div>
+                <div className="option-matrix">
+                  {recommendations.map((option) => (
+                    <article
+                      className="option-row"
+                      key={option.recommendation_id}
+                    >
+                      <div className="stack split compact">
+                        <div className="section-group">
+                          <span className="option-eyebrow">
+                            {option.phase_assignment ?? 'Unassigned'}
+                          </span>
+                          <h3>{formatToken(option.recommendation_id)}</h3>
+                          <p>{option.rationale}</p>
+                        </div>
+                        <div className="stack compact">
+                          <span className="badge subtle">
+                            score {option.priority_score?.toFixed(0) ?? 'n/a'}
+                          </span>
+                          <span className="badge subtle">
+                            {formatToken(option.confidence_level)} confidence
+                          </span>
+                        </div>
+                      </div>
+                      <div className="score-track compact-track">
+                        <span
+                          className="score-fill"
+                          style={{ width: scorePercent(option.priority_score) }}
+                        />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          {activeCenterTab === 'evidence' ? (
+            <div className="wb-section-grid">
+              <section className="panel grid">
+                <div>
+                  <span className="badge">Canonical decision evidence</span>
+                  <h2>Measured and inferred decision signals</h2>
+                </div>
+                <div className="wb-signal-list">
+                  {metricCards.map((metric) => (
+                    <div className="wb-signal-row" key={metric.key}>
+                      <div>
+                        <strong>{metric.label}</strong>
+                        <p className="muted">{metric.display.note}</p>
+                      </div>
+                      <div className="wb-signal-meta">
+                        <SignalBadge kind={metric.display.sourceKind} />
+                        <span className="wb-metric-value">
+                          {metric.display.value}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="wb-signal-row">
+                    <div>
+                      <strong>Decision summary</strong>
+                      <p className="muted">
+                        Canonical deterministic output synthesized by the rule
+                        engine.
+                      </p>
+                    </div>
+                    <div className="wb-signal-meta">
+                      <SignalBadge kind="inferred" />
+                      <span className="wb-metric-value">
+                        {confidenceSummary.summary}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="panel grid">
+                <div>
+                  <span className="badge">External evidence</span>
+                  <h2>Reviewed supporting records</h2>
+                </div>
+                {typedEvidence.length > 0 ? (
+                  <div className="lens-stack">
+                    {typedEvidence.map((record) => (
+                      <article className="lens-card" key={record.evidence_id}>
+                        <div className="stack split compact">
+                          <h3>{record.title}</h3>
+                          <SignalBadge kind={evidenceSourceKind(record)} />
+                        </div>
+                        <p>{record.summary}</p>
+                        <p className="muted">
+                          {formatToken(record.evidence_type)} ·{' '}
+                          {formatToken(record.strength_level)} strength
+                        </p>
+                        <p className="muted">{record.provenance_note}</p>
+                      </article>
+                    ))}
+                  </div>
                 ) : (
                   <p className="muted empty-state">
-                    No typed evidence was supplied for this run.
+                    No external or typed evidence records were attached to this
+                    evaluation.
                   </p>
                 )}
-              </div>
-            </div>
-          </details>
+              </section>
 
-          <details className="disclosure">
-            <summary>Pipeline trace</summary>
-            <div className="disclosure-content grid">
-              <div className="lens-stack">
-                {evaluation.audit_record.agent_pipeline_trace.map((stage) => (
-                  <article className="lens-card" key={stage.stage_id}>
-                    <div className="stack split compact">
-                      <h3>{stage.agent_name}</h3>
-                      <span className="badge subtle">{stage.status}</span>
-                    </div>
-                    <p className="muted">
-                      {stage.mode} · {stage.input_contract} →{' '}
-                      {stage.output_contract}
+              <section className="panel grid">
+                <div>
+                  <span className="badge">Modeled evidence</span>
+                  <h2>Derived observations from the optional model layer</h2>
+                </div>
+                {evaluation.simulation_enrichment?.derived_observations
+                  .length ? (
+                  <div className="wb-signal-list">
+                    {evaluation.simulation_enrichment.derived_observations.map(
+                      (observation) => (
+                        <div
+                          className="wb-signal-row"
+                          key={observation.observation_id}
+                        >
+                          <div>
+                            <strong>{observation.label}</strong>
+                            <p className="muted">
+                              {observation.provenance_note}
+                            </p>
+                          </div>
+                          <div className="wb-signal-meta">
+                            <SignalBadge kind={observation.source_kind} />
+                            <span className="wb-metric-value">
+                              {formatScalarValue(
+                                observation.value,
+                                observation.unit,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <div className="wb-empty-panel">
+                    <strong>Modeled evidence unavailable</strong>
+                    <p>
+                      {evaluation.simulation_enrichment?.provenance.note ??
+                        'No modeled artifact is attached to this evaluation.'}
                     </p>
-                    {stage.deterministic_owner ? (
-                      <p className="muted">
-                        Owner: {stage.deterministic_owner}
-                      </p>
-                    ) : null}
-                    {stage.assistant_surface ? (
-                      <p className="muted">
-                        Assistant surface: {stage.assistant_surface}
-                      </p>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
+                  </div>
+                )}
+              </section>
             </div>
-          </details>
-        </section>
-      </div>
-
-      <section className="panel">
-        <div className="stack split compact">
-          <div>
-            <span className="badge">History and comparison</span>
-            <h2>Case history</h2>
-          </div>
-          {history ? (
-            <span className="badge subtle">
-              {history.evaluations.length} evaluations
-            </span>
           ) : null}
+
+          {activeCenterTab === 'modeling' ? (
+            <div className="wb-section-grid">
+              <section className="panel grid">
+                <div className="stack split compact">
+                  <div>
+                    <span className="badge">Modeling artifact</span>
+                    <h2>Simulation enrichment</h2>
+                  </div>
+                  <span
+                    className={`wb-tone-badge ${simulationStatus === 'completed' ? 'accent' : simulationStatus === 'disabled' ? 'muted' : 'warning'}`}
+                  >
+                    {formatToken(simulationStatus)}
+                  </span>
+                </div>
+
+                {evaluation.simulation_enrichment ? (
+                  <>
+                    <div className="detail-grid two-columns">
+                      <div className="detail-item">
+                        <span className="muted">Model version</span>
+                        <strong>
+                          {evaluation.simulation_enrichment.model_version}
+                        </strong>
+                      </div>
+                      <div className="detail-item">
+                        <span className="muted">Confidence</span>
+                        <strong>
+                          {evaluation.simulation_enrichment.confidence.level} ·{' '}
+                          {evaluation.simulation_enrichment.confidence.score.toFixed(
+                            0,
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="section-group">
+                      <h3>Assumptions</h3>
+                      {renderStringList(
+                        evaluation.simulation_enrichment.assumptions,
+                        'No modeling assumptions were recorded.',
+                      )}
+                    </div>
+                    <div className="section-group">
+                      <h3>Confidence drivers</h3>
+                      {renderStringList(
+                        evaluation.simulation_enrichment.confidence.drivers,
+                        'No modeling confidence drivers were recorded.',
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="wb-empty-panel">
+                    <strong>No modeling artifact attached</strong>
+                    <p>
+                      The current evaluation does not expose a simulation
+                      enrichment artifact.
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              <section className="panel grid">
+                <div>
+                  <span className="badge">Visual analytics</span>
+                  <h2>Technical charts</h2>
+                </div>
+
+                {evaluation.simulation_enrichment?.status === 'completed' &&
+                evaluation.simulation_enrichment.series.length > 0 ? (
+                  <div className="wb-chart-grid">
+                    {evaluation.simulation_enrichment.series.map((series) => (
+                      <article className="wb-chart-card" key={series.series_id}>
+                        <div className="stack split compact">
+                          <h3>{series.title}</h3>
+                          <SignalBadge kind={series.source_kind} />
+                        </div>
+                        {series.series_type === 'operating_window' ||
+                        series.series_type === 'heatmap' ? (
+                          <div className="wb-heatmap-grid">
+                            {series.points.slice(0, 36).map((point) => (
+                              <span
+                                className="wb-heatmap-cell"
+                                key={`${series.series_id}-${point.x}-${point.y}`}
+                                style={{
+                                  opacity:
+                                    typeof point.z === 'number'
+                                      ? Math.max(point.z / 100, 0.15)
+                                      : 0.15,
+                                }}
+                                title={`${point.x} / ${point.y} / ${point.z ?? 'n/a'}`}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <LineChart series={series} label={series.title} />
+                        )}
+                        <p className="muted">{series.provenance_note}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="wb-empty-panel">
+                    <strong>No chart-ready model artifact</strong>
+                    <p>
+                      {evaluation.simulation_enrichment?.provenance.note ??
+                        'Charts remain unavailable until a real modeling artifact is attached.'}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : null}
+
+          {activeCenterTab === 'audit' ? (
+            <div className="wb-section-grid">
+              <section className="panel grid">
+                <div>
+                  <span className="badge">Pipeline trace</span>
+                  <h2>Deterministic and modeled stages</h2>
+                </div>
+                <div className="lens-stack">
+                  {evaluation.audit_record.agent_pipeline_trace.map((stage) => (
+                    <article className="lens-card" key={stage.stage_id}>
+                      <div className="stack split compact">
+                        <h3>{stage.agent_name}</h3>
+                        <span className="badge subtle">{stage.status}</span>
+                      </div>
+                      <p className="muted">
+                        {stage.mode} · {stage.input_contract} →{' '}
+                        {stage.output_contract}
+                      </p>
+                      {stage.notes.length > 0 ? (
+                        <p className="muted">{stage.notes.join(' ')}</p>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel grid">
+                <div>
+                  <span className="badge">Audit trail</span>
+                  <h2>Persisted event stream</h2>
+                </div>
+                <AuditTimeline
+                  items={caseAuditEvents.map((event) => ({
+                    id: event.event_id,
+                    title: formatToken(event.event_type),
+                    subtitle: `${formatTimestamp(event.created_at)} · ${event.actor_role}`,
+                    detail: event.evaluation_id
+                      ? `Evaluation ${event.evaluation_id}`
+                      : undefined,
+                  }))}
+                />
+              </section>
+            </div>
+          ) : null}
+        </section>
+      </section>
+
+      <aside className="wb-pane wb-pane-right" id="history-rail">
+        <div className="wb-pane-header">
+          <div>
+            <span className="badge">History</span>
+            <h2>Case rail</h2>
+          </div>
+          <div className="wb-rail-metrics">
+            <Sparkline
+              values={historySignals.confidence}
+              label="Confidence trend"
+            />
+            <Sparkline
+              values={historySignals.modeling}
+              label="Modeling trend"
+            />
+          </div>
         </div>
 
         {historyLoading ? (
@@ -736,18 +895,19 @@ export function EvaluationCockpit({
         ) : historyError ? (
           <p className="error">{historyError}</p>
         ) : history ? (
-          <div className="grid">
+          <>
             <p className="muted">
               {history.evaluations.length} evaluations ·{' '}
-              {history.evidence_records.length} evidence records ·{' '}
-              {history.audit_events.length} audit events · last updated{' '}
+              {history.evidence_records.length} evidence records · last updated{' '}
               {formatTimestamp(history.case.updated_at)}
             </p>
-
             {relatedEvaluations.length > 0 ? (
-              <div className="history-rail">
+              <div className="history-rail wb-history-grid">
                 {relatedEvaluations.map((item) => (
-                  <article className="history-card" key={item.evaluation_id}>
+                  <article
+                    className="history-card wb-history-card"
+                    key={item.evaluation_id}
+                  >
                     <div className="stack split compact">
                       <Link
                         className="section-link"
@@ -755,12 +915,44 @@ export function EvaluationCockpit({
                       >
                         {item.evaluation_id}
                       </Link>
-                      <span className="badge subtle">
+                      <span
+                        className={`wb-tone-badge ${confidenceBadgeTone(item.confidence_level)}`}
+                      >
                         {item.confidence_level}
                       </span>
                     </div>
                     <p>{item.summary}</p>
                     <p className="muted">{formatTimestamp(item.created_at)}</p>
+                    <div className="wb-signal-meta align-left">
+                      <span
+                        className={`wb-tone-badge ${item.simulation_summary?.status === 'completed' ? 'accent' : item.simulation_summary?.status ? 'warning' : 'muted'}`}
+                      >
+                        {formatToken(
+                          item.simulation_summary?.status ?? 'unavailable',
+                        )}
+                      </span>
+                    </div>
+                    <div className="hero-actions">
+                      <button
+                        className={
+                          comparisonEvaluationId === item.evaluation_id
+                            ? 'button'
+                            : 'button secondary'
+                        }
+                        type="button"
+                        onClick={() =>
+                          setComparisonEvaluationId((current) =>
+                            current === item.evaluation_id
+                              ? null
+                              : item.evaluation_id,
+                          )
+                        }
+                      >
+                        {comparisonEvaluationId === item.evaluation_id
+                          ? 'Remove compare'
+                          : 'Compare with current'}
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -770,38 +962,86 @@ export function EvaluationCockpit({
                 comparison.
               </p>
             )}
-
-            <details className="disclosure">
-              <summary>Audit events</summary>
-              <div className="disclosure-content grid">
-                <div className="lens-stack">
-                  {caseAuditEvents.map((event) => (
-                    <article className="lens-card" key={event.event_id}>
-                      <div className="stack split compact">
-                        <h3>{event.event_type}</h3>
-                        <span className="badge subtle">{event.actor_role}</span>
-                      </div>
-                      <p className="muted">
-                        {formatTimestamp(event.created_at)} · Event ID{' '}
-                        {event.event_id}
-                      </p>
-                      {event.actor_id ? (
-                        <p className="muted">Actor: {event.actor_id}</p>
-                      ) : null}
-                      {event.evaluation_id ? (
-                        <p className="muted">
-                          Evaluation: {event.evaluation_id}
-                        </p>
-                      ) : null}
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </details>
-          </div>
+          </>
         ) : (
           <p className="muted">No stored history was found for this case.</p>
         )}
+      </aside>
+
+      <section
+        className="wb-pane wb-pane-bottom"
+        data-testid="comparison-dock"
+        id="comparison-dock"
+      >
+        <div className="wb-pane-header">
+          <div>
+            <span className="badge">Compare</span>
+            <h2>Comparison dock</h2>
+          </div>
+          <span className="badge subtle">
+            {selectedComparison ? '2 evaluations loaded' : 'select one run'}
+          </span>
+        </div>
+
+        {!comparisonEvaluationId ? (
+          <div className="wb-empty-panel">
+            <strong>Select one related evaluation</strong>
+            <p>
+              Use the compare action in the history rail to inspect the current
+              run against one previous evaluation.
+            </p>
+          </div>
+        ) : compareQuery.isLoading ? (
+          <p className="muted">Loading comparison evaluation...</p>
+        ) : compareQuery.error ? (
+          <p className="error">{compareQuery.error.message}</p>
+        ) : selectedComparison ? (
+          <div className="wb-compare-grid">
+            {topComparisonMetrics.map((metricKey) => {
+              const currentMetric = resolveMetricDisplay(evaluation, metricKey);
+              const compareMetric = resolveMetricDisplay(
+                selectedComparison,
+                metricKey,
+              );
+              const delta =
+                currentMetric.numericValue !== null &&
+                compareMetric.numericValue !== null
+                  ? currentMetric.numericValue - compareMetric.numericValue
+                  : null;
+
+              return (
+                <article className="wb-card" key={metricKey}>
+                  <div className="stack split compact">
+                    <strong>{currentMetric.label}</strong>
+                    <span className="badge subtle">
+                      {delta === null
+                        ? 'n/a'
+                        : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`}
+                    </span>
+                  </div>
+                  <div className="wb-compare-row">
+                    <div>
+                      <span className="muted">Current</span>
+                      <div className="wb-metric-value">
+                        {currentMetric.value}
+                      </div>
+                    </div>
+                    <SignalBadge kind={currentMetric.sourceKind} />
+                  </div>
+                  <div className="wb-compare-row">
+                    <div>
+                      <span className="muted">Baseline</span>
+                      <div className="wb-metric-value">
+                        {compareMetric.value}
+                      </div>
+                    </div>
+                    <SignalBadge kind={compareMetric.sourceKind} />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
       </section>
     </div>
   );
