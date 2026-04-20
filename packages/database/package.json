@@ -13,19 +13,20 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "node scripts/run-prisma-with-direct-url.mjs migrate dev",
     "prisma:migrate:deploy": "node scripts/run-prisma-with-direct-url.mjs migrate deploy",
-    "ingest:literature:openalex": "node scripts/ingest-openalex-literature.mjs",
-    "ingest:literature:crossref": "node scripts/ingest-crossref-literature.mjs"
+    "ingest:literature:openalex": "tsx scripts/ingest-openalex-literature.ts",
+    "ingest:literature:crossref": "tsx scripts/ingest-crossref-literature.ts"
   },
   "dependencies": {
     "@metrev/domain-contracts": "workspace:*",
     "@metrev/telemetry": "workspace:*",
-    "@prisma/adapter-pg": "^6.19.3",
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "dotenv": "^16.6.1",
     "pg": "^8.20.0"
   },
   "devDependencies": {
-    "prisma": "^6.19.3",
+    "prisma": "^7.6.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }
 }

@@ -1,5 +1,7 @@
 # Quickstart — Workflow And Documentation Reconciliation
 
+Execution note: use `../015-repository-authority-and-structure-consolidation/quickstart.md` for repository-wide cleanup validation. This quickstart remains specific to the doc and tooling reconciliation sub-slice.
+
 ## Goals
 
 - validate that the root docs now describe one coherent runtime and workflow surface

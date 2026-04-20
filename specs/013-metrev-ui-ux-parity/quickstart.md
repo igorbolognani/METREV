@@ -1,5 +1,7 @@
 # Quickstart — Analytical Workspace Refactor
 
+Execution note: use [014-local-first-professional-workspace](../014-local-first-professional-workspace/quickstart.md) for the active local-first validation flow.
+
 ## Goals
 
 - validate the analytical workspace against the approved benchmark and the decision-first product goals

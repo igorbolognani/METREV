@@ -24,9 +24,5 @@ export default defineConfig({
       process.env.DIRECT_URL ??
       process.env.DATABASE_URL ??
       'postgresql://metrev:metrev@localhost:5432/metrev?schema=public',
-    directUrl:
-      process.env.DIRECT_URL ??
-      process.env.DATABASE_URL ??
-      'postgresql://metrev:metrev@localhost:5432/metrev?schema=public',
   },
 });

@@ -41,6 +41,16 @@ describe('supplier persistence planning', () => {
       decisionOutput,
       normalizedCase,
       rawInput,
+      runtimeVersions: {
+        contract_version: '0.3',
+        ontology_version: '0.3',
+        ruleset_version: '0.3',
+        prompt_version: 'phase-3-supplier-persistence-test',
+        model_version: 'not_applicable',
+        workspace_schema_version: '014.0.0',
+      },
+      entrypoint: 'test',
+      evaluationId: 'evaluation-supplier-001',
     });
 
     const evaluation = evaluationResponseSchema.parse({

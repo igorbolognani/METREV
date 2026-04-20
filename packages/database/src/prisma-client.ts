@@ -2,8 +2,10 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { config as loadDotEnv } from 'dotenv';
+
+import { PrismaClient } from '../generated/prisma/client';
 
 let prismaClient: PrismaClient | undefined;
 
@@ -44,12 +46,15 @@ if (existsSync(rootEnvPath)) {
 }
 
 export function getPrismaClient(): PrismaClient {
-  if (!process.env.DATABASE_URL) {
+  const connectionString = process.env.DATABASE_URL?.trim();
+
+  if (!connectionString) {
     throw new Error('DATABASE_URL is required for Prisma access.');
   }
 
   if (!prismaClient) {
-    prismaClient = new PrismaClient();
+    const adapter = new PrismaPg({ connectionString });
+    prismaClient = new PrismaClient({ adapter });
   }
 
   return prismaClient;

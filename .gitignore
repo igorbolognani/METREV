@@ -8,6 +8,7 @@ dist/
 .env
 .env.*
 !.env.example
+packages/database/generated/
 *.pyc
 __pycache__/
 .pytest_cache/
@@ -15,3 +16,5 @@ __pycache__/
 apps/api-server/.tsbuildinfo
 apps/web-ui/.tsbuildinfo
 packages/**/.tsbuildinfo
+playwright-report/
+test-results/

@@ -15,6 +15,8 @@ This document separates repository-managed integration from local-machine setup 
 - root `.vscode/extensions.json`
 - root `.vscode/mcp.json` and `.vscode/mcp.template.jsonc`
 
+For the broader active-versus-reference classification across the repository, use `docs/repository-authority-map.md`.
+
 ## Local-machine setup
 
 ### MCP authority model
@@ -29,14 +31,16 @@ This document separates repository-managed integration from local-machine setup 
 
 - Supported as the default root MCP integration.
 - Activated in `.vscode/mcp.json` as the only live-by-default server.
+- It should not be duplicated inside `.vscode/mcp.template.jsonc`, user-level MCP config, or extension-provided config for this workspace at the same time.
 - If the VS Code user profile also defines `github`, remove the user-level duplicate and keep the workspace entry as the single source of truth for this repository.
 
 ### Prisma runtime and migration posture
 
-- The current repository is pinned to a Prisma 6.19.x posture that keeps `url = env("DATABASE_URL")` inside `packages/database/prisma/schema.prisma`.
-- `packages/database/prisma.config.ts` remains the repository-owned place for aligning runtime `DATABASE_URL` and migration-friendly `DIRECT_URL` semantics.
-- `packages/database/scripts/run-prisma-with-direct-url.mjs` remains the required wrapper for migration commands so hosted PostgreSQL deployments can use `DIRECT_URL` safely.
-- If editor diagnostics suggest removing `url` from `schema.prisma`, treat that as a version-mismatch warning until `pnpm prisma:generate`, `pnpm run db:migrate:deploy`, and CI all validate a different posture in this repository.
+- The current repository is pinned to a Prisma 7 posture that keeps datasource URL configuration in `packages/database/prisma.config.ts` instead of embedding `url = env("DATABASE_URL")` inside `packages/database/prisma/schema.prisma`.
+- `packages/database/prisma/schema.prisma` keeps a provider-only `datasource db` block and a repository-owned `generator client` configuration that emits the TypeScript client into `packages/database/generated/prisma/`.
+- `packages/database/src/prisma-client.ts` remains the repository-owned runtime entrypoint for the generated Prisma client plus the `PrismaPg` adapter-backed connection path.
+- `packages/database/scripts/run-prisma-with-direct-url.mjs` remains the required wrapper for migration commands so hosted PostgreSQL deployments can prefer `DIRECT_URL` safely while runtime code continues to use `DATABASE_URL` semantics.
+- If stale docs or editor diagnostics imply the older URL-in-schema posture or suggest bypassing the wrapper/config split, prefer the command-backed repository posture validated by `pnpm prisma:generate`, `pnpm run db:migrate:deploy`, and the current test/build flow.
 
 ### Context7
 
@@ -50,6 +54,7 @@ This document separates repository-managed integration from local-machine setup 
 - Supported via the root `.vscode/mcp.template.jsonc` using the official VS Code-oriented launcher `serena start-mcp-server --context=vscode --project ${workspaceFolder}`.
 - Recommended local install is `uv tool install -p 3.13 serena-agent@latest --prerelease=allow`, followed by `serena init` in the repository root.
 - If `serena` is not on `PATH`, that is a machine-local prerequisite blocker rather than a repository configuration problem.
+- A repo-local `.serena/project.yml` may exist for contributors who use Serena, but that file alone does not make Serena a committed runtime dependency for the repository.
 
 ### Internal Spec-First Workflow
 

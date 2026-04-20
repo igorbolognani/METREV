@@ -10,9 +10,11 @@ import {
 
 import { authPlugin } from './plugins/auth';
 import { registerCaseRoutes } from './routes/cases';
+import { registerExportRoutes } from './routes/exports';
 import { registerEvaluationRoutes } from './routes/evaluations';
 import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
+import { registerWorkspaceRoutes } from './routes/workspace';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -47,6 +49,8 @@ export async function buildApp(
   await app.register(registerExternalEvidenceRoutes, {
     prefix: '/api/external-evidence',
   });
+  await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });
+  await app.register(registerExportRoutes, { prefix: '/api/exports' });
 
   app.addHook('onClose', async () => {
     await repository.disconnect();

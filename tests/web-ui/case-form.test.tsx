@@ -60,17 +60,19 @@ async function renderCaseForm() {
 }
 
 describe('case form', () => {
-  it('renders the tabbed drafting workspace with richer scenario controls', async () => {
+  it('renders the consolidated drafting flow with one navigation system', async () => {
     const html = await renderCaseForm();
 
-    expect(html).toContain('Scenario setup');
-    expect(html).toContain('Scenario');
-    expect(html).toContain('Conditions');
+    expect(html).toContain('One navigation system, one drafting surface');
+    expect(html).toContain('Case context');
+    expect(html).toContain('Operating conditions');
+    expect(html).toContain('Supplier context');
     expect(html).toContain('Evidence');
     expect(html).toContain('Current TRL');
     expect(html).toContain('Decision horizon');
-    expect(html).toContain('Working assumptions');
-    expect(html).toContain('Validated golden cases');
+    expect(html).toContain('Assumptions');
+    expect(html).toContain('Capture context, operating envelope, supplier posture');
+    expect(html).toContain('Validated presets');
     expect(html).toContain('Review evidence queue');
     expect(html).toContain('Run deterministic evaluation');
   });

@@ -1,5 +1,7 @@
 # Quickstart — Authority Runtime Hardening
 
+Execution note: use `../015-repository-authority-and-structure-consolidation/quickstart.md` for repository-wide cleanup validation. This quickstart remains specific to the authority-runtime hardening sub-slice.
+
 ## Goals
 
 - verify the current authority split without changing deterministic product behavior

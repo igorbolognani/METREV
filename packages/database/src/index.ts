@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
     caseHistoryResponseSchema,
@@ -30,6 +30,9 @@ export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export interface EvaluationRepository {
   saveEvaluation(evaluation: EvaluationResponse): Promise<EvaluationResponse>;
   getEvaluation(evaluationId: string): Promise<EvaluationResponse | null>;
+  getEvaluationByIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<EvaluationResponse | null>;
   listEvaluations(): Promise<EvaluationListResponse>;
   getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null>;
   listExternalEvidenceCatalog(
@@ -448,6 +451,10 @@ function toCaseHistory(
 
 export class MemoryEvaluationRepository implements EvaluationRepository {
   private readonly evaluations = new Map<string, EvaluationResponse>();
+  private readonly evaluationsByIdempotencyKey = new Map<
+    string,
+    EvaluationResponse
+  >();
   private readonly externalEvidenceCatalog = new Map<
     string,
     ExternalEvidenceCatalogItemDetail
@@ -462,7 +469,22 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
   async saveEvaluation(
     evaluation: EvaluationResponse,
   ): Promise<EvaluationResponse> {
+    const idempotencyKey = evaluation.audit_record.idempotency_key?.trim();
+
+    if (idempotencyKey) {
+      const existing = this.evaluationsByIdempotencyKey.get(idempotencyKey);
+
+      if (existing) {
+        return existing;
+      }
+    }
+
     this.evaluations.set(evaluation.evaluation_id, evaluation);
+
+    if (idempotencyKey) {
+      this.evaluationsByIdempotencyKey.set(idempotencyKey, evaluation);
+    }
+
     return evaluation;
   }
 
@@ -470,6 +492,12 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     evaluationId: string,
   ): Promise<EvaluationResponse | null> {
     return this.evaluations.get(evaluationId) ?? null;
+  }
+
+  async getEvaluationByIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<EvaluationResponse | null> {
+    return this.evaluationsByIdempotencyKey.get(idempotencyKey) ?? null;
   }
 
   async listEvaluations(): Promise<EvaluationListResponse> {
@@ -586,271 +614,294 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         const decisionOutput = toPrismaJsonObject(evaluation.decision_output);
         const auditRecord = toPrismaJsonObject(evaluation.audit_record);
         const supplierPlan = deriveSupplierPersistencePlan(evaluation);
+        const idempotencyKey = evaluation.audit_record.idempotency_key?.trim();
 
-        await this.prisma.$transaction(async (tx) => {
-          const database = tx as Prisma.TransactionClient;
+        try {
+          await this.prisma.$transaction(async (tx) => {
+            const database = tx as Prisma.TransactionClient;
 
-          await database.caseRecord.upsert({
-            where: { id: evaluation.case_id },
-            update: {
-              technologyFamily: evaluation.normalized_case.technology_family,
-              architectureFamily:
-                evaluation.normalized_case.architecture_family,
-              primaryObjective: evaluation.normalized_case.primary_objective,
-              rawIntakeSnapshot,
-              normalizedCase,
-              defaultsUsed: evaluation.normalized_case.defaults_used,
-              missingData: evaluation.normalized_case.missing_data,
-              assumptions: evaluation.normalized_case.assumptions,
-              typedEvidence: toRequiredPrismaJsonValue(
-                evaluation.audit_record.typed_evidence,
-              ),
-              supplierContext: toPrismaJsonObject(
-                evaluation.normalized_case.cross_cutting_layers
-                  .risk_and_maturity.supplier_context,
-              ),
-              createdBy: evaluation.audit_record.actor_id,
-            },
-            create: {
-              id: evaluation.case_id,
-              technologyFamily: evaluation.normalized_case.technology_family,
-              architectureFamily:
-                evaluation.normalized_case.architecture_family,
-              primaryObjective: evaluation.normalized_case.primary_objective,
-              rawIntakeSnapshot,
-              normalizedCase,
-              defaultsUsed: evaluation.normalized_case.defaults_used,
-              missingData: evaluation.normalized_case.missing_data,
-              assumptions: evaluation.normalized_case.assumptions,
-              typedEvidence: toRequiredPrismaJsonValue(
-                evaluation.audit_record.typed_evidence,
-              ),
-              supplierContext: toPrismaJsonObject(
-                evaluation.normalized_case.cross_cutting_layers
-                  .risk_and_maturity.supplier_context,
-              ),
-              createdBy: evaluation.audit_record.actor_id,
-            },
-          });
+            await database.caseRecord.upsert({
+              where: { id: evaluation.case_id },
+              update: {
+                technologyFamily: evaluation.normalized_case.technology_family,
+                architectureFamily:
+                  evaluation.normalized_case.architecture_family,
+                primaryObjective: evaluation.normalized_case.primary_objective,
+                rawIntakeSnapshot,
+                normalizedCase,
+                defaultsUsed: evaluation.normalized_case.defaults_used,
+                missingData: evaluation.normalized_case.missing_data,
+                assumptions: evaluation.normalized_case.assumptions,
+                typedEvidence: toRequiredPrismaJsonValue(
+                  evaluation.audit_record.typed_evidence,
+                ),
+                supplierContext: toPrismaJsonObject(
+                  evaluation.normalized_case.cross_cutting_layers
+                    .risk_and_maturity.supplier_context,
+                ),
+                createdBy: evaluation.audit_record.actor_id,
+              },
+              create: {
+                id: evaluation.case_id,
+                technologyFamily: evaluation.normalized_case.technology_family,
+                architectureFamily:
+                  evaluation.normalized_case.architecture_family,
+                primaryObjective: evaluation.normalized_case.primary_objective,
+                rawIntakeSnapshot,
+                normalizedCase,
+                defaultsUsed: evaluation.normalized_case.defaults_used,
+                missingData: evaluation.normalized_case.missing_data,
+                assumptions: evaluation.normalized_case.assumptions,
+                typedEvidence: toRequiredPrismaJsonValue(
+                  evaluation.audit_record.typed_evidence,
+                ),
+                supplierContext: toPrismaJsonObject(
+                  evaluation.normalized_case.cross_cutting_layers
+                    .risk_and_maturity.supplier_context,
+                ),
+                createdBy: evaluation.audit_record.actor_id,
+              },
+            });
 
-          await database.evaluationRecord.create({
-            data: {
-              id: evaluation.evaluation_id,
-              caseId: evaluation.case_id,
-              decisionOutput,
-              auditRecord,
-              narrative: evaluation.narrative,
-              narrativeMetadata: toPrismaJsonObject(
-                evaluation.narrative_metadata,
-              ),
-              confidenceLevel:
-                evaluation.decision_output.confidence_and_uncertainty_summary
-                  .confidence_level,
-              provenanceSummary: toPrismaJsonObject({
-                provenance_notes:
-                  evaluation.decision_output.confidence_and_uncertainty_summary
-                    .provenance_notes,
-                agent_pipeline_trace:
-                  evaluation.audit_record.agent_pipeline_trace,
-              }),
-              scoringSummary: toPrismaJsonObject({
-                sensitivity_level:
-                  evaluation.decision_output.confidence_and_uncertainty_summary
-                    .sensitivity_level,
-                recommendation_scores:
-                  evaluation.decision_output.prioritized_improvement_options.map(
-                    (recommendation) => ({
-                      recommendation_id: recommendation.recommendation_id,
-                      priority_score: recommendation.priority_score ?? null,
-                    }),
-                  ),
-              }),
-              defaultsUsed: evaluation.normalized_case.defaults_used,
-              missingData: evaluation.normalized_case.missing_data,
-              assumptions: evaluation.normalized_case.assumptions,
-            },
-          });
-
-          if (evaluation.simulation_enrichment) {
-            await database.simulationArtifactRecord.create({
+            await database.evaluationRecord.create({
               data: {
-                evaluationId: evaluation.evaluation_id,
-                status: evaluation.simulation_enrichment.status,
-                modelVersion: evaluation.simulation_enrichment.model_version,
-                inputSnapshot: toPrismaJsonObject(
-                  evaluation.simulation_enrichment.input_snapshot,
-                ),
-                derivedObservations: toRequiredPrismaJsonValue(
-                  evaluation.simulation_enrichment.derived_observations,
-                ),
-                series: toRequiredPrismaJsonValue(
-                  evaluation.simulation_enrichment.series,
-                ),
-                assumptions: toRequiredPrismaJsonValue(
-                  evaluation.simulation_enrichment.assumptions,
-                ),
-                confidence: toPrismaJsonObject(
-                  evaluation.simulation_enrichment.confidence,
-                ),
-                provenance: toPrismaJsonObject(
-                  evaluation.simulation_enrichment.provenance,
-                ),
-                failureDetail: evaluation.simulation_enrichment.failure_detail
-                  ? toPrismaJsonObject(
-                      evaluation.simulation_enrichment.failure_detail,
-                    )
-                  : Prisma.JsonNull,
-              },
-            });
-          }
-
-          const supplierIds = new Map<string, string>();
-
-          for (const supplier of supplierPlan.suppliers) {
-            const record = await database.supplier.upsert({
-              where: { normalizedName: supplier.normalizedName },
-              update: {
-                displayName: supplier.displayName,
-                category: supplier.category ?? undefined,
-                region: supplier.region ?? undefined,
-                metadata: toPrismaJsonObject(supplier.metadata),
-              },
-              create: {
-                normalizedName: supplier.normalizedName,
-                displayName: supplier.displayName,
-                category: supplier.category,
-                region: supplier.region,
-                metadata: toPrismaJsonObject(supplier.metadata),
-              },
-              select: {
-                id: true,
-                normalizedName: true,
-              },
-            });
-
-            supplierIds.set(record.normalizedName, record.id);
-          }
-
-          await database.caseSupplierPreference.deleteMany({
-            where: { caseId: evaluation.case_id },
-          });
-
-          if (supplierPlan.casePreferences.length > 0) {
-            await database.caseSupplierPreference.createMany({
-              data: supplierPlan.casePreferences.map((entry) => ({
+                id: evaluation.evaluation_id,
                 caseId: evaluation.case_id,
-                supplierId: entry.supplierNormalizedName
-                  ? (supplierIds.get(entry.supplierNormalizedName) ?? null)
-                  : null,
-                supplierLabel: entry.supplierLabel,
-                preferenceType: entry.preferenceType,
-                note: entry.note,
-                sourceState: entry.sourceState,
-              })),
-            });
-          }
-
-          if (supplierPlan.shortlistItems.length > 0) {
-            await database.supplierShortlistItem.createMany({
-              data: supplierPlan.shortlistItems.map((entry) => ({
-                evaluationId: evaluation.evaluation_id,
-                supplierId: entry.supplierNormalizedName
-                  ? (supplierIds.get(entry.supplierNormalizedName) ?? null)
-                  : null,
-                candidateLabel: entry.candidateLabel,
-                category: entry.category,
-                fitNote: entry.fitNote,
-                missingInformation: toRequiredPrismaJsonValue(
-                  entry.missingInformation,
+                idempotencyKey: idempotencyKey ?? null,
+                decisionOutput,
+                auditRecord,
+                narrative: evaluation.narrative,
+                narrativeMetadata: toPrismaJsonObject(
+                  evaluation.narrative_metadata,
                 ),
-                reviewStatus: entry.reviewStatus,
-              })),
-            });
-          }
-
-          const evidenceLinksById = new Map(
-            supplierPlan.evidenceLinks.map((entry) => [
-              entry.evidenceId,
-              entry.supplierNormalizedName,
-            ]),
-          );
-
-          for (const evidenceRecord of evaluation.audit_record.typed_evidence) {
-            const storageEvidenceId = `${evaluation.case_id}:${evidenceRecord.evidence_id}`;
-            const supplierNormalizedName = evidenceLinksById.get(
-              evidenceRecord.evidence_id,
-            );
-
-            await database.evidenceRecord.upsert({
-              where: { id: storageEvidenceId },
-              update: {
-                evidenceType: evidenceRecord.evidence_type,
-                title: evidenceRecord.title,
-                strengthLevel: evidenceRecord.strength_level,
-                supplierName: evidenceRecord.supplier_name,
-                supplierId: supplierNormalizedName
-                  ? (supplierIds.get(supplierNormalizedName) ?? null)
-                  : null,
-                payload: toPrismaJsonObject(evidenceRecord),
-              },
-              create: {
-                id: storageEvidenceId,
-                caseId: evaluation.case_id,
-                evidenceType: evidenceRecord.evidence_type,
-                title: evidenceRecord.title,
-                strengthLevel: evidenceRecord.strength_level,
-                supplierName: evidenceRecord.supplier_name,
-                supplierId: supplierNormalizedName
-                  ? (supplierIds.get(supplierNormalizedName) ?? null)
-                  : null,
-                payload: toPrismaJsonObject(evidenceRecord),
-              },
-            });
-          }
-
-          await database.auditEvent.create({
-            data: {
-              id: evaluation.audit_record.audit_id,
-              caseId: evaluation.case_id,
-              evaluationId: evaluation.evaluation_id,
-              eventType: 'evaluation_completed',
-              actorRole: evaluation.audit_record.actor_role,
-              actorId: evaluation.audit_record.actor_id,
-              payload: toPrismaJsonObject({
-                summary: evaluation.audit_record.summary,
-                confidence_level:
+                confidenceLevel:
                   evaluation.decision_output.confidence_and_uncertainty_summary
                     .confidence_level,
-                missing_data_count: evaluation.audit_record.missing_data_count,
-                defaults_count: evaluation.audit_record.defaults_count,
-              }),
-            },
-          });
+                provenanceSummary: toPrismaJsonObject({
+                  provenance_notes:
+                    evaluation.decision_output.confidence_and_uncertainty_summary
+                      .provenance_notes,
+                  agent_pipeline_trace:
+                    evaluation.audit_record.agent_pipeline_trace,
+                }),
+                scoringSummary: toPrismaJsonObject({
+                  sensitivity_level:
+                    evaluation.decision_output.confidence_and_uncertainty_summary
+                      .sensitivity_level,
+                  recommendation_scores:
+                    evaluation.decision_output.prioritized_improvement_options.map(
+                      (recommendation) => ({
+                        recommendation_id: recommendation.recommendation_id,
+                        priority_score: recommendation.priority_score ?? null,
+                      }),
+                    ),
+                }),
+                defaultsUsed: evaluation.normalized_case.defaults_used,
+                missingData: evaluation.normalized_case.missing_data,
+                assumptions: evaluation.normalized_case.assumptions,
+              },
+            });
 
-          if (evaluation.simulation_enrichment) {
+            if (evaluation.simulation_enrichment) {
+              await database.simulationArtifactRecord.create({
+                data: {
+                  evaluationId: evaluation.evaluation_id,
+                  status: evaluation.simulation_enrichment.status,
+                  modelVersion: evaluation.simulation_enrichment.model_version,
+                  inputSnapshot: toPrismaJsonObject(
+                    evaluation.simulation_enrichment.input_snapshot,
+                  ),
+                  derivedObservations: toRequiredPrismaJsonValue(
+                    evaluation.simulation_enrichment.derived_observations,
+                  ),
+                  series: toRequiredPrismaJsonValue(
+                    evaluation.simulation_enrichment.series,
+                  ),
+                  assumptions: toRequiredPrismaJsonValue(
+                    evaluation.simulation_enrichment.assumptions,
+                  ),
+                  confidence: toPrismaJsonObject(
+                    evaluation.simulation_enrichment.confidence,
+                  ),
+                  provenance: toPrismaJsonObject(
+                    evaluation.simulation_enrichment.provenance,
+                  ),
+                  failureDetail: evaluation.simulation_enrichment.failure_detail
+                    ? toPrismaJsonObject(
+                        evaluation.simulation_enrichment.failure_detail,
+                      )
+                    : Prisma.JsonNull,
+                },
+              });
+            }
+
+            const supplierIds = new Map<string, string>();
+
+            for (const supplier of supplierPlan.suppliers) {
+              const record = await database.supplier.upsert({
+                where: { normalizedName: supplier.normalizedName },
+                update: {
+                  displayName: supplier.displayName,
+                  category: supplier.category ?? undefined,
+                  region: supplier.region ?? undefined,
+                  metadata: toPrismaJsonObject(supplier.metadata),
+                },
+                create: {
+                  normalizedName: supplier.normalizedName,
+                  displayName: supplier.displayName,
+                  category: supplier.category,
+                  region: supplier.region,
+                  metadata: toPrismaJsonObject(supplier.metadata),
+                },
+                select: {
+                  id: true,
+                  normalizedName: true,
+                },
+              });
+
+              supplierIds.set(record.normalizedName, record.id);
+            }
+
+            await database.caseSupplierPreference.deleteMany({
+              where: { caseId: evaluation.case_id },
+            });
+
+            if (supplierPlan.casePreferences.length > 0) {
+              await database.caseSupplierPreference.createMany({
+                data: supplierPlan.casePreferences.map((entry) => ({
+                  caseId: evaluation.case_id,
+                  supplierId: entry.supplierNormalizedName
+                    ? (supplierIds.get(entry.supplierNormalizedName) ?? null)
+                    : null,
+                  supplierLabel: entry.supplierLabel,
+                  preferenceType: entry.preferenceType,
+                  note: entry.note,
+                  sourceState: entry.sourceState,
+                })),
+              });
+            }
+
+            if (supplierPlan.shortlistItems.length > 0) {
+              await database.supplierShortlistItem.createMany({
+                data: supplierPlan.shortlistItems.map((entry) => ({
+                  evaluationId: evaluation.evaluation_id,
+                  supplierId: entry.supplierNormalizedName
+                    ? (supplierIds.get(entry.supplierNormalizedName) ?? null)
+                    : null,
+                  candidateLabel: entry.candidateLabel,
+                  category: entry.category,
+                  fitNote: entry.fitNote,
+                  missingInformation: toRequiredPrismaJsonValue(
+                    entry.missingInformation,
+                  ),
+                  reviewStatus: entry.reviewStatus,
+                })),
+              });
+            }
+
+            const evidenceLinksById = new Map(
+              supplierPlan.evidenceLinks.map((entry) => [
+                entry.evidenceId,
+                entry.supplierNormalizedName,
+              ]),
+            );
+
+            for (const evidenceRecord of evaluation.audit_record.typed_evidence) {
+              const storageEvidenceId = `${evaluation.case_id}:${evidenceRecord.evidence_id}`;
+              const supplierNormalizedName = evidenceLinksById.get(
+                evidenceRecord.evidence_id,
+              );
+
+              await database.evidenceRecord.upsert({
+                where: { id: storageEvidenceId },
+                update: {
+                  evidenceType: evidenceRecord.evidence_type,
+                  title: evidenceRecord.title,
+                  strengthLevel: evidenceRecord.strength_level,
+                  supplierName: evidenceRecord.supplier_name,
+                  supplierId: supplierNormalizedName
+                    ? (supplierIds.get(supplierNormalizedName) ?? null)
+                    : null,
+                  payload: toPrismaJsonObject(evidenceRecord),
+                },
+                create: {
+                  id: storageEvidenceId,
+                  caseId: evaluation.case_id,
+                  evidenceType: evidenceRecord.evidence_type,
+                  title: evidenceRecord.title,
+                  strengthLevel: evidenceRecord.strength_level,
+                  supplierName: evidenceRecord.supplier_name,
+                  supplierId: supplierNormalizedName
+                    ? (supplierIds.get(supplierNormalizedName) ?? null)
+                    : null,
+                  payload: toPrismaJsonObject(evidenceRecord),
+                },
+              });
+            }
+
             await database.auditEvent.create({
               data: {
-                id: randomUUID(),
+                id: evaluation.audit_record.audit_id,
                 caseId: evaluation.case_id,
                 evaluationId: evaluation.evaluation_id,
-                eventType: `simulation_enrichment_${evaluation.simulation_enrichment.status}`,
+                eventType: 'evaluation_completed',
                 actorRole: evaluation.audit_record.actor_role,
                 actorId: evaluation.audit_record.actor_id,
                 payload: toPrismaJsonObject({
-                  model_version: evaluation.simulation_enrichment.model_version,
+                  summary: evaluation.audit_record.summary,
                   confidence_level:
-                    evaluation.simulation_enrichment.confidence.level,
-                  derived_observation_count:
-                    evaluation.simulation_enrichment.derived_observations
-                      .length,
-                  series_count: evaluation.simulation_enrichment.series.length,
-                  failure_detail:
-                    evaluation.simulation_enrichment.failure_detail,
+                    evaluation.decision_output.confidence_and_uncertainty_summary
+                      .confidence_level,
+                  missing_data_count: evaluation.audit_record.missing_data_count,
+                  defaults_count: evaluation.audit_record.defaults_count,
+                  runtime_versions: evaluation.audit_record.runtime_versions,
+                  traceability: evaluation.audit_record.traceability,
                 }),
               },
             });
+
+            if (evaluation.simulation_enrichment) {
+              await database.auditEvent.create({
+                data: {
+                  id: randomUUID(),
+                  caseId: evaluation.case_id,
+                  evaluationId: evaluation.evaluation_id,
+                  eventType: `simulation_enrichment_${evaluation.simulation_enrichment.status}`,
+                  actorRole: evaluation.audit_record.actor_role,
+                  actorId: evaluation.audit_record.actor_id,
+                  payload: toPrismaJsonObject({
+                    model_version:
+                      evaluation.simulation_enrichment.model_version,
+                    confidence_level:
+                      evaluation.simulation_enrichment.confidence.level,
+                    derived_observation_count:
+                      evaluation.simulation_enrichment.derived_observations
+                        .length,
+                    series_count:
+                      evaluation.simulation_enrichment.series.length,
+                    failure_detail:
+                      evaluation.simulation_enrichment.failure_detail,
+                  }),
+                },
+              });
+            }
+          });
+        } catch (error) {
+          if (
+            idempotencyKey &&
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002'
+          ) {
+            const existing =
+              await this.getEvaluationByIdempotencyKey(idempotencyKey);
+
+            if (existing) {
+              return existing;
+            }
           }
-        });
+
+          throw error;
+        }
 
         return evaluation;
       },
@@ -890,6 +941,38 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         });
       },
       { evaluation_id: evaluationId },
+    );
+  }
+
+  async getEvaluationByIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<EvaluationResponse | null> {
+    return withSpan(
+      'database.evaluation.get_by_idempotency',
+      async () => {
+        const record = await this.prisma.evaluationRecord.findUnique({
+          where: { idempotencyKey },
+          include: { case: true, simulationArtifact: true },
+        });
+
+        if (!record) {
+          return null;
+        }
+
+        return evaluationResponseSchema.parse({
+          evaluation_id: record.id,
+          case_id: record.caseId,
+          normalized_case: record.case.normalizedCase,
+          decision_output: record.decisionOutput,
+          audit_record: record.auditRecord,
+          narrative: record.narrative,
+          narrative_metadata: record.narrativeMetadata,
+          simulation_enrichment: record.simulationArtifact
+            ? fromSimulationArtifactRecord(record.simulationArtifact)
+            : undefined,
+        });
+      },
+      { idempotency_key: idempotencyKey },
     );
   }
 

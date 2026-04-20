@@ -8,7 +8,6 @@ export default async function EvaluationPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     tab?: string;
-    compare?: string;
   }>;
 }) {
   const { id } = await params;
@@ -26,7 +25,6 @@ export default async function EvaluationPage({
     <main>
       <EvaluationResultView
         evaluationId={id}
-        initialComparisonEvaluationId={resolvedSearchParams.compare ?? null}
         initialTab={initialTab}
       />
     </main>

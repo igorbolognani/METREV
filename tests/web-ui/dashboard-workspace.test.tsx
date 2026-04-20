@@ -2,10 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
-import type {
-  EvaluationListResponse,
-  ExternalEvidenceCatalogListResponse,
-} from '@metrev/domain-contracts';
+import type { DashboardWorkspaceResponse } from '@metrev/domain-contracts';
 import { DashboardWorkspaceView } from '../../apps/web-ui/src/components/dashboard-workspace';
 
 vi.mock('next/link', () => ({
@@ -17,8 +14,59 @@ vi.mock('next/link', () => ({
     React.createElement('a', { href, ...props }, children),
 }));
 
-const evaluationList = {
-  items: [
+const workspace = {
+  meta: {
+    generated_at: '2026-04-20T12:00:00.000Z',
+    versions: {
+      contract_version: '0.3',
+      ontology_version: '0.3',
+      ruleset_version: 'mixed(0.3,0.2)',
+      prompt_version: 'not_applicable',
+      model_version: 'not_applicable',
+      workspace_schema_version: '014.0.0',
+    },
+    traceability: {
+      subject_type: 'workspace',
+      subject_id: 'dashboard',
+      entrypoint: 'api',
+      transformation_stages: ['evaluation_list', 'dashboard_workspace_presenter'],
+      rule_refs: [],
+      evidence_refs: ['evidence-001'],
+      defaults_count: 0,
+      missing_data_count: 0,
+      evidence_count: 1,
+      case_id: 'CASE-002',
+      evaluation_id: 'eval-002',
+    },
+  },
+  summary: {
+    total_runs: 2,
+    total_cases: 2,
+    high_confidence_runs: 1,
+    modeled_runs: 1,
+    pending_evidence: 1,
+    accepted_evidence: 1,
+    rejected_evidence: 1,
+  },
+  hero: {
+    title: 'Bioelectrochemical decision workspace',
+    subtitle:
+      'Deterministic evaluation, evidence review, case history, and reporting now share one operational surface.',
+    latest_case_id: 'CASE-002',
+    latest_summary: 'Retrofit run with modeled uplift and higher confidence.',
+  },
+  trends: {
+    run_growth: [1, 2],
+    confidence: [60, 90],
+    model_coverage: [45, 100],
+  },
+  quick_actions: {
+    new_evaluation_href: '/cases/new',
+    evidence_review_href: '/evidence/review',
+    latest_evaluation_href: '/evaluations/eval-002',
+    latest_case_history_href: '/cases/CASE-002/history',
+  },
+  recent_runs: [
     {
       evaluation_id: 'eval-002',
       case_id: 'CASE-002',
@@ -30,32 +78,14 @@ const evaluationList = {
       narrative_available: false,
       simulation_summary: {
         status: 'completed',
-        derived_observations_count: 4,
-        chart_series_count: 3,
-        primary_reference_source: 'simple-electrochem-model',
-      },
-    },
-    {
-      evaluation_id: 'eval-001',
-      case_id: 'CASE-001',
-      created_at: '2026-04-14T09:30:00.000Z',
-      confidence_level: 'medium',
-      technology_family: 'microbial_electrolysis_cell',
-      primary_objective: 'nitrogen_recovery',
-      summary: 'Pilot review awaiting separator durability confirmation.',
-      narrative_available: false,
-      simulation_summary: {
-        status: 'insufficient_data',
-        derived_observations_count: 1,
-        chart_series_count: 0,
-        primary_reference_source: null,
+        model_version: 'internal-v1',
+        confidence_level: 'high',
+        derived_observation_count: 4,
+        has_series: true,
       },
     },
   ],
-} satisfies EvaluationListResponse;
-
-const evidenceCatalog = {
-  items: [
+  evidence_backlog: [
     {
       id: 'evidence-001',
       title: 'Accepted sidestream benchmark',
@@ -78,30 +108,23 @@ const evidenceCatalog = {
       updated_at: '2026-04-16T08:00:00.000Z',
     },
   ],
-  summary: {
-    total: 3,
-    pending: 1,
-    accepted: 1,
-    rejected: 1,
-  },
-} satisfies ExternalEvidenceCatalogListResponse;
+} satisfies DashboardWorkspaceResponse;
 
 describe('dashboard workspace', () => {
-  it('renders workspace overview, deep links, and evidence backlog details', () => {
+  it('renders operational KPIs, recent runs, and review backlog from the workspace payload', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashboardWorkspaceView, {
-        evaluationList,
-        evidenceCatalog,
+        workspace,
       }),
     );
 
-    expect(html).toContain('Bioelectrochemical decision workbench');
-    expect(html).toContain('Workspace scope');
-    expect(html).toContain('2');
-    expect(html).toContain('Comparison dock');
-    expect(html).toContain('History rail');
+    expect(html).toContain('Bioelectrochemical decision workspace');
+    expect(html).toContain('Saved runs');
+    expect(html).toContain('High-confidence runs');
     expect(html).toContain('CASE-002');
-    expect(html).toContain('Imported records waiting for analyst review');
+    expect(html).toContain('Open result');
     expect(html).toContain('Accepted sidestream benchmark');
+    expect(html).not.toContain('Comparison dock');
+    expect(html).not.toContain('History rail');
   });
 });

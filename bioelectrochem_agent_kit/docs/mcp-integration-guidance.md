@@ -1,5 +1,7 @@
 # MCP Integration Guidance for the Bioelectrochemical Decision Platform
 
+Reference note: this is antecedent domain-kit guidance. For the active METREV repository tooling posture, use `docs/runtime-tooling-setup.md`, `.vscode/mcp.json`, `.vscode/mcp.template.jsonc`, and `docs/repository-authority-map.md`.
+
 ## Purpose
 
 This document defines how MCP should be introduced into the project without letting external tools destabilize the ontology, rules, or evidence quality.
@@ -16,6 +18,7 @@ The short version is:
 ## Why MCP belongs here
 
 The project will eventually benefit from structured access to:
+
 - issue and implementation workflow context
 - internal benchmark stores
 - supplier catalogs
@@ -23,6 +26,7 @@ The project will eventually benefit from structured access to:
 - pilot logs or historical datasets
 
 However, these gains only matter after the system can:
+
 - normalize case input
 - type evidence correctly
 - score alternatives deterministically
@@ -35,7 +39,9 @@ If those foundations are not in place, MCP just increases the volume of unstruct
 ## Adoption phases
 
 ### Phase 0 — GitHub workflow support
+
 Keep MCP focused on repository workflow:
+
 - issues
 - pull requests
 - ADR/spec navigation
@@ -44,7 +50,9 @@ Keep MCP focused on repository workflow:
 This phase is low risk and complements your existing AI-assisted development workflow.
 
 ### Phase 1 — Read-only evidence enrichment
+
 Add read-only MCP services for:
+
 - internal literature index
 - benchmark lookup
 - supplier record lookup
@@ -52,7 +60,9 @@ Add read-only MCP services for:
 In this phase, MCP helps retrieve candidate evidence but does not decide.
 
 ### Phase 2 — Structured internal services
+
 Add project-owned MCP servers that expose:
+
 - normalized evidence records
 - benchmark datasets
 - supplier metadata
@@ -61,7 +71,9 @@ Add project-owned MCP servers that expose:
 This phase is where MCP becomes strategically valuable because the system is consuming project-owned structures, not random external text.
 
 ### Phase 3 — Operational integration
+
 Only after the platform matures should you consider:
+
 - historian or pilot-log access
 - LIMS-style measurements
 - live monitoring metadata
@@ -82,14 +94,14 @@ Only after the platform matures should you consider:
 
 ## Recommended MCP categories
 
-| MCP category | Use early? | Purpose |
-|---|---|---|
-| GitHub workflow | Yes | specs, ADRs, issues, PR context |
-| Internal evidence index | Yes, when available | retrieve candidate evidence objects |
-| Supplier registry | Yes, when available | shortlist and metadata lookup |
-| Case benchmark service | Later | compare cases against structured benchmarks |
-| Live plant data / historian | Much later | operational integration, not foundation work |
-| Arbitrary live-web search via MCP | No | too noisy for early rule-driven decisions |
+| MCP category                      | Use early?          | Purpose                                      |
+| --------------------------------- | ------------------- | -------------------------------------------- |
+| GitHub workflow                   | Yes                 | specs, ADRs, issues, PR context              |
+| Internal evidence index           | Yes, when available | retrieve candidate evidence objects          |
+| Supplier registry                 | Yes, when available | shortlist and metadata lookup                |
+| Case benchmark service            | Later               | compare cases against structured benchmarks  |
+| Live plant data / historian       | Much later          | operational integration, not foundation work |
+| Arbitrary live-web search via MCP | No                  | too noisy for early rule-driven decisions    |
 
 ---
 
@@ -99,6 +111,7 @@ Your existing `.vscode/mcp.json` can stay minimal at first.
 When you are ready, expand it in small steps.
 
 Use:
+
 - user inputs for secrets
 - workspace variables where appropriate
 - sandboxed stdio servers on Linux/macOS when local execution is needed
@@ -116,9 +129,7 @@ Below is a **template example**, not a claim that these servers already exist.
     "evidence-index": {
       "type": "stdio",
       "command": "python",
-      "args": [
-        "${workspaceFolder}/tools/mcp/evidence_index_server.py"
-      ],
+      "args": ["${workspaceFolder}/tools/mcp/evidence_index_server.py"],
       "sandboxEnabled": true,
       "env": {
         "EVIDENCE_DB_PATH": "${workspaceFolder}/data/evidence.db"
@@ -127,9 +138,7 @@ Below is a **template example**, not a claim that these servers already exist.
     "supplier-registry": {
       "type": "stdio",
       "command": "python",
-      "args": [
-        "${workspaceFolder}/tools/mcp/supplier_registry_server.py"
-      ],
+      "args": ["${workspaceFolder}/tools/mcp/supplier_registry_server.py"],
       "sandboxEnabled": true,
       "env": {
         "SUPPLIER_DB_PATH": "${workspaceFolder}/data/suppliers.db"

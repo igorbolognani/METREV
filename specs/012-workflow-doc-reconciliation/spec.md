@@ -1,5 +1,7 @@
 # Feature Specification — Workflow And Documentation Reconciliation
 
+Execution note: `specs/015-repository-authority-and-structure-consolidation/` is now the umbrella cleanup pack. Keep 012 as the detailed sub-slice for doc, workflow, and tooling reconciliation.
+
 ## Objective
 
 Align the maintained docs, prompts, tooling notes, and reference surfaces with the current shipped runtime so the repository stops signaling multiple competing stories about how METREV actually works.

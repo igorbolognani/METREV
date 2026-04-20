@@ -1,10 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider               = "prisma-client"
+  output                 = "../generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -129,6 +132,7 @@ model CaseRecord {
 model EvaluationRecord {
   id                     String                    @id
   caseId                 String
+  idempotencyKey         String?                   @unique
   decisionOutput         Json
   auditRecord            Json
   narrative              String?

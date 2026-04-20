@@ -3,15 +3,15 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    evaluationResponseSchema,
-    type ExternalEvidenceCatalogItemDetail,
+  evaluationResponseSchema,
+  type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -523,6 +523,239 @@ describe('api runtime flow', () => {
       id: pendingCatalogItem.id,
       review_status: 'rejected',
       source_state: 'reviewed',
+    });
+
+    await app.close();
+  });
+
+  it('reuses the same evaluation when the same idempotency key is submitted twice', async () => {
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      sessionResolver: testSessionResolver,
+    });
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+        'idempotency-key': 'idem-case-001',
+      },
+      payload: fixture,
+    });
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+        'idempotency-key': 'idem-case-001',
+      },
+      payload: fixture,
+    });
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+    expect(first.json().evaluation_id).toBe(second.json().evaluation_id);
+
+    await app.close();
+  });
+
+  it('serves workspace and export routes for a persisted evaluation', async () => {
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository({
+        externalEvidenceCatalogItems: [acceptedCatalogItem],
+      }),
+      sessionResolver: testSessionResolver,
+    });
+
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+      },
+      payload: fixture,
+    });
+
+    const created = evaluationResponseSchema.parse(createResponse.json());
+
+    const dashboardResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/dashboard',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(dashboardResponse.statusCode).toBe(200);
+    expect(dashboardResponse.json()).toMatchObject({
+      summary: expect.objectContaining({
+        total_runs: 1,
+      }),
+    });
+
+    const workspaceResponse = await app.inject({
+      method: 'GET',
+      url: `/api/workspace/evaluations/${created.evaluation_id}`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(workspaceResponse.statusCode).toBe(200);
+    expect(workspaceResponse.json()).toMatchObject({
+      overview: expect.objectContaining({
+        hero_cards: expect.arrayContaining([
+          expect.objectContaining({
+            label: 'Decision posture',
+          }),
+        ]),
+      }),
+      links: expect.objectContaining({
+        report_href: `/evaluations/${created.evaluation_id}/report`,
+      }),
+    });
+
+    const reportResponse = await app.inject({
+      method: 'GET',
+      url: `/api/workspace/evaluations/${created.evaluation_id}/report`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(reportResponse.statusCode).toBe(200);
+    expect(reportResponse.json()).toMatchObject({
+      sections: expect.objectContaining({
+        stack_diagnosis: expect.any(Object),
+      }),
+    });
+
+    const jsonExportResponse = await app.inject({
+      method: 'GET',
+      url: `/api/exports/evaluations/${created.evaluation_id}/json`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(jsonExportResponse.statusCode).toBe(200);
+    expect(jsonExportResponse.headers['content-disposition']).toContain(
+      '.json',
+    );
+    expect(jsonExportResponse.json()).toMatchObject({
+      meta: expect.objectContaining({
+        versions: expect.objectContaining({
+          workspace_schema_version: '014.0.0',
+        }),
+      }),
+    });
+
+    const csvExportResponse = await app.inject({
+      method: 'GET',
+      url: `/api/exports/evaluations/${created.evaluation_id}/csv`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(csvExportResponse.statusCode).toBe(200);
+    expect(csvExportResponse.headers['content-type']).toContain('text/csv');
+    expect(csvExportResponse.headers['x-metrev-workspace-schema-version']).toBe(
+      '014.0.0',
+    );
+    expect(csvExportResponse.body).toContain('section,label,primary_value');
+
+    await app.close();
+  });
+
+  it('serves dedicated history, comparison, and evidence review workspace routes', async () => {
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository({
+        externalEvidenceCatalogItems: [acceptedCatalogItem, pendingCatalogItem],
+      }),
+      sessionResolver: testSessionResolver,
+    });
+
+    const baselineResponse = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+      },
+      payload: fixture,
+    });
+    const currentResponse = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+      },
+      payload: {
+        ...fixture,
+        feed_and_operation: {
+          ...fixture.feed_and_operation,
+          temperature_c: 31,
+          pH: 7.4,
+        },
+      },
+    });
+
+    const baseline = evaluationResponseSchema.parse(baselineResponse.json());
+    const current = evaluationResponseSchema.parse(currentResponse.json());
+
+    const historyResponse = await app.inject({
+      method: 'GET',
+      url: `/api/workspace/cases/${current.case_id}/history`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json()).toMatchObject({
+      current_evaluation_id: current.evaluation_id,
+      timeline: expect.arrayContaining([
+        expect.objectContaining({
+          evaluation: expect.objectContaining({
+            evaluation_id: current.evaluation_id,
+          }),
+        }),
+      ]),
+    });
+
+    const comparisonResponse = await app.inject({
+      method: 'GET',
+      url: `/api/workspace/evaluations/${current.evaluation_id}/compare/${baseline.evaluation_id}`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(comparisonResponse.statusCode).toBe(200);
+    expect(comparisonResponse.json()).toMatchObject({
+      conclusion: expect.objectContaining({
+        summary: expect.stringContaining(current.case_id),
+      }),
+      metric_deltas: expect.any(Array),
+      recommendation_deltas: expect.any(Array),
+    });
+
+    const evidenceReviewResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/review?status=accepted&q=benchmark',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(evidenceReviewResponse.statusCode).toBe(200);
+    expect(evidenceReviewResponse.json()).toMatchObject({
+      filters: expect.objectContaining({
+        active_status: 'accepted',
+        search_query: 'benchmark',
+      }),
+      summary: expect.objectContaining({
+        accepted: 1,
+      }),
     });
 
     await app.close();

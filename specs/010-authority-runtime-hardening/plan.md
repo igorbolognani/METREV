@@ -1,8 +1,10 @@
 # Implementation Plan — Authority Runtime Hardening
 
+Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file remains the detailed hardening plan for the authority-runtime sub-slice.
+
 ## Summary
 
-Harden the live authority model by documenting the current contract-first executed rule path, adding runtime assertions around canonical file loading and output sections, and aligning Prisma docs and command behavior with the validated 6.19.x repository posture.
+Harden the live authority model by documenting the current contract-first executed rule path, adding runtime assertions around canonical file loading and output sections, and aligning Prisma docs and command behavior with the validated Prisma 7 repository posture.
 
 ## Source-of-truth files
 
@@ -31,7 +33,7 @@ Harden the live authority model by documenting the current contract-first execut
 
 ## Research inputs
 
-- Prisma 6.19.x docs for schema and config behavior
+- Prisma 7 docs for `prisma.config.ts`, datasource behavior, and generated-client posture
 - current runtime loaders and reconciliation metadata
 - root docs and workflow assets that still implied multiple authorities
 

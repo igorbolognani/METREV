@@ -2,18 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import * as React from 'react';
 
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
 import { fetchExternalEvidenceCatalog } from '@/lib/api';
+import { formatToken } from '@/lib/formatting';
 
-function formatToken(value: string): string {
-  return value
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
-}
+void React;
 
 export function AcceptedEvidenceSelector({
   selectedEvidence,

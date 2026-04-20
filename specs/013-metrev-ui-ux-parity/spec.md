@@ -1,5 +1,7 @@
 # Feature Specification — Analytical Workspace Refactor
 
+Execution note: 013 remains the UI antecedent for this workstream. Active execution planning now lives in [014-local-first-professional-workspace](../014-local-first-professional-workspace/spec.md).
+
 ## Objective
 
 Refactor METREV into a task-oriented analytical workspace that separates setup, decision review, comparison, and audit concerns while preserving the current deterministic logic, provenance posture, and contract-owned runtime behavior.

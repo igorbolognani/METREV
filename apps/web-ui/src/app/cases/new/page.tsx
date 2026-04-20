@@ -32,17 +32,6 @@ export default async function NewCasePage() {
 
   return (
     <main>
-      <section className="hero workspace-banner">
-        <span className="badge">Input workspace</span>
-        <h1>Draft a new deterministic evaluation</h1>
-        <p className="muted">
-          Configure context, operating envelope, and supporting evidence in a
-          denser drafting surface before handing the case into the decision
-          workspace. Golden-case presets remain available for deterministic
-          smoke validation.
-        </p>
-      </section>
-
       <CaseForm />
     </main>
   );

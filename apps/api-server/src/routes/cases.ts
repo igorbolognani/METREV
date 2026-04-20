@@ -92,6 +92,11 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
         evaluationRepository: app.evaluationRepository,
         logger: app.log,
         environment: process.env.NODE_ENV,
+        idempotencyKey:
+          typeof request.headers['idempotency-key'] === 'string'
+            ? request.headers['idempotency-key']
+            : undefined,
+        entrypoint: 'api',
       });
 
       return reply.code(201).send(evaluation);

@@ -19,6 +19,7 @@ import { evaluateSimulationEnrichment } from '@metrev/electrochem-models';
 import { generateNarrative } from '@metrev/llm-adapter';
 import { runCaseEvaluation } from '@metrev/rule-engine';
 import { withSpan } from '@metrev/telemetry';
+import { buildRuntimeVersions } from '../presenters/workspace-presenters';
 
 type RuntimeLogger = Pick<FastifyBaseLogger, 'warn'>;
 
@@ -29,6 +30,8 @@ export interface CreatePersistedCaseEvaluationInput {
   logger: RuntimeLogger;
   environment?: string;
   simulationMode?: string;
+  idempotencyKey?: string;
+  entrypoint?: 'ui' | 'api' | 'batch' | 'test';
 }
 
 const catalogEvidenceIdPrefix = 'catalog:';
@@ -158,6 +161,18 @@ function logDecisionOutputValidationIssue(
 export async function createPersistedCaseEvaluation(
   input: CreatePersistedCaseEvaluationInput,
 ): Promise<EvaluationResponse> {
+  const idempotencyKey = input.idempotencyKey?.trim();
+
+  if (idempotencyKey) {
+    const existing = await input.evaluationRepository.getEvaluationByIdempotencyKey(
+      idempotencyKey,
+    );
+
+    if (existing) {
+      return existing;
+    }
+  }
+
   const evaluation = await withSpan(
     'case.evaluate',
     async () => {
@@ -196,6 +211,14 @@ export async function createPersistedCaseEvaluation(
         decisionOutput: reviewedDecisionOutput,
         normalizedCase,
       });
+      const evaluationId = randomUUID();
+      const runtimeVersions = buildRuntimeVersions({
+        promptVersion: narrativeResult.narrativeMetadata.prompt_version,
+        modelVersion:
+          simulationEnrichment.model_version ??
+          narrativeResult.narrativeMetadata.model ??
+          null,
+      });
       const auditRecord = createAuditRecord({
         actorRole: input.actor.role,
         actorId: input.actor.userId,
@@ -203,10 +226,14 @@ export async function createPersistedCaseEvaluation(
         normalizedCase,
         rawInput: sanitizedRawInput,
         simulationEnrichment,
+        runtimeVersions,
+        entrypoint: input.entrypoint ?? 'api',
+        evaluationId,
+        idempotencyKey,
       });
 
       return evaluationResponseSchema.parse({
-        evaluation_id: randomUUID(),
+        evaluation_id: evaluationId,
         case_id: normalizedCase.case_id,
         normalized_case: normalizedCase,
         decision_output: reviewedDecisionOutput,

@@ -1,5 +1,7 @@
 # Tasks — Authority Runtime Hardening
 
+Execution note: 015 is the umbrella consolidation pack. Keep this task list for the detailed authority-runtime sub-slice only.
+
 ## Workstream 1 — Artifacts and design
 
 - [ ] T1 Record the accepted authority split in an ADR and a maintained feature pack.
@@ -12,7 +14,7 @@
 
 ## Workstream 3 — Validation and follow-through
 
-- [ ] T5 Update root docs to demote `stack.md`, clarify MCP defaults, and explain the current Prisma 6.19.x setup.
+- [ ] T5 Update root docs to demote `stack.md`, clarify MCP defaults, and explain the current Prisma 7 setup.
 - [ ] T6 Run test, generate, build, and targeted local-tooling validation and record the outcome.
 
 ## Dependencies

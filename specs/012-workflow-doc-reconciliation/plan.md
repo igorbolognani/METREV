@@ -1,5 +1,7 @@
 # Implementation Plan — Workflow And Documentation Reconciliation
 
+Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file remains the detailed plan for the doc and tooling reconciliation sub-slice.
+
 ## Summary
 
 Reconcile the root documentation and workflow surfaces with the shipped runtime by making authority explicit, demoting stale or future-facing references, and documenting local tooling defaults versus optional machine-local integrations.

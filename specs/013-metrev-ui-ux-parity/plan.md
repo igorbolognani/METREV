@@ -1,5 +1,7 @@
 # Implementation Plan — Analytical Workspace Refactor
 
+Execution note: 013 remains the historical UI refactor pack. The active local-first execution plan now lives in [014-local-first-professional-workspace](../014-local-first-professional-workspace/plan.md).
+
 ## Summary
 
 Use `specs/013-metrev-ui-ux-parity/` as the canonical umbrella for a broader analytical-workspace refactor: decision workspace first, then input, comparison, history/audit, and evidence review, with explicit output-side presentation mappers separating product composition from the raw runtime payload.

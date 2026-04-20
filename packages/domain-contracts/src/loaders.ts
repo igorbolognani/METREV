@@ -60,6 +60,7 @@ export interface ContractOutputDefinition {
 }
 
 export interface ContractDefaultsPolicy {
+  version?: string;
   defaults_policy: {
     principle: string;
     defaults: Record<
@@ -72,6 +73,7 @@ export interface ContractDefaultsPolicy {
 }
 
 export interface ContractCompatibilityDefinition {
+  version?: string;
   compatibility_rules: Array<{
     id: string;
     condition: Record<string, unknown>;
@@ -81,6 +83,7 @@ export interface ContractCompatibilityDefinition {
 }
 
 export interface ContractDiagnosticsDefinition {
+  version?: string;
   diagnostic_rules: Array<{
     id: string;
     name: string;
@@ -92,6 +95,7 @@ export interface ContractDiagnosticsDefinition {
 }
 
 export interface ContractImprovementsDefinition {
+  version?: string;
   improvement_rules: Array<{
     id: string;
     linked_diagnosis: string;
@@ -101,6 +105,7 @@ export interface ContractImprovementsDefinition {
 }
 
 export interface ContractScoringModel {
+  version?: string;
   scoring_model: {
     principle: string;
     dimensions: Record<
@@ -121,6 +126,7 @@ export interface ContractScoringModel {
 }
 
 export interface ContractSensitivityPolicy {
+  version?: string;
   sensitivity_policy: {
     principle: string;
     tracked_factors: string[];
@@ -129,6 +135,7 @@ export interface ContractSensitivityPolicy {
 }
 
 export interface ContractSupplierNormalization {
+  version?: string;
   supplier_normalization: {
     fields: Record<string, unknown>;
     rule: string;
@@ -136,6 +143,7 @@ export interface ContractSupplierNormalization {
 }
 
 export interface ContractEvidenceSchema {
+  version?: string;
   evidence_record: {
     required_fields: string[];
     optional_fields?: string[];
@@ -155,6 +163,7 @@ export interface ContractPropertyDictionary {
 }
 
 export interface ContractStackOntology {
+  version?: string;
   canonical_entities: Record<string, unknown>;
   stack_blocks: Record<string, unknown>;
   cross_cutting_layers: Record<string, unknown>;

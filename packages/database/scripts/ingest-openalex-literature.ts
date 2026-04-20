@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 import { normalizeOpenAlexWork } from './external-ingestion-shared.mjs';
 
 loadWorkspaceEnv(import.meta.url);
 
-const prisma = new PrismaClient();
+const prisma = getPrismaClient();
 
 async function main() {
   const query = process.env.INGEST_QUERY?.trim();
@@ -184,7 +184,7 @@ async function main() {
 
     throw error;
   } finally {
-    await prisma.$disconnect();
+    await disconnectPrismaClient();
   }
 }
 

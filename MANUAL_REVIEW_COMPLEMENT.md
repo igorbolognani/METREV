@@ -1,5 +1,7 @@
 # Manual review complement
 
+Historical note: this complement records a completed manual review from an earlier cleanup wave. Use `docs/repository-authority-map.md` and `specs/015-repository-authority-and-structure-consolidation/` for active repository-structure decisions.
+
 This complement closes the main remaining review points after the structural sanitation pass.
 
 ## What was manually reviewed

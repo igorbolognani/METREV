@@ -1,5 +1,7 @@
 # Tasks — Workflow And Documentation Reconciliation
 
+Execution note: 015 is the umbrella consolidation pack. Keep this task list for the detailed doc-and-tooling reconciliation sub-slice only.
+
 ## Workstream 1 — Artifacts and design
 
 - [ ] T1 Record the documentation and workflow reconciliation scope in a maintained feature pack.

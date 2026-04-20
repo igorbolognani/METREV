@@ -1,5 +1,7 @@
 # Feature Specification — Authority Runtime Hardening
 
+Execution note: `specs/015-repository-authority-and-structure-consolidation/` is now the umbrella cleanup pack. Keep 010 as the detailed hardening sub-slice for authority metadata, runtime guards, and tooling invariants.
+
 ## Objective
 
 Make METREV's executed authority, local Prisma posture, and runtime-loaded canonical files explicit, validated, and reviewable without changing the deterministic decision behavior.

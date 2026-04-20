@@ -1,6 +1,5 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -9,127 +8,135 @@ import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contract
 
 import { AcceptedEvidenceSelector } from '@/components/accepted-evidence-selector';
 import { PanelTabs } from '@/components/workbench/panel-tabs';
-import { evaluateCase } from '@/lib/api';
+import {
+  WorkspaceDataCard,
+  WorkspaceSection,
+  WorkspaceStatCard,
+} from '@/components/workspace-chrome';
+import {
+  clearPendingSubmission,
+  clearSubmissionError,
+  loadDraftInput,
+  loadSubmissionError,
+  saveDraftInput,
+  savePendingSubmission,
+} from '@/lib/case-draft';
 import {
   buildCaseInputFromFormValues,
   caseIntakePresets,
   defaultCaseIntakeFormValues,
   findCaseIntakePreset,
+  type CaseIntakeFormValues,
 } from '@/lib/case-intake';
+import { formatToken } from '@/lib/formatting';
 
-void React;
+type IntakeTab =
+  | 'context'
+  | 'operation'
+  | 'suppliers'
+  | 'evidence'
+  | 'assumptions';
 
-function formatToken(value: string): string {
-  return value
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
+const numberFieldLabels: Record<
+  'temperature' | 'ph' | 'conductivity' | 'hydraulicRetentionTime',
+  string
+> = {
+  temperature: 'Temperature',
+  ph: 'pH',
+  conductivity: 'Conductivity',
+  hydraulicRetentionTime: 'Hydraulic retention time',
+};
+
+function getNumberFieldError(value: string, label: string): string | null {
+  if (!value.trim()) {
+    return null;
+  }
+
+  return Number.isFinite(Number(value))
+    ? null
+    : `${label} must be a valid number.`;
 }
 
-function populatedCount(value: string) {
+function countCommaSeparated(value: string): number {
   return value
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean).length;
 }
 
-type IntakeTab = 'scenario' | 'conditions' | 'evidence';
-
 export function CaseForm() {
   const router = useRouter();
-  const [formValues, setFormValues] = React.useState(
+  const [formValues, setFormValues] = React.useState<CaseIntakeFormValues>(
     defaultCaseIntakeFormValues,
   );
   const [activePresetId, setActivePresetId] = React.useState<string | null>(
     null,
   );
-  const [activeTab, setActiveTab] = React.useState<IntakeTab>('scenario');
+  const [activeTab, setActiveTab] = React.useState<IntakeTab>('context');
   const [selectedCatalogEvidence, setSelectedCatalogEvidence] = React.useState<
     ExternalEvidenceCatalogItemSummary[]
   >([]);
+  const [submissionError, setSubmissionError] = React.useState<string | null>(
+    null,
+  );
 
-  const mutation = useMutation({
-    mutationFn: evaluateCase,
-    onSuccess: (result) => {
-      router.push(`/evaluations/${result.evaluation_id}`);
-    },
-  });
+  React.useEffect(() => {
+    const storedDraft = loadDraftInput();
+    const storedError = loadSubmissionError();
+
+    if (storedDraft) {
+      setFormValues(storedDraft.formValues);
+      setActivePresetId(storedDraft.activePresetId);
+      setSelectedCatalogEvidence(storedDraft.selectedCatalogEvidence);
+    }
+
+    if (storedError) {
+      setSubmissionError(storedError);
+      clearSubmissionError();
+    }
+  }, []);
+
+  React.useEffect(() => {
+    saveDraftInput({
+      formValues,
+      activePresetId,
+      selectedCatalogEvidence,
+    });
+  }, [activePresetId, formValues, selectedCatalogEvidence]);
 
   const activePreset = findCaseIntakePreset(activePresetId);
   const manualEvidenceCount =
-    formValues.evidenceTitle.trim() && formValues.evidenceSummary.trim()
-      ? 1
-      : 0;
-  const totalEvidenceCount =
-    selectedCatalogEvidence.length + manualEvidenceCount;
-  const summaryCards = [
-    {
-      key: 'context',
-      label: 'Context',
-      value: `${formatToken(formValues.technologyFamily)} · ${formatToken(
-        formValues.primaryObjective,
-      )}`,
-      detail:
-        formValues.deploymentContext.trim() ||
-        'Deployment scope still needs to be stated explicitly.',
-      tone: 'accent',
-    },
-    {
-      key: 'configuration',
-      label: 'Configuration',
-      value: formValues.architectureFamily.trim() || 'Architecture still open',
-      detail:
-        formValues.membranePresence.trim() || 'Membrane posture not recorded',
-      tone: 'neutral',
-    },
-    {
-      key: 'operating',
-      label: 'Operating envelope',
-      value:
-        formValues.temperature.trim() || formValues.ph.trim()
-          ? `${formValues.temperature || 'temp?'} °C · pH ${formValues.ph || '?'}`
-          : 'Temperature and pH pending',
-      detail:
-        formValues.conductivity.trim() ||
-        formValues.hydraulicRetentionTime.trim()
-          ? `${formValues.conductivity || '?'} mS/cm · ${formValues.hydraulicRetentionTime || '?'} h HRT`
-          : 'Conductivity and retention time not set',
-      tone: 'success',
-    },
-    {
-      key: 'evidence',
-      label: 'Evidence',
-      value: `${totalEvidenceCount} attached`,
-      detail:
-        totalEvidenceCount > 0
-          ? 'Manual and reviewed evidence stay explicit in the payload.'
-          : 'No supporting evidence is attached yet.',
-      tone: 'copper',
-    },
-  ] as const;
+    formValues.evidenceTitle.trim() && formValues.evidenceSummary.trim() ? 1 : 0;
+  const evidenceCount = selectedCatalogEvidence.length + manualEvidenceCount;
+  const preferredSupplierCount = countCommaSeparated(formValues.preferredSuppliers);
+  const assumptionCount = countCommaSeparated(formValues.assumptionsNote);
+  const numericFieldErrors = {
+    temperature: getNumberFieldError(
+      formValues.temperature,
+      numberFieldLabels.temperature,
+    ),
+    ph: getNumberFieldError(formValues.ph, numberFieldLabels.ph),
+    conductivity: getNumberFieldError(
+      formValues.conductivity,
+      numberFieldLabels.conductivity,
+    ),
+    hydraulicRetentionTime: getNumberFieldError(
+      formValues.hydraulicRetentionTime,
+      numberFieldLabels.hydraulicRetentionTime,
+    ),
+  };
+  const hasNumericErrors = Object.values(numericFieldErrors).some(Boolean);
   const tabs = [
-    {
-      id: 'scenario',
-      label: 'Scenario',
-      badge: formatToken(formValues.technologyFamily).split(' ').at(0),
-    },
-    {
-      id: 'conditions',
-      label: 'Conditions',
-      badge:
-        formValues.temperature.trim() || formValues.ph.trim() ? 'set' : 'open',
-    },
-    {
-      id: 'evidence',
-      label: 'Evidence',
-      badge: totalEvidenceCount,
-    },
+    { id: 'context', label: 'Case context' },
+    { id: 'operation', label: 'Operating conditions' },
+    { id: 'suppliers', label: 'Supplier context' },
+    { id: 'evidence', label: 'Evidence', badge: evidenceCount },
+    { id: 'assumptions', label: 'Assumptions', badge: assumptionCount || undefined },
   ] as const;
 
-  function updateField<Field extends keyof typeof formValues>(
+  function updateField<Field extends keyof CaseIntakeFormValues>(
     field: Field,
-    value: (typeof formValues)[Field],
+    value: CaseIntakeFormValues[Field],
   ) {
     setFormValues((current) => ({
       ...current,
@@ -145,60 +152,114 @@ export function CaseForm() {
 
     setFormValues(preset.formValues);
     setActivePresetId(preset.id);
-    setActiveTab('scenario');
     setSelectedCatalogEvidence([]);
-    mutation.reset();
+    setActiveTab('context');
+    setSubmissionError(null);
   }
 
   function resetForm() {
     setFormValues(defaultCaseIntakeFormValues);
     setActivePresetId(null);
-    setActiveTab('scenario');
     setSelectedCatalogEvidence([]);
-    mutation.reset();
+    setActiveTab('context');
+    setSubmissionError(null);
+    clearPendingSubmission();
+    clearSubmissionError();
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (hasNumericErrors) {
+      setSubmissionError(
+        'One or more numeric fields are invalid. Fix the highlighted fields before submitting.',
+      );
+      return;
+    }
 
     const payload = buildCaseInputFromFormValues(
       formValues,
       activePreset,
       selectedCatalogEvidence,
     );
+    const idempotencyKey = window.crypto?.randomUUID()
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    await mutation.mutateAsync(payload);
+    setSubmissionError(null);
+    clearSubmissionError();
+    saveDraftInput({
+      formValues,
+      activePresetId,
+      selectedCatalogEvidence,
+    });
+    savePendingSubmission({
+      idempotencyKey,
+      payload,
+      createdAt: new Date().toISOString(),
+    });
+
+    router.push('/cases/new/submitting');
   }
 
   return (
-    <form className="input-workspace" onSubmit={handleSubmit}>
-      <section className="panel input-workspace__main">
-        <div className="input-workspace__header">
-          <div>
-            <span className="badge">Input deck</span>
-            <h2>Scenario setup</h2>
-            <p className="muted">
-              Build the run definition in focused tabs so drafting stays dense,
-              reviewable, and ready to hand off into the decision workspace.
-            </p>
-          </div>
-          <button className="secondary" type="button" onClick={resetForm}>
-            Reset form
-          </button>
-        </div>
+    <form className="workspace-page" onSubmit={handleSubmit}>
+      <section className="workspace-stats-grid" aria-label="Input deck summary">
+        <WorkspaceStatCard
+          label="Scenario"
+          value={`${formatToken(formValues.technologyFamily)} / ${formatToken(formValues.primaryObjective)}`}
+          detail={formValues.architectureFamily || 'Architecture still open.'}
+          tone="accent"
+        />
+        <WorkspaceStatCard
+          label="Operating envelope"
+          value={
+            formValues.temperature || formValues.ph
+              ? `${formValues.temperature || '?'} °C · pH ${formValues.ph || '?'}`
+              : 'Still incomplete'
+          }
+          detail={
+            formValues.conductivity || formValues.hydraulicRetentionTime
+              ? `${formValues.conductivity || '?'} mS/cm · ${formValues.hydraulicRetentionTime || '?'} h`
+              : 'Conductivity and retention time are not set yet.'
+          }
+        />
+        <WorkspaceStatCard
+          label="Supplier context"
+          value={`${preferredSupplierCount} preferred`}
+          detail={`${countCommaSeparated(formValues.currentSuppliers)} current supplier entries recorded.`}
+        />
+        <WorkspaceStatCard
+          label="Evidence"
+          value={`${evidenceCount} attached`}
+          detail="Accepted catalog evidence and manual typed support remain explicit in the payload."
+          tone="warning"
+        />
+      </section>
 
-        <div className="input-toolbar">
-          <div className="workspace-chip-list compact">
+      <WorkspaceSection
+        eyebrow="Input deck"
+        title={formValues.caseId.trim() || activePreset?.label || 'Draft a new evaluation'}
+        description="Capture context, operating envelope, supplier posture, evidence, and assumptions in one predictable flow before handing the case into the deterministic workspace."
+        actions={
+          <>
+            <button className="secondary" type="button" onClick={resetForm}>
+              Reset draft
+            </button>
+            <Link className="button secondary" href="/evidence/review">
+              Review evidence queue
+            </Link>
+          </>
+        }
+      >
+        <div className="workspace-data-card workspace-data-card--default">
+          <div className="workspace-data-card__header">
+            <div>
+              <span className="badge subtle">Workflow sections</span>
+              <h3>One navigation system, one drafting surface</h3>
+            </div>
             <span className="meta-chip">
-              {formatToken(formValues.technologyFamily)}
-            </span>
-            <span className="meta-chip">
-              {populatedCount(formValues.preferredSuppliers)} preferred
-              suppliers
-            </span>
-            <span className="meta-chip">{totalEvidenceCount} evidence</span>
-            <span className="meta-chip meta-chip--accent">
-              {activePreset ? 'preset loaded' : 'manual draft'}
+              {activePreset ? 'Preset loaded' : 'Manual draft'}
             </span>
           </div>
           <PanelTabs
@@ -209,50 +270,19 @@ export function CaseForm() {
           />
         </div>
 
-        <section className="input-scene-grid" aria-label="Scenario preview">
-          {summaryCards.map((card) => (
-            <article
-              className={`input-scene-card input-scene-card--${card.tone}`}
-              key={card.key}
-            >
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <p>{card.detail}</p>
-            </article>
-          ))}
-        </section>
+        {submissionError ? <p className="error">{submissionError}</p> : null}
 
-        <div className="disabled-feature-card">
-          <div>
-            <strong>Public documentary enrichment</strong>
-            <p className="muted">
-              Boundary preserved. The current runtime remains local-first and
-              only attaches reviewed external evidence explicitly.
-            </p>
-          </div>
-          <span className="meta-chip meta-chip--warning">disabled</span>
-        </div>
-
-        {activeTab === 'scenario' ? (
-          <div className="entry-tabpanel">
-            <section className="form-section">
-              <div className="form-section__header">
-                <div>
-                  <h3>Context</h3>
-                  <p>
-                    Case identity, objective, maturity, and deployment scope.
-                  </p>
-                </div>
-              </div>
-              <div className="form-grid form-grid--dense">
+        {activeTab === 'context' ? (
+          <div className="workspace-form-layout">
+            <WorkspaceDataCard>
+              <span className="badge subtle">Case context</span>
+              <div className="workspace-form-grid workspace-form-grid--two">
                 <label>
                   Case identifier
                   <input
                     value={formValues.caseId}
-                    onChange={(event) =>
-                      updateField('caseId', event.target.value)
-                    }
-                    placeholder="optional"
+                    onChange={(event) => updateField('caseId', event.target.value)}
+                    placeholder="optional case id"
                   />
                 </label>
                 <label>
@@ -263,9 +293,7 @@ export function CaseForm() {
                       updateField('technologyFamily', event.target.value)
                     }
                   >
-                    <option value="microbial_fuel_cell">
-                      Microbial fuel cell
-                    </option>
+                    <option value="microbial_fuel_cell">Microbial fuel cell</option>
                     <option value="microbial_electrolysis_cell">
                       Microbial electrolysis cell
                     </option>
@@ -292,15 +320,11 @@ export function CaseForm() {
                       updateField('primaryObjective', event.target.value)
                     }
                   >
-                    <option value="wastewater_treatment">
-                      Wastewater treatment
-                    </option>
+                    <option value="wastewater_treatment">Wastewater treatment</option>
                     <option value="hydrogen_recovery">Hydrogen recovery</option>
                     <option value="nitrogen_recovery">Nitrogen recovery</option>
                     <option value="sensing">Sensing</option>
-                    <option value="low_power_generation">
-                      Low power generation
-                    </option>
+                    <option value="low_power_generation">Low power generation</option>
                     <option value="biogas_synergy">Biogas synergy</option>
                     <option value="other">Other</option>
                   </select>
@@ -322,106 +346,68 @@ export function CaseForm() {
                     onChange={(event) =>
                       updateField('decisionHorizon', event.target.value)
                     }
-                    placeholder="3-month validation, pilot_to_scale_path..."
+                    placeholder="3-month validation, pilot-to-scale..."
                   />
                 </label>
-                <label className="label-span-2">
+                <label className="workspace-form-field--wide">
                   Deployment context
                   <textarea
                     value={formValues.deploymentContext}
                     onChange={(event) =>
                       updateField('deploymentContext', event.target.value)
                     }
-                    placeholder="pilot retrofit, industrial validation, lab scale..."
+                    placeholder="Where the system is being evaluated, what environment matters, and what success means."
                   />
                 </label>
-                <label className="label-span-2">
+                <label className="workspace-form-field--wide">
                   Current pain points
                   <textarea
                     value={formValues.painPoints}
                     onChange={(event) =>
                       updateField('painPoints', event.target.value)
                     }
-                    placeholder="comma-separated issues such as high internal resistance, weak monitoring, unstable startup"
-                  />
-                </label>
-                <label>
-                  Current suppliers
-                  <input
-                    value={formValues.currentSuppliers}
-                    onChange={(event) =>
-                      updateField('currentSuppliers', event.target.value)
-                    }
-                    placeholder="comma-separated incumbent suppliers"
-                  />
-                </label>
-                <label>
-                  Preferred suppliers
-                  <input
-                    value={formValues.preferredSuppliers}
-                    onChange={(event) =>
-                      updateField('preferredSuppliers', event.target.value)
-                    }
-                    placeholder="comma-separated shortlist candidates"
-                  />
-                </label>
-                <label className="label-span-2">
-                  Working assumptions
-                  <textarea
-                    value={formValues.assumptionsNote}
-                    onChange={(event) =>
-                      updateField('assumptionsNote', event.target.value)
-                    }
-                    placeholder="comma-separated assumptions that should remain visible in the deterministic run"
+                    placeholder="comma-separated issues such as high internal resistance, unstable startup, weak monitoring"
                   />
                 </label>
               </div>
-            </section>
+            </WorkspaceDataCard>
 
-            <section className="form-section form-section--soft">
-              <div className="form-section__header">
+            <WorkspaceDataCard tone="accent">
+              <div className="workspace-data-card__header">
                 <div>
-                  <h3>Validated golden cases</h3>
-                  <p>
-                    Load a structured preset when you want deterministic smoke
-                    coverage with richer stack blocks, evidence, and measured
-                    metrics than the visible form alone provides.
-                  </p>
+                  <span className="badge subtle">Accelerators</span>
+                  <h3>Validated presets</h3>
                 </div>
-                {activePreset ? (
-                  <span className="meta-chip">preset active</span>
-                ) : null}
+                {activePreset ? <span className="meta-chip">Preset active</span> : null}
               </div>
-              <div className="preset-grid">
+              <div className="workspace-card-list">
                 {caseIntakePresets.map((preset) => {
                   const isActive = activePresetId === preset.id;
 
                   return (
                     <article
-                      className={`preset-card${isActive ? ' active' : ''}`}
+                      className={`workspace-inline-card${isActive ? ' active' : ''}`}
                       key={preset.id}
                     >
-                      <div className="stack split compact">
-                        <h3>{preset.label}</h3>
-                        <span className="badge subtle">
+                      <div className="workspace-data-card__header">
+                        <div>
+                          <h3>{preset.label}</h3>
+                          <p>{preset.description}</p>
+                        </div>
+                        <span className="meta-chip">
                           {formatToken(preset.formValues.primaryObjective)}
                         </span>
                       </div>
-                      <p className="muted">{preset.description}</p>
-                      <div className="section-group">
-                        <h4>Focus areas</h4>
-                        <ul className="pill-list">
-                          {preset.focusAreas.map((entry) => (
-                            <li className="pill" key={entry}>
-                              {entry}
-                            </li>
-                          ))}
-                        </ul>
+                      <div className="workspace-chip-list compact">
+                        {preset.focusAreas.map((entry) => (
+                          <span className="meta-chip" key={entry}>
+                            {entry}
+                          </span>
+                        ))}
                       </div>
-                      <p className="muted">Source: {preset.sourceReference}</p>
-                      <div className="hero-actions">
+                      <div className="workspace-action-row">
                         <button
-                          className="secondary"
+                          className={isActive ? '' : 'secondary'}
                           type="button"
                           onClick={() => applyPreset(preset.id)}
                         >
@@ -432,115 +418,138 @@ export function CaseForm() {
                   );
                 })}
               </div>
-            </section>
+            </WorkspaceDataCard>
           </div>
         ) : null}
 
-        {activeTab === 'conditions' ? (
-          <div className="entry-tabpanel">
-            <section className="form-section">
-              <div className="form-section__header">
-                <div>
-                  <h3>Feed and reactor envelope</h3>
-                  <p>
-                    Record the operating anchors the rule engine and optional
-                    model layer can actually use.
-                  </p>
-                </div>
-              </div>
-              <div className="form-grid form-grid--dense">
-                <label>
-                  Influent type
-                  <input
-                    value={formValues.influentType}
-                    onChange={(event) =>
-                      updateField('influentType', event.target.value)
-                    }
-                    placeholder="industrial wastewater, sidestream, synthetic feed..."
-                  />
-                </label>
-                <label>
-                  Membrane presence
-                  <input
-                    value={formValues.membranePresence}
-                    onChange={(event) =>
-                      updateField('membranePresence', event.target.value)
-                    }
-                    placeholder="present, absent, separator unknown..."
-                  />
-                </label>
-                <label className="label-span-2">
-                  Substrate profile
-                  <textarea
-                    value={formValues.substrateProfile}
-                    onChange={(event) =>
-                      updateField('substrateProfile', event.target.value)
-                    }
-                    placeholder="Short description of biodegradability, solids profile, or sidestream composition"
-                  />
-                </label>
-                <label>
-                  Temperature (°C)
-                  <input
-                    value={formValues.temperature}
-                    onChange={(event) =>
-                      updateField('temperature', event.target.value)
-                    }
-                    placeholder="25"
-                  />
-                </label>
-                <label>
-                  pH
-                  <input
-                    value={formValues.ph}
-                    onChange={(event) => updateField('ph', event.target.value)}
-                    placeholder="7.0"
-                  />
-                </label>
-                <label>
-                  Conductivity (mS/cm)
-                  <input
-                    value={formValues.conductivity}
-                    onChange={(event) =>
-                      updateField('conductivity', event.target.value)
-                    }
-                    placeholder="8"
-                  />
-                </label>
-                <label>
-                  Hydraulic retention time (h)
-                  <input
-                    value={formValues.hydraulicRetentionTime}
-                    onChange={(event) =>
-                      updateField('hydraulicRetentionTime', event.target.value)
-                    }
-                    placeholder="12"
-                  />
-                </label>
-              </div>
-            </section>
-          </div>
+        {activeTab === 'operation' ? (
+          <WorkspaceDataCard>
+            <span className="badge subtle">Operating conditions</span>
+            <div className="workspace-form-grid workspace-form-grid--two">
+              <label>
+                Influent type
+                <input
+                  value={formValues.influentType}
+                  onChange={(event) => updateField('influentType', event.target.value)}
+                  placeholder="industrial wastewater, sidestream, synthetic feed..."
+                />
+              </label>
+              <label>
+                Membrane presence
+                <input
+                  value={formValues.membranePresence}
+                  onChange={(event) =>
+                    updateField('membranePresence', event.target.value)
+                  }
+                  placeholder="present, absent, unknown..."
+                />
+              </label>
+              <label className="workspace-form-field--wide">
+                Substrate profile
+                <textarea
+                  value={formValues.substrateProfile}
+                  onChange={(event) =>
+                    updateField('substrateProfile', event.target.value)
+                  }
+                  placeholder="Describe biodegradability, solids profile, or sidestream composition."
+                />
+              </label>
+              <label>
+                Temperature (°C)
+                <input
+                  value={formValues.temperature}
+                  onChange={(event) => updateField('temperature', event.target.value)}
+                  placeholder="25"
+                />
+                {numericFieldErrors.temperature ? (
+                  <span className="field-error">{numericFieldErrors.temperature}</span>
+                ) : null}
+              </label>
+              <label>
+                pH
+                <input
+                  value={formValues.ph}
+                  onChange={(event) => updateField('ph', event.target.value)}
+                  placeholder="7.0"
+                />
+                {numericFieldErrors.ph ? (
+                  <span className="field-error">{numericFieldErrors.ph}</span>
+                ) : null}
+              </label>
+              <label>
+                Conductivity (mS/cm)
+                <input
+                  value={formValues.conductivity}
+                  onChange={(event) =>
+                    updateField('conductivity', event.target.value)
+                  }
+                  placeholder="8"
+                />
+                {numericFieldErrors.conductivity ? (
+                  <span className="field-error">{numericFieldErrors.conductivity}</span>
+                ) : null}
+              </label>
+              <label>
+                Hydraulic retention time (h)
+                <input
+                  value={formValues.hydraulicRetentionTime}
+                  onChange={(event) =>
+                    updateField('hydraulicRetentionTime', event.target.value)
+                  }
+                  placeholder="12"
+                />
+                {numericFieldErrors.hydraulicRetentionTime ? (
+                  <span className="field-error">
+                    {numericFieldErrors.hydraulicRetentionTime}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          </WorkspaceDataCard>
+        ) : null}
+
+        {activeTab === 'suppliers' ? (
+          <WorkspaceDataCard>
+            <span className="badge subtle">Supplier context</span>
+            <div className="workspace-form-grid workspace-form-grid--two">
+              <label>
+                Current suppliers
+                <input
+                  value={formValues.currentSuppliers}
+                  onChange={(event) =>
+                    updateField('currentSuppliers', event.target.value)
+                  }
+                  placeholder="comma-separated incumbent suppliers"
+                />
+              </label>
+              <label>
+                Preferred suppliers
+                <input
+                  value={formValues.preferredSuppliers}
+                  onChange={(event) =>
+                    updateField('preferredSuppliers', event.target.value)
+                  }
+                  placeholder="comma-separated shortlist candidates"
+                />
+              </label>
+            </div>
+            <p className="muted">
+              Supplier preferences stay explicit and are carried into the evaluation
+              audit trail and shortlist recommendations.
+            </p>
+          </WorkspaceDataCard>
         ) : null}
 
         {activeTab === 'evidence' ? (
-          <div className="entry-tabpanel">
+          <div className="workspace-form-layout">
             <AcceptedEvidenceSelector
               selectedEvidence={selectedCatalogEvidence}
               onSelectionChange={setSelectedCatalogEvidence}
             />
 
-            <section className="panel nested-panel grid">
-              <div>
-                <span className="badge">Manual typed evidence</span>
-                <h2>Optional analyst-supplied support</h2>
-                <p className="muted">
-                  Supplier claims, internal benchmarks, and engineering
-                  assumptions stay explicit. Nothing is silently merged into the
-                  deterministic decision path.
-                </p>
-              </div>
-
-              <div className="grid two">
+            <WorkspaceDataCard tone="warning">
+              <span className="badge subtle">Manual typed evidence</span>
+              <div className="workspace-form-grid workspace-form-grid--two">
                 <label>
                   Evidence type
                   <select
@@ -552,12 +561,8 @@ export function CaseForm() {
                       )
                     }
                   >
-                    <option value="internal_benchmark">
-                      Internal benchmark
-                    </option>
-                    <option value="literature_evidence">
-                      Literature evidence
-                    </option>
+                    <option value="internal_benchmark">Internal benchmark</option>
+                    <option value="literature_evidence">Literature evidence</option>
                     <option value="supplier_claim">Supplier claim</option>
                     <option value="engineering_assumption">
                       Engineering assumption
@@ -572,8 +577,7 @@ export function CaseForm() {
                     onChange={(event) =>
                       updateField(
                         'evidenceStrength',
-                        event.target
-                          .value as typeof formValues.evidenceStrength,
+                        event.target.value as typeof formValues.evidenceStrength,
                       )
                     }
                   >
@@ -582,109 +586,76 @@ export function CaseForm() {
                     <option value="strong">Strong</option>
                   </select>
                 </label>
+                <label className="workspace-form-field--wide">
+                  Evidence title
+                  <input
+                    value={formValues.evidenceTitle}
+                    onChange={(event) =>
+                      updateField('evidenceTitle', event.target.value)
+                    }
+                    placeholder="Pilot baseline, supplier datasheet, internal trial..."
+                  />
+                </label>
+                <label className="workspace-form-field--wide">
+                  Evidence summary
+                  <textarea
+                    value={formValues.evidenceSummary}
+                    onChange={(event) =>
+                      updateField('evidenceSummary', event.target.value)
+                    }
+                    placeholder="Short description of the evidence and why it matters to this run."
+                  />
+                </label>
               </div>
-
-              <label>
-                Evidence title
-                <input
-                  value={formValues.evidenceTitle}
-                  onChange={(event) =>
-                    updateField('evidenceTitle', event.target.value)
-                  }
-                  placeholder="Pilot baseline, supplier datasheet, internal trial..."
-                />
-              </label>
-
-              <label>
-                Evidence summary
-                <textarea
-                  value={formValues.evidenceSummary}
-                  onChange={(event) =>
-                    updateField('evidenceSummary', event.target.value)
-                  }
-                  placeholder="Short description of the evidence and why it matters to this decision run"
-                />
-              </label>
-            </section>
+            </WorkspaceDataCard>
           </div>
         ) : null}
 
-        {mutation.error ? (
-          <p className="error">{mutation.error.message}</p>
+        {activeTab === 'assumptions' ? (
+          <WorkspaceDataCard>
+            <span className="badge subtle">Assumptions and defaults</span>
+            <label className="workspace-form-field--wide">
+              Working assumptions
+              <textarea
+                value={formValues.assumptionsNote}
+                onChange={(event) =>
+                  updateField('assumptionsNote', event.target.value)
+                }
+                placeholder="Comma-separated assumptions that must remain explicit in the deterministic run."
+              />
+            </label>
+            <div className="workspace-detail-grid">
+              <WorkspaceDataCard tone="warning">
+                <h3>Why this matters</h3>
+                <p>
+                  Defaults, missing data, supplier claims, and low-strength evidence
+                  will remain explicit in the resulting workspace and report.
+                </p>
+              </WorkspaceDataCard>
+              <WorkspaceDataCard>
+                <h3>Expected handoff</h3>
+                <p>
+                  Submitting this form triggers normalization, validation, simulation
+                  enrichment, deterministic rules, output validation, and workspace
+                  preparation before the result page opens.
+                </p>
+              </WorkspaceDataCard>
+            </div>
+          </WorkspaceDataCard>
         ) : null}
 
-        <div className="input-workspace__footer">
-          <button disabled={mutation.isPending} type="submit">
-            {mutation.isPending
-              ? 'Evaluating...'
-              : 'Run deterministic evaluation'}
-          </button>
-          <p className="muted">
-            Defaults, missing data, evidence mode, and confidence changes remain
-            explicit in the resulting workspace.
-          </p>
-        </div>
-      </section>
-
-      <aside
-        className="panel input-workspace__aside"
-        aria-label="Drafting focus"
-      >
-        <article className="workspace-brief-card workspace-brief-card--highlight">
-          <span>Drafting focus</span>
-          <strong>
-            {formValues.caseId.trim() ||
-              activePreset?.label ||
-              'Build the next evaluation'}
-          </strong>
-          <p>
-            Keep setup dense here so the decision workspace, comparison, and
-            history surfaces can stay analytical and uncluttered.
-          </p>
-        </article>
-
-        <div className="workspace-brief-grid">
-          {summaryCards.map((card) => (
-            <article
-              className="workspace-brief-card workspace-brief-card--compact"
-              key={card.key}
-            >
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <p>{card.detail}</p>
-            </article>
-          ))}
-        </div>
-
-        <article className="workspace-brief-card workspace-brief-card--quiet">
-          <span>Current preset</span>
-          <strong>{activePreset?.label ?? 'Manual draft in progress'}</strong>
-          <p>
-            {activePreset?.description ??
-              'No golden-case preset is active. Manual drafting controls the visible payload.'}
-          </p>
-        </article>
-
-        <article className="workspace-brief-card">
-          <span>Quick jump</span>
-          <strong>Move across drafting sections</strong>
-          <div className="workspace-quick-actions">
-            {tabs.map((tab) => (
-              <button
-                className={activeTab === tab.id ? '' : 'ghost-button'}
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-            <Link className="ghost-button" href="/evidence/review">
-              Review evidence queue
-            </Link>
+        <div className="workspace-submit-row">
+          <div>
+            <strong>Ready to run</strong>
+            <p>
+              Submission remains synchronous in this phase, but the next screen will
+              show a deterministic progress flow and preserve the draft if anything
+              fails.
+            </p>
           </div>
-        </article>
-      </aside>
+          <button type="submit">Run deterministic evaluation</button>
+        </div>
+      </WorkspaceSection>
     </form>
   );
 }

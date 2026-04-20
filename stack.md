@@ -8,9 +8,11 @@ It is not the authoritative statement of the shipped runtime.
 
 Use these surfaces for current runtime truth instead:
 
+- `docs/repository-authority-map.md`
 - `README.md`
 - `adr/0002-runtime-monorepo-stack.md`
 - `adr/0003-runtime-authority-and-tooling-invariants.md`
+- `specs/015-repository-authority-and-structure-consolidation/`
 - maintained feature packs under `specs/`
 - executable tests under `tests/`
 

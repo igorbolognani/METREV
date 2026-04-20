@@ -50,7 +50,7 @@ describe('runtime database configuration', () => {
     );
   });
 
-  it('keeps the validated Prisma 6.19 datasource posture in the checked-in files', () => {
+  it('keeps the validated Prisma 7 datasource posture in the checked-in files', () => {
     const repoRoot = resolve(__dirname, '../..');
     const schema = readFileSync(
       resolve(repoRoot, 'packages/database/prisma/schema.prisma'),
@@ -68,8 +68,10 @@ describe('runtime database configuration', () => {
       'utf8',
     );
 
-    expect(schema).toMatch(/url\s*=\s*env\("DATABASE_URL"\)/);
-    expect(prismaConfig).toMatch(/directUrl:/);
+    expect(schema).toMatch(/datasource db \{\s*provider = "postgresql"\s*\}/);
+    expect(schema).not.toMatch(/url\s*=\s*env\("DATABASE_URL"\)/);
+    expect(prismaConfig).toMatch(/datasource:\s*\{/);
+    expect(prismaConfig).toMatch(/DIRECT_URL \?\?/);
     expect(migrateWrapper).toMatch(
       /DIRECT_URL\?\.trim\(\) \|\| process\.env\.DATABASE_URL\?\.trim\(\)/,
     );

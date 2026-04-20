@@ -1,8 +1,11 @@
 # Bioelectrochemical Agent Kit for AI-Assisted Development
 
+Repository note: in METREV, only `bioelectrochem_agent_kit/domain/` is a canonical source-of-truth surface. The nested `.github/` assets and guidance docs in this kit remain antecedent reference material unless they are intentionally promoted into the workspace root.
+
 ## Purpose
 
 This kit adds a domain-specific bioelectrochemical decision-support layer to an existing GitHub Copilot Pro + VS Code repository that already contains:
+
 - repository-wide instructions
 - implementation instructions
 - testing instructions
@@ -131,14 +134,14 @@ The platform should be decomposed around the **decision pipeline**, not around i
 
 ### Agent summary
 
-| Agent | Core mission | Main outputs | Failure it prevents |
-|---|---|---|---|
-| Stack Ontologist | Define the stack ontology and stable domain language | taxonomy, component graph, property dictionary | semantic drift and inconsistent naming |
-| Client Intake Normalizer | Convert messy client input into auditable structured cases | normalized case files, defaults, missing-data flags | false precision from incomplete data |
-| Evidence Curator | Curate literature, supplier data, and benchmark evidence | evidence objects, benchmark records, source typing | mixing marketing claims with evidence |
-| Inference Engine | Turn structured input and evidence into comparable options | rules, scores, compatibility checks, sensitivity outputs | magical recommendations with no logic trail |
-| Decision Prioritizer | Convert options into phased decisions | diagnosis, ranked improvements, impact map, roadmap | technically plausible but commercially useless output |
-| Validation Sentinel | Audit provenance, uncertainty, and consistency | validation comments, blocked conclusions, confidence checks | overclaiming and silent contradiction |
+| Agent                    | Core mission                                               | Main outputs                                                | Failure it prevents                                   |
+| ------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| Stack Ontologist         | Define the stack ontology and stable domain language       | taxonomy, component graph, property dictionary              | semantic drift and inconsistent naming                |
+| Client Intake Normalizer | Convert messy client input into auditable structured cases | normalized case files, defaults, missing-data flags         | false precision from incomplete data                  |
+| Evidence Curator         | Curate literature, supplier data, and benchmark evidence   | evidence objects, benchmark records, source typing          | mixing marketing claims with evidence                 |
+| Inference Engine         | Turn structured input and evidence into comparable options | rules, scores, compatibility checks, sensitivity outputs    | magical recommendations with no logic trail           |
+| Decision Prioritizer     | Convert options into phased decisions                      | diagnosis, ranked improvements, impact map, roadmap         | technically plausible but commercially useless output |
+| Validation Sentinel      | Audit provenance, uncertainty, and consistency             | validation comments, blocked conclusions, confidence checks | overclaiming and silent contradiction                 |
 
 ---
 
@@ -146,16 +149,16 @@ The platform should be decomposed around the **decision pipeline**, not around i
 
 The following subdomains should live inside the ontology and rule base instead of becoming separate top-level agents.
 
-| Subdomain | Ontology role | Rule role | Why it should stay as a subdomain |
-|---|---|---|---|
-| Reactor architecture | Defines configuration family, chambering, hydraulic logic, operating mode | drives compatibility, scale-up penalties, residence-time implications | it is part of the stack model, not a standalone workflow |
-| Anode | Defines substrate, geometry, surface, conductivity, biofilm support | influences startup, current generation, fouling, colonization fit | tightly coupled to biology and influent context |
-| Cathode | Defines substrate, catalyst family, collector interface, gas/liquid handling | influences reduction/evolution feasibility, selectivity, durability, cost | must be evaluated within full target-use context |
-| Membrane / separator | Defines separation approach, ionic pathway, crossover risk | influences resistance, selectivity, purity needs, fouling constraints | behaves as a compatibility layer across the stack |
-| Biology | Defines inoculum, biofilm regime, expected biological tolerance and fragility | influences startup, shock resilience, substrate utilization, adaptation time | should affect many rules, not act as a separate orchestration unit |
-| Balance of plant (BOP) | Defines pumps, valves, recirculation, gas handling, dosing, control | influences operability, maintenance, safety, retrofit feasibility | often dominates pilot failure without being the “core reactor” |
-| Sensors / analytics | Defines sensing, electrochemical diagnostics, telemetry, alarms | influences evidence quality, validation, monitoring readiness | needed across diagnosis, not as a silo |
-| Economics | Cross-cutting decision layer, not a physical block | affects priority, payback, replacement timing, supplier fit, TCO | it is a scoring and decision dimension across all blocks |
+| Subdomain              | Ontology role                                                                 | Rule role                                                                    | Why it should stay as a subdomain                                  |
+| ---------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Reactor architecture   | Defines configuration family, chambering, hydraulic logic, operating mode     | drives compatibility, scale-up penalties, residence-time implications        | it is part of the stack model, not a standalone workflow           |
+| Anode                  | Defines substrate, geometry, surface, conductivity, biofilm support           | influences startup, current generation, fouling, colonization fit            | tightly coupled to biology and influent context                    |
+| Cathode                | Defines substrate, catalyst family, collector interface, gas/liquid handling  | influences reduction/evolution feasibility, selectivity, durability, cost    | must be evaluated within full target-use context                   |
+| Membrane / separator   | Defines separation approach, ionic pathway, crossover risk                    | influences resistance, selectivity, purity needs, fouling constraints        | behaves as a compatibility layer across the stack                  |
+| Biology                | Defines inoculum, biofilm regime, expected biological tolerance and fragility | influences startup, shock resilience, substrate utilization, adaptation time | should affect many rules, not act as a separate orchestration unit |
+| Balance of plant (BOP) | Defines pumps, valves, recirculation, gas handling, dosing, control           | influences operability, maintenance, safety, retrofit feasibility            | often dominates pilot failure without being the “core reactor”     |
+| Sensors / analytics    | Defines sensing, electrochemical diagnostics, telemetry, alarms               | influences evidence quality, validation, monitoring readiness                | needed across diagnosis, not as a silo                             |
+| Economics              | Cross-cutting decision layer, not a physical block                            | affects priority, payback, replacement timing, supplier fit, TCO             | it is a scoring and decision dimension across all blocks           |
 
 ---
 
@@ -189,7 +192,7 @@ Every serious output from the system should converge to five blocks:
 
 1. **Current stack diagnosis**
 2. **Prioritized improvement options**
-3. **Impact map**  
+3. **Impact map**
    including cost, risk, maturity, evidence strength, and dependencies
 4. **Supplier and material/architecture shortlist**
 5. **Phased roadmap**
@@ -203,11 +206,13 @@ These blocks are reflected in the report templates and prompt files in this kit.
 This kit treats MCP as a **controlled augmentation layer**, not the center of the product.
 
 ### What MCP should do early
+
 - connect GitHub context to planning, reviews, issues, and implementation workflow
 - support controlled external evidence retrieval once schemas are stable
 - support future internal evidence or supplier registries through well-scoped tools
 
 ### What MCP should not do early
+
 - replace the internal ontology
 - become the first source of truth for scientific judgment
 - bypass deterministic rules
@@ -215,12 +220,12 @@ This kit treats MCP as a **controlled augmentation layer**, not the center of th
 
 ### Recommended adoption phases
 
-| Phase | MCP role | Recommendation |
-|---|---|---|
-| Phase 0 | GitHub-only workflow support | keep simple and stable |
-| Phase 1 | Evidence retrieval assistance | add read-only evidence and supplier lookup endpoints |
-| Phase 2 | Internal structured services | add project-owned MCP servers for evidence index, benchmark access, and supplier catalog lookup |
-| Phase 3 | Operational integration | connect LIMS, pilot logs, historian, or internal benchmarking systems if the product reaches that stage |
+| Phase   | MCP role                      | Recommendation                                                                                          |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Phase 0 | GitHub-only workflow support  | keep simple and stable                                                                                  |
+| Phase 1 | Evidence retrieval assistance | add read-only evidence and supplier lookup endpoints                                                    |
+| Phase 2 | Internal structured services  | add project-owned MCP servers for evidence index, benchmark access, and supplier catalog lookup         |
+| Phase 3 | Operational integration       | connect LIMS, pilot logs, historian, or internal benchmarking systems if the product reaches that stage |
 
 See `docs/mcp-integration-guidance.md`.
 
@@ -229,6 +234,7 @@ See `docs/mcp-integration-guidance.md`.
 ## How to use this kit
 
 ### Start with these files first
+
 1. `docs/AGENTS.bioelectrochem.module.md`
 2. `.github/agents/stack-ontologist.agent.md`
 3. `.github/agents/client-intake-normalizer.agent.md`
@@ -239,6 +245,7 @@ See `docs/mcp-integration-guidance.md`.
 8. `reports/templates/consulting-report-template.md`
 
 ### Then add
+
 - evidence curation
 - supplier normalization
 - golden cases

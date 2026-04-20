@@ -5,7 +5,7 @@
 - `bioelectrochem_agent_kit/domain/` is the semantic source of truth for domain vocabulary, stack decomposition, evidence semantics, defaults behavior, uncertainty handling, compatibility logic, and scoring intent.
 - `bioelectro-copilot-contracts/contracts/` is the authoritative contract boundary for validation, serialization, storage, and future API or database surfaces.
 - `copilot_project_starter_detailed/` is a reusable starter and reference kit. Reuse its workflow patterns, but do not treat unresolved placeholders inside it as live project facts.
-- `archive/legacy-root-duplicates/`, `bioelectrochem_agent_kit/ALL_FILES_CODE.md`, and binary executable exports are reference-only artifacts, not active source files.
+- `bioelectrochem_agent_kit/ALL_FILES_CODE.md`, nested workflow assets under `bioelectrochem_agent_kit/.github/` and `copilot_project_starter_detailed/.github/`, and optional local tooling configs such as `.serena/project.yml` are not active source-of-truth surfaces unless they are intentionally promoted.
 
 ## Active customization rule
 
@@ -67,4 +67,5 @@ Always check:
 
 ## Context ingestion rule
 
-- Use `stack.md` as the converted runtime architecture brief until the same decisions are captured in maintained ADR, spec, and quickstart files.
+- Use `docs/repository-authority-map.md` first when deciding which repository surfaces are active, reference-only, or local-optional.
+- Use `stack.md` only as legacy background context when a historical architecture brief is still helpful.

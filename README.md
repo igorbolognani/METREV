@@ -2,6 +2,12 @@
 
 This repository packages three distinct layers that should not be treated as competing sources of truth.
 
+## Current authority index
+
+Use `docs/repository-authority-map.md` as the maintained index for deciding which surfaces are active, which remain reference-only, and which stay local-optional.
+
+The umbrella cleanup work now lives in `specs/015-repository-authority-and-structure-consolidation/`.
+
 ## Canonical intent
 
 The canonical product domain for bioelectrochemical decision support lives in:
@@ -51,6 +57,8 @@ The current runtime uses one explicit authority split:
 - the domain case template remains runtime-loaded from `bioelectrochem_agent_kit/domain/cases/templates/client-case-template.yml`
 
 This means the live runtime does not treat every domain or contract asset as equally executed. In particular, `stack.md`, `bioelectrochem_agent_kit/domain/ontology/component-graph.yml`, `bioelectro-copilot-contracts/contracts/ontology/relations.yaml`, and the contract report templates are reference-only or future-facing until a validated runtime consumer exists.
+
+For the maintained active-versus-reference classification, prefer `docs/repository-authority-map.md` over ad-hoc inference from file location alone.
 
 ## Internal feature workflow
 
@@ -110,7 +118,7 @@ Use this setup when you want the monorepo to run against Supabase Postgres:
 `DATABASE_URL` is used by the runtime, while `DIRECT_URL` is used by Prisma migrations.
 The committed `db:migrate:*` scripts automatically prefer `DIRECT_URL` when it is defined, so Supabase migrations do not hang on the pooled runtime URL.
 The checked-in `.env.example` keeps local Postgres defaults so fresh clones still boot without Supabase.
-The current repository keeps Prisma 6.19.x aligned by retaining `url = env("DATABASE_URL")` inside `packages/database/prisma/schema.prisma` while `packages/database/prisma.config.ts` and `packages/database/scripts/run-prisma-with-direct-url.mjs` keep runtime and migration URL behavior explicit.
+The current repository keeps a Prisma 7 posture by centralizing datasource URL configuration in `packages/database/prisma.config.ts`, leaving `packages/database/prisma/schema.prisma` with a provider-only datasource block plus the repository-owned `prisma-client` generator configuration, generating the TypeScript client under `packages/database/generated/prisma/`, and routing migration commands through `packages/database/scripts/run-prisma-with-direct-url.mjs` so runtime and migration access remain explicit.
 
 If you want browser-only env values available to Next.js, create `apps/web-ui/.env.local` with:
 
@@ -193,13 +201,11 @@ This workspace can be published safely after local validation.
 5. Use the evidence review surface to accept or reject imported catalog records before they can re-enter intake.
 6. Use the header sign-out action to clear the session and return the browser to `/login`.
 
-## Archive
+## Historical duplicates
 
-Previously duplicated root files were moved to:
+The previous duplicate archive wave has been retired where equivalent owning source files still exist elsewhere in the repository.
 
-- `archive/legacy-root-duplicates/`
-
-They are preserved as historical exports and should not be edited as active source files.
+Keep using the remaining module-local reference assets as historical context only, not as active source files.
 
 ## Practical rule
 

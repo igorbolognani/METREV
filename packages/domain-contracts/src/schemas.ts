@@ -108,6 +108,14 @@ export const agentStageStatusSchema = z.enum([
   'degraded',
 ]);
 
+export const workspaceToneSchema = z.enum([
+  'success',
+  'warning',
+  'critical',
+  'accent',
+  'muted',
+]);
+
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 
 const scalarValueSchema = z.union([
@@ -502,6 +510,35 @@ export const narrativeMetadataSchema = z.object({
   error_message: z.string().nullable().optional(),
 });
 
+export const runtimeVersionSchema = z.object({
+  contract_version: z.string().min(1),
+  ontology_version: z.string().min(1),
+  ruleset_version: z.string().min(1),
+  prompt_version: z.string().min(1),
+  model_version: z.string().min(1),
+  workspace_schema_version: z.string().min(1),
+});
+
+export const traceabilitySummarySchema = z.object({
+  subject_type: z.enum(['workspace', 'case', 'evaluation']),
+  subject_id: z.string().min(1),
+  case_id: z.string().optional(),
+  evaluation_id: z.string().optional(),
+  entrypoint: z.enum(['ui', 'api', 'batch', 'test']),
+  transformation_stages: z.array(z.string()).default([]),
+  rule_refs: z.array(z.string()).default([]),
+  evidence_refs: z.array(z.string()).default([]),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  evidence_count: z.number().int().nonnegative(),
+});
+
+export const workspaceMetaSchema = z.object({
+  generated_at: z.string().min(1),
+  versions: runtimeVersionSchema,
+  traceability: traceabilitySummarySchema,
+});
+
 export const auditRecordSchema = z.object({
   audit_id: z.string().min(1),
   timestamp: z.string().min(1),
@@ -519,6 +556,9 @@ export const auditRecordSchema = z.object({
   raw_input_snapshot: rawCaseInputSchema,
   typed_evidence: z.array(evidenceRecordSchema).default([]),
   agent_pipeline_trace: z.array(agentPipelineStageSchema).default([]),
+  runtime_versions: runtimeVersionSchema,
+  traceability: traceabilitySummarySchema,
+  idempotency_key: z.string().min(1).optional(),
 });
 
 export const evaluationResponseSchema = z.object({
@@ -580,6 +620,229 @@ export const caseHistoryResponseSchema = z.object({
   audit_events: z.array(auditEventSchema),
 });
 
+export const externalEvidenceCatalogListSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  pending: z.number().int().nonnegative(),
+  accepted: z.number().int().nonnegative(),
+  rejected: z.number().int().nonnegative(),
+});
+
+export const workspaceHeroCardSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  detail: z.string().min(1),
+  tone: workspaceToneSchema,
+});
+
+export const workspaceBriefCardSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  detail: z.string().min(1),
+});
+
+export const workspaceAttentionItemSchema = z.object({
+  key: z.string().min(1),
+  block: z.string().min(1),
+  finding: z.string().min(1),
+  severity: z.string().min(1),
+  tone: workspaceToneSchema,
+});
+
+export const workspaceLeadActionSchema = z.object({
+  title: z.string().min(1),
+  phase: z.string().min(1),
+  score_label: z.string().min(1),
+  confidence_label: z.string().min(1),
+  effort_label: z.string().min(1),
+  benefit_label: z.string().min(1),
+  rationale: z.string().min(1),
+  blockers: z.array(z.string()).default([]),
+  measurement_requests: z.array(z.string()).default([]),
+  supplier_candidates: z.array(z.string()).default([]),
+});
+
+export const workspaceRoadmapItemSchema = z.object({
+  phase: z.string().min(1),
+  title: z.string().min(1),
+  detail: z.string().min(1),
+  action_count: z.number().int().nonnegative(),
+});
+
+export const workspaceImpactItemSchema = z.object({
+  key: z.string().min(1),
+  title: z.string().min(1),
+  impact: z.string().min(1),
+  economic: z.string().min(1),
+  readiness: z.string().min(1),
+  score_label: z.string().min(1),
+});
+
+export const workspaceMetricRecordSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  numeric_value: z.number().nullable(),
+  unit: z.string().nullable(),
+  source_kind: signalSourceKindSchema,
+  note: z.string().min(1),
+});
+
+export const dashboardWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  summary: z.object({
+    total_runs: z.number().int().nonnegative(),
+    total_cases: z.number().int().nonnegative(),
+    high_confidence_runs: z.number().int().nonnegative(),
+    modeled_runs: z.number().int().nonnegative(),
+    pending_evidence: z.number().int().nonnegative(),
+    accepted_evidence: z.number().int().nonnegative(),
+    rejected_evidence: z.number().int().nonnegative(),
+  }),
+  hero: z.object({
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    latest_case_id: z.string().nullable(),
+    latest_summary: z.string().nullable(),
+  }),
+  trends: z.object({
+    run_growth: z.array(z.number()).default([]),
+    confidence: z.array(z.number()).default([]),
+    model_coverage: z.array(z.number()).default([]),
+  }),
+  quick_actions: z.object({
+    new_evaluation_href: z.string().min(1),
+    evidence_review_href: z.string().min(1),
+    latest_evaluation_href: z.string().nullable(),
+    latest_case_history_href: z.string().nullable(),
+  }),
+  recent_runs: z.array(evaluationSummarySchema),
+  evidence_backlog: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+});
+
+export const evaluationWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  evaluation: evaluationResponseSchema,
+  history_summary: z.object({
+    total_runs: z.number().int().nonnegative(),
+    latest_case_history_href: z.string().min(1),
+    default_compare_target_id: z.string().nullable(),
+    compare_candidates: z.array(evaluationSummarySchema),
+  }),
+  overview: z.object({
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    hero_cards: z.array(workspaceHeroCardSchema),
+    brief_cards: z.array(workspaceBriefCardSchema),
+    attention_items: z.array(workspaceAttentionItemSchema),
+    lead_action: workspaceLeadActionSchema,
+    key_metrics: z.array(workspaceMetricRecordSchema),
+    roadmap: z.array(workspaceRoadmapItemSchema),
+    impact_map: z.array(workspaceImpactItemSchema),
+  }),
+  links: z.object({
+    history_href: z.string().min(1),
+    compare_href: z.string().nullable(),
+    report_href: z.string().min(1),
+    export_json_href: z.string().min(1),
+    export_csv_href: z.string().min(1),
+  }),
+});
+
+export const caseHistoryTimelineItemSchema = z.object({
+  evaluation: evaluationSummarySchema,
+  delta_summary: z.string().min(1),
+  compare_href: z.string().nullable(),
+  is_latest: z.boolean(),
+});
+
+export const caseHistoryWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  case: caseSnapshotSchema,
+  timeline: z.array(caseHistoryTimelineItemSchema),
+  evidence_records: z.array(evidenceRecordSchema),
+  audit_events: z.array(auditEventSchema),
+  current_evaluation_id: z.string().nullable(),
+});
+
+export const comparisonMetricDeltaSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  current_value: z.string().min(1),
+  baseline_value: z.string().min(1),
+  delta_label: z.string().min(1),
+  direction: z.enum(['improved', 'declined', 'steady', 'unknown']),
+  source_kind: signalSourceKindSchema,
+});
+
+export const recommendationDeltaSchema = z.object({
+  recommendation_id: z.string().min(1),
+  current_rank: z.number().int().positive().nullable(),
+  baseline_rank: z.number().int().positive().nullable(),
+  delta_label: z.string().min(1),
+  summary: z.string().min(1),
+});
+
+export const supplierShortlistDeltaSchema = z.object({
+  category: z.string().min(1),
+  current_candidate: z.string().nullable(),
+  baseline_candidate: z.string().nullable(),
+  detail: z.string().min(1),
+});
+
+export const evaluationComparisonResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  current_evaluation: evaluationSummarySchema,
+  baseline_evaluation: evaluationSummarySchema,
+  conclusion: z.object({
+    summary: z.string().min(1),
+    confidence_change: z.string().min(1),
+    defaults_change: z.string().min(1),
+    missing_data_change: z.string().min(1),
+    model_status_change: z.string().min(1),
+  }),
+  metric_deltas: z.array(comparisonMetricDeltaSchema),
+  recommendation_deltas: z.array(recommendationDeltaSchema),
+  supplier_shortlist_delta: z.array(supplierShortlistDeltaSchema),
+});
+
+export const evidenceReviewWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    search_query: z.string().optional(),
+  }),
+  summary: externalEvidenceCatalogListSummarySchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  items: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+});
+
+export const printableEvaluationReportResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  evaluation: evaluationSummarySchema,
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  sections: z.object({
+    stack_diagnosis: currentStackDiagnosisSchema,
+    prioritized_improvements: z.array(recommendationRecordSchema),
+    impact_map: z.array(impactMapEntrySchema),
+    supplier_shortlist: z.array(supplierShortlistEntrySchema),
+    phased_roadmap: z.array(phasedRoadmapEntrySchema),
+    assumptions_and_defaults_audit: assumptionsAndDefaultsAuditSchema,
+    confidence_and_uncertainty_summary: confidenceAndUncertaintySummarySchema,
+  }),
+});
+
+export const exportCsvResponseMetadataSchema = z.object({
+  file_name: z.string().min(1),
+  content_type: z.literal('text/csv'),
+  generated_at: z.string().min(1),
+  column_count: z.number().int().positive(),
+  row_count: z.number().int().nonnegative(),
+  versions: runtimeVersionSchema,
+});
+
 export const externalEvidenceCatalogSummarySchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -611,12 +874,7 @@ export const externalEvidenceCatalogDetailSchema =
 
 export const externalEvidenceCatalogListResponseSchema = z.object({
   items: z.array(externalEvidenceCatalogSummarySchema),
-  summary: z.object({
-    total: z.number().int().nonnegative(),
-    pending: z.number().int().nonnegative(),
-    accepted: z.number().int().nonnegative(),
-    rejected: z.number().int().nonnegative(),
-  }),
+  summary: externalEvidenceCatalogListSummarySchema,
 });
 
 export const externalEvidenceReviewRequestSchema = z.object({
@@ -633,6 +891,9 @@ export type RecommendationRecord = z.infer<typeof recommendationRecordSchema>;
 export type DecisionOutput = z.infer<typeof decisionOutputSchema>;
 export type AgentPipelineStage = z.infer<typeof agentPipelineStageSchema>;
 export type NarrativeMetadata = z.infer<typeof narrativeMetadataSchema>;
+export type RuntimeVersion = z.infer<typeof runtimeVersionSchema>;
+export type TraceabilitySummary = z.infer<typeof traceabilitySummarySchema>;
+export type WorkspaceMeta = z.infer<typeof workspaceMetaSchema>;
 export type AuditRecord = z.infer<typeof auditRecordSchema>;
 export type EvaluationResponse = z.infer<typeof evaluationResponseSchema>;
 export type EvaluationSummary = z.infer<typeof evaluationSummarySchema>;
@@ -642,6 +903,49 @@ export type EvaluationListResponse = z.infer<
 export type CaseSnapshot = z.infer<typeof caseSnapshotSchema>;
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type CaseHistoryResponse = z.infer<typeof caseHistoryResponseSchema>;
+export type WorkspaceTone = z.infer<typeof workspaceToneSchema>;
+export type WorkspaceHeroCard = z.infer<typeof workspaceHeroCardSchema>;
+export type WorkspaceBriefCard = z.infer<typeof workspaceBriefCardSchema>;
+export type WorkspaceAttentionItem = z.infer<
+  typeof workspaceAttentionItemSchema
+>;
+export type WorkspaceLeadAction = z.infer<typeof workspaceLeadActionSchema>;
+export type WorkspaceRoadmapItem = z.infer<typeof workspaceRoadmapItemSchema>;
+export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
+export type WorkspaceMetricRecord = z.infer<
+  typeof workspaceMetricRecordSchema
+>;
+export type DashboardWorkspaceResponse = z.infer<
+  typeof dashboardWorkspaceResponseSchema
+>;
+export type EvaluationWorkspaceResponse = z.infer<
+  typeof evaluationWorkspaceResponseSchema
+>;
+export type CaseHistoryTimelineItem = z.infer<
+  typeof caseHistoryTimelineItemSchema
+>;
+export type CaseHistoryWorkspaceResponse = z.infer<
+  typeof caseHistoryWorkspaceResponseSchema
+>;
+export type ComparisonMetricDelta = z.infer<
+  typeof comparisonMetricDeltaSchema
+>;
+export type RecommendationDelta = z.infer<typeof recommendationDeltaSchema>;
+export type SupplierShortlistDelta = z.infer<
+  typeof supplierShortlistDeltaSchema
+>;
+export type EvaluationComparisonResponse = z.infer<
+  typeof evaluationComparisonResponseSchema
+>;
+export type EvidenceReviewWorkspaceResponse = z.infer<
+  typeof evidenceReviewWorkspaceResponseSchema
+>;
+export type PrintableEvaluationReportResponse = z.infer<
+  typeof printableEvaluationReportResponseSchema
+>;
+export type ExportCsvResponseMetadata = z.infer<
+  typeof exportCsvResponseMetadataSchema
+>;
 export type ConfidenceLevel = z.infer<typeof confidenceLevelSchema>;
 export type SignalSourceKind = z.infer<typeof signalSourceKindSchema>;
 export type SimulationEnrichmentStatus = z.infer<
