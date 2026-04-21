@@ -7,8 +7,8 @@ import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/s
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
-import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 import { buildEvaluationWorkspace } from '../../apps/api-server/src/presenters/workspace-presenters';
+import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 import { EvaluationWorkspaceView } from '../../apps/web-ui/src/components/evaluation-result-view';
 
 vi.mock('next/link', () => ({
@@ -50,23 +50,45 @@ describe('evaluation workspace', () => {
         history,
         versions: evaluation.audit_record.runtime_versions,
       });
+      const renderWorkspace = {
+        ...workspace,
+        history_summary: {
+          ...workspace.history_summary,
+          compare_candidates: [],
+        },
+        links: {
+          ...workspace.links,
+          compare_href: null,
+        },
+      };
 
       const html = renderToStaticMarkup(
         React.createElement(EvaluationWorkspaceView, {
-          workspace,
-          activeTab: 'summary',
+          workspace: renderWorkspace,
+          activeTab: 'overview',
           onTabChange: vi.fn(),
-          onExportJson: vi.fn(),
-          onExportCsv: vi.fn(),
         }),
       );
 
       expect(html).toContain('Evaluation workspace');
+      expect(html).toContain('Overview');
+      expect(html).toContain('Recommendations');
+      expect(html).toContain('Modeling');
+      expect(html).toContain('Roadmap &amp; Suppliers');
+      expect(html).toContain('Audit');
       expect(html).toContain('Decision posture');
       expect(html).toContain('Delivery readiness');
-      expect(html).toContain('Prioritized recommendations');
+      expect(html).toContain('Lead action');
+      expect(html).toContain('Read full narrative');
+      expect(html).toContain('Improves confidence');
       expect(html).toContain('Case history');
       expect(html).toContain('Export JSON');
+      expect(html).toContain(
+        `href="http://localhost:4000/api/exports/evaluations/${evaluation.evaluation_id}/json"`,
+      );
+      expect(html).toContain(
+        `href="http://localhost:4000/api/exports/evaluations/${evaluation.evaluation_id}/csv"`,
+      );
       expect(html).not.toContain('Comparison dock');
       expect(html).not.toContain('History rail');
     } finally {

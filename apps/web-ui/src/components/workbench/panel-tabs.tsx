@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 
+import { Tabs } from '@/components/ui/tabs';
+
 void React;
 
 export function PanelTabs<T extends string>({
@@ -20,26 +22,15 @@ export function PanelTabs<T extends string>({
   label: string;
 }) {
   return (
-    <div className="wb-tablist" role="tablist" aria-label={label}>
-      {tabs.map((tab) => {
-        const selected = tab.id === activeTab;
-
-        return (
-          <button
-            key={tab.id}
-            className={`wb-tab${selected ? ' active' : ''}`}
-            role="tab"
-            type="button"
-            aria-selected={selected}
-            onClick={() => onChange(tab.id)}
-          >
-            <span>{tab.label}</span>
-            {tab.badge !== undefined ? (
-              <span className="wb-tab-badge">{tab.badge}</span>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
+    <Tabs
+      items={tabs.map((tab) => ({
+        value: tab.id,
+        label: tab.label,
+        badge: tab.badge,
+      }))}
+      label={label}
+      onValueChange={(nextTab) => onChange(nextTab as T)}
+      value={activeTab}
+    />
   );
 }

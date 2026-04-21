@@ -3,20 +3,21 @@
 import type { SignalSourceKind } from '@metrev/domain-contracts';
 import * as React from 'react';
 
+import { Badge } from '@/components/ui/badge';
 import { formatToken } from '@/lib/formatting';
 
 void React;
 
 function sourceKindTone(
   kind: SignalSourceKind,
-): 'success' | 'warning' | 'accent' | 'muted' {
+): 'accepted' | 'pending' | 'info' | 'muted' {
   switch (kind) {
     case 'measured':
-      return 'success';
+      return 'accepted';
     case 'modeled':
-      return 'accent';
+      return 'info';
     case 'inferred':
-      return 'warning';
+      return 'pending';
     default:
       return 'muted';
   }
@@ -24,8 +25,8 @@ function sourceKindTone(
 
 export function SignalBadge({ kind }: { kind: SignalSourceKind }) {
   return (
-    <span className={`wb-signal-badge ${sourceKindTone(kind)}`}>
+    <Badge className="wb-signal-badge" variant={sourceKindTone(kind)}>
       {formatToken(kind)}
-    </span>
+    </Badge>
   );
 }

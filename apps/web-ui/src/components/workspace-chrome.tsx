@@ -4,30 +4,46 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import * as React from 'react';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+
 void React;
 
 export function WorkspacePageHeader({
+  breadcrumb,
   badge,
   title,
   description,
   chips = [],
   actions,
+  pageActions,
 }: {
+  breadcrumb?: ReactNode;
   badge: string;
   title: string;
   description: string;
   chips?: string[];
   actions?: ReactNode;
+  pageActions?: ReactNode;
 }) {
+  const resolvedActions = pageActions ?? actions;
+
   return (
     <section className="workspace-page-header">
       <div className="workspace-page-header__copy">
-        <span className="badge">{badge}</span>
+        {breadcrumb ? (
+          <div className="workspace-page-header__breadcrumb">{breadcrumb}</div>
+        ) : null}
+        <Badge>{badge}</Badge>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
       <div className="workspace-page-header__meta">
-        {actions ? <div className="workspace-page-header__actions">{actions}</div> : null}
+        {resolvedActions ? (
+          <div className="workspace-page-header__actions">
+            {resolvedActions}
+          </div>
+        ) : null}
         {chips.length > 0 ? (
           <div className="workspace-chip-list">
             {chips.map((chip) => (
@@ -43,12 +59,14 @@ export function WorkspacePageHeader({
 }
 
 export function WorkspaceSection({
+  className,
   eyebrow,
   title,
   description,
   actions,
   children,
 }: {
+  className?: string;
   eyebrow?: string;
   title: string;
   description?: string;
@@ -56,14 +74,18 @@ export function WorkspaceSection({
   children: ReactNode;
 }) {
   return (
-    <section className="workspace-section">
+    <section
+      className={['workspace-section', className].filter(Boolean).join(' ')}
+    >
       <div className="workspace-section__header">
         <div>
-          {eyebrow ? <span className="badge subtle">{eyebrow}</span> : null}
+          {eyebrow ? <Badge variant="muted">{eyebrow}</Badge> : null}
           <h2>{title}</h2>
           {description ? <p>{description}</p> : null}
         </div>
-        {actions ? <div className="workspace-section__actions">{actions}</div> : null}
+        {actions ? (
+          <div className="workspace-section__actions">{actions}</div>
+        ) : null}
       </div>
       {children}
     </section>
@@ -88,7 +110,9 @@ export function WorkspaceStatCard({
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{detail}</p>
-      {footer ? <div className="workspace-stat-card__footer">{footer}</div> : null}
+      {footer ? (
+        <div className="workspace-stat-card__footer">{footer}</div>
+      ) : null}
     </article>
   );
 }
@@ -100,7 +124,11 @@ export function WorkspaceDataCard({
   children: ReactNode;
   tone?: 'default' | 'accent' | 'warning' | 'success' | 'critical';
 }) {
-  return <article className={`workspace-data-card workspace-data-card--${tone}`}>{children}</article>;
+  return (
+    <article className={`workspace-data-card workspace-data-card--${tone}`}>
+      {children}
+    </article>
+  );
 }
 
 export function WorkspaceEmptyState({
@@ -119,19 +147,15 @@ export function WorkspaceEmptyState({
       <strong>{title}</strong>
       <p>{description}</p>
       {primaryHref && primaryLabel ? (
-        <Link className="button secondary" href={primaryHref}>
-          {primaryLabel}
-        </Link>
+        <Button asChild variant="outline">
+          <Link href={primaryHref}>{primaryLabel}</Link>
+        </Button>
       ) : null}
     </div>
   );
 }
 
-export function WorkspaceSkeleton({
-  lines = 3,
-}: {
-  lines?: number;
-}) {
+export function WorkspaceSkeleton({ lines = 3 }: { lines?: number }) {
   return (
     <div className="workspace-skeleton" aria-hidden="true">
       {Array.from({ length: lines }, (_, index) => (
