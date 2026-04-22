@@ -37,7 +37,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Evidence Review',
   },
   {
-    disabled: true,
     href: '/evaluations',
     icon: 'evaluations',
     id: 'evaluations',

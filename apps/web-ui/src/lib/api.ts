@@ -1,5 +1,4 @@
 import type {
-  CaseHistoryResponse,
   CaseHistoryWorkspaceResponse,
   DashboardWorkspaceResponse,
   EvaluationComparisonResponse,
@@ -94,17 +93,6 @@ export async function fetchEvaluationList(): Promise<EvaluationListResponse> {
   });
 
   return parseJson<EvaluationListResponse>(response);
-}
-
-export async function fetchCaseHistory(
-  caseId: string,
-): Promise<CaseHistoryResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/cases/${caseId}/history`, {
-    cache: 'no-store',
-    credentials: 'include',
-  });
-
-  return parseJson<CaseHistoryResponse>(response);
 }
 
 export async function fetchCaseHistoryWorkspace(

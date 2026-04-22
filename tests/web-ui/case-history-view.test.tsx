@@ -15,7 +15,7 @@ vi.mock('next/link', () => ({
 }));
 
 describe('case history view', () => {
-  it('renders timeline, compare actions, and audit context from the workspace payload', async () => {
+  it('renders timeline tables, collapsed audit disclosures, and structured evidence context', async () => {
     const { historyWorkspace, repository } = await buildWorkspaceViewFixtures();
 
     try {
@@ -26,10 +26,11 @@ describe('case history view', () => {
       );
 
       expect(html).toContain('Case history');
-      expect(html).toContain('Saved evaluation runs');
+      expect(html).toContain('Defaults used');
+      expect(html).toContain('Stored evaluation runs');
       expect(html).toContain('Compare pair');
-      expect(html).toContain('Audit trail');
-      expect(html).toContain('Attached evidence');
+      expect(html).toContain('Audit payload disclosures');
+      expect(html).toContain('Attached evidence table');
     } finally {
       await repository.disconnect();
     }

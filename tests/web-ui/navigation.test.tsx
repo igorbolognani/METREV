@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAV_ITEMS, buildBreadcrumbs } from '../../apps/web-ui/src/lib/navigation';
+import {
+    NAV_ITEMS,
+    buildBreadcrumbs,
+} from '../../apps/web-ui/src/lib/navigation';
 
 describe('navigation registry', () => {
   it('registers the four global destinations in the expected order', () => {
@@ -10,6 +13,10 @@ describe('navigation registry', () => {
       'evidence-review',
       'evaluations',
     ]);
+
+    expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe(
+      undefined,
+    );
   });
 
   it('builds breadcrumbs for all required route patterns', () => {
@@ -35,7 +42,9 @@ describe('navigation registry', () => {
       { href: '/', label: 'Dashboard' },
     ]);
 
-    expect(buildBreadcrumbs('/evaluations/eval-001', { id: 'eval-001' })).toEqual([
+    expect(
+      buildBreadcrumbs('/evaluations/eval-001', { id: 'eval-001' }),
+    ).toEqual([
       { href: '/', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { label: '#eval-001' },
@@ -66,7 +75,9 @@ describe('navigation registry', () => {
       { href: '/', label: 'Dashboard' },
     ]);
 
-    expect(buildBreadcrumbs('/evidence/review/evidence-001', { id: 'evidence-001' })).toEqual([
+    expect(
+      buildBreadcrumbs('/evidence/review/evidence-001', { id: 'evidence-001' }),
+    ).toEqual([
       { href: '/', label: 'Dashboard' },
       { href: '/evidence/review', label: 'Evidence Review' },
       { label: '#evidence-001' },

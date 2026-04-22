@@ -6,6 +6,7 @@ import * as React from 'react';
 
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
+import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { fetchExternalEvidenceCatalog } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 
@@ -56,17 +57,12 @@ export function AcceptedEvidenceSelector({
       ) : query.error ? (
         <p className="error">{query.error.message}</p>
       ) : !query.data || query.data.items.length === 0 ? (
-        <div className="grid">
-          <p className="muted empty-state">
-            No accepted external-evidence records are available yet. Review the
-            queue first before attaching catalog evidence to a case.
-          </p>
-          <div className="hero-actions">
-            <Link className="button secondary" href="/evidence/review">
-              Open evidence review queue
-            </Link>
-          </div>
-        </div>
+        <WorkspaceEmptyState
+          description="No accepted external-evidence records are available yet. Review the queue first before attaching catalog evidence to a case."
+          primaryHref="/evidence/review"
+          primaryLabel="Open evidence review queue"
+          title="No accepted catalog evidence"
+        />
       ) : (
         <div className="preset-grid">
           {query.data.items.map((item) => {

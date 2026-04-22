@@ -29,7 +29,10 @@ const workspace = {
       subject_type: 'workspace',
       subject_id: 'dashboard',
       entrypoint: 'api',
-      transformation_stages: ['evaluation_list', 'dashboard_workspace_presenter'],
+      transformation_stages: [
+        'evaluation_list',
+        'dashboard_workspace_presenter',
+      ],
       rule_refs: [],
       evidence_refs: ['evidence-001'],
       defaults_count: 0,
@@ -111,7 +114,7 @@ const workspace = {
 } satisfies DashboardWorkspaceResponse;
 
 describe('dashboard workspace', () => {
-  it('renders operational KPIs, recent runs, and review backlog from the workspace payload', () => {
+  it('renders operational KPIs, dense tables, and latest-run quick links from the workspace payload', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashboardWorkspaceView, {
         workspace,
@@ -123,6 +126,10 @@ describe('dashboard workspace', () => {
     expect(html).toContain('High-confidence runs');
     expect(html).toContain('CASE-002');
     expect(html).toContain('Open result');
+    expect(html).toContain('Latest evaluation');
+    expect(html).toContain('Latest case history');
+    expect(html).toContain('Open workspace');
+    expect(html).toContain('Review State');
     expect(html).toContain('Accepted sidestream benchmark');
     expect(html).not.toContain('Comparison dock');
     expect(html).not.toContain('History rail');
