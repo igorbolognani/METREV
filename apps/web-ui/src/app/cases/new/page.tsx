@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
-import { requireRoleSession } from '@/lib/require-session';
 import { CaseForm } from '@/components/case-form';
+import { requireRoleSession } from '@/lib/require-session';
 
 export default async function NewCasePage() {
   const { session, authorized } = await requireRoleSession(
@@ -21,7 +21,7 @@ export default async function NewCasePage() {
             persisted history views.
           </p>
           <div className="hero-actions">
-            <Link className="button secondary" href="/">
+            <Link className="button secondary" href="/dashboard">
               Back to dashboard
             </Link>
           </div>

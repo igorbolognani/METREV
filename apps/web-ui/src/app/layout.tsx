@@ -8,7 +8,7 @@ import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'METREV',
-  description: 'Auditable bioelectrochemical decision-support runtime.',
+  description: 'Auditable bioelectrochemical decision-support workspace.',
 };
 
 export default async function RootLayout({
@@ -20,7 +20,7 @@ export default async function RootLayout({
 
   const signOutAction = async (_formData: FormData) => {
     'use server';
-    await signOut({ redirectTo: '/login' });
+    await signOut({ redirectTo: '/' });
   };
 
   return (

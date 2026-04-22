@@ -19,7 +19,7 @@ export interface BreadcrumbItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    href: '/',
+    href: '/dashboard',
     icon: 'dashboard',
     id: 'dashboard',
     label: 'Dashboard',
@@ -79,27 +79,27 @@ export function buildBreadcrumbs(
   const evaluationId = readParam(params, 'id', 'evaluationId');
   const caseId = readParam(params, 'caseId', 'id');
 
-  if (normalizedPathname === '/') {
+  if (normalizedPathname === '/dashboard') {
     return [];
   }
 
   if (normalizedPathname === '/cases/new') {
-    return [{ href: '/', label: 'Dashboard' }];
+    return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 
   if (normalizedPathname === '/cases/new/submitting') {
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/cases/new', label: 'Input Deck' },
     ];
   }
 
   if (normalizedPathname === '/evaluations') {
-    return [{ href: '/', label: 'Dashboard' }];
+    return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 
   if (normalizedPathname === '/evidence/review') {
-    return [{ href: '/', label: 'Dashboard' }];
+    return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 
   if (
@@ -110,7 +110,7 @@ export function buildBreadcrumbs(
       caseId ?? normalizedPathname.split('/')[2] ?? 'unknown';
 
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       {
         href: `/cases/${resolvedCaseId}/history`,
         label: `Case #${resolvedCaseId}`,
@@ -126,7 +126,7 @@ export function buildBreadcrumbs(
       evaluationId ?? normalizedPathname.split('/')[2] ?? 'unknown';
 
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       {
         href: `/evaluations/${resolvedEvaluationId}`,
@@ -141,7 +141,7 @@ export function buildBreadcrumbs(
       evaluationId ?? normalizedPathname.split('/')[2] ?? 'unknown';
 
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       {
         href: `/evaluations/${resolvedEvaluationId}`,
@@ -156,7 +156,7 @@ export function buildBreadcrumbs(
       evaluationId ?? normalizedPathname.split('/')[2] ?? 'unknown';
 
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { label: `#${resolvedEvaluationId}` },
     ];
@@ -169,11 +169,11 @@ export function buildBreadcrumbs(
       'unknown';
 
     return [
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evidence/review', label: 'Evidence Review' },
       { label: `#${evidenceId}` },
     ];
   }
 
-  return [{ href: '/', label: 'Dashboard' }];
+  return [{ href: '/dashboard', label: 'Dashboard' }];
 }

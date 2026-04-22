@@ -128,6 +128,8 @@ describe('dashboard workspace', () => {
     expect(html).toContain('Open result');
     expect(html).toContain('Latest evaluation');
     expect(html).toContain('Latest case history');
+    expect(html).toContain('Primary modules');
+    expect(html).toContain('Open input deck');
     expect(html).toContain('Open workspace');
     expect(html).toContain('Review State');
     expect(html).toContain('Accepted sidestream benchmark');

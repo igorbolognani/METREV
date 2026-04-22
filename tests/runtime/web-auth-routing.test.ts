@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildLoginRedirect,
-  normalizeCallbackPath,
-  sessionHasRequiredRole,
+    buildLoginRedirect,
+    normalizeCallbackPath,
+    sessionHasRequiredRole,
 } from '../../apps/web-ui/src/lib/auth-routing';
 
 describe('web auth routing helpers', () => {
@@ -14,10 +14,12 @@ describe('web auth routing helpers', () => {
   });
 
   it('falls back to the dashboard for empty, unsafe, or login callback paths', () => {
-    expect(normalizeCallbackPath('')).toBe('/');
-    expect(normalizeCallbackPath('https://example.com/evil')).toBe('/');
-    expect(normalizeCallbackPath('//example.com/evil')).toBe('/');
-    expect(normalizeCallbackPath('/login')).toBe('/');
+    expect(normalizeCallbackPath('')).toBe('/dashboard');
+    expect(normalizeCallbackPath('https://example.com/evil')).toBe(
+      '/dashboard',
+    );
+    expect(normalizeCallbackPath('//example.com/evil')).toBe('/dashboard');
+    expect(normalizeCallbackPath('/login')).toBe('/dashboard');
   });
 
   it('builds the login redirect with a preserved callback path', () => {

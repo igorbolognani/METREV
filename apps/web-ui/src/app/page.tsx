@@ -1,12 +1,18 @@
-import { DashboardWorkspace } from '@/components/dashboard-workspace';
-import { requireAuthenticatedSession } from '@/lib/require-session';
+import { redirect } from 'next/navigation';
+
+import { auth } from '@/auth';
+import { PublicLandingPage } from '@/components/public-landing';
 
 export default async function HomePage() {
-  await requireAuthenticatedSession('/');
+  const session = await auth();
+
+  if (session?.user?.id) {
+    redirect('/dashboard');
+  }
 
   return (
     <main>
-      <DashboardWorkspace />
+      <PublicLandingPage />
     </main>
   );
 }

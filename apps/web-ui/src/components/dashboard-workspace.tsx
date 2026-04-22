@@ -8,12 +8,12 @@ import { EvidenceBacklogTable } from '@/components/dashboard/evidence-backlog-ta
 import { RecentRunsTable } from '@/components/dashboard/recent-runs-table';
 import { Sparkline } from '@/components/workbench/sparkline';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
-  WorkspaceStatCard,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
+    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
 import { fetchDashboardWorkspace } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
@@ -60,6 +60,48 @@ export function DashboardWorkspaceView({
   const hasLatestLinks =
     Boolean(workspace.quick_actions.latest_evaluation_href) ||
     Boolean(workspace.quick_actions.latest_case_history_href);
+  const workspaceSurfaces = [
+    {
+      detail:
+        'Draft a new case with explicit assumptions, evidence selection, and visible submission stages.',
+      href: workspace.quick_actions.new_evaluation_href,
+      label: 'Open input deck',
+      title: 'Input Deck',
+      tone: 'accent' as const,
+    },
+    {
+      detail:
+        'Search saved evaluations, reopen workspaces, and move directly into history or comparison.',
+      href: '/evaluations',
+      label: 'Open evaluations',
+      title: 'Evaluation registry',
+      tone: 'default' as const,
+    },
+    {
+      detail:
+        'Review imported evidence before it becomes eligible for deterministic intake.',
+      href: workspace.quick_actions.evidence_review_href,
+      label: 'Open evidence review',
+      title: 'Evidence Review',
+      tone: 'warning' as const,
+    },
+    latestRun
+      ? {
+          detail:
+            'Jump straight to the latest printable output once a saved run already exists in the workspace.',
+          href: `/evaluations/${latestRun.evaluation_id}/report`,
+          label: 'Open latest report',
+          title: 'Report surface',
+          tone: 'success' as const,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    detail: string;
+    href: string;
+    label: string;
+    title: string;
+    tone: 'accent' | 'default' | 'success' | 'warning';
+  }>;
 
   return (
     <div className="workspace-page">
@@ -133,6 +175,27 @@ export function DashboardWorkspaceView({
           value={workspace.summary.pending_evidence}
         />
       </section>
+
+      <WorkspaceSection
+        description="Move through the current METREV product surfaces without leaving the analyst workspace language."
+        eyebrow="Workspace surfaces"
+        title="Primary modules"
+      >
+        <div className="workspace-card-list workspace-card-list--modules">
+          {workspaceSurfaces.map((surface) => (
+            <WorkspaceDataCard key={surface.title} tone={surface.tone}>
+              <span className="badge subtle">{surface.title}</span>
+              <h3>{surface.label}</h3>
+              <p>{surface.detail}</p>
+              <div className="workspace-action-row">
+                <Link className="ghost-button" href={surface.href}>
+                  {surface.label}
+                </Link>
+              </div>
+            </WorkspaceDataCard>
+          ))}
+        </div>
+      </WorkspaceSection>
 
       <WorkspaceSection
         actions={

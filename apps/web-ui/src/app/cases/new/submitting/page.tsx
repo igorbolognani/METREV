@@ -20,7 +20,7 @@ export default async function CaseSubmittingPage() {
             and monitor new case evaluations.
           </p>
           <div className="hero-actions">
-            <Link className="button secondary" href="/">
+            <Link className="button secondary" href="/dashboard">
               Back to dashboard
             </Link>
           </div>

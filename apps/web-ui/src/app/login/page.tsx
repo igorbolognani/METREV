@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { AuthError } from 'next-auth';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { auth, signIn } from '@/auth';
@@ -39,12 +39,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main>
       <section className="panel auth-card">
-        <span className="badge">Local analyst access</span>
-        <h1>Sign in to METREV</h1>
+        <span className="badge">Workspace access</span>
+        <h1>Sign in to the METREV workspace</h1>
         <p className="muted">
           Use one of the deterministic local accounts created by{' '}
           <code>pnpm run db:seed</code>. The authenticated session is required
-          before the UI can create evaluations or read persisted history.
+          before the UI can reach the dashboard, evaluation surfaces, evidence
+          review queue, and persisted history.
         </p>
 
         {feedback ? <p className="error">{feedback}</p> : null}
@@ -108,11 +109,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <h2>Local runtime note</h2>
           <p className="muted">
             The canonical local credentials come from the seeded runtime env.
-            The quickstart documents the default analyst flow from sign-in to
-            logout.
+            After sign-in, the default callback opens the dashboard workspace.
+            The quickstart documents the full analyst flow from sign-in to
+            export and logout.
           </p>
           <Link className="button secondary" href="/">
-            Back to dashboard entry
+            Back to landing page
           </Link>
         </div>
       </section>

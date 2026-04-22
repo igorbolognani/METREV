@@ -1,6 +1,6 @@
 import { hasRequiredRole, type Role } from '@metrev/auth';
 
-const defaultCallbackPath = '/';
+const defaultCallbackPath = '/dashboard';
 
 export function normalizeCallbackPath(
   value: FormDataEntryValue | string | null | undefined,

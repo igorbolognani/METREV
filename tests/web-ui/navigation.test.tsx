@@ -20,32 +20,32 @@ describe('navigation registry', () => {
   });
 
   it('builds breadcrumbs for all required route patterns', () => {
-    expect(buildBreadcrumbs('/', {})).toEqual([]);
+    expect(buildBreadcrumbs('/dashboard', {})).toEqual([]);
 
     expect(buildBreadcrumbs('/cases/new', {})).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
     ]);
 
     expect(buildBreadcrumbs('/cases/new/submitting', {})).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/cases/new', label: 'Input Deck' },
     ]);
 
     expect(
       buildBreadcrumbs('/cases/CASE-001/history', { caseId: 'CASE-001' }),
     ).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/cases/CASE-001/history', label: 'Case #CASE-001' },
     ]);
 
     expect(buildBreadcrumbs('/evaluations', {})).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
     ]);
 
     expect(
       buildBreadcrumbs('/evaluations/eval-001', { id: 'eval-001' }),
     ).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { label: '#eval-001' },
     ]);
@@ -53,7 +53,7 @@ describe('navigation registry', () => {
     expect(
       buildBreadcrumbs('/evaluations/eval-001/report', { id: 'eval-001' }),
     ).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { href: '/evaluations/eval-001', label: '#eval-001' },
       { label: 'Report' },
@@ -65,20 +65,20 @@ describe('navigation registry', () => {
         id: 'eval-001',
       }),
     ).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { href: '/evaluations/eval-001', label: '#eval-001' },
       { label: 'Compare' },
     ]);
 
     expect(buildBreadcrumbs('/evidence/review', {})).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
     ]);
 
     expect(
       buildBreadcrumbs('/evidence/review/evidence-001', { id: 'evidence-001' }),
     ).toEqual([
-      { href: '/', label: 'Dashboard' },
+      { href: '/dashboard', label: 'Dashboard' },
       { href: '/evidence/review', label: 'Evidence Review' },
       { label: '#evidence-001' },
     ]);

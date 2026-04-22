@@ -31,10 +31,13 @@ export function AppSidebar({
         <div className="app-sidebar__top">
           <div className="app-sidebar__brand-row">
             <div className="app-sidebar__brand-copy">
+              {!collapsed ? <Badge variant="info">Live workspace</Badge> : null}
+              {!collapsed ? <strong>METREV</strong> : null}
               {!collapsed ? (
-                <Badge variant="info">Analyst runtime</Badge>
+                <span className="app-sidebar__brand-note">
+                  Decision, evidence, and audit surfaces
+                </span>
               ) : null}
-              {!collapsed ? <strong>METREV workspace</strong> : null}
             </div>
             <Button
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -66,7 +69,7 @@ export function AppSidebar({
           <div className="app-sidebar__footer-copy">
             {!collapsed ? (
               <Badge size="sm" variant="muted">
-                {role}
+                {role.toLowerCase()}
               </Badge>
             ) : null}
             {!collapsed && email ? (
