@@ -5,8 +5,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  ExternalEvidenceCatalogItemDetail,
-  ExternalEvidenceReviewAction,
+    ExternalEvidenceCatalogItemDetail,
+    ExternalEvidenceReviewAction,
 } from '@metrev/domain-contracts';
 
 import { EvidenceClaimsTable } from '@/components/evidence-detail/evidence-claims-table';
@@ -14,19 +14,43 @@ import { EvidenceMetadataGrid } from '@/components/evidence-detail/evidence-meta
 import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disclosure-card';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import {
-  fetchExternalEvidenceCatalogItem,
-  reviewExternalEvidenceCatalogItem,
+    fetchExternalEvidenceCatalogItem,
+    reviewExternalEvidenceCatalogItem,
 } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
+
+function toStructuredClaimRows(
+  item: ExternalEvidenceCatalogItemDetail,
+): unknown[] {
+  if (item.claims.length > 0) {
+    return item.claims.map((claim) => ({
+      claim: claim.content,
+      detail: [
+        formatToken(claim.claim_type),
+        claim.extracted_value
+          ? `${claim.extracted_value}${claim.unit ? ` ${claim.unit}` : ''}`
+          : null,
+        `Confidence ${Math.round(claim.confidence * 100)}%`,
+        claim.source_snippet,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      id: claim.id,
+      scope: claim.source_locator ?? claim.source_document_id,
+    }));
+  }
+
+  return item.extracted_claims;
+}
 
 function buildReviewPayload(
   action: ExternalEvidenceReviewAction,
@@ -145,33 +169,42 @@ export function ExternalEvidenceDetailView({
     {
       detail: 'Local category mapping',
       label: 'Source category',
-      value: item.source_category ?? 'Not stated',
+      value:
+        item.source_document?.source_category ??
+        item.source_category ??
+        'Not stated',
     },
     {
       detail: 'Publisher or source owner',
       label: 'Publisher',
-      value: item.publisher ?? 'Not stated',
+      value: item.source_document?.publisher ?? item.publisher ?? 'Not stated',
     },
     {
       detail: 'Publication timestamp',
       label: 'Published',
-      value: item.published_at ?? 'Not stated',
+      value:
+        item.source_document?.published_at ?? item.published_at ?? 'Not stated',
     },
     {
       detail: 'Digital object identifier',
       label: 'DOI',
-      value: item.doi ?? 'Not stated',
+      value: item.source_document?.doi ?? item.doi ?? 'Not stated',
     },
     {
       detail: 'External source URL',
       label: 'Source URL',
-      value: item.source_url ? (
-        <a href={item.source_url} rel="noreferrer" target="_blank">
-          Open source record
-        </a>
-      ) : (
-        'Not stated'
-      ),
+      value:
+        (item.source_document?.source_url ?? item.source_url) ? (
+          <a
+            href={item.source_document?.source_url ?? item.source_url ?? '#'}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open source record
+          </a>
+        ) : (
+          'Not stated'
+        ),
     },
     {
       detail: 'Catalog insertion time',
@@ -187,6 +220,8 @@ export function ExternalEvidenceDetailView({
   const applicabilityEntryCount = Object.keys(
     item.applicability_scope ?? {},
   ).length;
+  const structuredClaims = toStructuredClaimRows(item);
+  const sourceDocument = item.source_document;
 
   return (
     <div className="workspace-page">
@@ -282,7 +317,7 @@ export function ExternalEvidenceDetailView({
           eyebrow="Claims"
           title="Structured claims"
         >
-          <EvidenceClaimsTable claims={item.extracted_claims} />
+          <EvidenceClaimsTable claims={structuredClaims} />
         </WorkspaceSection>
 
         <WorkspaceSection
@@ -309,6 +344,50 @@ export function ExternalEvidenceDetailView({
                 ))}
               </div>
             ) : null}
+          </WorkspaceDataCard>
+          <WorkspaceDataCard>
+            <h3>Source document record</h3>
+            {sourceDocument ? (
+              <ul className="list-block">
+                <li>Source ID {sourceDocument.id}</li>
+                <li>
+                  Access status {formatToken(sourceDocument.access_status)}
+                </li>
+                <li>Journal {sourceDocument.journal ?? 'Not stated'}</li>
+                <li>License {sourceDocument.license ?? 'Not stated'}</li>
+                <li>{sourceDocument.authors.length} author record(s)</li>
+              </ul>
+            ) : (
+              <p className="muted">
+                No source document metadata was stored for this record.
+              </p>
+            )}
+          </WorkspaceDataCard>
+          <WorkspaceDataCard>
+            <h3>Supplier-linked documents</h3>
+            {item.supplier_documents.length > 0 ? (
+              <div className="workspace-card-list">
+                {item.supplier_documents.map((document) => (
+                  <article className="workspace-inline-card" key={document.id}>
+                    <h3>{formatToken(document.document_type)}</h3>
+                    <p>
+                      Supplier {document.supplier_id}
+                      {document.product_id
+                        ? ` · Product ${document.product_id}`
+                        : ''}
+                    </p>
+                    <p className="muted">
+                      {document.note ?? 'No analyst note was stored.'}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">
+                No supplier-linked documents were attached to this evidence
+                record.
+              </p>
+            )}
           </WorkspaceDataCard>
           <PayloadDisclosureCard
             countBadge={applicabilityEntryCount}

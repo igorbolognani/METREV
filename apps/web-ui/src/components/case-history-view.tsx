@@ -9,24 +9,38 @@ import type { CaseHistoryWorkspaceResponse } from '@metrev/domain-contracts';
 import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disclosure-card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
 } from '@/components/ui/table';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { fetchCaseHistoryWorkspace } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
+
+function listOrEmpty(items: string[], emptyMessage: string) {
+  if (items.length === 0) {
+    return <p className="muted">{emptyMessage}</p>;
+  }
+
+  return (
+    <ul className="list-block">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
 
 function badgeVariantForConfidence(value: string) {
   switch (value) {
@@ -39,6 +53,19 @@ function badgeVariantForConfidence(value: string) {
     default:
       return 'muted' as const;
   }
+}
+
+function formatPersistedUsage(
+  value:
+    | CaseHistoryWorkspaceResponse['current_evaluation_lineage']['source_usages'][number]
+    | CaseHistoryWorkspaceResponse['current_evaluation_lineage']['claim_usages'][number],
+) {
+  const targetId =
+    'source_document_id' in value ? value.source_document_id : value.claim_id;
+
+  return `${formatToken(value.usage_type)} · ${targetId}${
+    value.note ? ` · ${value.note}` : ''
+  }`;
 }
 
 function badgeVariantForStrength(value: string) {
@@ -231,6 +258,43 @@ export function CaseHistoryWorkspaceView({
             title="No saved runs"
           />
         )}
+      </WorkspaceSection>
+
+      <WorkspaceSection
+        description={`Persisted lineage attached to ${workspace.current_evaluation_id ?? 'the latest saved run'} remains visible here so provenance survives outside the detailed evaluation workspace.`}
+        eyebrow="Latest run lineage"
+        title="Persisted provenance and snapshots"
+      >
+        <div className="workspace-detail-grid">
+          <WorkspaceDataCard>
+            <h3>Persisted source usage</h3>
+            {listOrEmpty(
+              workspace.current_evaluation_lineage.source_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted source usage records were attached to the latest saved run.',
+            )}
+          </WorkspaceDataCard>
+          <WorkspaceDataCard>
+            <h3>Persisted claim usage</h3>
+            {listOrEmpty(
+              workspace.current_evaluation_lineage.claim_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted claim usage records were attached to the latest saved run.',
+            )}
+          </WorkspaceDataCard>
+        </div>
+        <WorkspaceDataCard>
+          <h3>Workspace snapshot inventory</h3>
+          {listOrEmpty(
+            workspace.current_evaluation_lineage.workspace_snapshots.map(
+              (snapshot) =>
+                `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
+            ),
+            'No immutable workspace snapshots were attached to the latest saved run.',
+          )}
+        </WorkspaceDataCard>
       </WorkspaceSection>
 
       <div className="workspace-split-grid">

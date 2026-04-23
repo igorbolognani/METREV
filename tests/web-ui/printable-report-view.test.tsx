@@ -22,6 +22,8 @@ describe('printable report view', () => {
       expect(html).toContain('Action shortlist');
       expect(html).toContain('Qualified candidates');
       expect(html).toContain('Defaults used');
+      expect(html).toContain('Persisted provenance and snapshots');
+      expect(html).toContain('Supports the prioritized improvement shortlist.');
     } finally {
       await repository.disconnect();
     }

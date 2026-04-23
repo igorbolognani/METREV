@@ -41,15 +41,22 @@ describe('external evidence review board', () => {
           onConfirmBulkAction: vi.fn(),
           workspace: evidenceWorkspace,
           filter: 'accepted',
+          onNextPage: vi.fn(),
+          onPageSizeChange: vi.fn(),
+          onPreviousPage: vi.fn(),
           onRequestBulkAction: vi.fn(),
           onResultDialogOpenChange: vi.fn(),
           searchInput: 'benchmark',
           onFilterChange: vi.fn(),
           onSearchInputChange: vi.fn(),
           onSelectAllVisible: vi.fn(),
+          onSourceTypeChange: vi.fn(),
           onToggleSelection: vi.fn(),
+          page: 1,
+          pageSize: 25,
           resultDialogOpen: false,
           selectedIds: ['evidence-1'],
+          sourceType: 'all',
           visibleItems: evidenceWorkspace.items,
           visibleSpotlight: evidenceWorkspace.spotlight,
           visibleSummary: evidenceWorkspace.summary,
@@ -59,6 +66,9 @@ describe('external evidence review board', () => {
       expect(html).toContain('Imported evidence control surface');
       expect(html).toContain('Dense review workflow');
       expect(html).toContain('Select all visible');
+      expect(html).toContain('Rows per page');
+      expect(html).toContain('Source type');
+      expect(html).toContain('Previous page');
       expect(html).toContain('Accept selected');
       expect(html).toContain('Priority records');
       expect(html).toContain('Evidence catalog');

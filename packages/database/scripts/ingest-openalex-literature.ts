@@ -1,47 +1,99 @@
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
+import {
+  deduplicateEntries,
+  normalizeOpenAlexWork,
+  optionFlag,
+  optionNumber,
+  optionValue,
+  parseScriptOptions,
+  persistNormalizedEntries,
+  summarizeNormalizedEntries,
+} from './external-ingestion-shared.mjs';
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
-import { normalizeOpenAlexWork } from './external-ingestion-shared.mjs';
 
 loadWorkspaceEnv(import.meta.url);
 
-const prisma = getPrismaClient();
+export async function runOpenAlexIngestion(overrides = {}) {
+  const options = {
+    ...parseScriptOptions(),
+    ...overrides,
+  };
 
-async function main() {
-  const query = process.env.INGEST_QUERY?.trim();
-  const apiKey = process.env.OPENALEX_API_KEY?.trim();
-  const limit = Math.max(1, Number(process.env.INGEST_LIMIT ?? '10'));
+  const query = optionValue(options, 'query', process.env.INGEST_QUERY?.trim());
+  const limit = optionNumber(
+    options,
+    'limit',
+    Number(process.env.INGEST_LIMIT ?? '25'),
+    1,
+    5000,
+  );
+  const pageSize = optionNumber(
+    options,
+    ['pageSize', 'perPage'],
+    Math.min(limit, 25),
+    1,
+    200,
+  );
+  const maxPages = optionNumber(
+    options,
+    'maxPages',
+    Math.max(1, Math.ceil(limit / Math.max(pageSize, 1))),
+    1,
+    500,
+  );
+  const mailto = optionValue(
+    options,
+    'mailto',
+    process.env.OPENALEX_MAILTO?.trim() ??
+      process.env.CROSSREF_MAILTO?.trim() ??
+      null,
+  );
+  const apiKey = optionValue(
+    options,
+    'apiKey',
+    process.env.OPENALEX_API_KEY?.trim() ?? null,
+  );
+  const initialCursor = optionValue(
+    options,
+    'cursor',
+    process.env.INGEST_CURSOR?.trim() ?? '*',
+  );
+  const dryRun = optionFlag(options, 'dryRun', false);
 
   if (!query) {
-    throw new Error('INGEST_QUERY is required for OpenAlex ingestion.');
-  }
-
-  if (!apiKey) {
-    throw new Error('OPENALEX_API_KEY is required for OpenAlex ingestion.');
+    throw new Error(
+      'INGEST_QUERY or --query is required for OpenAlex ingestion.',
+    );
   }
 
   const startedAt = new Date();
-  const requestUrl = new URL('https://api.openalex.org/works');
-  requestUrl.searchParams.set('search', query);
-  requestUrl.searchParams.set('per-page', String(limit));
-  requestUrl.searchParams.set('api_key', apiKey);
+  const normalizedEntries = [];
+  let recordsFetched = 0;
+  let pagesProcessed = 0;
+  let cursor = initialCursor;
+  let nextCursor = initialCursor;
 
-  const run = await prisma.ingestionRun.create({
-    data: {
-      sourceType: 'OPENALEX',
-      triggerMode: 'manual_script',
-      query,
-      status: 'STARTED',
-      recordsFetched: 0,
-      recordsStored: 0,
-      summary: {
-        request_url: requestUrl.toString(),
-      },
-      startedAt,
-    },
-  });
+  while (recordsFetched < limit && pagesProcessed < maxPages && cursor) {
+    const requestUrl = new URL('https://api.openalex.org/works');
+    requestUrl.searchParams.set('search', query);
+    requestUrl.searchParams.set(
+      'per-page',
+      String(Math.min(pageSize, limit - recordsFetched)),
+    );
+    requestUrl.searchParams.set('cursor', cursor);
 
-  try {
+    if (mailto) {
+      requestUrl.searchParams.set('mailto', mailto);
+    }
+
+    if (apiKey) {
+      requestUrl.searchParams.set('api_key', apiKey);
+    }
+
     const response = await fetch(requestUrl, {
       headers: {
         accept: 'application/json',
@@ -54,138 +106,122 @@ async function main() {
 
     const payload = await response.json();
     const results = Array.isArray(payload?.results) ? payload.results : [];
-    const normalizedEntries = results
-      .map((entry) =>
-        normalizeOpenAlexWork(entry, query, startedAt.toISOString()),
-      )
-      .filter(Boolean);
 
-    let stored = 0;
+    normalizedEntries.push(
+      ...results
+        .map((entry) =>
+          normalizeOpenAlexWork(entry, query, startedAt.toISOString()),
+        )
+        .filter(Boolean),
+    );
 
-    for (const entry of normalizedEntries) {
-      const source = await prisma.externalSourceRecord.upsert({
-        where: {
-          sourceType_sourceKey: {
-            sourceType: entry.sourceRecord.sourceType,
-            sourceKey: entry.sourceRecord.sourceKey,
-          },
-        },
-        update: {
-          sourceUrl: entry.sourceRecord.sourceUrl,
-          title: entry.sourceRecord.title,
-          sourceCategory: entry.sourceRecord.sourceCategory,
-          doi: entry.sourceRecord.doi,
-          publisher: entry.sourceRecord.publisher,
-          publishedAt: entry.sourceRecord.publishedAt
-            ? new Date(entry.sourceRecord.publishedAt)
-            : null,
-          asOf: entry.sourceRecord.asOf
-            ? new Date(entry.sourceRecord.asOf)
-            : null,
-          abstractText: entry.sourceRecord.abstractText,
-          rawPayload: entry.sourceRecord.rawPayload,
-        },
-        create: {
-          sourceType: entry.sourceRecord.sourceType,
-          sourceKey: entry.sourceRecord.sourceKey,
-          sourceUrl: entry.sourceRecord.sourceUrl,
-          title: entry.sourceRecord.title,
-          sourceCategory: entry.sourceRecord.sourceCategory,
-          doi: entry.sourceRecord.doi,
-          publisher: entry.sourceRecord.publisher,
-          publishedAt: entry.sourceRecord.publishedAt
-            ? new Date(entry.sourceRecord.publishedAt)
-            : null,
-          asOf: entry.sourceRecord.asOf
-            ? new Date(entry.sourceRecord.asOf)
-            : null,
-          abstractText: entry.sourceRecord.abstractText,
-          rawPayload: entry.sourceRecord.rawPayload,
-        },
-        select: { id: true },
-      });
+    recordsFetched += results.length;
+    pagesProcessed += 1;
+    nextCursor = payload?.meta?.next_cursor ?? null;
 
-      await prisma.externalEvidenceCatalogItem.upsert({
-        where: {
-          sourceRecordId_evidenceType_title: {
-            sourceRecordId: source.id,
-            evidenceType: entry.catalogItem.evidenceType,
-            title: entry.catalogItem.title,
-          },
-        },
-        update: {
-          summary: entry.catalogItem.summary,
-          strengthLevel: entry.catalogItem.strengthLevel,
-          provenanceNote: entry.catalogItem.provenanceNote,
-          reviewStatus: entry.catalogItem.reviewStatus,
-          sourceState: entry.catalogItem.sourceState,
-          applicabilityScope: entry.catalogItem.applicabilityScope,
-          extractedClaims: entry.catalogItem.extractedClaims,
-          tags: entry.catalogItem.tags,
-          payload: entry.catalogItem.payload,
-        },
-        create: {
-          sourceRecordId: source.id,
-          evidenceType: entry.catalogItem.evidenceType,
-          title: entry.catalogItem.title,
-          summary: entry.catalogItem.summary,
-          strengthLevel: entry.catalogItem.strengthLevel,
-          provenanceNote: entry.catalogItem.provenanceNote,
-          reviewStatus: entry.catalogItem.reviewStatus,
-          sourceState: entry.catalogItem.sourceState,
-          applicabilityScope: entry.catalogItem.applicabilityScope,
-          extractedClaims: entry.catalogItem.extractedClaims,
-          tags: entry.catalogItem.tags,
-          payload: entry.catalogItem.payload,
-        },
-      });
-
-      stored += 1;
+    if (results.length < pageSize || !nextCursor) {
+      break;
     }
+
+    cursor = nextCursor;
+  }
+
+  const entries = deduplicateEntries(normalizedEntries).slice(0, limit);
+
+  if (dryRun) {
+    const summary = summarizeNormalizedEntries(entries);
+    const output = {
+      sourceType: 'OPENALEX',
+      query,
+      dryRun: true,
+      recordsFetched,
+      pagesProcessed,
+      nextCursor,
+      ...summary,
+    };
+    console.log(JSON.stringify(output, null, 2));
+    return output;
+  }
+
+  const prisma = getPrismaClient();
+  const run = await prisma.ingestionRun.create({
+    data: {
+      sourceType: 'OPENALEX',
+      triggerMode: 'manual_script',
+      query,
+      status: 'STARTED',
+      recordsFetched: 0,
+      recordsStored: 0,
+      checkpoint: {
+        cursor: initialCursor,
+      },
+      summary: {
+        page_size: pageSize,
+        max_pages: maxPages,
+        mailto,
+      },
+      startedAt,
+    },
+  });
+
+  try {
+    const persisted = await persistNormalizedEntries(prisma, entries, {
+      runId: run.id,
+    });
 
     await prisma.ingestionRun.update({
       where: { id: run.id },
       data: {
         status: 'COMPLETED',
-        recordsFetched: results.length,
-        recordsStored: stored,
-        completedAt: new Date(),
-        summary: {
-          request_url: requestUrl.toString(),
-          next_cursor: payload?.meta?.next_cursor ?? null,
+        recordsFetched,
+        recordsStored: persisted.recordsStored,
+        checkpoint: {
+          cursor: nextCursor,
+          pages_processed: pagesProcessed,
         },
+        summary: {
+          page_size: pageSize,
+          max_pages: maxPages,
+          mailto,
+          next_cursor: nextCursor,
+          claims_stored: persisted.claimsStored,
+          supplier_documents_stored: persisted.supplierDocumentsStored,
+        },
+        completedAt: new Date(),
       },
     });
 
-    console.log(
-      JSON.stringify(
-        {
-          runId: run.id,
-          sourceType: 'OPENALEX',
-          recordsFetched: results.length,
-          recordsStored: stored,
-        },
-        null,
-        2,
-      ),
-    );
+    const output = {
+      runId: run.id,
+      sourceType: 'OPENALEX',
+      query,
+      recordsFetched,
+      pagesProcessed,
+      nextCursor,
+      ...persisted,
+    };
+    console.log(JSON.stringify(output, null, 2));
+    return output;
   } catch (error) {
     await prisma.ingestionRun.update({
       where: { id: run.id },
       data: {
         status: 'FAILED',
         completedAt: new Date(),
-        summary: {
-          request_url: requestUrl.toString(),
-          error_message: error instanceof Error ? error.message : String(error),
+        failureDetail: {
+          message: error instanceof Error ? error.message : String(error),
         },
       },
     });
-
     throw error;
   } finally {
     await disconnectPrismaClient();
   }
 }
 
-void main();
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  void runOpenAlexIngestion();
+}

@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "name": "metrev-curated-bigdata-seed",
+  "records": [
+    {
+      "sourceKey": "supplier-sgl-carbon-graphite-felt-profile",
+      "title": "Commercial graphite felt portfolios positioned for bioelectrochemical pilot retrofits",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.sglcarbon.com/en/markets-solutions/solutions/industrial-technologies/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated desk research indicates graphite felt formats remain one of the easiest commercial electrode options to source for wastewater bioelectrochemical pilots because they are available in sheets, rolls, and custom cuts.",
+      "tags": ["supplier", "graphite-felt", "anode", "pilot"],
+      "supplierDocument": {
+        "supplierName": "SGL Carbon",
+        "documentType": "PROFILE",
+        "productKey": "graphite-felt-portfolio",
+        "productDisplayName": "Graphite felt electrode portfolio",
+        "productCategory": "anode_material",
+        "trl": 9,
+        "note": "Curated supplier profile for commercially available electrode substrates."
+      },
+      "claims": [
+        {
+          "content": "Commercial graphite felt sheets are available in configurable formats suitable for pilot-scale electrode retrofits in wastewater reactors.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.74,
+          "analystNote": "Desk-research synthesis from supplier portfolio positioning."
+        },
+        {
+          "content": "Graphite felt supply maturity reduces procurement risk compared with custom laboratory electrodes for early deployment phases.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.69
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-toray-carbon-paper-profile",
+      "title": "Carbon paper and cloth offerings remain a commercial benchmark for cathode and sensor assemblies",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.toray.com/global/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated supplier review places carbon paper and cloth products as a benchmark for repeatable cathode assemblies and electrochemical sensing layers in modular BES hardware.",
+      "tags": ["supplier", "carbon-paper", "cathode", "sensor"],
+      "supplierDocument": {
+        "supplierName": "Toray",
+        "documentType": "PROFILE",
+        "productKey": "carbon-paper-cloth-portfolio",
+        "productDisplayName": "Carbon paper and cloth portfolio",
+        "productCategory": "cathode_material",
+        "trl": 9,
+        "note": "Curated supplier profile for carbon paper and cloth materials."
+      },
+      "claims": [
+        {
+          "content": "Commercial carbon paper and cloth products support repeatable cathode subassemblies across pilot and demonstration hardware builds.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.72
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-chemours-nafion-profile",
+      "title": "Ionomer membrane portfolios continue to anchor premium separator options for BES pilots",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.chemours.com/en/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated supplier review suggests premium ionomer membranes remain commercially accessible but carry a clear economic premium relative to lower-cost separators.",
+      "tags": ["supplier", "membrane", "separator", "premium"],
+      "supplierDocument": {
+        "supplierName": "Chemours",
+        "documentType": "PROFILE",
+        "productKey": "ionomer-membrane-portfolio",
+        "productDisplayName": "Ionomer membrane portfolio",
+        "productCategory": "separator",
+        "trl": 9,
+        "note": "Curated supplier profile for ionomer membrane offerings."
+      },
+      "claims": [
+        {
+          "content": "Premium ionomer membranes remain a commercial benchmark for high-selectivity separator designs in BES pilot hardware.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.73
+        },
+        {
+          "content": "Separator cost remains a limiting factor when translating premium membrane chemistries into large-area wastewater deployments.",
+          "claimType": "ECONOMIC",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-dupont-ion-exchange-profile",
+      "title": "Ion-exchange materials remain relevant for nutrient-recovery and selective transport architectures",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.dupont.com/water.html",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-18",
+      "summary": "Curated supplier review highlights ion-exchange materials as commercially relevant building blocks for nutrient-recovery and selective transport modules layered into BES process trains.",
+      "tags": ["supplier", "ion-exchange", "nutrient-recovery"],
+      "supplierDocument": {
+        "supplierName": "DuPont Water Solutions",
+        "documentType": "PROFILE",
+        "productKey": "ion-exchange-portfolio",
+        "productDisplayName": "Ion-exchange materials portfolio",
+        "productCategory": "membrane_or_resin",
+        "trl": 9,
+        "note": "Curated supplier profile for ion-exchange materials used in selective transport applications."
+      },
+      "claims": [
+        {
+          "content": "Commercial ion-exchange materials are relevant to nutrient-recovery and selective transport stages paired with BES reactors.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.71
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-bes-pilot-integrators-2026",
+      "title": "Market scan shows wastewater pilot integrators converging on modular skid-mounted BES packages",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-02",
+      "summary": "Curated market scan across public announcements and vendor positioning suggests pilot integrators increasingly package BES hardware into modular skids to reduce commissioning friction.",
+      "tags": ["market", "pilot", "integrator", "modular"],
+      "claims": [
+        {
+          "content": "Pilot integrators increasingly package BES hardware into modular skid-mounted systems to reduce on-site commissioning effort.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.76
+        },
+        {
+          "content": "Modular packaging improves applicability for industrial wastewater demonstrations where utility tie-ins and footprint constraints are critical.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-carbon-felt-procurement-2026",
+      "title": "Electrode substrate procurement is commercially easier than catalyst procurement for early BES pilots",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-02",
+      "summary": "Curated market scan indicates pilot teams can source carbon-based substrate materials faster than specialty catalyst packages, shifting early bottlenecks toward coatings and balance-of-plant integration.",
+      "tags": ["market", "procurement", "electrode", "catalyst"],
+      "claims": [
+        {
+          "content": "Carbon-based substrate procurement is commercially easier than specialty catalyst procurement for early BES pilot builds.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.74
+        },
+        {
+          "content": "Specialty catalyst availability remains a limiting factor for cathode package standardization across pilot deployments.",
+          "claimType": "LIMITATION",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-membrane-fouling-service-2026",
+      "title": "Service offerings around membrane cleaning and replacement are emerging as deployment support differentiators",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-05",
+      "summary": "Curated market review suggests service models for membrane cleaning, replacement, and condition monitoring are becoming part of commercial wastewater pilot proposals.",
+      "tags": ["market", "service", "membrane", "operations"],
+      "claims": [
+        {
+          "content": "Membrane cleaning and replacement services are becoming a commercial differentiator in wastewater pilot proposals.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.71
+        },
+        {
+          "content": "Operational fouling management remains a limiting factor that vendors increasingly address with service packaging rather than material-only sales.",
+          "claimType": "LIMITATION",
+          "confidence": 0.69
+        }
+      ]
+    },
+    {
+      "sourceKey": "report-industrial-effluent-bes-2026-q1",
+      "title": "Curated analyst brief on industrial effluent segments most compatible with BES demonstration programs",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-10",
+      "summary": "Curated analyst synthesis identifies food and beverage, agro-industrial, and high-COD side streams as the most compatible early segments for BES demonstrations when energy recovery and monitoring are paired.",
+      "tags": ["analyst-brief", "industrial-effluent", "compatibility"],
+      "claims": [
+        {
+          "content": "Food and beverage side streams remain among the most compatible early industrial targets for BES demonstrations.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.77,
+          "reviewStatus": "ACCEPTED",
+          "analystId": "system-seed",
+          "analystRole": "ANALYST",
+          "analystNote": "Curated acceptance for seed scenario coverage."
+        },
+        {
+          "content": "High-COD side streams improve the probability of pairing energy recovery with diagnostic monitoring in early demonstrations.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.73
+        }
+      ]
+    },
+    {
+      "sourceKey": "report-nutrient-recovery-bes-2026-q1",
+      "title": "Curated analyst brief on nutrient-recovery pathways layered on top of BES process trains",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-10",
+      "summary": "Curated analyst synthesis suggests nutrient-recovery pathways are strongest when selective transport modules are placed downstream of stable primary electroactive zones.",
+      "tags": ["analyst-brief", "nutrient-recovery", "selective-transport"],
+      "claims": [
+        {
+          "content": "Nutrient-recovery pathways are strongest when selective transport modules are placed downstream of stable primary electroactive zones.",
+          "claimType": "ARCHITECTURE",
+          "confidence": 0.74
+        },
+        {
+          "content": "Selective transport stages increase architectural complexity and must be justified by a clear recovery objective.",
+          "claimType": "LIMITATION",
+          "confidence": 0.67
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-bes-monitoring-stack-2026",
+      "title": "Monitoring and telemetry bundles are moving from optional add-ons to default commercial packages",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-12",
+      "summary": "Curated market review shows current, voltage, and effluent quality monitoring increasingly bundled into commercial pilot packages as a default rather than an add-on.",
+      "tags": ["market", "telemetry", "monitoring"],
+      "claims": [
+        {
+          "content": "Current, voltage, and effluent quality telemetry are increasingly bundled into commercial BES pilot packages by default.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-fuel-cell-store-electrode-accessories",
+      "title": "Accessory and lab-to-pilot transition components remain easy to source through specialist electrochemistry distributors",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.fuelcellstore.com/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-02-14",
+      "summary": "Curated supplier review suggests specialist electrochemistry distributors remain useful for accelerants like clamps, gaskets, and reference components during lab-to-pilot transition work.",
+      "tags": ["supplier", "distributor", "accessories"],
+      "supplierDocument": {
+        "supplierName": "Fuel Cell Store",
+        "documentType": "PROFILE",
+        "productKey": "electrochemistry-accessories",
+        "productDisplayName": "Electrochemistry accessory portfolio",
+        "productCategory": "balance_of_plant",
+        "trl": 9,
+        "note": "Curated distributor profile for transition components."
+      },
+      "claims": [
+        {
+          "content": "Specialist electrochemistry distributors reduce procurement friction for accessory components needed in lab-to-pilot BES transitions.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.71
+        }
+      ]
+    },
+    {
+      "sourceKey": "report-bes-troubleshooting-2026",
+      "title": "Curated troubleshooting brief highlights startup conditioning and fouling control as recurring pilot pain points",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-18",
+      "summary": "Curated analyst synthesis highlights startup conditioning, inoculum variability, and fouling control as recurring pilot pain points that directly affect confidence framing.",
+      "tags": ["analyst-brief", "troubleshooting", "fouling"],
+      "claims": [
+        {
+          "content": "Startup conditioning and inoculum variability remain recurring pilot pain points that should be surfaced explicitly in uncertainty framing.",
+          "claimType": "LIMITATION",
+          "confidence": 0.78
+        },
+        {
+          "content": "Fouling control should be tracked as an operational condition rather than hidden inside narrative summaries.",
+          "claimType": "CONDITION",
+          "confidence": 0.72
+        }
+      ]
+    }
+  ]
+}

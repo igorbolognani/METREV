@@ -5,7 +5,7 @@ import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import {
   deduplicateEntries,
-  normalizeCrossrefWork,
+  normalizeEuropePmcWork,
   optionFlag,
   optionNumber,
   optionValue,
@@ -17,7 +17,7 @@ import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 
 loadWorkspaceEnv(import.meta.url);
 
-export async function runCrossrefIngestion(overrides = {}) {
+export async function runEuropePmcIngestion(overrides = {}) {
   const options = {
     ...parseScriptOptions(),
     ...overrides,
@@ -47,19 +47,21 @@ export async function runCrossrefIngestion(overrides = {}) {
   );
   const initialCursor = optionValue(
     options,
-    'cursor',
+    ['cursor', 'cursorMark'],
     process.env.INGEST_CURSOR?.trim() ?? '*',
   );
-  const mailto = optionValue(
+  const email = optionValue(
     options,
-    'mailto',
-    process.env.CROSSREF_MAILTO?.trim() ?? null,
+    'email',
+    process.env.EUROPE_PMC_EMAIL?.trim() ??
+      process.env.CROSSREF_MAILTO?.trim() ??
+      null,
   );
   const dryRun = optionFlag(options, 'dryRun', false);
 
   if (!query) {
     throw new Error(
-      'INGEST_QUERY or --query is required for Crossref ingestion.',
+      'INGEST_QUERY or --query is required for Europe PMC ingestion.',
     );
   }
 
@@ -71,46 +73,49 @@ export async function runCrossrefIngestion(overrides = {}) {
   let nextCursor = initialCursor;
 
   while (recordsFetched < limit && pagesProcessed < maxPages && cursor) {
-    const requestUrl = new URL('https://api.crossref.org/works');
+    const requestUrl = new URL(
+      'https://www.ebi.ac.uk/europepmc/webservices/rest/search',
+    );
     requestUrl.searchParams.set('query', query);
     requestUrl.searchParams.set(
-      'rows',
+      'pageSize',
       String(Math.min(pageSize, limit - recordsFetched)),
     );
-    requestUrl.searchParams.set('cursor', cursor);
-    if (mailto) {
-      requestUrl.searchParams.set('mailto', mailto);
+    requestUrl.searchParams.set('cursorMark', cursor);
+    requestUrl.searchParams.set('resultType', 'core');
+    requestUrl.searchParams.set('format', 'json');
+    if (email) {
+      requestUrl.searchParams.set('email', email);
     }
 
     const response = await fetch(requestUrl, {
       headers: {
         accept: 'application/json',
-        'user-agent': mailto
-          ? `METREV external ingestion (${mailto})`
-          : 'METREV external ingestion',
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Crossref request failed with status ${response.status}`);
+      throw new Error(
+        `Europe PMC request failed with status ${response.status}`,
+      );
     }
 
     const payload = await response.json();
-    const results = Array.isArray(payload?.message?.items)
-      ? payload.message.items
+    const results = Array.isArray(payload?.resultList?.result)
+      ? payload.resultList.result
       : [];
 
     normalizedEntries.push(
       ...results
         .map((entry) =>
-          normalizeCrossrefWork(entry, query, startedAt.toISOString()),
+          normalizeEuropePmcWork(entry, query, startedAt.toISOString()),
         )
         .filter(Boolean),
     );
 
     recordsFetched += results.length;
     pagesProcessed += 1;
-    nextCursor = payload?.message?.['next-cursor'] ?? null;
+    nextCursor = payload?.nextCursorMark ?? null;
 
     if (results.length < pageSize || !nextCursor) {
       break;
@@ -124,7 +129,7 @@ export async function runCrossrefIngestion(overrides = {}) {
   if (dryRun) {
     const summary = summarizeNormalizedEntries(entries);
     const output = {
-      sourceType: 'CROSSREF',
+      sourceType: 'EUROPE_PMC',
       query,
       dryRun: true,
       recordsFetched,
@@ -139,7 +144,7 @@ export async function runCrossrefIngestion(overrides = {}) {
   const prisma = getPrismaClient();
   const run = await prisma.ingestionRun.create({
     data: {
-      sourceType: 'CROSSREF',
+      sourceType: 'EUROPE_PMC',
       triggerMode: 'manual_script',
       query,
       status: 'STARTED',
@@ -151,7 +156,7 @@ export async function runCrossrefIngestion(overrides = {}) {
       summary: {
         page_size: pageSize,
         max_pages: maxPages,
-        mailto,
+        email,
       },
       startedAt,
     },
@@ -175,7 +180,7 @@ export async function runCrossrefIngestion(overrides = {}) {
         summary: {
           page_size: pageSize,
           max_pages: maxPages,
-          mailto,
+          email,
           next_cursor: nextCursor,
           claims_stored: persisted.claimsStored,
           supplier_documents_stored: persisted.supplierDocumentsStored,
@@ -186,7 +191,7 @@ export async function runCrossrefIngestion(overrides = {}) {
 
     const output = {
       runId: run.id,
-      sourceType: 'CROSSREF',
+      sourceType: 'EUROPE_PMC',
       query,
       recordsFetched,
       pagesProcessed,
@@ -216,5 +221,5 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  void runCrossrefIngestion();
+  void runEuropePmcIngestion();
 }

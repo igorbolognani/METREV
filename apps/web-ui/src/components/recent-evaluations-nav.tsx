@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import * as React from 'react';
 
 import { fetchEvaluationList } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
@@ -19,17 +18,17 @@ export function RecentEvaluationsNav({
   collapsed = false,
 }: RecentEvaluationsNavProps) {
   const query = useQuery({
-    queryFn: fetchEvaluationList,
-    queryKey: ['evaluation-list'],
+    queryFn: () =>
+      fetchEvaluationList({
+        sortKey: 'created_at',
+        sortDirection: 'desc',
+        page: 1,
+        pageSize: 5,
+      }),
+    queryKey: ['evaluation-list', 'recent', 5],
   });
 
-  const recentEvaluations = React.useMemo(() => {
-    const items = query.data?.items ?? [];
-
-    return [...items]
-      .sort((left, right) => right.created_at.localeCompare(left.created_at))
-      .slice(0, 5);
-  }, [query.data?.items]);
+  const recentEvaluations = query.data?.items ?? [];
 
   if (collapsed) {
     return null;

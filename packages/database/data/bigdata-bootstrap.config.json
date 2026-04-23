@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "defaults": {
+    "perQueryLimit": 25,
+    "pageSize": 25,
+    "maxPages": 1
+  },
+  "queries": [
+    "microbial fuel cell wastewater treatment",
+    "microbial electrolysis cell wastewater",
+    "bioelectrochemical system nutrient recovery",
+    "electroactive biofilm anode wastewater",
+    "anaerobic electrochemical membrane bioreactor",
+    "carbon felt anode bioelectrochemical",
+    "electro-fermentation wastewater",
+    "microbial desalination cell",
+    "cathode catalyst oxygen reduction microbial fuel cell",
+    "ammonia recovery bioelectrochemical"
+  ],
+  "sources": {
+    "openalex": {
+      "enabled": true,
+      "perQueryLimit": 25,
+      "pageSize": 25,
+      "maxPages": 1
+    },
+    "crossref": {
+      "enabled": true,
+      "perQueryLimit": 25,
+      "pageSize": 25,
+      "maxPages": 1
+    },
+    "europepmc": {
+      "enabled": true,
+      "perQueryLimit": 25,
+      "pageSize": 25,
+      "maxPages": 1
+    }
+  },
+  "manifests": ["../data/curated-bigdata-manifest.json"]
+}

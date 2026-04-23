@@ -3,9 +3,9 @@
 import * as React from 'react';
 
 import type {
-  EvaluationConfidenceFilter,
-  EvaluationSortDirection,
-  EvaluationSortKey,
+    EvaluationConfidenceFilter,
+    EvaluationSortDirection,
+    EvaluationSortKey,
 } from '@/lib/evaluations-list-query-state';
 
 import { Input } from '@/components/ui/input';
@@ -16,27 +16,41 @@ void React;
 
 export interface EvaluationsFiltersProps {
   confidenceFilter: EvaluationConfidenceFilter;
+  filteredCount: number;
   onConfidenceFilterChange: (nextValue: EvaluationConfidenceFilter) => void;
+  onNextPage: () => void;
+  onPageSizeChange: (nextValue: number) => void;
+  onPreviousPage: () => void;
   onSearchInputChange: (nextValue: string) => void;
   onSortDirectionChange: (nextValue: EvaluationSortDirection) => void;
   onSortKeyChange: (nextValue: EvaluationSortKey) => void;
+  page: number;
+  pageSize: number;
   searchInput: string;
   sortDirection: EvaluationSortDirection;
   sortKey: EvaluationSortKey;
   totalCount: number;
+  totalPages: number;
   visibleCount: number;
 }
 
 export function EvaluationsFilters({
   confidenceFilter,
+  filteredCount,
   onConfidenceFilterChange,
+  onNextPage,
+  onPageSizeChange,
+  onPreviousPage,
   onSearchInputChange,
   onSortDirectionChange,
   onSortKeyChange,
+  page,
+  pageSize,
   searchInput,
   sortDirection,
   sortKey,
   totalCount,
+  totalPages,
   visibleCount,
 }: EvaluationsFiltersProps) {
   return (
@@ -44,10 +58,10 @@ export function EvaluationsFilters({
       <div className="workspace-data-card__header">
         <div>
           <span className="badge subtle">Filters</span>
-          <h3>Client-side sorting and filtering</h3>
+          <h3>Server-driven sorting and filtering</h3>
         </div>
         <span className="meta-chip">
-          {visibleCount} of {totalCount} visible
+          Page {page} of {totalPages}
         </span>
       </div>
 
@@ -94,7 +108,42 @@ export function EvaluationsFilters({
           ]}
           value={sortDirection}
         />
+        <Select
+          label="Rows per page"
+          onValueChange={(value) =>
+            onPageSizeChange(Number.parseInt(value, 10))
+          }
+          options={[
+            { label: '25 rows', value: '25' },
+            { label: '50 rows', value: '50' },
+            { label: '100 rows', value: '100' },
+          ]}
+          value={String(pageSize)}
+        />
+        <div className="detail-table-actions">
+          <button
+            className="secondary"
+            disabled={page <= 1}
+            onClick={onPreviousPage}
+            type="button"
+          >
+            Previous page
+          </button>
+          <button
+            className="secondary"
+            disabled={page >= totalPages}
+            onClick={onNextPage}
+            type="button"
+          >
+            Next page
+          </button>
+        </div>
       </div>
+
+      <p className="workspace-inline-copy">
+        Showing {visibleCount} of {filteredCount} filtered and {totalCount}{' '}
+        total evaluations.
+      </p>
     </WorkspaceDataCard>
   );
 }

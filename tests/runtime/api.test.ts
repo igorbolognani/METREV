@@ -10,7 +10,9 @@ import {
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
+  evaluationListResponseSchema,
   evaluationResponseSchema,
+  type EvaluationResponse,
   type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
@@ -41,6 +43,44 @@ function sessionCookie(sessionToken: string): string {
   return `${defaultSessionCookieName}=${sessionToken}`;
 }
 
+function withPersistedLineage(
+  evaluation: EvaluationResponse,
+): EvaluationResponse {
+  return {
+    ...evaluation,
+    source_usages: [
+      {
+        id: `source-usage-${evaluation.evaluation_id}`,
+        evaluation_id: evaluation.evaluation_id,
+        source_document_id: 'source-doc-runtime-001',
+        usage_type: 'input_support',
+        note: 'Runtime API test source lineage.',
+        created_at: evaluation.audit_record.timestamp,
+      },
+    ],
+    claim_usages: [
+      {
+        id: `claim-usage-${evaluation.evaluation_id}`,
+        evaluation_id: evaluation.evaluation_id,
+        claim_id: 'claim-runtime-001',
+        usage_type: 'recommendation_support',
+        note: 'Runtime API test claim lineage.',
+        created_at: evaluation.audit_record.timestamp,
+      },
+    ],
+    workspace_snapshots: [
+      {
+        id: `snapshot-${evaluation.evaluation_id}`,
+        evaluation_id: evaluation.evaluation_id,
+        case_id: evaluation.case_id,
+        snapshot_type: 'report',
+        payload: { generated_from: 'runtime-api-test' },
+        created_at: evaluation.audit_record.timestamp,
+      },
+    ],
+  };
+}
+
 const pendingCatalogItem: ExternalEvidenceCatalogItemDetail = {
   id: 'catalog-item-001',
   title: 'Pilot wastewater instrumentation study',
@@ -58,6 +98,8 @@ const pendingCatalogItem: ExternalEvidenceCatalogItemDetail = {
   published_at: '2025-05-10T00:00:00.000Z',
   provenance_note:
     'Imported from CROSSREF metadata for review before use in decision flows.',
+  claim_count: 1,
+  reviewed_claim_count: 0,
   applicability_scope: {
     import_query: 'wastewater instrumentation',
   },
@@ -70,6 +112,8 @@ const pendingCatalogItem: ExternalEvidenceCatalogItemDetail = {
   payload: {
     import_query: 'wastewater instrumentation',
   },
+  claims: [],
+  supplier_documents: [],
   raw_payload: {
     DOI: '10.1000/example',
   },
@@ -80,6 +124,61 @@ const acceptedCatalogItem: ExternalEvidenceCatalogItemDetail = {
   id: 'catalog-item-accepted-001',
   review_status: 'accepted',
   source_state: 'reviewed',
+  reviewed_claim_count: 1,
+};
+
+const openAlexCatalogItem: ExternalEvidenceCatalogItemDetail = {
+  ...pendingCatalogItem,
+  id: 'catalog-item-openalex-001',
+  title: 'OpenAlex sidestream benchmark import',
+  summary: 'OpenAlex-derived evidence for sidestream retrofit comparisons.',
+  source_type: 'openalex',
+  source_category: 'scholarly_work',
+  source_url: 'https://openalex.org/W123',
+  doi: '10.2000/openalex-example',
+  publisher: 'OpenAlex Imports',
+  tags: ['external-ingestion', 'openalex'],
+  claim_count: 2,
+  reviewed_claim_count: 1,
+  claims: [
+    {
+      id: 'claim-openalex-001',
+      source_document_id: 'source-openalex-001',
+      catalog_item_id: 'catalog-item-openalex-001',
+      claim_type: 'metric',
+      content: 'COD removal increased under monitored sidestream operation.',
+      extracted_value: '82',
+      unit: '%',
+      confidence: 0.81,
+      extraction_method: 'import_rule',
+      extractor_version: 'seed-v1',
+      source_snippet: 'COD removal reached 82% during monitored operation.',
+      source_locator: 'results.table_2',
+      page_number: null,
+      metadata: {},
+      reviews: [
+        {
+          id: 'claim-review-openalex-001',
+          status: 'accepted',
+          analyst_id: 'user-analyst-001',
+          analyst_role: 'ANALYST',
+          analyst_note: 'Accepted for comparative benchmarking.',
+          reviewed_at: '2026-04-14T12:05:00.000Z',
+        },
+      ],
+      ontology_mappings: [
+        {
+          id: 'mapping-openalex-001',
+          ontology_path: 'evidence.metrics.cod_removal',
+          mapping_confidence: 0.88,
+          mapped_by: 'auto',
+          note: null,
+        },
+      ],
+      created_at: '2026-04-14T12:00:00.000Z',
+      updated_at: '2026-04-14T12:05:00.000Z',
+    },
+  ],
 };
 
 describe('api runtime flow', () => {
@@ -177,6 +276,34 @@ describe('api runtime flow', () => {
           }),
         }),
       ],
+    });
+
+    const filteredListResponse = await app.inject({
+      method: 'GET',
+      url: `/api/evaluations?q=${created.case_id}&page=1&pageSize=1&sort=created_at&dir=desc`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+
+    expect(filteredListResponse.statusCode).toBe(200);
+    expect(
+      evaluationListResponseSchema.parse(filteredListResponse.json()),
+    ).toMatchObject({
+      items: [
+        expect.objectContaining({
+          evaluation_id: created.evaluation_id,
+          case_id: created.case_id,
+        }),
+      ],
+      summary: {
+        total: 1,
+        filtered_total: 1,
+        page: 1,
+        page_size: 1,
+        total_pages: 1,
+        returned: 1,
+      },
     });
 
     const historyResponse = await app.inject({
@@ -496,6 +623,49 @@ describe('api runtime flow', () => {
     await app.close();
   });
 
+  it('supports external evidence pagination and source-type filtering through the authenticated API', async () => {
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [
+        pendingCatalogItem,
+        acceptedCatalogItem,
+        openAlexCatalogItem,
+      ],
+    });
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/external-evidence?sourceType=openalex&page=1&pageSize=1',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        expect.objectContaining({
+          id: openAlexCatalogItem.id,
+          source_type: 'openalex',
+          claim_count: 2,
+        }),
+      ],
+      summary: {
+        total: 3,
+        filtered_total: 1,
+        page: 1,
+        page_size: 1,
+        total_pages: 1,
+        returned: 1,
+      },
+    });
+
+    await app.close();
+  });
+
   it('marks rejected external evidence as reviewed after analyst review', async () => {
     const repository = new MemoryEvaluationRepository({
       externalEvidenceCatalogItems: [pendingCatalogItem],
@@ -521,6 +691,69 @@ describe('api runtime flow', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       id: pendingCatalogItem.id,
+      review_status: 'rejected',
+      source_state: 'reviewed',
+    });
+
+    await app.close();
+  });
+
+  it('reviews external evidence in bulk through the authenticated API', async () => {
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [pendingCatalogItem, openAlexCatalogItem],
+    });
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/external-evidence/review/bulk',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+      },
+      payload: {
+        ids: [
+          pendingCatalogItem.id,
+          'missing-catalog-item',
+          openAlexCatalogItem.id,
+        ],
+        action: 'reject',
+        note: 'Rejected as a mismatched batch.',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      action: 'reject',
+      attempted_ids: [
+        pendingCatalogItem.id,
+        'missing-catalog-item',
+        openAlexCatalogItem.id,
+      ],
+      succeeded_ids: [pendingCatalogItem.id, openAlexCatalogItem.id],
+      failed: [
+        {
+          id: 'missing-catalog-item',
+          message: expect.stringContaining('missing-catalog-item'),
+        },
+      ],
+      note: 'Rejected as a mismatched batch.',
+    });
+
+    const updatedDetailResponse = await app.inject({
+      method: 'GET',
+      url: `/api/external-evidence/${openAlexCatalogItem.id}`,
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+
+    expect(updatedDetailResponse.statusCode).toBe(200);
+    expect(updatedDetailResponse.json()).toMatchObject({
+      id: openAlexCatalogItem.id,
       review_status: 'rejected',
       source_state: 'reviewed',
     });
@@ -564,10 +797,11 @@ describe('api runtime flow', () => {
   });
 
   it('serves workspace and export routes for a persisted evaluation', async () => {
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [acceptedCatalogItem],
+    });
     const app = await buildApp({
-      repository: new MemoryEvaluationRepository({
-        externalEvidenceCatalogItems: [acceptedCatalogItem],
-      }),
+      repository,
       sessionResolver: testSessionResolver,
     });
 
@@ -581,7 +815,10 @@ describe('api runtime flow', () => {
       payload: fixture,
     });
 
-    const created = evaluationResponseSchema.parse(createResponse.json());
+    const created = withPersistedLineage(
+      evaluationResponseSchema.parse(createResponse.json()),
+    );
+    await repository.saveEvaluation(created);
 
     const dashboardResponse = await app.inject({
       method: 'GET',
@@ -627,6 +864,18 @@ describe('api runtime flow', () => {
     });
     expect(reportResponse.statusCode).toBe(200);
     expect(reportResponse.json()).toMatchObject({
+      evaluation_lineage: expect.objectContaining({
+        source_usages: expect.arrayContaining([
+          expect.objectContaining({
+            evaluation_id: created.evaluation_id,
+          }),
+        ]),
+        workspace_snapshots: expect.arrayContaining([
+          expect.objectContaining({
+            evaluation_id: created.evaluation_id,
+          }),
+        ]),
+      }),
       sections: expect.objectContaining({
         stack_diagnosis: expect.any(Object),
       }),
@@ -669,10 +918,11 @@ describe('api runtime flow', () => {
   });
 
   it('serves dedicated history, comparison, and evidence review workspace routes', async () => {
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [acceptedCatalogItem, pendingCatalogItem],
+    });
     const app = await buildApp({
-      repository: new MemoryEvaluationRepository({
-        externalEvidenceCatalogItems: [acceptedCatalogItem, pendingCatalogItem],
-      }),
+      repository,
       sessionResolver: testSessionResolver,
     });
 
@@ -703,7 +953,10 @@ describe('api runtime flow', () => {
     });
 
     const baseline = evaluationResponseSchema.parse(baselineResponse.json());
-    const current = evaluationResponseSchema.parse(currentResponse.json());
+    const current = withPersistedLineage(
+      evaluationResponseSchema.parse(currentResponse.json()),
+    );
+    await repository.saveEvaluation(current);
 
     const historyResponse = await app.inject({
       method: 'GET',
@@ -715,6 +968,18 @@ describe('api runtime flow', () => {
     expect(historyResponse.statusCode).toBe(200);
     expect(historyResponse.json()).toMatchObject({
       current_evaluation_id: current.evaluation_id,
+      current_evaluation_lineage: expect.objectContaining({
+        source_usages: expect.arrayContaining([
+          expect.objectContaining({
+            evaluation_id: current.evaluation_id,
+          }),
+        ]),
+        workspace_snapshots: expect.arrayContaining([
+          expect.objectContaining({
+            evaluation_id: current.evaluation_id,
+          }),
+        ]),
+      }),
       timeline: expect.arrayContaining([
         expect.objectContaining({
           evaluation: expect.objectContaining({

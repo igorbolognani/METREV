@@ -13,9 +13,36 @@ import {
     WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { fetchPrintableEvaluationReport } from '@/lib/api';
-import { formatToken } from '@/lib/formatting';
+import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
+
+function listOrEmpty(items: string[], emptyMessage: string) {
+  if (items.length === 0) {
+    return <p className="muted">{emptyMessage}</p>;
+  }
+
+  return (
+    <ul className="list-block">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+function formatPersistedUsage(
+  value:
+    | PrintableEvaluationReportResponse['evaluation_lineage']['source_usages'][number]
+    | PrintableEvaluationReportResponse['evaluation_lineage']['claim_usages'][number],
+) {
+  const targetId =
+    'source_document_id' in value ? value.source_document_id : value.claim_id;
+
+  return `${formatToken(value.usage_type)} · ${targetId}${
+    value.note ? ` · ${value.note}` : ''
+  }`;
+}
 
 export function PrintableReportView({
   evaluationId,
@@ -195,6 +222,42 @@ export function PrintableReportWorkspaceView({
               ),
             )}
           </ul>
+        </WorkspaceDataCard>
+      </WorkspaceSection>
+
+      <WorkspaceSection
+        eyebrow="Evidence lineage"
+        title="Persisted provenance and snapshots"
+      >
+        <div className="workspace-detail-grid">
+          <WorkspaceDataCard>
+            <h3>Persisted source usage</h3>
+            {listOrEmpty(
+              report.evaluation_lineage.source_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted source usage records were attached to this report payload.',
+            )}
+          </WorkspaceDataCard>
+          <WorkspaceDataCard>
+            <h3>Persisted claim usage</h3>
+            {listOrEmpty(
+              report.evaluation_lineage.claim_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted claim usage records were attached to this report payload.',
+            )}
+          </WorkspaceDataCard>
+        </div>
+        <WorkspaceDataCard>
+          <h3>Workspace snapshot inventory</h3>
+          {listOrEmpty(
+            report.evaluation_lineage.workspace_snapshots.map(
+              (snapshot) =>
+                `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
+            ),
+            'No immutable workspace snapshots were attached to this report payload.',
+          )}
         </WorkspaceDataCard>
       </WorkspaceSection>
     </div>

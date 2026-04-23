@@ -882,10 +882,27 @@ function summarizeHistoryDelta(input: {
   return `${confidenceChanged} ${modelChanged}`;
 }
 
+function buildEvaluationLineage(
+  evaluation:
+    | Pick<
+        EvaluationResponse,
+        'source_usages' | 'claim_usages' | 'workspace_snapshots'
+      >
+    | null
+    | undefined,
+) {
+  return {
+    source_usages: evaluation?.source_usages ?? [],
+    claim_usages: evaluation?.claim_usages ?? [],
+    workspace_snapshots: evaluation?.workspace_snapshots ?? [],
+  };
+}
+
 export function buildCaseHistoryWorkspace(input: {
   history: CaseHistoryResponse;
   versions: RuntimeVersion;
   currentEvaluationId?: string | null;
+  currentEvaluation?: EvaluationResponse | null;
 }): CaseHistoryWorkspaceResponse {
   const evaluations = input.history.evaluations
     .slice()
@@ -932,6 +949,7 @@ export function buildCaseHistoryWorkspace(input: {
       .sort((left, right) => right.created_at.localeCompare(left.created_at)),
     current_evaluation_id:
       input.currentEvaluationId ?? evaluations[0]?.evaluation_id ?? null,
+    current_evaluation_lineage: buildEvaluationLineage(input.currentEvaluation),
   });
 }
 
@@ -1169,6 +1187,7 @@ export function buildPrintableEvaluationReport(input: {
       },
     }),
     evaluation: buildEvaluationSummary(input.evaluation),
+    evaluation_lineage: buildEvaluationLineage(input.evaluation),
     title: `${input.evaluation.case_id} consulting report`,
     subtitle:
       'Stack diagnosis, prioritized improvements, impact map, roadmap, and audit-visible assumptions.',

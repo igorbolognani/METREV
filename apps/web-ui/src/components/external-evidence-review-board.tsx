@@ -7,117 +7,43 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  EvidenceReviewWorkspaceResponse,
-  ExternalEvidenceReviewAction,
+    EvidenceReviewWorkspaceResponse,
+    ExternalEvidenceReviewAction,
 } from '@metrev/domain-contracts';
 
 import { EvidenceReviewBulkActionDialog } from '@/components/evidence-review/evidence-review-bulk-action-dialog';
 import { EvidenceReviewBulkResultDialog } from '@/components/evidence-review/evidence-review-bulk-result-dialog';
 import { EvidenceReviewTable } from '@/components/evidence-review/evidence-review-table';
+import type { EvidenceReviewSourceFilter } from '@/components/evidence-review/evidence-review-toolbar';
 import { EvidenceReviewToolbar } from '@/components/evidence-review/evidence-review-toolbar';
 import {
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
-  WorkspaceStatCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
+    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
 import { fetchEvidenceReviewWorkspace } from '@/lib/api';
 import {
-  runBulkEvidenceReview,
-  type BulkEvidenceReviewSummary,
+    runBulkEvidenceReview,
+    type BulkEvidenceReviewSummary,
 } from '@/lib/evidence-review-actions';
 import {
-  type EvidenceReviewFilter,
-  useEvidenceReviewQueryState,
+    useEvidenceReviewQueryState,
+    type EvidenceReviewFilter,
 } from '@/lib/evidence-review-query-state';
 
 void React;
-
-type EvidenceReviewItem = EvidenceReviewWorkspaceResponse['items'][number];
-
-function normalizeSearchValue(value: string): string {
-  return value.trim().toLocaleLowerCase();
-}
-
-function matchesSearch(item: EvidenceReviewItem, query: string): boolean {
-  if (!query) {
-    return true;
-  }
-
-  const haystack = [
-    item.title,
-    item.summary,
-    item.publisher ?? '',
-    item.doi ?? '',
-    item.source_category ?? '',
-    item.source_url ?? '',
-    item.provenance_note,
-    item.tags.join(' '),
-  ]
-    .join(' ')
-    .toLocaleLowerCase();
-
-  return haystack.includes(query);
-}
-
-function matchesStatus(item: EvidenceReviewItem, filter: EvidenceReviewFilter) {
-  return filter === 'all' || item.review_status === filter;
-}
-
-function summarizeItems(
-  items: EvidenceReviewItem[],
-): EvidenceReviewWorkspaceResponse['summary'] {
-  return items.reduce<EvidenceReviewWorkspaceResponse['summary']>(
-    (summary, item) => {
-      summary.total += 1;
-
-      if (item.review_status === 'accepted') {
-        summary.accepted += 1;
-      } else if (item.review_status === 'rejected') {
-        summary.rejected += 1;
-      } else {
-        summary.pending += 1;
-      }
-
-      return summary;
-    },
-    {
-      accepted: 0,
-      pending: 0,
-      rejected: 0,
-      total: 0,
-    },
-  );
-}
-
-function buildVisibleWorkspace(
-  workspace: EvidenceReviewWorkspaceResponse,
-  filter: EvidenceReviewFilter,
-  searchInput: string,
-) {
-  const normalizedSearch = normalizeSearchValue(searchInput);
-  const searchMatchedItems = workspace.items.filter((item) =>
-    matchesSearch(item, normalizedSearch),
-  );
-  const searchMatchedSpotlight = workspace.spotlight.filter((item) =>
-    matchesSearch(item, normalizedSearch),
-  );
-
-  return {
-    items: searchMatchedItems.filter((item) => matchesStatus(item, filter)),
-    spotlight: searchMatchedSpotlight.filter((item) =>
-      matchesStatus(item, filter),
-    ),
-    summary: summarizeItems(searchMatchedItems),
-  };
-}
 
 export function ExternalEvidenceReviewBoard() {
   const queryClient = useQueryClient();
   const { filter, searchInput, setFilter, setSearchInput } =
     useEvidenceReviewQueryState();
   const deferredSearch = useDeferredValue(searchInput);
+  const [sourceType, setSourceType] =
+    React.useState<EvidenceReviewSourceFilter>('all');
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [bulkAction, setBulkAction] =
     React.useState<ExternalEvidenceReviewAction | null>(null);
@@ -128,17 +54,25 @@ export function ExternalEvidenceReviewBoard() {
     React.useState<BulkEvidenceReviewSummary | null>(null);
 
   const query = useQuery({
-    queryKey: ['evidence-review-workspace'],
-    queryFn: () => fetchEvidenceReviewWorkspace(),
+    queryKey: [
+      'evidence-review-workspace',
+      filter,
+      deferredSearch,
+      sourceType,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      fetchEvidenceReviewWorkspace({
+        status: filter === 'all' ? undefined : filter,
+        query: deferredSearch,
+        sourceType: sourceType === 'all' ? undefined : sourceType,
+        page,
+        pageSize,
+      }),
   });
 
-  const visibleWorkspace = React.useMemo(
-    () =>
-      query.data
-        ? buildVisibleWorkspace(query.data, filter, deferredSearch)
-        : null,
-    [deferredSearch, filter, query.data],
-  );
+  const visibleWorkspace = query.data ?? null;
   const visibleIds = React.useMemo(
     () => visibleWorkspace?.items.map((item) => item.id) ?? [],
     [visibleWorkspace],
@@ -153,6 +87,49 @@ export function ExternalEvidenceReviewBoard() {
         : nextValue;
     });
   }, [visibleIds, visibleIdsKey]);
+
+  React.useEffect(() => {
+    if (!query.data) {
+      return;
+    }
+
+    if (page > query.data.summary.total_pages) {
+      setPage(query.data.summary.total_pages);
+    }
+  }, [page, query.data]);
+
+  function handleFilterChange(nextFilter: EvidenceReviewFilter) {
+    setPage(1);
+    void setFilter(nextFilter);
+  }
+
+  function handleSearchInputChange(nextValue: string) {
+    setPage(1);
+    void setSearchInput(nextValue);
+  }
+
+  function handleSourceTypeChange(nextValue: EvidenceReviewSourceFilter) {
+    setPage(1);
+    setSourceType(nextValue);
+  }
+
+  function handlePageSizeChange(nextValue: number) {
+    setPage(1);
+    setPageSize(nextValue);
+  }
+
+  function handlePreviousPage() {
+    setPage((currentValue) => Math.max(1, currentValue - 1));
+  }
+
+  function handleNextPage() {
+    setPage((currentValue) =>
+      Math.min(
+        visibleWorkspace?.summary.total_pages ?? currentValue,
+        currentValue + 1,
+      ),
+    );
+  }
 
   const bulkReviewMutation = useMutation({
     mutationFn: ({
@@ -266,15 +243,22 @@ export function ExternalEvidenceReviewBoard() {
       onBulkNoteChange={setBulkNote}
       onClearSelection={handleClearSelection}
       onConfirmBulkAction={handleConfirmBulkAction}
-      onFilterChange={setFilter}
+      onFilterChange={handleFilterChange}
+      onNextPage={handleNextPage}
+      onPageSizeChange={handlePageSizeChange}
+      onPreviousPage={handlePreviousPage}
       onRequestBulkAction={handleRequestBulkAction}
       onResultDialogOpenChange={setResultDialogOpen}
-      onSearchInputChange={setSearchInput}
+      onSearchInputChange={handleSearchInputChange}
       onSelectAllVisible={handleSelectAllVisible}
+      onSourceTypeChange={handleSourceTypeChange}
       onToggleSelection={toggleSelection}
+      page={page}
+      pageSize={pageSize}
       resultDialogOpen={resultDialogOpen}
       searchInput={searchInput}
       selectedIds={selectedIds}
+      sourceType={sourceType}
       visibleItems={visibleWorkspace.items}
       visibleSpotlight={visibleWorkspace.spotlight}
       visibleSummary={visibleWorkspace.summary}
@@ -296,14 +280,21 @@ export function EvidenceReviewWorkspaceView({
   onClearSelection,
   onConfirmBulkAction,
   onFilterChange,
+  onNextPage,
+  onPageSizeChange,
+  onPreviousPage,
   onRequestBulkAction,
   onResultDialogOpenChange,
   onSearchInputChange,
   onSelectAllVisible,
+  onSourceTypeChange,
   onToggleSelection,
+  page,
+  pageSize,
   resultDialogOpen,
   searchInput,
   selectedIds,
+  sourceType,
   visibleItems,
   visibleSpotlight,
   visibleSummary,
@@ -321,14 +312,21 @@ export function EvidenceReviewWorkspaceView({
   onClearSelection: () => void;
   onConfirmBulkAction: () => void;
   onFilterChange: (nextFilter: EvidenceReviewFilter) => void;
+  onNextPage: () => void;
+  onPageSizeChange: (nextValue: number) => void;
+  onPreviousPage: () => void;
   onRequestBulkAction: (action: ExternalEvidenceReviewAction) => void;
   onResultDialogOpenChange: (open: boolean) => void;
   onSearchInputChange: (nextValue: string) => void;
   onSelectAllVisible: () => void;
+  onSourceTypeChange: (nextValue: EvidenceReviewSourceFilter) => void;
   onToggleSelection: (id: string) => void;
+  page: number;
+  pageSize: number;
   resultDialogOpen: boolean;
   searchInput: string;
   selectedIds: string[];
+  sourceType: EvidenceReviewSourceFilter;
   visibleItems: EvidenceReviewWorkspaceResponse['items'];
   visibleSpotlight: EvidenceReviewWorkspaceResponse['spotlight'];
   visibleSummary: EvidenceReviewWorkspaceResponse['summary'];
@@ -381,7 +379,7 @@ export function EvidenceReviewWorkspaceView({
       </section>
 
       <WorkspaceSection
-        description="Use URL-backed filters and one batch-review system for the entire queue."
+        description="Use server-backed filters and one batch-review system for the entire queue."
         eyebrow="Queue filters"
         title="Search, filter, and batch review"
       >
@@ -389,11 +387,18 @@ export function EvidenceReviewWorkspaceView({
           filter={filter}
           onClearSelection={onClearSelection}
           onFilterChange={onFilterChange}
+          onNextPage={onNextPage}
+          onPageSizeChange={onPageSizeChange}
+          onPreviousPage={onPreviousPage}
           onRequestBulkAction={onRequestBulkAction}
           onSearchInputChange={onSearchInputChange}
           onSelectAllVisible={onSelectAllVisible}
+          onSourceTypeChange={onSourceTypeChange}
+          page={page}
+          pageSize={pageSize}
           searchInput={searchInput}
           selectedCount={selectedIds.length}
+          sourceType={sourceType}
           totalCount={workspace.summary.total}
           visibleCount={visibleItems.length}
           visibleSummary={visibleSummary}

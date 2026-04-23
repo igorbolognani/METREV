@@ -29,6 +29,10 @@ describe('case history view', () => {
       expect(html).toContain('Defaults used');
       expect(html).toContain('Stored evaluation runs');
       expect(html).toContain('Compare pair');
+      expect(html).toContain('Persisted provenance and snapshots');
+      expect(html).toContain(
+        'Accepted benchmark source imported into the workspace.',
+      );
       expect(html).toContain('Audit payload disclosures');
       expect(html).toContain('Attached evidence table');
     } finally {

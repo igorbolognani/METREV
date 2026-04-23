@@ -3,22 +3,38 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    caseHistoryResponseSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    simulationEnrichmentSchema,
-    type CaseHistoryResponse,
-    type EvaluationListResponse,
-    type EvaluationResponse,
-    type ExternalEvidenceCatalogItemDetail,
-    type ExternalEvidenceCatalogItemSummary,
-    type ExternalEvidenceCatalogListResponse,
-    type ExternalEvidenceReviewAction,
-    type ExternalEvidenceReviewStatus,
+  caseHistoryResponseSchema,
+  evaluationClaimUsageSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationSourceUsageSchema,
+  evidenceClaimSchema,
+  evidenceClaimTypeSchema,
+  evidenceExtractionMethodSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  ontologyMappingSourceSchema,
+  simulationEnrichmentSchema,
+  sourceDocumentRecordSchema,
+  supplierDocumentSchema,
+  supplierDocumentTypeSchema,
+  workspaceSnapshotRecordSchema,
+  type CaseHistoryResponse,
+  type ConfidenceLevel,
+  type EvaluationListResponse,
+  type EvaluationResponse,
+  type EvidenceClaim,
+  type ExternalEvidenceBulkReviewResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type ExternalEvidenceCatalogItemSummary,
+  type ExternalEvidenceCatalogListResponse,
+  type ExternalEvidenceReviewAction,
+  type ExternalEvidenceReviewStatus,
+  type ExternalEvidenceSourceType,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -33,7 +49,7 @@ export interface EvaluationRepository {
   getEvaluationByIdempotencyKey(
     idempotencyKey: string,
   ): Promise<EvaluationResponse | null>;
-  listEvaluations(): Promise<EvaluationListResponse>;
+  listEvaluations(input?: EvaluationListInput): Promise<EvaluationListResponse>;
   getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null>;
   listExternalEvidenceCatalog(
     input?: ExternalEvidenceCatalogListInput,
@@ -44,12 +60,27 @@ export interface EvaluationRepository {
   reviewExternalEvidenceCatalogItem(
     input: ReviewExternalEvidenceCatalogItemInput,
   ): Promise<ExternalEvidenceCatalogItemDetail | null>;
+  reviewExternalEvidenceCatalogItems(
+    input: ReviewExternalEvidenceCatalogItemsInput,
+  ): Promise<ExternalEvidenceBulkReviewResponse>;
   disconnect(): Promise<void>;
 }
 
 export interface ExternalEvidenceCatalogListInput {
   reviewStatus?: ExternalEvidenceReviewStatus;
   searchQuery?: string;
+  sourceType?: ExternalEvidenceSourceType;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface EvaluationListInput {
+  confidenceLevel?: ConfidenceLevel;
+  searchQuery?: string;
+  sortKey?: 'created_at' | 'confidence_level' | 'case_id';
+  sortDirection?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
 }
 
 export interface ReviewExternalEvidenceCatalogItemInput {
@@ -60,8 +91,27 @@ export interface ReviewExternalEvidenceCatalogItemInput {
   note?: string;
 }
 
+export interface ReviewExternalEvidenceCatalogItemsInput {
+  catalogItemIds: string[];
+  action: ExternalEvidenceReviewAction;
+  actorRole: string;
+  actorId?: string;
+  note?: string;
+}
+
 export interface MemoryEvaluationRepositoryOptions {
   externalEvidenceCatalogItems?: ExternalEvidenceCatalogItemDetail[];
+}
+
+function normalizeCatalogItemIds(ids: string[]): string[] {
+  return [...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))];
+}
+
+function buildMissingCatalogItemFailure(catalogItemId: string) {
+  return {
+    id: catalogItemId,
+    message: `External evidence catalog item ${catalogItemId} was not found.`,
+  };
 }
 
 function normalizeStorageMode(value: string | undefined): string {
@@ -218,8 +268,10 @@ function mapExternalEvidenceSourceType(
   value:
     | 'OPENALEX'
     | 'CROSSREF'
+    | 'EUROPE_PMC'
     | 'SUPPLIER_PROFILE'
     | 'MARKET_SNAPSHOT'
+    | 'CURATED_MANIFEST'
     | 'MANUAL',
 ) {
   switch (value) {
@@ -227,12 +279,82 @@ function mapExternalEvidenceSourceType(
       return 'openalex';
     case 'CROSSREF':
       return 'crossref';
+    case 'EUROPE_PMC':
+      return 'europe_pmc';
     case 'SUPPLIER_PROFILE':
       return 'supplier_profile';
     case 'MARKET_SNAPSHOT':
       return 'market_snapshot';
+    case 'CURATED_MANIFEST':
+      return 'curated_manifest';
     default:
       return 'manual';
+  }
+}
+
+function normalizeExternalEvidenceType(
+  value: string,
+  sourceType:
+    | 'OPENALEX'
+    | 'CROSSREF'
+    | 'EUROPE_PMC'
+    | 'SUPPLIER_PROFILE'
+    | 'MARKET_SNAPSHOT'
+    | 'CURATED_MANIFEST'
+    | 'MANUAL',
+) {
+  const normalizedValue = value.trim().toLowerCase();
+  const parsed = evidenceTypeSchema.safeParse(normalizedValue);
+
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  if (normalizedValue === 'curated_evidence') {
+    return 'literature_evidence';
+  }
+
+  if (normalizedValue === 'market_signal') {
+    return sourceType === 'SUPPLIER_PROFILE'
+      ? 'supplier_claim'
+      : 'derived_heuristic';
+  }
+
+  switch (sourceType) {
+    case 'SUPPLIER_PROFILE':
+      return 'supplier_claim';
+    case 'MARKET_SNAPSHOT':
+      return 'derived_heuristic';
+    default:
+      return 'literature_evidence';
+  }
+}
+
+function toDatabaseExternalEvidenceSourceType(
+  value: ExternalEvidenceSourceType,
+):
+  | 'OPENALEX'
+  | 'CROSSREF'
+  | 'EUROPE_PMC'
+  | 'SUPPLIER_PROFILE'
+  | 'MARKET_SNAPSHOT'
+  | 'CURATED_MANIFEST'
+  | 'MANUAL' {
+  switch (value) {
+    case 'openalex':
+      return 'OPENALEX';
+    case 'crossref':
+      return 'CROSSREF';
+    case 'europe_pmc':
+      return 'EUROPE_PMC';
+    case 'supplier_profile':
+      return 'SUPPLIER_PROFILE';
+    case 'market_snapshot':
+      return 'MARKET_SNAPSHOT';
+    case 'curated_manifest':
+      return 'CURATED_MANIFEST';
+    default:
+      return 'MANUAL';
   }
 }
 
@@ -266,6 +388,491 @@ function toDatabaseExternalEvidenceReviewStatus(
   }
 }
 
+function toCatalogPagination(input?: { page?: number; pageSize?: number }): {
+  page: number;
+  pageSize: number;
+  skip: number;
+} {
+  const page = Math.max(1, Math.trunc(input?.page ?? 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Math.trunc(input?.pageSize ?? 25)),
+  );
+
+  return {
+    page,
+    pageSize,
+    skip: (page - 1) * pageSize,
+  };
+}
+
+type EvaluationListItem = EvaluationListResponse['items'][number];
+
+const evaluationConfidenceScore: Record<ConfidenceLevel, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+function toEvaluationPagination(input?: { page?: number; pageSize?: number }): {
+  page: number;
+  pageSize: number;
+  skip: number;
+} | null {
+  if (input?.page === undefined && input?.pageSize === undefined) {
+    return null;
+  }
+
+  const page = Math.max(1, Math.trunc(input?.page ?? 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Math.trunc(input?.pageSize ?? 25)),
+  );
+
+  return {
+    page,
+    pageSize,
+    skip: (page - 1) * pageSize,
+  };
+}
+
+function matchesEvaluationSearch(
+  item: EvaluationListItem,
+  searchQuery: string | undefined,
+): boolean {
+  const normalizedQuery = searchQuery?.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return [
+    item.evaluation_id,
+    item.case_id,
+    item.summary,
+    item.technology_family,
+    item.technology_family.replaceAll('_', ' '),
+    item.primary_objective,
+    item.primary_objective.replaceAll('_', ' '),
+  ]
+    .join(' ')
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
+function compareEvaluationItems(
+  left: EvaluationListItem,
+  right: EvaluationListItem,
+  sortKey: NonNullable<EvaluationListInput['sortKey']>,
+  sortDirection: NonNullable<EvaluationListInput['sortDirection']>,
+): number {
+  let comparison = 0;
+
+  if (sortKey === 'confidence_level') {
+    comparison =
+      (evaluationConfidenceScore[left.confidence_level] ?? 0) -
+      (evaluationConfidenceScore[right.confidence_level] ?? 0);
+  } else if (sortKey === 'case_id') {
+    comparison = left.case_id.localeCompare(right.case_id);
+  } else {
+    comparison = left.created_at.localeCompare(right.created_at);
+  }
+
+  return sortDirection === 'asc' ? comparison : comparison * -1;
+}
+
+function buildEvaluationListResponse(
+  items: EvaluationListItem[],
+  input: EvaluationListInput = {},
+): EvaluationListResponse {
+  const filteredItems = items.filter((item) => {
+    if (
+      input.confidenceLevel &&
+      item.confidence_level !== input.confidenceLevel
+    ) {
+      return false;
+    }
+
+    return matchesEvaluationSearch(item, input.searchQuery);
+  });
+
+  const sortKey = input.sortKey ?? 'created_at';
+  const sortDirection = input.sortDirection ?? 'desc';
+  const sortedItems = [...filteredItems].sort((left, right) =>
+    compareEvaluationItems(left, right, sortKey, sortDirection),
+  );
+  const pagination = toEvaluationPagination(input);
+  const pagedItems = pagination
+    ? sortedItems.slice(pagination.skip, pagination.skip + pagination.pageSize)
+    : sortedItems;
+  const filteredTotal = sortedItems.length;
+  const page = pagination?.page ?? 1;
+  const pageSize =
+    pagination?.pageSize ?? Math.max(1, filteredTotal || items.length || 1);
+  const totalPages = pagination
+    ? Math.max(1, Math.ceil(filteredTotal / pageSize))
+    : 1;
+
+  return evaluationListResponseSchema.parse({
+    items: pagedItems,
+    summary: {
+      total: items.length,
+      filtered_total: filteredTotal,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+      returned: pagedItems.length,
+    },
+  });
+}
+
+const catalogEvidenceIdPrefix = 'catalog:';
+const acceptedCatalogEvidenceUsageNote =
+  'Accepted catalog evidence attached during intake selection.';
+
+function extractCatalogEvidenceIdsFromEvaluation(
+  evaluation: EvaluationResponse,
+): string[] {
+  const rawInputSnapshot = evaluation.audit_record.raw_input_snapshot as {
+    evidence_records?: Array<{ evidence_id?: string }>;
+  };
+
+  if (!Array.isArray(rawInputSnapshot?.evidence_records)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      rawInputSnapshot.evidence_records
+        .map((record) => record?.evidence_id?.trim() ?? '')
+        .filter((evidenceId) => evidenceId.startsWith(catalogEvidenceIdPrefix))
+        .map((evidenceId) => evidenceId.slice(catalogEvidenceIdPrefix.length))
+        .filter((catalogItemId) => catalogItemId.length > 0),
+    ),
+  ];
+}
+
+function toEvaluationSourceUsageType(input: {
+  sourceType:
+    | 'OPENALEX'
+    | 'CROSSREF'
+    | 'EUROPE_PMC'
+    | 'SUPPLIER_PROFILE'
+    | 'MARKET_SNAPSHOT'
+    | 'CURATED_MANIFEST'
+    | 'MANUAL';
+  evidenceType: string;
+}) {
+  const normalizedEvidenceType = input.evidenceType.toLowerCase();
+
+  if (
+    input.sourceType === 'SUPPLIER_PROFILE' ||
+    input.sourceType === 'MARKET_SNAPSHOT' ||
+    normalizedEvidenceType.includes('supplier') ||
+    normalizedEvidenceType.includes('market')
+  ) {
+    return 'SUPPLIER_SUPPORT' as const;
+  }
+
+  return 'ATTACHED_INPUT' as const;
+}
+
+function toEvaluationClaimUsageType(
+  sourceUsageType: ReturnType<typeof toEvaluationSourceUsageType>,
+) {
+  return sourceUsageType === 'SUPPLIER_SUPPORT'
+    ? ('SUPPLIER_SUPPORT' as const)
+    : ('INPUT_SUPPORT' as const);
+}
+
+function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
+  evaluationId: string;
+  snapshotType: 'EVALUATION' | 'REPORT' | 'EXPORT_JSON';
+  payload: Record<string, unknown>;
+}> {
+  const catalogItemIds = extractCatalogEvidenceIdsFromEvaluation(evaluation);
+  const basePayload = {
+    evaluation_id: evaluation.evaluation_id,
+    case_id: evaluation.case_id,
+    created_at: evaluation.audit_record.timestamp,
+    confidence_level:
+      evaluation.decision_output.confidence_and_uncertainty_summary
+        .confidence_level,
+    attached_catalog_item_ids: catalogItemIds,
+  };
+
+  return [
+    {
+      evaluationId: evaluation.evaluation_id,
+      snapshotType: 'EVALUATION',
+      payload: {
+        ...basePayload,
+        normalized_case: evaluation.normalized_case,
+        decision_output: evaluation.decision_output,
+        narrative: evaluation.narrative,
+        narrative_metadata: evaluation.narrative_metadata,
+        simulation_enrichment: evaluation.simulation_enrichment ?? null,
+        audit_record: {
+          audit_id: evaluation.audit_record.audit_id,
+          summary: evaluation.audit_record.summary,
+          runtime_versions: evaluation.audit_record.runtime_versions,
+          traceability: evaluation.audit_record.traceability,
+        },
+      },
+    },
+    {
+      evaluationId: evaluation.evaluation_id,
+      snapshotType: 'REPORT',
+      payload: {
+        ...basePayload,
+        current_stack_diagnosis:
+          evaluation.decision_output.current_stack_diagnosis,
+        prioritized_improvement_options:
+          evaluation.decision_output.prioritized_improvement_options,
+        impact_map: evaluation.decision_output.impact_map,
+        supplier_shortlist: evaluation.decision_output.supplier_shortlist,
+        phased_roadmap: evaluation.decision_output.phased_roadmap,
+        assumptions_and_defaults_audit:
+          evaluation.decision_output.assumptions_and_defaults_audit,
+        confidence_and_uncertainty_summary:
+          evaluation.decision_output.confidence_and_uncertainty_summary,
+        narrative: evaluation.narrative,
+      },
+    },
+    {
+      evaluationId: evaluation.evaluation_id,
+      snapshotType: 'EXPORT_JSON',
+      payload: evaluation as unknown as Record<string, unknown>,
+    },
+  ];
+}
+
+function createSourceDocumentRecord(sourceRecord: {
+  id: string;
+  sourceType:
+    | 'OPENALEX'
+    | 'CROSSREF'
+    | 'EUROPE_PMC'
+    | 'SUPPLIER_PROFILE'
+    | 'MARKET_SNAPSHOT'
+    | 'CURATED_MANIFEST'
+    | 'MANUAL';
+  sourceCategory: string | null;
+  sourceUrl: string | null;
+  doi: string | null;
+  publisher: string | null;
+  journal?: string | null;
+  publishedAt: Date | null;
+  accessStatus?: 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN';
+  license?: string | null;
+  pdfUrl?: string | null;
+  xmlUrl?: string | null;
+  authors?: unknown;
+}) {
+  return sourceDocumentRecordSchema.parse({
+    id: sourceRecord.id,
+    source_type: mapExternalEvidenceSourceType(sourceRecord.sourceType),
+    source_category: sourceRecord.sourceCategory ?? null,
+    source_url: sourceRecord.sourceUrl ?? null,
+    doi: sourceRecord.doi ?? null,
+    publisher: sourceRecord.publisher ?? null,
+    journal: sourceRecord.journal ?? null,
+    published_at: sourceRecord.publishedAt?.toISOString() ?? null,
+    access_status: externalEvidenceAccessStatusSchema.parse(
+      sourceRecord.accessStatus?.toLowerCase() ?? 'unknown',
+    ),
+    license: sourceRecord.license ?? null,
+    pdf_url: sourceRecord.pdfUrl ?? null,
+    xml_url: sourceRecord.xmlUrl ?? null,
+    authors: Array.isArray(sourceRecord.authors) ? sourceRecord.authors : [],
+  });
+}
+
+function createEvidenceClaim(record: {
+  id: string;
+  sourceRecordId: string;
+  catalogItemId: string | null;
+  claimType:
+    | 'METRIC'
+    | 'MATERIAL'
+    | 'ARCHITECTURE'
+    | 'CONDITION'
+    | 'LIMITATION'
+    | 'APPLICABILITY'
+    | 'ECONOMIC'
+    | 'SUPPLIER_CLAIM'
+    | 'MARKET_SIGNAL'
+    | 'OTHER';
+  content: string;
+  extractedValue: string | null;
+  unit: string | null;
+  confidence: number;
+  extractionMethod: 'MANUAL' | 'LLM' | 'REGEX' | 'ML' | 'IMPORT_RULE';
+  extractorVersion: string;
+  sourceSnippet: string;
+  sourceLocator: string | null;
+  pageNumber: number | null;
+  metadata: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+  reviews?: Array<{
+    id: string;
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    analystId: string | null;
+    analystRole: string | null;
+    analystNote: string | null;
+    reviewedAt: Date | null;
+  }>;
+  ontologyMappings?: Array<{
+    id: string;
+    ontologyPath: string;
+    mappingConfidence: number;
+    mappedBy: 'AUTO' | 'ANALYST' | 'IMPORT_RULE';
+    note: string | null;
+  }>;
+}): EvidenceClaim {
+  return evidenceClaimSchema.parse({
+    id: record.id,
+    source_document_id: record.sourceRecordId,
+    catalog_item_id: record.catalogItemId,
+    claim_type: evidenceClaimTypeSchema.parse(record.claimType.toLowerCase()),
+    content: record.content,
+    extracted_value: record.extractedValue,
+    unit: record.unit,
+    confidence: record.confidence,
+    extraction_method: evidenceExtractionMethodSchema.parse(
+      record.extractionMethod.toLowerCase(),
+    ),
+    extractor_version: record.extractorVersion,
+    source_snippet: record.sourceSnippet,
+    source_locator: record.sourceLocator,
+    page_number: record.pageNumber,
+    metadata: (record.metadata as Record<string, unknown>) ?? {},
+    reviews: (record.reviews ?? []).map((review) => ({
+      id: review.id,
+      status: mapExternalEvidenceReviewStatus(review.status),
+      analyst_id: review.analystId,
+      analyst_role: review.analystRole,
+      analyst_note: review.analystNote,
+      reviewed_at: review.reviewedAt?.toISOString() ?? null,
+    })),
+    ontology_mappings: (record.ontologyMappings ?? []).map((mapping) => ({
+      id: mapping.id,
+      ontology_path: mapping.ontologyPath,
+      mapping_confidence: mapping.mappingConfidence,
+      mapped_by: ontologyMappingSourceSchema.parse(
+        mapping.mappedBy.toLowerCase(),
+      ),
+      note: mapping.note,
+    })),
+    created_at: record.createdAt.toISOString(),
+    updated_at: record.updatedAt.toISOString(),
+  });
+}
+
+function createSupplierDocument(record: {
+  id: string;
+  supplierId: string;
+  sourceRecordId: string;
+  productId: string | null;
+  documentType:
+    | 'PROFILE'
+    | 'DATASHEET'
+    | 'SPECIFICATION'
+    | 'CERTIFICATE'
+    | 'MARKET_BRIEF'
+    | 'CASE_STUDY'
+    | 'PATENT_FILING'
+    | 'REPORT'
+    | 'OTHER';
+  note: string | null;
+}) {
+  return supplierDocumentSchema.parse({
+    id: record.id,
+    supplier_id: record.supplierId,
+    source_document_id: record.sourceRecordId,
+    product_id: record.productId,
+    document_type: supplierDocumentTypeSchema.parse(
+      record.documentType.toLowerCase(),
+    ),
+    note: record.note,
+  });
+}
+
+function createEvaluationSourceUsage(record: {
+  id: string;
+  evaluationId: string;
+  sourceRecordId: string;
+  usageType:
+    | 'ATTACHED_INPUT'
+    | 'INPUT_SUPPORT'
+    | 'DIAGNOSTIC_SUPPORT'
+    | 'RECOMMENDATION_SUPPORT'
+    | 'SUPPLIER_SUPPORT'
+    | 'REPORT_CITATION';
+  note: string | null;
+  createdAt: Date;
+}) {
+  return evaluationSourceUsageSchema.parse({
+    id: record.id,
+    evaluation_id: record.evaluationId,
+    source_document_id: record.sourceRecordId,
+    usage_type: record.usageType.toLowerCase(),
+    note: record.note,
+    created_at: record.createdAt.toISOString(),
+  });
+}
+
+function createEvaluationClaimUsage(record: {
+  id: string;
+  evaluationId: string;
+  claimId: string;
+  usageType:
+    | 'ATTACHED_INPUT'
+    | 'INPUT_SUPPORT'
+    | 'DIAGNOSTIC_SUPPORT'
+    | 'RECOMMENDATION_SUPPORT'
+    | 'SUPPLIER_SUPPORT'
+    | 'REPORT_CITATION';
+  note: string | null;
+  createdAt: Date;
+}) {
+  return evaluationClaimUsageSchema.parse({
+    id: record.id,
+    evaluation_id: record.evaluationId,
+    claim_id: record.claimId,
+    usage_type: record.usageType.toLowerCase(),
+    note: record.note,
+    created_at: record.createdAt.toISOString(),
+  });
+}
+
+function createWorkspaceSnapshotRecord(record: {
+  id: string;
+  evaluationId: string | null;
+  caseId: string | null;
+  snapshotType:
+    | 'DASHBOARD'
+    | 'EVALUATION'
+    | 'COMPARISON'
+    | 'HISTORY'
+    | 'EVIDENCE_REVIEW'
+    | 'REPORT'
+    | 'EXPORT_JSON'
+    | 'EXPORT_CSV';
+  payload: unknown;
+  createdAt: Date;
+}) {
+  return workspaceSnapshotRecordSchema.parse({
+    id: record.id,
+    evaluation_id: record.evaluationId,
+    case_id: record.caseId,
+    snapshot_type: record.snapshotType.toLowerCase(),
+    payload: record.payload,
+    created_at: record.createdAt.toISOString(),
+  });
+}
+
 function createExternalEvidenceSummary(record: {
   id: string;
   evidenceType: string;
@@ -277,6 +884,8 @@ function createExternalEvidenceSummary(record: {
   sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED';
   applicabilityScope: unknown;
   extractedClaims: unknown;
+  claimCount?: number;
+  reviewedClaimCount?: number;
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -284,8 +893,10 @@ function createExternalEvidenceSummary(record: {
     sourceType:
       | 'OPENALEX'
       | 'CROSSREF'
+      | 'EUROPE_PMC'
       | 'SUPPLIER_PROFILE'
       | 'MARKET_SNAPSHOT'
+      | 'CURATED_MANIFEST'
       | 'MANUAL';
     sourceUrl: string | null;
     sourceCategory: string | null;
@@ -298,7 +909,10 @@ function createExternalEvidenceSummary(record: {
     id: record.id,
     title: record.title,
     summary: record.summary,
-    evidence_type: evidenceTypeSchema.parse(record.evidenceType),
+    evidence_type: normalizeExternalEvidenceType(
+      record.evidenceType,
+      record.sourceRecord.sourceType,
+    ),
     strength_level: evidenceStrengthSchema.parse(record.strengthLevel),
     review_status: mapExternalEvidenceReviewStatus(record.reviewStatus),
     source_state: mapExternalEvidenceSourceState(record.sourceState),
@@ -309,6 +923,8 @@ function createExternalEvidenceSummary(record: {
     publisher: record.sourceRecord.publisher,
     published_at: record.sourceRecord.publishedAt?.toISOString() ?? null,
     provenance_note: record.provenanceNote,
+    claim_count: record.claimCount ?? 0,
+    reviewed_claim_count: record.reviewedClaimCount ?? 0,
     applicability_scope:
       (record.applicabilityScope as Record<string, unknown>) ?? {},
     extracted_claims: Array.isArray(record.extractedClaims)
@@ -335,24 +951,104 @@ function createExternalEvidenceDetail(record: {
   payload: unknown;
   createdAt: Date;
   updatedAt: Date;
+  claims?: Array<{
+    id: string;
+    sourceRecordId: string;
+    catalogItemId: string | null;
+    claimType:
+      | 'METRIC'
+      | 'MATERIAL'
+      | 'ARCHITECTURE'
+      | 'CONDITION'
+      | 'LIMITATION'
+      | 'APPLICABILITY'
+      | 'ECONOMIC'
+      | 'SUPPLIER_CLAIM'
+      | 'MARKET_SIGNAL'
+      | 'OTHER';
+    content: string;
+    extractedValue: string | null;
+    unit: string | null;
+    confidence: number;
+    extractionMethod: 'MANUAL' | 'LLM' | 'REGEX' | 'ML' | 'IMPORT_RULE';
+    extractorVersion: string;
+    sourceSnippet: string;
+    sourceLocator: string | null;
+    pageNumber: number | null;
+    metadata: unknown;
+    createdAt: Date;
+    updatedAt: Date;
+    reviews?: Array<{
+      id: string;
+      status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+      analystId: string | null;
+      analystRole: string | null;
+      analystNote: string | null;
+      reviewedAt: Date | null;
+    }>;
+    ontologyMappings?: Array<{
+      id: string;
+      ontologyPath: string;
+      mappingConfidence: number;
+      mappedBy: 'AUTO' | 'ANALYST' | 'IMPORT_RULE';
+      note: string | null;
+    }>;
+  }>;
   sourceRecord: {
+    id: string;
     sourceType:
       | 'OPENALEX'
       | 'CROSSREF'
+      | 'EUROPE_PMC'
       | 'SUPPLIER_PROFILE'
       | 'MARKET_SNAPSHOT'
+      | 'CURATED_MANIFEST'
       | 'MANUAL';
     sourceUrl: string | null;
     sourceCategory: string | null;
     doi: string | null;
     publisher: string | null;
+    journal?: string | null;
     publishedAt: Date | null;
+    accessStatus?:
+      | 'GOLD'
+      | 'GREEN'
+      | 'HYBRID'
+      | 'BRONZE'
+      | 'CLOSED'
+      | 'UNKNOWN';
+    license?: string | null;
+    pdfUrl?: string | null;
+    xmlUrl?: string | null;
+    authors?: unknown;
     abstractText: string | null;
     rawPayload: unknown;
+    supplierDocuments?: Array<{
+      id: string;
+      supplierId: string;
+      sourceRecordId: string;
+      productId: string | null;
+      documentType:
+        | 'PROFILE'
+        | 'DATASHEET'
+        | 'SPECIFICATION'
+        | 'CERTIFICATE'
+        | 'MARKET_BRIEF'
+        | 'CASE_STUDY'
+        | 'PATENT_FILING'
+        | 'REPORT'
+        | 'OTHER';
+      note: string | null;
+    }>;
   };
 }): ExternalEvidenceCatalogItemDetail {
   return {
     ...createExternalEvidenceSummary(record),
+    source_document: createSourceDocumentRecord(record.sourceRecord),
+    claims: (record.claims ?? []).map((claim) => createEvidenceClaim(claim)),
+    supplier_documents: (record.sourceRecord.supplierDocuments ?? []).map(
+      (document) => createSupplierDocument(document),
+    ),
     abstract_text: record.sourceRecord.abstractText,
     payload: record.payload,
     raw_payload: record.sourceRecord.rawPayload,
@@ -500,16 +1196,15 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     return this.evaluationsByIdempotencyKey.get(idempotencyKey) ?? null;
   }
 
-  async listEvaluations(): Promise<EvaluationListResponse> {
-    return evaluationListResponseSchema.parse({
-      items: [...this.evaluations.values()]
-        .sort((left, right) =>
-          right.audit_record.timestamp.localeCompare(
-            left.audit_record.timestamp,
-          ),
-        )
-        .map((evaluation) => toEvaluationSummary(evaluation)),
-    });
+  async listEvaluations(
+    input: EvaluationListInput = {},
+  ): Promise<EvaluationListResponse> {
+    return buildEvaluationListResponse(
+      [...this.evaluations.values()].map((evaluation) =>
+        toEvaluationSummary(evaluation),
+      ),
+      input,
+    );
   }
 
   async getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null> {
@@ -524,10 +1219,15 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     input: ExternalEvidenceCatalogListInput = {},
   ): Promise<ExternalEvidenceCatalogListResponse> {
     const allItems = [...this.externalEvidenceCatalog.values()];
+    const { page, pageSize, skip } = toCatalogPagination(input);
     const searchQuery = input.searchQuery?.trim().toLowerCase();
     const filteredItems = allItems
       .filter((item) => {
         if (input.reviewStatus && item.review_status !== input.reviewStatus) {
+          return false;
+        }
+
+        if (input.sourceType && item.source_type !== input.sourceType) {
           return false;
         }
 
@@ -548,16 +1248,24 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       })
       .sort((left, right) => right.updated_at.localeCompare(left.updated_at));
 
+    const pagedItems = filteredItems.slice(skip, skip + pageSize);
+    const filteredTotal = filteredItems.length;
+
     return externalEvidenceCatalogListResponseSchema.parse({
-      items: filteredItems,
+      items: pagedItems,
       summary: {
         total: allItems.length,
+        filtered_total: filteredTotal,
         pending: allItems.filter((item) => item.review_status === 'pending')
           .length,
         accepted: allItems.filter((item) => item.review_status === 'accepted')
           .length,
         rejected: allItems.filter((item) => item.review_status === 'rejected')
           .length,
+        page,
+        page_size: pageSize,
+        total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
+        returned: pagedItems.length,
       },
     });
   }
@@ -591,6 +1299,39 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     this.externalEvidenceCatalog.set(updated.id, updated);
 
     return updated;
+  }
+
+  async reviewExternalEvidenceCatalogItems(
+    input: ReviewExternalEvidenceCatalogItemsInput,
+  ): Promise<ExternalEvidenceBulkReviewResponse> {
+    const attemptedIds = normalizeCatalogItemIds(input.catalogItemIds);
+    const failed: ExternalEvidenceBulkReviewResponse['failed'] = [];
+    const succeededIds: string[] = [];
+
+    for (const catalogItemId of attemptedIds) {
+      const updated = await this.reviewExternalEvidenceCatalogItem({
+        catalogItemId,
+        action: input.action,
+        actorRole: input.actorRole,
+        actorId: input.actorId,
+        note: input.note,
+      });
+
+      if (!updated) {
+        failed.push(buildMissingCatalogItemFailure(catalogItemId));
+        continue;
+      }
+
+      succeededIds.push(updated.id);
+    }
+
+    return externalEvidenceBulkReviewResponseSchema.parse({
+      action: input.action,
+      attempted_ids: attemptedIds,
+      succeeded_ids: succeededIds,
+      failed,
+      note: input.note?.trim() || undefined,
+    });
   }
 
   async disconnect(): Promise<void> {
@@ -679,15 +1420,15 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                     .confidence_level,
                 provenanceSummary: toPrismaJsonObject({
                   provenance_notes:
-                    evaluation.decision_output.confidence_and_uncertainty_summary
-                      .provenance_notes,
+                    evaluation.decision_output
+                      .confidence_and_uncertainty_summary.provenance_notes,
                   agent_pipeline_trace:
                     evaluation.audit_record.agent_pipeline_trace,
                 }),
                 scoringSummary: toPrismaJsonObject({
                   sensitivity_level:
-                    evaluation.decision_output.confidence_and_uncertainty_summary
-                      .sensitivity_level,
+                    evaluation.decision_output
+                      .confidence_and_uncertainty_summary.sensitivity_level,
                   recommendation_scores:
                     evaluation.decision_output.prioritized_improvement_options.map(
                       (recommendation) => ({
@@ -734,6 +1475,74 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 },
               });
             }
+
+            const catalogItemIds =
+              extractCatalogEvidenceIdsFromEvaluation(evaluation);
+
+            if (catalogItemIds.length > 0) {
+              const catalogItems =
+                await database.externalEvidenceCatalogItem.findMany({
+                  where: {
+                    id: { in: catalogItemIds },
+                  },
+                  select: {
+                    id: true,
+                    evidenceType: true,
+                    sourceRecordId: true,
+                    sourceRecord: {
+                      select: { sourceType: true },
+                    },
+                    claims: {
+                      select: { id: true },
+                    },
+                  },
+                });
+
+              if (catalogItems.length > 0) {
+                await database.evaluationSourceUsage.createMany({
+                  data: catalogItems.map((catalogItem) => ({
+                    evaluationId: evaluation.evaluation_id,
+                    sourceRecordId: catalogItem.sourceRecordId,
+                    usageType: toEvaluationSourceUsageType({
+                      sourceType: catalogItem.sourceRecord.sourceType,
+                      evidenceType: catalogItem.evidenceType,
+                    }),
+                    note: acceptedCatalogEvidenceUsageNote,
+                  })),
+                  skipDuplicates: true,
+                });
+
+                const claimUsageRows = catalogItems.flatMap((catalogItem) => {
+                  const sourceUsageType = toEvaluationSourceUsageType({
+                    sourceType: catalogItem.sourceRecord.sourceType,
+                    evidenceType: catalogItem.evidenceType,
+                  });
+
+                  return catalogItem.claims.map((claim) => ({
+                    evaluationId: evaluation.evaluation_id,
+                    claimId: claim.id,
+                    usageType: toEvaluationClaimUsageType(sourceUsageType),
+                    note: acceptedCatalogEvidenceUsageNote,
+                  }));
+                });
+
+                if (claimUsageRows.length > 0) {
+                  await database.evaluationClaimUsage.createMany({
+                    data: claimUsageRows,
+                    skipDuplicates: true,
+                  });
+                }
+              }
+            }
+
+            const workspaceSnapshots = buildWorkspaceSnapshots(evaluation);
+            await database.workspaceSnapshotRecord.createMany({
+              data: workspaceSnapshots.map((snapshot) => ({
+                evaluationId: snapshot.evaluationId,
+                snapshotType: snapshot.snapshotType,
+                payload: toRequiredPrismaJsonValue(snapshot.payload),
+              })),
+            });
 
             const supplierIds = new Map<string, string>();
 
@@ -806,7 +1615,8 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               ]),
             );
 
-            for (const evidenceRecord of evaluation.audit_record.typed_evidence) {
+            for (const evidenceRecord of evaluation.audit_record
+              .typed_evidence) {
               const storageEvidenceId = `${evaluation.case_id}:${evidenceRecord.evidence_id}`;
               const supplierNormalizedName = evidenceLinksById.get(
                 evidenceRecord.evidence_id,
@@ -850,9 +1660,10 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 payload: toPrismaJsonObject({
                   summary: evaluation.audit_record.summary,
                   confidence_level:
-                    evaluation.decision_output.confidence_and_uncertainty_summary
-                      .confidence_level,
-                  missing_data_count: evaluation.audit_record.missing_data_count,
+                    evaluation.decision_output
+                      .confidence_and_uncertainty_summary.confidence_level,
+                  missing_data_count:
+                    evaluation.audit_record.missing_data_count,
                   defaults_count: evaluation.audit_record.defaults_count,
                   runtime_versions: evaluation.audit_record.runtime_versions,
                   traceability: evaluation.audit_record.traceability,
@@ -920,7 +1731,13 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
       async () => {
         const record = await this.prisma.evaluationRecord.findUnique({
           where: { id: evaluationId },
-          include: { case: true, simulationArtifact: true },
+          include: {
+            case: true,
+            simulationArtifact: true,
+            sourceUsages: true,
+            claimUsages: true,
+            workspaceSnapshots: true,
+          },
         });
 
         if (!record) {
@@ -938,6 +1755,15 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           simulation_enrichment: record.simulationArtifact
             ? fromSimulationArtifactRecord(record.simulationArtifact)
             : undefined,
+          source_usages: record.sourceUsages.map((usage) =>
+            createEvaluationSourceUsage(usage),
+          ),
+          claim_usages: record.claimUsages.map((usage) =>
+            createEvaluationClaimUsage(usage),
+          ),
+          workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
+            createWorkspaceSnapshotRecord(snapshot),
+          ),
         });
       },
       { evaluation_id: evaluationId },
@@ -952,7 +1778,13 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
       async () => {
         const record = await this.prisma.evaluationRecord.findUnique({
           where: { idempotencyKey },
-          include: { case: true, simulationArtifact: true },
+          include: {
+            case: true,
+            simulationArtifact: true,
+            sourceUsages: true,
+            claimUsages: true,
+            workspaceSnapshots: true,
+          },
         });
 
         if (!record) {
@@ -970,36 +1802,50 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           simulation_enrichment: record.simulationArtifact
             ? fromSimulationArtifactRecord(record.simulationArtifact)
             : undefined,
+          source_usages: record.sourceUsages.map((usage) =>
+            createEvaluationSourceUsage(usage),
+          ),
+          claim_usages: record.claimUsages.map((usage) =>
+            createEvaluationClaimUsage(usage),
+          ),
+          workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
+            createWorkspaceSnapshotRecord(snapshot),
+          ),
         });
       },
       { idempotency_key: idempotencyKey },
     );
   }
 
-  async listEvaluations(): Promise<EvaluationListResponse> {
+  async listEvaluations(
+    input: EvaluationListInput = {},
+  ): Promise<EvaluationListResponse> {
     return withSpan('database.evaluation.list', async () => {
       const records = await this.prisma.evaluationRecord.findMany({
         include: { case: true, simulationArtifact: true },
         orderBy: { createdAt: 'desc' },
       });
 
-      return evaluationListResponseSchema.parse({
-        items: records.map((record) => ({
-          evaluation_id: record.id,
-          case_id: record.caseId,
-          created_at: record.createdAt.toISOString(),
-          confidence_level: record.confidenceLevel,
-          technology_family: record.case.technologyFamily,
-          primary_objective: record.case.primaryObjective,
-          summary:
-            (record.decisionOutput as Record<string, Record<string, string>>)
-              .current_stack_diagnosis?.summary ?? 'Evaluation completed',
-          narrative_available: Boolean(record.narrative),
-          simulation_summary: record.simulationArtifact
-            ? toSimulationSummaryFromArtifact(record.simulationArtifact)
-            : undefined,
-        })),
-      });
+      const items: EvaluationListResponse['items'] = records.map((record) => ({
+        evaluation_id: record.id,
+        case_id: record.caseId,
+        created_at: record.createdAt.toISOString(),
+        confidence_level:
+          record.confidenceLevel as EvaluationListResponse['items'][number]['confidence_level'],
+        technology_family: record.case
+          .technologyFamily as EvaluationListResponse['items'][number]['technology_family'],
+        primary_objective: record.case
+          .primaryObjective as EvaluationListResponse['items'][number]['primary_objective'],
+        summary:
+          (record.decisionOutput as Record<string, Record<string, string>>)
+            .current_stack_diagnosis?.summary ?? 'Evaluation completed',
+        narrative_available: Boolean(record.narrative),
+        simulation_summary: record.simulationArtifact
+          ? toSimulationSummaryFromArtifact(record.simulationArtifact)
+          : undefined,
+      }));
+
+      return buildEvaluationListResponse(items, input);
     });
   }
 
@@ -1082,9 +1928,20 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         const reviewStatus = input.reviewStatus
           ? toDatabaseExternalEvidenceReviewStatus(input.reviewStatus)
           : undefined;
+        const sourceType = input.sourceType
+          ? toDatabaseExternalEvidenceSourceType(input.sourceType)
+          : undefined;
+        const { page, pageSize, skip } = toCatalogPagination(input);
         const searchQuery = input.searchQuery?.trim();
         const where: Prisma.ExternalEvidenceCatalogItemWhereInput = {
           reviewStatus,
+          sourceRecord: sourceType
+            ? {
+                is: {
+                  sourceType,
+                },
+              }
+            : undefined,
           OR: searchQuery
             ? [
                 {
@@ -1114,37 +1971,66 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             : undefined,
         };
 
-        const [records, total, pending, accepted, rejected] =
-          await this.prisma.$transaction([
-            this.prisma.externalEvidenceCatalogItem.findMany({
-              where,
-              include: { sourceRecord: true },
-              orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-            }),
-            this.prisma.externalEvidenceCatalogItem.count(),
-            this.prisma.externalEvidenceCatalogItem.count({
-              where: { reviewStatus: 'PENDING' },
-            }),
-            this.prisma.externalEvidenceCatalogItem.count({
-              where: { reviewStatus: 'ACCEPTED' },
-            }),
-            this.prisma.externalEvidenceCatalogItem.count({
-              where: { reviewStatus: 'REJECTED' },
-            }),
-          ]);
+        const [
+          records,
+          total,
+          filteredTotal,
+          pendingTotal,
+          acceptedTotal,
+          rejectedTotal,
+        ] = await this.prisma.$transaction([
+          this.prisma.externalEvidenceCatalogItem.findMany({
+            where,
+            include: {
+              sourceRecord: true,
+              _count: {
+                select: {
+                  claims: true,
+                },
+              },
+            },
+            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+            skip,
+            take: pageSize,
+          }),
+          this.prisma.externalEvidenceCatalogItem.count(),
+          this.prisma.externalEvidenceCatalogItem.count({ where }),
+          this.prisma.externalEvidenceCatalogItem.count({
+            where: { reviewStatus: 'PENDING' },
+          }),
+          this.prisma.externalEvidenceCatalogItem.count({
+            where: { reviewStatus: 'ACCEPTED' },
+          }),
+          this.prisma.externalEvidenceCatalogItem.count({
+            where: { reviewStatus: 'REJECTED' },
+          }),
+        ]);
+
+        const items = records;
 
         return externalEvidenceCatalogListResponseSchema.parse({
-          items: records.map((record) => createExternalEvidenceSummary(record)),
+          items: items.map((record) =>
+            createExternalEvidenceSummary({
+              ...record,
+              claimCount: record._count.claims,
+            }),
+          ),
           summary: {
             total,
-            pending,
-            accepted,
-            rejected,
+            filtered_total: filteredTotal,
+            pending: pendingTotal,
+            accepted: acceptedTotal,
+            rejected: rejectedTotal,
+            page,
+            page_size: pageSize,
+            total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
+            returned: items.length,
           },
         });
       },
       {
         review_status: input.reviewStatus ?? 'all',
+        source_type: input.sourceType ?? 'all',
         search_query: input.searchQuery ?? '',
       },
     );
@@ -1159,7 +2045,20 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         const record = await this.prisma.externalEvidenceCatalogItem.findUnique(
           {
             where: { id: catalogItemId },
-            include: { sourceRecord: true },
+            include: {
+              sourceRecord: {
+                include: {
+                  supplierDocuments: true,
+                },
+              },
+              claims: {
+                include: {
+                  reviews: true,
+                  ontologyMappings: true,
+                },
+                orderBy: [{ confidence: 'desc' }, { createdAt: 'asc' }],
+              },
+            },
           },
         );
 
@@ -1184,7 +2083,19 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         const updated = await this.prisma.$transaction(async (tx) => {
           const current = await tx.externalEvidenceCatalogItem.findUnique({
             where: { id: input.catalogItemId },
-            include: { sourceRecord: true },
+            include: {
+              sourceRecord: {
+                include: {
+                  supplierDocuments: true,
+                },
+              },
+              claims: {
+                include: {
+                  reviews: true,
+                  ontologyMappings: true,
+                },
+              },
+            },
           });
 
           if (!current) {
@@ -1202,7 +2113,19 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               reviewStatus: nextReviewStatus,
               sourceState: nextSourceState,
             },
-            include: { sourceRecord: true },
+            include: {
+              sourceRecord: {
+                include: {
+                  supplierDocuments: true,
+                },
+              },
+              claims: {
+                include: {
+                  reviews: true,
+                  ontologyMappings: true,
+                },
+              },
+            },
           });
 
           await tx.auditEvent.create({
@@ -1241,6 +2164,49 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
       {
         catalog_item_id: input.catalogItemId,
         action: input.action,
+      },
+    );
+  }
+
+  async reviewExternalEvidenceCatalogItems(
+    input: ReviewExternalEvidenceCatalogItemsInput,
+  ): Promise<ExternalEvidenceBulkReviewResponse> {
+    return withSpan(
+      'database.external_evidence.review_bulk',
+      async () => {
+        const attemptedIds = normalizeCatalogItemIds(input.catalogItemIds);
+        const failed: ExternalEvidenceBulkReviewResponse['failed'] = [];
+        const succeededIds: string[] = [];
+
+        for (const catalogItemId of attemptedIds) {
+          const updated = await this.reviewExternalEvidenceCatalogItem({
+            catalogItemId,
+            action: input.action,
+            actorRole: input.actorRole,
+            actorId: input.actorId,
+            note: input.note,
+          });
+
+          if (!updated) {
+            failed.push(buildMissingCatalogItemFailure(catalogItemId));
+            continue;
+          }
+
+          succeededIds.push(updated.id);
+        }
+
+        return externalEvidenceBulkReviewResponseSchema.parse({
+          action: input.action,
+          attempted_ids: attemptedIds,
+          succeeded_ids: succeededIds,
+          failed,
+          note: input.note?.trim() || undefined,
+        });
+      },
+      {
+        actor_id: input.actorId ?? 'anonymous',
+        attempted_count: input.catalogItemIds.length,
+        review_action: input.action,
       },
     );
   }

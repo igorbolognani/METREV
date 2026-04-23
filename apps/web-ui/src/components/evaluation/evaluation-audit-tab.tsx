@@ -35,6 +35,19 @@ function traceabilityCounts(workspace: EvaluationWorkspaceResponse) {
   ];
 }
 
+function formatPersistedUsage(
+  value:
+    | EvaluationWorkspaceResponse['evaluation']['source_usages'][number]
+    | EvaluationWorkspaceResponse['evaluation']['claim_usages'][number],
+) {
+  const targetId =
+    'source_document_id' in value ? value.source_document_id : value.claim_id;
+
+  return `${formatToken(value.usage_type)} · ${targetId}${
+    value.note ? ` · ${value.note}` : ''
+  }`;
+}
+
 export function EvaluationAuditTab({
   evaluationId,
   workspace,
@@ -173,6 +186,38 @@ export function EvaluationAuditTab({
             <p className="muted">
               No typed evidence records were attached to this evaluation.
             </p>
+          )}
+        </article>
+
+        <div className="workspace-detail-grid">
+          <article className="workspace-inline-card">
+            <h3>Persisted source usage</h3>
+            {listOrEmpty(
+              evaluation.source_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted source usage records were read back for this evaluation.',
+            )}
+          </article>
+          <article className="workspace-inline-card">
+            <h3>Persisted claim usage</h3>
+            {listOrEmpty(
+              evaluation.claim_usages.map((usage) =>
+                formatPersistedUsage(usage),
+              ),
+              'No persisted claim usage records were read back for this evaluation.',
+            )}
+          </article>
+        </div>
+
+        <article className="workspace-inline-card">
+          <h3>Workspace snapshot inventory</h3>
+          {listOrEmpty(
+            evaluation.workspace_snapshots.map(
+              (snapshot) =>
+                `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
+            ),
+            'No immutable workspace snapshots were read back for this evaluation.',
           )}
         </article>
 

@@ -134,6 +134,8 @@ describe('wastewater golden case preset', () => {
       published_at: '2025-05-10T00:00:00.000Z',
       provenance_note:
         'Imported and accepted by an analyst before intake attachment.',
+      claim_count: 0,
+      reviewed_claim_count: 0,
       applicability_scope: {
         import_query: 'wastewater instrumentation',
       },

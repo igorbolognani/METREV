@@ -46,8 +46,8 @@ services:
       METREV_STORAGE_MODE: postgres
       AUTH_SECRET: ${AUTH_SECRET:-metrev-local-dev-auth-secret-change-me-now}
       METREV_OTEL_ENABLED: ${METREV_OTEL_ENABLED:-true}
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://metrev:metrev@postgres:5432/metrev?schema=public}
-      DIRECT_URL: ${DOCKER_DIRECT_URL:-postgresql://metrev:metrev@postgres:5432/metrev?schema=public}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
       OTEL_EXPORTER_OTLP_ENDPOINT: ${DOCKER_OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
     ports:
       - '${API_PORT:-4000}:4000'
@@ -76,8 +76,8 @@ services:
       PORT: 3000
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_SECRET: ${AUTH_SECRET:-metrev-local-dev-auth-secret-change-me-now}
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://metrev:metrev@postgres:5432/metrev?schema=public}
-      DIRECT_URL: ${DOCKER_DIRECT_URL:-postgresql://metrev:metrev@postgres:5432/metrev?schema=public}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
       METREV_OTEL_ENABLED: ${METREV_OTEL_ENABLED:-true}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4000}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${DOCKER_OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}

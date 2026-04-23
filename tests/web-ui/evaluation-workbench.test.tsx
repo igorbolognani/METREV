@@ -195,13 +195,51 @@ describe('workspace presenters', () => {
           { client: new QueryClient() },
           React.createElement(EvaluationAuditTab, {
             evaluationId: current.evaluation_id,
-            workspace,
+            workspace: {
+              ...workspace,
+              evaluation: {
+                ...workspace.evaluation,
+                source_usages: [
+                  {
+                    id: 'source-usage-001',
+                    evaluation_id: current.evaluation_id,
+                    source_document_id: 'source-crossref-001',
+                    usage_type: 'attached_input',
+                    note: 'Accepted for analyst intake.',
+                    created_at: current.audit_record.timestamp,
+                  },
+                ],
+                claim_usages: [
+                  {
+                    id: 'claim-usage-001',
+                    evaluation_id: current.evaluation_id,
+                    claim_id: 'claim-001',
+                    usage_type: 'input_support',
+                    note: 'Used to support deterministic intake selection.',
+                    created_at: current.audit_record.timestamp,
+                  },
+                ],
+                workspace_snapshots: [
+                  {
+                    id: 'snapshot-001',
+                    evaluation_id: current.evaluation_id,
+                    case_id: current.case_id,
+                    snapshot_type: 'evaluation',
+                    payload: { fixture: true },
+                    created_at: current.audit_record.timestamp,
+                  },
+                ],
+              },
+            },
           }),
         ),
       );
 
       expect(auditHtml).toContain('Assumptions and defaults audit');
       expect(auditHtml).toContain('Confidence and uncertainty summary');
+      expect(auditHtml).toContain('Persisted source usage');
+      expect(auditHtml).toContain('Accepted for analyst intake.');
+      expect(auditHtml).toContain('Workspace snapshot inventory');
       expect(auditHtml).toContain('View audit record');
       expect(auditHtml).toContain('View raw evaluation data');
     } finally {

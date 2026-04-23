@@ -32,9 +32,20 @@ enum SupplierSourceState {
 enum ExternalSourceType {
   OPENALEX
   CROSSREF
+  EUROPE_PMC
   SUPPLIER_PROFILE
   MARKET_SNAPSHOT
+  CURATED_MANIFEST
   MANUAL
+}
+
+enum ExternalAccessStatus {
+  GOLD
+  GREEN
+  HYBRID
+  BRONZE
+  CLOSED
+  UNKNOWN
 }
 
 enum IngestionRunStatus {
@@ -54,6 +65,65 @@ enum ExternalEvidenceReviewStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum EvidenceClaimType {
+  METRIC
+  MATERIAL
+  ARCHITECTURE
+  CONDITION
+  LIMITATION
+  APPLICABILITY
+  ECONOMIC
+  SUPPLIER_CLAIM
+  MARKET_SIGNAL
+  OTHER
+}
+
+enum EvidenceExtractionMethod {
+  MANUAL
+  LLM
+  REGEX
+  ML
+  IMPORT_RULE
+}
+
+enum OntologyMappingSource {
+  AUTO
+  ANALYST
+  IMPORT_RULE
+}
+
+enum SupplierDocumentType {
+  PROFILE
+  DATASHEET
+  SPECIFICATION
+  CERTIFICATE
+  MARKET_BRIEF
+  CASE_STUDY
+  PATENT_FILING
+  REPORT
+  OTHER
+}
+
+enum EvaluationEvidenceUsageType {
+  ATTACHED_INPUT
+  INPUT_SUPPORT
+  DIAGNOSTIC_SUPPORT
+  RECOMMENDATION_SUPPORT
+  SUPPLIER_SUPPORT
+  REPORT_CITATION
+}
+
+enum WorkspaceSnapshotType {
+  DASHBOARD
+  EVALUATION
+  COMPARISON
+  HISTORY
+  EVIDENCE_REVIEW
+  REPORT
+  EXPORT_JSON
+  EXPORT_CSV
 }
 
 model User {
@@ -109,7 +179,7 @@ model VerificationToken {
 }
 
 model CaseRecord {
-  id                  String                   @id
+  id                  String                    @id
   technologyFamily    String
   architectureFamily  String
   primaryObjective    String
@@ -121,11 +191,12 @@ model CaseRecord {
   typedEvidence       Json
   supplierContext     Json
   createdBy           String?
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   evaluations         EvaluationRecord[]
   evidenceRecords     EvidenceRecord[]
   supplierPreferences CaseSupplierPreference[]
+  workspaceSnapshots  WorkspaceSnapshotRecord[]
   auditEvents         AuditEvent[]
 }
 
@@ -147,6 +218,9 @@ model EvaluationRecord {
   case                   CaseRecord                @relation(fields: [caseId], references: [id], onDelete: Cascade)
   simulationArtifact     SimulationArtifactRecord?
   supplierShortlistItems SupplierShortlistItem[]
+  sourceUsages           EvaluationSourceUsage[]
+  claimUsages            EvaluationClaimUsage[]
+  workspaceSnapshots     WorkspaceSnapshotRecord[]
   auditEvents            AuditEvent[]
 }
 
@@ -180,6 +254,8 @@ model Supplier {
   updatedAt       DateTime                 @updatedAt
   casePreferences CaseSupplierPreference[]
   shortlistItems  SupplierShortlistItem[]
+  products        SupplierProduct[]
+  documents       SupplierDocument[]
   evidenceRecords EvidenceRecord[]
 }
 
@@ -192,17 +268,32 @@ model ExternalSourceRecord {
   sourceCategory       String?
   doi                  String?
   publisher            String?
+  journal              String?
+  authors              Json?
+  language             String?
+  license              String?
+  accessStatus         ExternalAccessStatus          @default(UNKNOWN)
   publishedAt          DateTime?
   asOf                 DateTime?
+  pdfUrl               String?
+  xmlUrl               String?
+  hashDedup            String?
+  ingestionRunId       String?
   abstractText         String?                       @db.Text
   rawPayload           Json
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
+  ingestionRun         IngestionRun?                 @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
   catalogEvidenceItems ExternalEvidenceCatalogItem[]
+  claims               EvidenceClaim[]
+  supplierDocuments    SupplierDocument[]
+  evaluationUsages     EvaluationSourceUsage[]
 
   @@unique([sourceType, sourceKey])
   @@index([sourceType, publishedAt])
   @@index([doi])
+  @@index([ingestionRunId])
+  @@index([hashDedup])
 }
 
 model ExternalEvidenceCatalogItem {
@@ -215,6 +306,7 @@ model ExternalEvidenceCatalogItem {
   provenanceNote     String                       @db.Text
   reviewStatus       ExternalEvidenceReviewStatus @default(PENDING)
   sourceState        ExternalSourceState          @default(PARSED)
+  claimCount         Int                          @default(0)
   applicabilityScope Json
   extractedClaims    Json
   tags               String[]
@@ -222,26 +314,166 @@ model ExternalEvidenceCatalogItem {
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   sourceRecord       ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  claims             EvidenceClaim[]
 
   @@unique([sourceRecordId, evidenceType, title])
   @@index([reviewStatus, evidenceType])
 }
 
 model IngestionRun {
-  id             String             @id @default(cuid())
+  id             String                 @id @default(cuid())
   sourceType     ExternalSourceType
   triggerMode    String
   query          String?
   status         IngestionRunStatus
-  recordsFetched Int                @default(0)
-  recordsStored  Int                @default(0)
+  recordsFetched Int                    @default(0)
+  recordsStored  Int                    @default(0)
+  checkpoint     Json?
   summary        Json
+  failureDetail  Json?
   startedAt      DateTime
   completedAt    DateTime?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  sourceRecords  ExternalSourceRecord[]
 
   @@index([sourceType, startedAt])
+}
+
+model EvidenceClaim {
+  id               String                       @id @default(cuid())
+  sourceRecordId   String
+  catalogItemId    String?
+  claimType        EvidenceClaimType
+  content          String                       @db.Text
+  extractedValue   String?
+  unit             String?
+  confidence       Float
+  extractionMethod EvidenceExtractionMethod
+  extractorVersion String
+  sourceSnippet    String                       @db.Text
+  sourceLocator    String?
+  pageNumber       Int?
+  metadata         Json
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  sourceRecord     ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  catalogItem      ExternalEvidenceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  reviews          EvidenceClaimReview[]
+  ontologyMappings EvidenceOntologyMapping[]
+  evaluationUsages EvaluationClaimUsage[]
+
+  @@index([sourceRecordId, claimType])
+  @@index([catalogItemId, claimType])
+  @@index([confidence, createdAt])
+}
+
+model EvidenceClaimReview {
+  id          String                       @id @default(cuid())
+  claimId     String
+  status      ExternalEvidenceReviewStatus @default(PENDING)
+  analystId   String?
+  analystRole String?
+  analystNote String?                      @db.Text
+  reviewedAt  DateTime?
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+  claim       EvidenceClaim                @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, status])
+  @@index([status, reviewedAt])
+}
+
+model EvidenceOntologyMapping {
+  id                String                @id @default(cuid())
+  claimId           String
+  ontologyPath      String
+  mappingConfidence Float
+  mappedBy          OntologyMappingSource
+  note              String?               @db.Text
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  claim             EvidenceClaim         @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, ontologyPath])
+  @@index([ontologyPath])
+}
+
+model SupplierProduct {
+  id          String             @id @default(cuid())
+  supplierId  String
+  productKey  String
+  displayName String
+  category    String?
+  trl         Int?
+  metadata    Json
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  supplier    Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  documents   SupplierDocument[]
+
+  @@unique([supplierId, productKey])
+  @@index([supplierId, category])
+}
+
+model SupplierDocument {
+  id             String               @id @default(cuid())
+  supplierId     String
+  sourceRecordId String
+  productId      String?
+  documentType   SupplierDocumentType
+  note           String?              @db.Text
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  supplier       Supplier             @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  sourceRecord   ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  product        SupplierProduct?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@unique([supplierId, sourceRecordId])
+  @@index([productId, documentType])
+}
+
+model EvaluationSourceUsage {
+  id             String                      @id @default(cuid())
+  evaluationId   String
+  sourceRecordId String
+  usageType      EvaluationEvidenceUsageType
+  note           String?                     @db.Text
+  createdAt      DateTime                    @default(now())
+  evaluation     EvaluationRecord            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  sourceRecord   ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, sourceRecordId, usageType])
+  @@index([sourceRecordId, usageType])
+}
+
+model EvaluationClaimUsage {
+  id           String                      @id @default(cuid())
+  evaluationId String
+  claimId      String
+  usageType    EvaluationEvidenceUsageType
+  note         String?                     @db.Text
+  createdAt    DateTime                    @default(now())
+  evaluation   EvaluationRecord            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  claim        EvidenceClaim               @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, claimId, usageType])
+  @@index([claimId, usageType])
+}
+
+model WorkspaceSnapshotRecord {
+  id           String                @id @default(cuid())
+  evaluationId String?
+  caseId       String?
+  snapshotType WorkspaceSnapshotType
+  payload      Json
+  createdAt    DateTime              @default(now())
+  evaluation   EvaluationRecord?     @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  case         CaseRecord?           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, snapshotType])
+  @@unique([caseId, snapshotType])
+  @@index([snapshotType, createdAt])
 }
 
 model CaseSupplierPreference {

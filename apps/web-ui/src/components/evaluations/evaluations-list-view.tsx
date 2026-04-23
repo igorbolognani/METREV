@@ -9,54 +9,20 @@ import * as React from 'react';
 import type { EvaluationListResponse } from '@metrev/domain-contracts';
 
 import { EvaluationsFilters } from '@/components/evaluations/evaluations-filters';
+import { EvaluationsTable } from '@/components/evaluations/evaluations-table';
 import {
-  EvaluationsTable,
-  sortEvaluations,
-} from '@/components/evaluations/evaluations-table';
-import {
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { fetchEvaluationList } from '@/lib/api';
 import {
-  type EvaluationConfidenceFilter,
-  useEvaluationsListQueryState,
+    type EvaluationConfidenceFilter,
+    useEvaluationsListQueryState,
 } from '@/lib/evaluations-list-query-state';
 
 void React;
-
-function matchesConfidence(
-  item: EvaluationListResponse['items'][number],
-  confidenceFilter: EvaluationConfidenceFilter,
-) {
-  return (
-    confidenceFilter === 'all' || item.confidence_level === confidenceFilter
-  );
-}
-
-function matchesSearch(
-  item: EvaluationListResponse['items'][number],
-  searchInput: string,
-) {
-  const normalizedSearch = searchInput.trim().toLocaleLowerCase();
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  const haystack = [
-    item.evaluation_id,
-    item.case_id,
-    item.summary,
-    item.technology_family,
-    item.primary_objective,
-  ]
-    .join(' ')
-    .toLocaleLowerCase();
-
-  return haystack.includes(normalizedSearch);
-}
 
 export function EvaluationsListView() {
   const {
@@ -70,27 +36,78 @@ export function EvaluationsListView() {
     sortKey,
   } = useEvaluationsListQueryState();
   const deferredSearch = useDeferredValue(searchInput);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
   const query = useQuery({
-    queryFn: fetchEvaluationList,
-    queryKey: ['evaluation-list'],
+    queryFn: () =>
+      fetchEvaluationList({
+        confidence: confidenceFilter === 'all' ? undefined : confidenceFilter,
+        query: deferredSearch,
+        sortKey,
+        sortDirection,
+        page,
+        pageSize,
+      }),
+    queryKey: [
+      'evaluation-list',
+      confidenceFilter,
+      deferredSearch,
+      sortKey,
+      sortDirection,
+      page,
+      pageSize,
+    ],
   });
 
-  const filteredItems = React.useMemo(() => {
-    const items = query.data?.items ?? [];
-    const visibleItems = items.filter(
-      (item) =>
-        matchesConfidence(item, confidenceFilter) &&
-        matchesSearch(item, deferredSearch),
-    );
+  React.useEffect(() => {
+    if (!query.data) {
+      return;
+    }
 
-    return sortEvaluations(visibleItems, sortKey, sortDirection);
-  }, [
-    confidenceFilter,
-    deferredSearch,
-    query.data?.items,
-    sortDirection,
-    sortKey,
-  ]);
+    if (page > query.data.summary.total_pages) {
+      setPage(query.data.summary.total_pages);
+    }
+  }, [page, query.data]);
+
+  function handleConfidenceFilterChange(nextValue: EvaluationConfidenceFilter) {
+    setPage(1);
+    void setConfidenceFilter(nextValue);
+  }
+
+  function handleSearchInputChange(nextValue: string) {
+    setPage(1);
+    void setSearchInput(nextValue);
+  }
+
+  function handleSortKeyChange(
+    nextValue: 'created_at' | 'confidence_level' | 'case_id',
+  ) {
+    setPage(1);
+    void setSortKey(nextValue);
+  }
+
+  function handleSortDirectionChange(nextValue: 'asc' | 'desc') {
+    setPage(1);
+    void setSortDirection(nextValue);
+  }
+
+  function handlePageSizeChange(nextValue: number) {
+    setPage(1);
+    setPageSize(nextValue);
+  }
+
+  function handlePreviousPage() {
+    setPage((currentValue) => Math.max(1, currentValue - 1));
+  }
+
+  function handleNextPage() {
+    setPage((currentValue) =>
+      Math.min(
+        query.data?.summary.total_pages ?? currentValue,
+        currentValue + 1,
+      ),
+    );
+  }
 
   if (query.isLoading) {
     return (
@@ -117,15 +134,20 @@ export function EvaluationsListView() {
   return (
     <EvaluationsWorkspaceView
       confidenceFilter={confidenceFilter}
-      items={filteredItems}
-      onConfidenceFilterChange={setConfidenceFilter}
-      onSearchInputChange={setSearchInput}
-      onSortDirectionChange={setSortDirection}
-      onSortKeyChange={setSortKey}
+      items={list.items}
+      onConfidenceFilterChange={handleConfidenceFilterChange}
+      onNextPage={handleNextPage}
+      onPageSizeChange={handlePageSizeChange}
+      onPreviousPage={handlePreviousPage}
+      onSearchInputChange={handleSearchInputChange}
+      onSortDirectionChange={handleSortDirectionChange}
+      onSortKeyChange={handleSortKeyChange}
+      page={page}
+      pageSize={pageSize}
       searchInput={searchInput}
+      summary={list.summary}
       sortDirection={sortDirection}
       sortKey={sortKey}
-      totalCount={list.items.length}
     />
   );
 }
@@ -134,26 +156,36 @@ export function EvaluationsWorkspaceView({
   confidenceFilter,
   items,
   onConfidenceFilterChange,
+  onNextPage,
+  onPageSizeChange,
+  onPreviousPage,
   onSearchInputChange,
   onSortDirectionChange,
   onSortKeyChange,
+  page,
+  pageSize,
   searchInput,
+  summary,
   sortDirection,
   sortKey,
-  totalCount,
 }: {
   confidenceFilter: EvaluationConfidenceFilter;
   items: EvaluationListResponse['items'];
   onConfidenceFilterChange: (nextValue: EvaluationConfidenceFilter) => void;
+  onNextPage: () => void;
+  onPageSizeChange: (nextValue: number) => void;
+  onPreviousPage: () => void;
   onSearchInputChange: (nextValue: string) => void;
   onSortDirectionChange: (nextValue: 'asc' | 'desc') => void;
   onSortKeyChange: (
     nextValue: 'created_at' | 'confidence_level' | 'case_id',
   ) => void;
+  page: number;
+  pageSize: number;
   searchInput: string;
+  summary: EvaluationListResponse['summary'];
   sortDirection: 'asc' | 'desc';
   sortKey: 'created_at' | 'confidence_level' | 'case_id';
-  totalCount: number;
 }) {
   return (
     <div className="workspace-page">
@@ -164,27 +196,34 @@ export function EvaluationsWorkspaceView({
           </Link>
         }
         badge="Evaluations"
-        chips={[`${items.length} visible`, `${totalCount} total`]}
+        chips={[`${summary.filtered_total} filtered`, `${summary.total} total`]}
         description="All saved evaluations remain searchable, sortable, and directly connected to case history."
         title="All evaluations"
       />
 
       <WorkspaceSection
-        description="Filters and sort order persist in the URL so this list can be shared or revisited without losing state."
+        description="Confidence, search, and sort state persist in the URL while the backend owns filtering, sorting, and pagination."
         eyebrow="Workspace list"
         title="Evaluation registry"
       >
         <EvaluationsFilters
           confidenceFilter={confidenceFilter}
+          filteredCount={summary.filtered_total}
           onConfidenceFilterChange={onConfidenceFilterChange}
+          onNextPage={onNextPage}
+          onPageSizeChange={onPageSizeChange}
+          onPreviousPage={onPreviousPage}
           onSearchInputChange={onSearchInputChange}
           onSortDirectionChange={onSortDirectionChange}
           onSortKeyChange={onSortKeyChange}
+          page={page}
+          pageSize={pageSize}
           searchInput={searchInput}
           sortDirection={sortDirection}
           sortKey={sortKey}
-          totalCount={totalCount}
-          visibleCount={items.length}
+          totalCount={summary.total}
+          totalPages={summary.total_pages}
+          visibleCount={summary.returned}
         />
         <EvaluationsTable items={items} />
       </WorkspaceSection>

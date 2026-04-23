@@ -30,6 +30,26 @@ When the domain kit evolves, these contracts must be updated to reflect the same
 - `suppliers/` → supplier normalization and supplier record template
 - `reports/` → reporting templates
 
+## Expanded Evidence Boundary
+
+The runtime evidence model is no longer a single compact `evidence_record` with loose JSON fragments.
+The hardened contract boundary now needs to stay aligned with six related surfaces:
+
+- `source_document` → the imported or curated external record with provider metadata, access posture, and raw payload retention
+- `catalog_item` → the analyst-facing evidence registry record that carries review posture, applicability scope, and intake-facing summary fields
+- `evidence_claim` → typed extracted or curated claims with extraction provenance, confidence, review state, and ontology mapping support
+- `supplier_document` → source documents linked to supplier and optional product context without bypassing the canonical evidence registry
+- `evaluation_lineage` → persisted source and claim usage records showing what a decision run actually used
+- `workspace_snapshot` → immutable persisted payloads for evaluation, report, and export replay
+
+This boundary exists so storage, serialization, APIs, and future database integrations can remain explicit about provenance and review posture instead of flattening everything into anonymous evidence blobs.
+
+## Runtime Alignment Note
+
+The runtime implementation under `apps/` and `packages/` may widen these shapes to support UI rendering or repository hydration, but it must adapt the same canonical semantics rather than introducing alternate names.
+
+If a field is stored or returned at runtime and it changes validation-facing meaning, the canonical owner is this `contracts/` layer and the counterpart semantic owner in `bioelectrochem_agent_kit/domain/`.
+
 ## Migration note
 
 Earlier iterations mixed a compact contract vocabulary with a more operational domain vocabulary.

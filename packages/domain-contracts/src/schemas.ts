@@ -70,9 +70,79 @@ export const externalEvidenceReviewActionSchema = z.enum(['accept', 'reject']);
 export const externalEvidenceSourceTypeSchema = z.enum([
   'openalex',
   'crossref',
+  'europe_pmc',
   'supplier_profile',
   'market_snapshot',
+  'curated_manifest',
   'manual',
+]);
+
+export const externalEvidenceAccessStatusSchema = z.enum([
+  'gold',
+  'green',
+  'hybrid',
+  'bronze',
+  'closed',
+  'unknown',
+]);
+
+export const evidenceClaimTypeSchema = z.enum([
+  'metric',
+  'material',
+  'architecture',
+  'condition',
+  'limitation',
+  'applicability',
+  'economic',
+  'supplier_claim',
+  'market_signal',
+  'other',
+]);
+
+export const evidenceExtractionMethodSchema = z.enum([
+  'manual',
+  'llm',
+  'regex',
+  'ml',
+  'import_rule',
+]);
+
+export const ontologyMappingSourceSchema = z.enum([
+  'auto',
+  'analyst',
+  'import_rule',
+]);
+
+export const supplierDocumentTypeSchema = z.enum([
+  'profile',
+  'datasheet',
+  'specification',
+  'certificate',
+  'market_brief',
+  'case_study',
+  'patent_filing',
+  'report',
+  'other',
+]);
+
+export const evaluationEvidenceUsageTypeSchema = z.enum([
+  'attached_input',
+  'input_support',
+  'diagnostic_support',
+  'recommendation_support',
+  'supplier_support',
+  'report_citation',
+]);
+
+export const workspaceSnapshotTypeSchema = z.enum([
+  'dashboard',
+  'evaluation',
+  'comparison',
+  'history',
+  'evidence_review',
+  'report',
+  'export_json',
+  'export_csv',
 ]);
 
 export const externalEvidenceSourceStateSchema = z.enum([
@@ -570,6 +640,11 @@ export const evaluationResponseSchema = z.object({
   narrative: z.string().nullable(),
   narrative_metadata: narrativeMetadataSchema,
   simulation_enrichment: simulationEnrichmentSchema.optional(),
+  source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]),
+  claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]),
+  workspace_snapshots: z
+    .array(z.lazy(() => workspaceSnapshotRecordSchema))
+    .default([]),
 });
 
 export const evaluationSummarySchema = z.object({
@@ -584,8 +659,26 @@ export const evaluationSummarySchema = z.object({
   simulation_summary: simulationSummarySchema.optional(),
 });
 
+export const evaluationListSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  filtered_total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  page_size: z.number().int().positive(),
+  total_pages: z.number().int().positive(),
+  returned: z.number().int().nonnegative(),
+});
+
+function createEmptyEvaluationLineage() {
+  return {
+    source_usages: [],
+    claim_usages: [],
+    workspace_snapshots: [],
+  };
+}
+
 export const evaluationListResponseSchema = z.object({
   items: z.array(evaluationSummarySchema),
+  summary: evaluationListSummarySchema,
 });
 
 export const caseSnapshotSchema = z.object({
@@ -622,9 +715,14 @@ export const caseHistoryResponseSchema = z.object({
 
 export const externalEvidenceCatalogListSummarySchema = z.object({
   total: z.number().int().nonnegative(),
+  filtered_total: z.number().int().nonnegative().default(0),
   pending: z.number().int().nonnegative(),
   accepted: z.number().int().nonnegative(),
   rejected: z.number().int().nonnegative(),
+  page: z.number().int().positive().default(1),
+  page_size: z.number().int().positive().default(25),
+  total_pages: z.number().int().positive().default(1),
+  returned: z.number().int().nonnegative().default(0),
 });
 
 export const workspaceHeroCardSchema = z.object({
@@ -764,6 +862,9 @@ export const caseHistoryWorkspaceResponseSchema = z.object({
   evidence_records: z.array(evidenceRecordSchema),
   audit_events: z.array(auditEventSchema),
   current_evaluation_id: z.string().nullable(),
+  current_evaluation_lineage: z
+    .lazy(() => evaluationLineageSchema)
+    .default(createEmptyEvaluationLineage()),
 });
 
 export const comparisonMetricDeltaSchema = z.object({
@@ -821,6 +922,9 @@ export const evidenceReviewWorkspaceResponseSchema = z.object({
 export const printableEvaluationReportResponseSchema = z.object({
   meta: workspaceMetaSchema,
   evaluation: evaluationSummarySchema,
+  evaluation_lineage: z
+    .lazy(() => evaluationLineageSchema)
+    .default(createEmptyEvaluationLineage()),
   title: z.string().min(1),
   subtitle: z.string().min(1),
   sections: z.object({
@@ -858,6 +962,8 @@ export const externalEvidenceCatalogSummarySchema = z.object({
   publisher: z.string().nullable(),
   published_at: z.string().nullable(),
   provenance_note: z.string().min(1),
+  claim_count: z.number().int().nonnegative().default(0),
+  reviewed_claim_count: z.number().int().nonnegative().default(0),
   applicability_scope: flexibleObjectSchema.default({}),
   extracted_claims: z.array(z.unknown()).default([]),
   tags: z.array(z.string()).default([]),
@@ -865,8 +971,119 @@ export const externalEvidenceCatalogSummarySchema = z.object({
   updated_at: z.string().min(1),
 });
 
+export const sourceDocumentRecordSchema = z.object({
+  id: z.string().min(1),
+  source_type: externalEvidenceSourceTypeSchema,
+  source_category: z.string().nullable(),
+  source_url: z.string().nullable(),
+  doi: z.string().nullable(),
+  publisher: z.string().nullable(),
+  journal: z.string().nullable(),
+  published_at: z.string().nullable(),
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  license: z.string().nullable(),
+  pdf_url: z.string().nullable(),
+  xml_url: z.string().nullable(),
+  authors: z.array(flexibleObjectSchema).default([]),
+});
+
+export const evidenceClaimReviewSchema = z.object({
+  id: z.string().min(1),
+  status: externalEvidenceReviewStatusSchema,
+  analyst_id: z.string().nullable(),
+  analyst_role: z.string().nullable(),
+  analyst_note: z.string().nullable(),
+  reviewed_at: z.string().nullable(),
+});
+
+export const evidenceOntologyMappingSchema = z.object({
+  id: z.string().min(1),
+  ontology_path: z.string().min(1),
+  mapping_confidence: z.number().min(0).max(1),
+  mapped_by: ontologyMappingSourceSchema,
+  note: z.string().nullable(),
+});
+
+export const evidenceClaimSchema = z.object({
+  id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  catalog_item_id: z.string().nullable(),
+  claim_type: evidenceClaimTypeSchema,
+  content: z.string().min(1),
+  extracted_value: z.string().nullable(),
+  unit: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+  extraction_method: evidenceExtractionMethodSchema,
+  extractor_version: z.string().min(1),
+  source_snippet: z.string().min(1),
+  source_locator: z.string().nullable(),
+  page_number: z.number().int().positive().nullable(),
+  metadata: flexibleObjectSchema.default({}),
+  reviews: z.array(evidenceClaimReviewSchema).default([]),
+  ontology_mappings: z.array(evidenceOntologyMappingSchema).default([]),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const supplierProductSchema = z.object({
+  id: z.string().min(1),
+  supplier_id: z.string().min(1),
+  product_key: z.string().min(1),
+  display_name: z.string().min(1),
+  category: z.string().nullable(),
+  trl: z.number().int().nullable(),
+  metadata: flexibleObjectSchema.default({}),
+});
+
+export const supplierDocumentSchema = z.object({
+  id: z.string().min(1),
+  supplier_id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  product_id: z.string().nullable(),
+  document_type: supplierDocumentTypeSchema,
+  note: z.string().nullable(),
+});
+
+export const evaluationSourceUsageSchema = z.object({
+  id: z.string().min(1),
+  evaluation_id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  usage_type: evaluationEvidenceUsageTypeSchema,
+  note: z.string().nullable(),
+  created_at: z.string().min(1),
+});
+
+export const evaluationClaimUsageSchema = z.object({
+  id: z.string().min(1),
+  evaluation_id: z.string().min(1),
+  claim_id: z.string().min(1),
+  usage_type: evaluationEvidenceUsageTypeSchema,
+  note: z.string().nullable(),
+  created_at: z.string().min(1),
+});
+
+export const workspaceSnapshotRecordSchema = z.object({
+  id: z.string().min(1),
+  evaluation_id: z.string().nullable(),
+  case_id: z.string().nullable(),
+  snapshot_type: workspaceSnapshotTypeSchema,
+  payload: z.unknown(),
+  created_at: z.string().min(1),
+});
+
+export const evaluationLineageSchema = z.object({
+  source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]),
+  claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]),
+  workspace_snapshots: z
+    .array(z.lazy(() => workspaceSnapshotRecordSchema))
+    .default([]),
+});
+
 export const externalEvidenceCatalogDetailSchema =
   externalEvidenceCatalogSummarySchema.extend({
+    source_document: sourceDocumentRecordSchema.optional(),
+    claims: z.array(evidenceClaimSchema).default([]),
+    supplier_documents: z.array(supplierDocumentSchema).default([]),
     abstract_text: z.string().nullable(),
     payload: z.unknown(),
     raw_payload: z.unknown(),
@@ -879,6 +1096,25 @@ export const externalEvidenceCatalogListResponseSchema = z.object({
 
 export const externalEvidenceReviewRequestSchema = z.object({
   action: externalEvidenceReviewActionSchema,
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const externalEvidenceBulkReviewRequestSchema = z.object({
+  ids: z.array(z.string().trim().min(1)).min(1).max(100),
+  action: externalEvidenceReviewActionSchema,
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const externalEvidenceBulkReviewFailureSchema = z.object({
+  id: z.string().trim().min(1),
+  message: z.string().trim().min(1),
+});
+
+export const externalEvidenceBulkReviewResponseSchema = z.object({
+  action: externalEvidenceReviewActionSchema,
+  attempted_ids: z.array(z.string().trim().min(1)),
+  succeeded_ids: z.array(z.string().trim().min(1)),
+  failed: z.array(externalEvidenceBulkReviewFailureSchema),
   note: z.string().trim().min(1).max(500).optional(),
 });
 
@@ -912,9 +1148,7 @@ export type WorkspaceAttentionItem = z.infer<
 export type WorkspaceLeadAction = z.infer<typeof workspaceLeadActionSchema>;
 export type WorkspaceRoadmapItem = z.infer<typeof workspaceRoadmapItemSchema>;
 export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
-export type WorkspaceMetricRecord = z.infer<
-  typeof workspaceMetricRecordSchema
->;
+export type WorkspaceMetricRecord = z.infer<typeof workspaceMetricRecordSchema>;
 export type DashboardWorkspaceResponse = z.infer<
   typeof dashboardWorkspaceResponseSchema
 >;
@@ -927,9 +1161,7 @@ export type CaseHistoryTimelineItem = z.infer<
 export type CaseHistoryWorkspaceResponse = z.infer<
   typeof caseHistoryWorkspaceResponseSchema
 >;
-export type ComparisonMetricDelta = z.infer<
-  typeof comparisonMetricDeltaSchema
->;
+export type ComparisonMetricDelta = z.infer<typeof comparisonMetricDeltaSchema>;
 export type RecommendationDelta = z.infer<typeof recommendationDeltaSchema>;
 export type SupplierShortlistDelta = z.infer<
   typeof supplierShortlistDeltaSchema
@@ -970,18 +1202,53 @@ export type ExternalEvidenceReviewAction = z.infer<
 export type ExternalEvidenceSourceType = z.infer<
   typeof externalEvidenceSourceTypeSchema
 >;
+export type ExternalEvidenceAccessStatus = z.infer<
+  typeof externalEvidenceAccessStatusSchema
+>;
 export type ExternalEvidenceSourceState = z.infer<
   typeof externalEvidenceSourceStateSchema
 >;
+export type EvidenceClaimType = z.infer<typeof evidenceClaimTypeSchema>;
+export type EvidenceExtractionMethod = z.infer<
+  typeof evidenceExtractionMethodSchema
+>;
+export type OntologyMappingSource = z.infer<typeof ontologyMappingSourceSchema>;
+export type SupplierDocumentType = z.infer<typeof supplierDocumentTypeSchema>;
+export type EvaluationEvidenceUsageType = z.infer<
+  typeof evaluationEvidenceUsageTypeSchema
+>;
+export type WorkspaceSnapshotType = z.infer<typeof workspaceSnapshotTypeSchema>;
 export type ExternalEvidenceCatalogItemSummary = z.infer<
   typeof externalEvidenceCatalogSummarySchema
 >;
 export type ExternalEvidenceCatalogItemDetail = z.infer<
   typeof externalEvidenceCatalogDetailSchema
 >;
+export type SourceDocumentRecord = z.infer<typeof sourceDocumentRecordSchema>;
+export type EvidenceClaimReview = z.infer<typeof evidenceClaimReviewSchema>;
+export type EvidenceOntologyMapping = z.infer<
+  typeof evidenceOntologyMappingSchema
+>;
+export type EvidenceClaim = z.infer<typeof evidenceClaimSchema>;
+export type SupplierProduct = z.infer<typeof supplierProductSchema>;
+export type SupplierDocument = z.infer<typeof supplierDocumentSchema>;
+export type EvaluationSourceUsage = z.infer<typeof evaluationSourceUsageSchema>;
+export type EvaluationClaimUsage = z.infer<typeof evaluationClaimUsageSchema>;
+export type WorkspaceSnapshotRecord = z.infer<
+  typeof workspaceSnapshotRecordSchema
+>;
 export type ExternalEvidenceCatalogListResponse = z.infer<
   typeof externalEvidenceCatalogListResponseSchema
 >;
 export type ExternalEvidenceReviewRequest = z.infer<
   typeof externalEvidenceReviewRequestSchema
+>;
+export type ExternalEvidenceBulkReviewRequest = z.infer<
+  typeof externalEvidenceBulkReviewRequestSchema
+>;
+export type ExternalEvidenceBulkReviewFailure = z.infer<
+  typeof externalEvidenceBulkReviewFailureSchema
+>;
+export type ExternalEvidenceBulkReviewResponse = z.infer<
+  typeof externalEvidenceBulkReviewResponseSchema
 >;

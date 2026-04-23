@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 import {
-    analystEmail,
-    analystPassword,
-    playwrightApiBaseUrl,
-    seededEvidenceSummary,
-    seededEvidenceTitle,
+  analystEmail,
+  analystPassword,
+  playwrightApiBaseUrl,
+  seededEvidenceSummary,
+  seededEvidenceTitle,
 } from './support/local-runtime';
 
 async function signInAsAnalyst(page: import('@playwright/test').Page) {
@@ -69,18 +69,39 @@ async function createEvaluationViaApi(
     idempotencyKey: string;
   },
 ): Promise<{ evaluation_id: string }> {
-  const response = await page
-    .context()
-    .request.post(`${playwrightApiBaseUrl}/api/cases/evaluate`, {
-      headers: {
-        'content-type': 'application/json',
-        'idempotency-key': input.idempotencyKey,
-      },
-      data: buildApiEvaluationPayload(input.caseId),
-    });
+  const payload = buildApiEvaluationPayload(input.caseId);
 
-  expect(response.ok()).toBe(true);
-  return (await response.json()) as { evaluation_id: string };
+  const response = await page.evaluate(
+    async ({ apiBaseUrl, idempotencyKey, payload }) => {
+      const result = await fetch(`${apiBaseUrl}/api/cases/evaluate`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': idempotencyKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      return {
+        ok: result.ok,
+        status: result.status,
+        body: await result.text(),
+      };
+    },
+    {
+      apiBaseUrl: playwrightApiBaseUrl,
+      idempotencyKey: input.idempotencyKey,
+      payload,
+    },
+  );
+
+  expect(
+    response.ok,
+    `Expected ${playwrightApiBaseUrl}/api/cases/evaluate to succeed, received ${response.status}: ${response.body}`,
+  ).toBe(true);
+
+  return JSON.parse(response.body) as { evaluation_id: string };
 }
 
 test.describe('local-first professional workspace', () => {
@@ -96,7 +117,7 @@ test.describe('local-first professional workspace', () => {
 
     await page.getByLabel('Search catalog').fill(seededEvidenceTitle);
     const seededQueueCard = page
-      .locator('article')
+      .getByRole('row')
       .filter({ hasText: seededEvidenceTitle })
       .first();
     await expect(seededQueueCard).toContainText(seededEvidenceSummary);
@@ -123,7 +144,7 @@ test.describe('local-first professional workspace', () => {
       .click();
 
     await page.getByLabel('Case identifier').fill(caseId);
-    await page.getByRole('tab', { name: /^Evidence/ }).click();
+    await page.getByRole('button', { name: /^3 Suppliers & Evidence/ }).click();
 
     await page
       .getByRole('button', { name: 'Include evidence' })
@@ -131,7 +152,7 @@ test.describe('local-first professional workspace', () => {
       .click();
     await expect(page.getByText('1 selected')).toBeVisible();
 
-    await page.getByRole('tab', { name: /^Assumptions/ }).click();
+    await page.getByRole('button', { name: /^4 Review & Submit/ }).click();
     await page
       .getByLabel('Working assumptions')
       .fill('playwright assumption, runtime local validation');
@@ -139,30 +160,20 @@ test.describe('local-first professional workspace', () => {
     await page
       .getByRole('button', { name: 'Run deterministic evaluation' })
       .click();
-    await expect(page).toHaveURL(/\/cases\/new\/submitting$/);
-    await expect(
-      page.getByRole('heading', {
-        name: 'Preparing your evaluation workspace',
-      }),
-    ).toBeVisible();
     await page.waitForURL(/\/evaluations\/[^/]+$/, { timeout: 120_000 });
 
     const firstEvaluationId = extractEvaluationId(page.url());
 
     await expect(page.getByTestId('evaluation-workspace')).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Export JSON' }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Export CSV' }),
-    ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Export JSON' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Export CSV' })).toBeVisible();
 
     const jsonDownload = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export JSON' }).click();
+    await page.getByRole('link', { name: 'Export JSON' }).click();
     await expect((await jsonDownload).suggestedFilename()).toContain(caseId);
 
     const csvDownload = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export CSV' }).click();
+    await page.getByRole('link', { name: 'Export CSV' }).click();
     await expect((await csvDownload).suggestedFilename()).toMatch(/\.csv$/);
 
     await page.getByRole('link', { name: 'Report' }).click();
@@ -198,16 +209,15 @@ test.describe('local-first professional workspace', () => {
     await expect(page.locator('.report-page')).toBeVisible();
     await page.emulateMedia({ media: 'screen' });
 
-    await page.getByRole('link', { name: 'Input deck' }).first().click();
+    await page.goto('/cases/new');
     await expect(page).toHaveURL(/\/cases\/new$/);
-    await page.getByRole('tab', { name: /^Assumptions/ }).click();
+    await page.getByRole('button', { name: /^4 Review & Submit/ }).click();
     await page
       .getByLabel('Working assumptions')
       .fill('playwright assumption rerun, runtime local validation');
     await page
       .getByRole('button', { name: 'Run deterministic evaluation' })
       .click();
-    await expect(page).toHaveURL(/\/cases\/new\/submitting$/);
     await page.waitForURL(/\/evaluations\/[^/]+$/, { timeout: 120_000 });
 
     const secondEvaluationId = extractEvaluationId(page.url());
@@ -222,7 +232,12 @@ test.describe('local-first professional workspace', () => {
     await expect(
       page.getByRole('heading', { name: historyCaseIdMatch[1], exact: true }),
     ).toBeVisible();
-    await expect(page.getByText('Latest run')).toBeVisible();
+    await expect(
+      page
+        .getByRole('row')
+        .filter({ hasText: /Latest run/ })
+        .first(),
+    ).toBeVisible();
 
     const compareCaseId = `PW-COMPARE-${Date.now()}`;
     const baselineEvaluation = await createEvaluationViaApi(page, {

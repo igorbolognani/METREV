@@ -1,56 +1,191 @@
-version: 0.2
-evidence_record:
-  required_fields:
-    - evidence_id
-    - evidence_type
-    - title
-    - summary
-    - applicability_scope
-    - strength_level
-    - provenance_note
-  optional_fields:
-    - quantitative_metrics
-    - operating_conditions
-    - block_mapping
-    - limitations
-    - contradiction_notes
-    - supplier_name
-    - benchmark_context
-    - tags
+version: 0.3
 
-fields:
-  evidence_id: string
+evidence_registry:
+  source_document:
+    required_fields:
+      - id
+      - source_type
+      - source_key
+      - title
+      - raw_payload
+    optional_fields:
+      - source_url
+      - source_category
+      - doi
+      - publisher
+      - journal
+      - authors
+      - language
+      - license
+      - access_status
+      - published_at
+      - as_of
+      - pdf_url
+      - xml_url
+      - abstract_text
+      - hash_dedup
+      - ingestion_run_id
+
+  catalog_item:
+    required_fields:
+      - id
+      - source_document_id
+      - evidence_type
+      - title
+      - summary
+      - strength_level
+      - provenance_note
+      - review_status
+      - source_state
+      - applicability_scope
+      - extracted_claims
+      - tags
+      - payload
+    optional_fields:
+      - claim_count
+      - reviewed_claim_count
+
+  evidence_claim:
+    required_fields:
+      - id
+      - source_document_id
+      - claim_type
+      - content
+      - confidence
+      - extraction_method
+      - extractor_version
+      - source_snippet
+      - metadata
+    optional_fields:
+      - catalog_item_id
+      - extracted_value
+      - unit
+      - source_locator
+      - page_number
+      - reviews
+      - ontology_mappings
+
+  supplier_document:
+    required_fields:
+      - id
+      - supplier_id
+      - source_document_id
+      - document_type
+    optional_fields:
+      - product_id
+      - note
+
+  evaluation_lineage:
+    source_usage_required_fields:
+      - id
+      - evaluation_id
+      - source_document_id
+      - usage_type
+      - created_at
+    source_usage_optional_fields:
+      - note
+    claim_usage_required_fields:
+      - id
+      - evaluation_id
+      - claim_id
+      - usage_type
+      - created_at
+    claim_usage_optional_fields:
+      - note
+
+  workspace_snapshot:
+    required_fields:
+      - id
+      - snapshot_type
+      - payload
+      - created_at
+    optional_fields:
+      - evaluation_id
+      - case_id
+
+enums:
   evidence_type:
-    type: enum
     allowed:
       - literature_evidence
       - internal_benchmark
       - supplier_claim
       - engineering_assumption
       - derived_heuristic
-  title: string
-  summary: string
-  applicability_scope: object
-  strength_level:
-    type: enum
-    allowed: [weak, moderate, strong]
-  provenance_note: string
-  quantitative_metrics:
-    type: object
-  operating_conditions:
-    type: object
-  block_mapping:
-    type: list[string]
-  limitations:
-    type: list[string]
-  contradiction_notes:
-    type: list[string]
-  supplier_name: string
-  benchmark_context: string
-  tags:
-    type: list[string]
+
+  review_status:
+    allowed: [pending, accepted, rejected]
+
+  source_state:
+    allowed: [raw, parsed, normalized, reviewed]
+
+  source_type:
+    allowed:
+      - openalex
+      - crossref
+      - europe_pmc
+      - supplier_profile
+      - market_snapshot
+      - curated_manifest
+      - manual
+
+  access_status:
+    allowed: [gold, green, hybrid, bronze, closed, unknown]
+
+  claim_type:
+    allowed:
+      - metric
+      - material
+      - architecture
+      - condition
+      - limitation
+      - applicability
+      - economic
+      - supplier_claim
+      - market_signal
+      - other
+
+  extraction_method:
+    allowed: [manual, llm, regex, ml, import_rule]
+
+  ontology_mapping_source:
+    allowed: [auto, analyst, import_rule]
+
+  supplier_document_type:
+    allowed:
+      - profile
+      - datasheet
+      - specification
+      - certificate
+      - market_brief
+      - case_study
+      - patent_filing
+      - report
+      - other
+
+  usage_type:
+    allowed:
+      - attached_input
+      - input_support
+      - diagnostic_support
+      - recommendation_support
+      - supplier_support
+      - report_citation
+
+  workspace_snapshot_type:
+    allowed:
+      - dashboard
+      - evaluation
+      - comparison
+      - history
+      - evidence_review
+      - report
+      - export_json
+      - export_csv
 
 rules:
-  - Supplier claims must never be presented as validated fact without corroboration.
-  - Engineering assumptions must stay visible in outputs and reduce confidence when material.
-  - Derived heuristics must be traceable to supporting evidence logic.
+  - Supplier claims must never be presented as validated fact without corroboration and explicit review status.
+  - Catalog items remain intake-gated until review_status is accepted; parsed or normalized records alone are not intake-ready.
+  - Claim extraction must keep source_snippet, extraction_method, and extractor_version explicit so downstream confidence can be challenged.
+  - Ontology mappings remain advisory unless their mapping confidence and mapped_by provenance are preserved.
+  - Evaluation lineage must preserve which source documents and claims were used, not only the flattened typed evidence snapshot.
+  - Workspace and export snapshots must keep immutable payloads for replay and audit instead of silently rebuilding historical state from mutable live records.

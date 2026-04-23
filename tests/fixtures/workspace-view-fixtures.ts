@@ -59,6 +59,40 @@ export async function buildWorkspaceViewFixtures() {
     throw new Error('Expected case history fixture to be available.');
   }
 
+  const currentWithLineage = {
+    ...current,
+    source_usages: [
+      {
+        id: 'source-usage-fixture-001',
+        evaluation_id: current.evaluation_id,
+        source_document_id: 'source-doc-fixture-001',
+        usage_type: 'input_support' as const,
+        note: 'Accepted benchmark source imported into the workspace.',
+        created_at: current.audit_record.timestamp,
+      },
+    ],
+    claim_usages: [
+      {
+        id: 'claim-usage-fixture-001',
+        evaluation_id: current.evaluation_id,
+        claim_id: 'claim-fixture-001',
+        usage_type: 'recommendation_support' as const,
+        note: 'Supports the prioritized improvement shortlist.',
+        created_at: current.audit_record.timestamp,
+      },
+    ],
+    workspace_snapshots: [
+      {
+        id: 'snapshot-fixture-001',
+        evaluation_id: current.evaluation_id,
+        case_id: current.case_id,
+        snapshot_type: 'report' as const,
+        payload: { generated_from: 'workspace-view-fixture' },
+        created_at: current.audit_record.timestamp,
+      },
+    ],
+  };
+
   const evidenceCatalog: ExternalEvidenceCatalogListResponse = {
     items: [
       {
@@ -77,6 +111,8 @@ export async function buildWorkspaceViewFixtures() {
         publisher: 'Journal of MET Studies',
         published_at: '2025-11-10',
         provenance_note: 'Imported and accepted for analyst intake.',
+        claim_count: 0,
+        reviewed_claim_count: 0,
         applicability_scope: {},
         extracted_claims: [],
         tags: ['sidestream', 'benchmark', 'accepted'],
@@ -98,6 +134,8 @@ export async function buildWorkspaceViewFixtures() {
         publisher: 'OpenAlex Imports',
         published_at: '2025-10-02',
         provenance_note: 'Imported and still awaiting analyst review.',
+        claim_count: 0,
+        reviewed_claim_count: 0,
         applicability_scope: {},
         extracted_claims: [],
         tags: ['instrumentation', 'pending'],
@@ -107,33 +145,39 @@ export async function buildWorkspaceViewFixtures() {
     ],
     summary: {
       total: 2,
+      filtered_total: 2,
       pending: 1,
       accepted: 1,
       rejected: 0,
+      page: 1,
+      page_size: 25,
+      total_pages: 1,
+      returned: 2,
     },
   };
 
   return {
     repository,
     baseline,
-    current,
+    current: currentWithLineage,
     evaluationWorkspace: buildEvaluationWorkspace({
-      evaluation: current,
+      evaluation: currentWithLineage,
       history,
       versions: current.audit_record.runtime_versions,
     }),
     historyWorkspace: buildCaseHistoryWorkspace({
       history,
-      currentEvaluationId: current.evaluation_id,
+      currentEvaluation: currentWithLineage,
+      currentEvaluationId: currentWithLineage.evaluation_id,
       versions: current.audit_record.runtime_versions,
     }),
     comparison: buildEvaluationComparison({
-      current,
+      current: currentWithLineage,
       baseline,
       versions: current.audit_record.runtime_versions,
     }),
     report: buildPrintableEvaluationReport({
-      evaluation: current,
+      evaluation: currentWithLineage,
       versions: current.audit_record.runtime_versions,
     }),
     evidenceWorkspace: buildEvidenceReviewWorkspace({

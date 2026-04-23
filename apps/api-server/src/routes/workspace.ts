@@ -1,7 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
-import { externalEvidenceReviewStatusSchema } from '@metrev/domain-contracts';
+import {
+  externalEvidenceReviewStatusSchema,
+  externalEvidenceSourceTypeSchema,
+} from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
 import {
@@ -63,6 +66,23 @@ function buildVersionsFromEvaluation(input?: {
   });
 }
 
+function parsePositiveInteger(
+  value: string | undefined,
+  fallback: number,
+): number | null {
+  if (!value?.trim()) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 export async function registerWorkspaceRoutes(
   app: FastifyInstance,
 ): Promise<void> {
@@ -116,7 +136,9 @@ export async function registerWorkspaceRoutes(
       });
     }
 
-    const history = await app.evaluationRepository.getCaseHistory(evaluation.case_id);
+    const history = await app.evaluationRepository.getCaseHistory(
+      evaluation.case_id,
+    );
 
     return reply.send(
       buildEvaluationWorkspace({
@@ -157,14 +179,19 @@ export async function registerWorkspaceRoutes(
 
     const latestEvaluation = history.evaluations
       .slice()
-      .sort((left, right) => right.created_at.localeCompare(left.created_at))[0];
+      .sort((left, right) =>
+        right.created_at.localeCompare(left.created_at),
+      )[0];
     const currentEvaluation = latestEvaluation
-      ? await app.evaluationRepository.getEvaluation(latestEvaluation.evaluation_id)
+      ? await app.evaluationRepository.getEvaluation(
+          latestEvaluation.evaluation_id,
+        )
       : null;
 
     return reply.send(
       buildCaseHistoryWorkspace({
         history,
+        currentEvaluation,
         currentEvaluationId: currentEvaluation?.evaluation_id,
         versions: buildVersionsFromEvaluation({
           narrativePromptVersion:
@@ -239,15 +266,45 @@ export async function registerWorkspaceRoutes(
       return reply;
     }
 
-    const query = request.query as { status?: string; q?: string };
+    const query = request.query as {
+      status?: string;
+      q?: string;
+      sourceType?: string;
+      page?: string;
+      pageSize?: string;
+    };
     const parsedStatus = query.status
       ? externalEvidenceReviewStatusSchema.safeParse(query.status)
       : null;
+    const parsedSourceType = query.sourceType
+      ? externalEvidenceSourceTypeSchema.safeParse(query.sourceType)
+      : null;
+    const parsedPage = parsePositiveInteger(query.page, 1);
+    const parsedPageSize = parsePositiveInteger(query.pageSize, 25);
 
-    if (parsedStatus && !parsedStatus.success) {
+    if (
+      (parsedStatus && !parsedStatus.success) ||
+      (parsedSourceType && !parsedSourceType.success) ||
+      parsedPage === null ||
+      parsedPageSize === null
+    ) {
       return reply.code(400).send({
         error: 'invalid_query',
-        details: parsedStatus.error.flatten(),
+        details: {
+          status:
+            parsedStatus && !parsedStatus.success
+              ? parsedStatus.error.flatten()
+              : undefined,
+          sourceType:
+            parsedSourceType && !parsedSourceType.success
+              ? parsedSourceType.error.flatten()
+              : undefined,
+          page: parsedPage === null ? ['page must be a positive integer'] : [],
+          pageSize:
+            parsedPageSize === null
+              ? ['pageSize must be a positive integer']
+              : [],
+        },
       });
     }
 
@@ -257,10 +314,16 @@ export async function registerWorkspaceRoutes(
         app.evaluationRepository.listExternalEvidenceCatalog({
           reviewStatus: parsedStatus?.success ? parsedStatus.data : undefined,
           searchQuery: query.q,
+          sourceType: parsedSourceType?.success
+            ? parsedSourceType.data
+            : undefined,
+          page: parsedPage,
+          pageSize: parsedPageSize,
         }),
       {
         actor_id: actor.userId,
         review_status: parsedStatus?.success ? parsedStatus.data : 'all',
+        source_type: parsedSourceType?.success ? parsedSourceType.data : 'all',
       },
     );
 

@@ -104,6 +104,8 @@ const workspace = {
       publisher: 'Journal of MET Studies',
       published_at: '2025-11-10',
       provenance_note: 'Imported and queued for analyst review.',
+      claim_count: 0,
+      reviewed_claim_count: 0,
       applicability_scope: {},
       extracted_claims: [],
       tags: ['sidestream', 'benchmark', 'review'],

@@ -66,19 +66,32 @@ describe('evaluations list view', () => {
         confidenceFilter: 'all',
         items,
         onConfidenceFilterChange: vi.fn(),
+        onNextPage: vi.fn(),
+        onPageSizeChange: vi.fn(),
+        onPreviousPage: vi.fn(),
         onSearchInputChange: vi.fn(),
         onSortDirectionChange: vi.fn(),
         onSortKeyChange: vi.fn(),
+        page: 1,
+        pageSize: 25,
         searchInput: '',
+        summary: {
+          total: items.length,
+          filtered_total: items.length,
+          page: 1,
+          page_size: 25,
+          total_pages: 1,
+          returned: items.length,
+        },
         sortDirection: 'desc',
         sortKey: 'created_at',
-        totalCount: items.length,
       }),
     );
 
     expect(html).toContain('All evaluations');
-    expect(html).toContain('Client-side sorting and filtering');
+    expect(html).toContain('Server-driven sorting and filtering');
     expect(html).toContain('Evaluation registry');
+    expect(html).toContain('Previous page');
     expect(html).toContain('Open result');
     expect(html).toContain('Case history');
   });
