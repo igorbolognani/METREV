@@ -3,6 +3,8 @@ import type {
   CaseHistoryWorkspaceResponse,
   ConfidenceLevel,
   DashboardWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
   EvaluationComparisonResponse,
   EvaluationListResponse,
   EvaluationResponse,
@@ -12,6 +14,7 @@ import type {
   EvidenceReviewWorkspaceResponse,
   ExportCsvResponseMetadata,
   ExternalEvidenceCatalogListResponse,
+  NarrativeMetadata,
   PrintableEvaluationReportResponse,
   RuntimeVersion,
   SignalSourceKind,
@@ -29,6 +32,8 @@ import type {
 import {
   caseHistoryWorkspaceResponseSchema,
   dashboardWorkspaceResponseSchema,
+  evidenceExplorerAssistantResponseSchema,
+  evidenceExplorerWorkspaceResponseSchema,
   evaluationComparisonResponseSchema,
   evaluationWorkspaceResponseSchema,
   evidenceReviewWorkspaceResponseSchema,
@@ -1172,6 +1177,280 @@ export function buildEvidenceReviewWorkspace(input: {
   });
 }
 
+function toFacetBuckets(
+  items: ExternalEvidenceCatalogListResponse['items'],
+  getValue: (
+    item: ExternalEvidenceCatalogListResponse['items'][number],
+  ) => string | null | undefined,
+  getLabel: (value: string) => string,
+) {
+  const counts = new Map<string, { count: number; label: string }>();
+
+  for (const item of items) {
+    const rawValue = getValue(item)?.trim() || 'not_stated';
+    const current = counts.get(rawValue);
+
+    counts.set(rawValue, {
+      count: (current?.count ?? 0) + 1,
+      label: current?.label ?? getLabel(rawValue),
+    });
+  }
+
+  return [...counts.entries()]
+    .map(([value, entry]) => ({
+      value,
+      label: entry.label,
+      count: entry.count,
+    }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.label.localeCompare(right.label),
+    );
+}
+
+function toPublishedAtTimestamp(value: string | null | undefined): number {
+  if (!value?.trim()) {
+    return 0;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildEvidenceExplorerCsvHref(input?: {
+  page?: number;
+  pageSize?: number;
+  query?: string;
+  sourceType?: string;
+  status?: string;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (input?.status?.trim()) {
+    searchParams.set('status', input.status.trim());
+  }
+
+  if (input?.query?.trim()) {
+    searchParams.set('q', input.query.trim());
+  }
+
+  if (input?.sourceType?.trim()) {
+    searchParams.set('sourceType', input.sourceType.trim());
+  }
+
+  if (input?.page) {
+    searchParams.set('page', String(input.page));
+  }
+
+  if (input?.pageSize) {
+    searchParams.set('pageSize', String(input.pageSize));
+  }
+
+  const queryString = searchParams.toString();
+  return `/api/exports/evidence/explorer/csv${queryString ? `?${queryString}` : ''}`;
+}
+
+export function buildEvidenceExplorerWorkspace(input: {
+  evidenceCatalog: ExternalEvidenceCatalogListResponse;
+  versions: RuntimeVersion;
+  filters?: {
+    page?: number;
+    pageSize?: number;
+    query?: string;
+    sourceType?: string;
+    status?: string;
+  };
+}): EvidenceExplorerWorkspaceResponse {
+  const items = input.evidenceCatalog.items;
+  const intakeReadyItems = items.filter(
+    (item) => item.review_status === 'accepted',
+  );
+  const recentlyPublishedItems = [...items]
+    .sort(
+      (left, right) =>
+        toPublishedAtTimestamp(right.published_at) -
+        toPublishedAtTimestamp(left.published_at),
+    )
+    .slice(0, 5);
+
+  return evidenceExplorerWorkspaceResponseSchema.parse({
+    meta: createMeta({
+      versions: input.versions,
+      traceability: {
+        subject_type: 'workspace',
+        subject_id: 'evidence-explorer',
+        entrypoint: 'api',
+        transformation_stages: [
+          'external_evidence_catalog_query',
+          'evidence_explorer_workspace_presenter',
+        ],
+        rule_refs: [],
+        evidence_refs: items.map((item) => item.id),
+        defaults_count: 0,
+        missing_data_count: 0,
+        evidence_count: items.length,
+      },
+    }),
+    filters: {
+      active_status: input.filters?.status as
+        | EvidenceExplorerWorkspaceResponse['filters']['active_status']
+        | undefined,
+      active_source_type: input.filters?.sourceType as
+        | EvidenceExplorerWorkspaceResponse['filters']['active_source_type']
+        | undefined,
+      search_query: input.filters?.query?.trim() || undefined,
+    },
+    summary: input.evidenceCatalog.summary,
+    spotlight: items.slice(0, 3),
+    items,
+    table_groups: {
+      intake_ready: intakeReadyItems.slice(0, 5),
+      recently_published: recentlyPublishedItems,
+    },
+    warehouse_facets: input.evidenceCatalog.warehouse_aggregate.facets,
+    warehouse_snapshot: input.evidenceCatalog.warehouse_aggregate.snapshot,
+    export_csv_href: buildEvidenceExplorerCsvHref(input.filters),
+  });
+}
+
+function buildEvidenceExplorerAssistantProvenanceSummary(input: {
+  evidenceCatalog: ExternalEvidenceCatalogListResponse;
+  citedEvidenceIds: string[];
+}): string {
+  const citedLabel =
+    input.citedEvidenceIds.length > 0
+      ? `Current-page spotlight citations: ${input.citedEvidenceIds.join(', ')}.`
+      : 'No current-page spotlight citations were available for this brief.';
+
+  return `This assistant brief uses the filtered warehouse snapshot of ${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} matching record(s) and the current returned page slice of ${input.evidenceCatalog.summary.returned} row(s). ${citedLabel} Review status, DOI presence, and linked source availability remain visible in the explorer and are not upgraded by the assistant text.`;
+}
+
+function buildEvidenceExplorerAssistantUncertaintySummary(input: {
+  evidenceCatalog: ExternalEvidenceCatalogListResponse;
+}): string {
+  const summary = input.evidenceCatalog.summary;
+  const snapshot = input.evidenceCatalog.warehouse_aggregate.snapshot;
+
+  if (snapshot.filtered_item_count === 0) {
+    return 'No records matched the current explorer filters, so uncertainty is maximal until the search scope is widened.';
+  }
+
+  if (summary.pending > 0) {
+    return `${summary.pending} matching record(s) remain pending review, and only ${snapshot.reviewed_claim_count} extracted claim(s) in the filtered warehouse currently have reviewed status. Treat this brief as exploratory until the pending review load drops.`;
+  }
+
+  if (snapshot.reviewed_claim_count === 0) {
+    return 'The filtered warehouse has records, but none of their extracted claims have reviewed status yet. The brief may help triage, but it is not a substitute for analyst claim review.';
+  }
+
+  return `The filtered warehouse has ${snapshot.reviewed_claim_count} reviewed claim(s), but the assistant still only summarizes the current filter state and does not infer beyond the supplied records.`;
+}
+
+function buildEvidenceExplorerAssistantNextChecks(input: {
+  evidenceCatalog: ExternalEvidenceCatalogListResponse;
+}): string[] {
+  const checks: string[] = [];
+  const summary = input.evidenceCatalog.summary;
+  const snapshot = input.evidenceCatalog.warehouse_aggregate.snapshot;
+
+  if (summary.pending > 0) {
+    checks.push(
+      'Review the pending records in this filtered warehouse before promoting them into intake-ready evidence.',
+    );
+  }
+
+  if (snapshot.reviewed_claim_count === 0) {
+    checks.push(
+      'Add analyst review decisions to extracted claims before relying on claim-level comparisons.',
+    );
+  }
+
+  if (snapshot.doi_count < snapshot.filtered_item_count) {
+    checks.push(
+      'Prioritize records with DOI coverage when you need citation-backed follow-up.',
+    );
+  }
+
+  if (snapshot.linked_source_count < snapshot.filtered_item_count) {
+    checks.push(
+      'Prefer records with direct source URLs when you need fast provenance inspection from the explorer.',
+    );
+  }
+
+  if (checks.length === 0) {
+    checks.push(
+      'Re-check the cited spotlight rows directly before turning this brief into intake or recommendation work.',
+    );
+  }
+
+  return checks.slice(0, 3);
+}
+
+export function buildEvidenceExplorerAssistantResponse(input: {
+  evidenceCatalog: ExternalEvidenceCatalogListResponse;
+  versions: RuntimeVersion;
+  narrative: string | null;
+  narrativeMetadata: NarrativeMetadata;
+  filters?: {
+    page?: number;
+    pageSize?: number;
+    query?: string;
+    sourceType?: string;
+    status?: string;
+  };
+}): EvidenceExplorerAssistantResponse {
+  const spotlight = input.evidenceCatalog.items.slice(0, 3);
+  const citedEvidenceIds = spotlight.map((item) => item.id);
+
+  return evidenceExplorerAssistantResponseSchema.parse({
+    meta: createMeta({
+      versions: input.versions,
+      traceability: {
+        subject_type: 'workspace',
+        subject_id: 'evidence-explorer-assistant',
+        entrypoint: 'api',
+        transformation_stages: [
+          'external_evidence_catalog_query',
+          'evidence_explorer_assistant_generation',
+        ],
+        rule_refs: [],
+        evidence_refs: citedEvidenceIds,
+        defaults_count: 0,
+        missing_data_count: 0,
+        evidence_count:
+          input.evidenceCatalog.warehouse_aggregate.snapshot
+            .filtered_item_count,
+      },
+    }),
+    filters: {
+      active_status: input.filters?.status as
+        | EvidenceExplorerAssistantResponse['filters']['active_status']
+        | undefined,
+      active_source_type: input.filters?.sourceType as
+        | EvidenceExplorerAssistantResponse['filters']['active_source_type']
+        | undefined,
+      search_query: input.filters?.query?.trim() || undefined,
+    },
+    warehouse_snapshot: input.evidenceCatalog.warehouse_aggregate.snapshot,
+    spotlight,
+    assistant: {
+      summary: input.narrative,
+      narrative_metadata: input.narrativeMetadata,
+      provenance_summary: buildEvidenceExplorerAssistantProvenanceSummary({
+        evidenceCatalog: input.evidenceCatalog,
+        citedEvidenceIds,
+      }),
+      uncertainty_summary: buildEvidenceExplorerAssistantUncertaintySummary({
+        evidenceCatalog: input.evidenceCatalog,
+      }),
+      recommended_next_checks: buildEvidenceExplorerAssistantNextChecks({
+        evidenceCatalog: input.evidenceCatalog,
+      }),
+      cited_evidence_ids: citedEvidenceIds,
+    },
+  });
+}
+
 export function buildPrintableEvaluationReport(input: {
   evaluation: EvaluationResponse;
   versions: RuntimeVersion;
@@ -1271,6 +1550,64 @@ export function serializeEvaluationCsv(input: {
   return {
     metadata: exportCsvResponseMetadataSchema.parse({
       file_name: `${input.evaluation.case_id}-${input.evaluation.evaluation_id}.csv`,
+      content_type: 'text/csv',
+      generated_at: new Date().toISOString(),
+      column_count: rows[0].length,
+      row_count: Math.max(rows.length - 1, 0),
+      versions: input.versions,
+    }),
+    content,
+  };
+}
+
+export function serializeEvidenceExplorerCsv(input: {
+  items: ExternalEvidenceCatalogListResponse['items'];
+  versions: RuntimeVersion;
+}): {
+  metadata: ExportCsvResponseMetadata;
+  content: string;
+} {
+  const rows: string[][] = [];
+
+  rows.push([
+    'id',
+    'title',
+    'review_status',
+    'source_type',
+    'evidence_type',
+    'publisher',
+    'published_at',
+    'claim_count',
+    'reviewed_claim_count',
+    'doi',
+    'source_url',
+    'tags',
+  ]);
+
+  for (const item of input.items) {
+    rows.push([
+      item.id,
+      item.title,
+      item.review_status,
+      item.source_type,
+      item.evidence_type,
+      item.publisher ?? '',
+      item.published_at ?? '',
+      String(item.claim_count),
+      String(item.reviewed_claim_count),
+      item.doi ?? '',
+      item.source_url ?? '',
+      item.tags.join('|'),
+    ]);
+  }
+
+  const content = rows
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(','))
+    .join('\n');
+
+  return {
+    metadata: exportCsvResponseMetadataSchema.parse({
+      file_name: `evidence-explorer-${new Date().toISOString().slice(0, 10)}.csv`,
       content_type: 'text/csv',
       generated_at: new Date().toISOString(),
       column_count: rows[0].length,

@@ -9,6 +9,7 @@ import {
 
 import {
   buildCaseHistoryWorkspace,
+  buildEvidenceExplorerWorkspace,
   buildEvaluationComparison,
   buildEvaluationWorkspace,
   buildEvidenceReviewWorkspace,
@@ -154,6 +155,62 @@ export async function buildWorkspaceViewFixtures() {
       total_pages: 1,
       returned: 2,
     },
+    warehouse_aggregate: {
+      facets: {
+        source_types: [
+          {
+            value: 'crossref',
+            label: 'Crossref',
+            count: 1,
+          },
+          {
+            value: 'openalex',
+            label: 'Openalex',
+            count: 1,
+          },
+        ],
+        evidence_types: [
+          {
+            value: 'literature_evidence',
+            label: 'Literature Evidence',
+            count: 2,
+          },
+        ],
+        review_statuses: [
+          {
+            value: 'accepted',
+            label: 'Accepted',
+            count: 1,
+          },
+          {
+            value: 'pending',
+            label: 'Pending',
+            count: 1,
+          },
+        ],
+        publishers: [
+          {
+            value: 'Journal of MET Studies',
+            label: 'Journal of MET Studies',
+            count: 1,
+          },
+          {
+            value: 'OpenAlex Imports',
+            label: 'OpenAlex Imports',
+            count: 1,
+          },
+        ],
+      },
+      snapshot: {
+        filtered_item_count: 2,
+        returned_item_count: 2,
+        claim_count: 0,
+        reviewed_claim_count: 0,
+        doi_count: 2,
+        linked_source_count: 2,
+        publisher_count: 2,
+      },
+    },
   };
 
   return {
@@ -186,6 +243,17 @@ export async function buildWorkspaceViewFixtures() {
       filters: {
         status: 'accepted',
         query: 'benchmark',
+      },
+    }),
+    evidenceExplorerWorkspace: buildEvidenceExplorerWorkspace({
+      evidenceCatalog,
+      versions: current.audit_record.runtime_versions,
+      filters: {
+        status: 'accepted',
+        query: 'benchmark',
+        sourceType: 'crossref',
+        page: 1,
+        pageSize: 25,
       },
     }),
   };

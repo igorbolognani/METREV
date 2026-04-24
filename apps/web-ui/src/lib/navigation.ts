@@ -1,6 +1,7 @@
 export type NavIcon =
   | 'dashboard'
   | 'input-deck'
+  | 'evidence-explorer'
   | 'evidence-review'
   | 'evaluations';
 
@@ -29,6 +30,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'input-deck',
     id: 'input-deck',
     label: 'Input Deck',
+  },
+  {
+    href: '/evidence/explorer',
+    icon: 'evidence-explorer',
+    id: 'evidence-explorer',
+    label: 'Evidence Explorer',
   },
   {
     href: '/evidence/review',
@@ -98,6 +105,10 @@ export function buildBreadcrumbs(
     return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 
+  if (normalizedPathname === '/evidence/explorer') {
+    return [{ href: '/dashboard', label: 'Dashboard' }];
+  }
+
   if (normalizedPathname === '/evidence/review') {
     return [{ href: '/dashboard', label: 'Dashboard' }];
   }
@@ -159,6 +170,19 @@ export function buildBreadcrumbs(
       { href: '/dashboard', label: 'Dashboard' },
       { href: '/evaluations', label: 'Evaluations' },
       { label: `#${resolvedEvaluationId}` },
+    ];
+  }
+
+  if (normalizedPathname.startsWith('/evidence/explorer/')) {
+    const evidenceId =
+      readParam(params, 'id', 'evidenceId') ??
+      normalizedPathname.split('/')[3] ??
+      'unknown';
+
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/evidence/explorer', label: 'Evidence Explorer' },
+      { label: `#${evidenceId}` },
     ];
   }
 

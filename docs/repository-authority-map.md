@@ -32,7 +32,7 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 - `bioelectro-copilot-contracts/contracts/ontology/relations.yaml` and the contract report templates remain future-facing until a validated runtime consumer is added.
 - `specs/013-metrev-ui-ux-parity/` remains an antecedent UI/workspace pack while `specs/014-local-first-professional-workspace/` is the active execution surface for the current local-first product phase.
 - `specs/_examples/` remains example-only workflow material; use `specs/_templates/` and maintained numbered packs for live work.
-- `REPOSITORY_SANITATION_SUMMARY.md` and `MANUAL_REVIEW_COMPLEMENT.md` remain historical notes from earlier cleanup waves. They provide background context only.
+- `docs/historical-cleanup-notes.md` is the consolidated historical note for earlier cleanup waves. It provides background context only.
 - Historical duplicate copies previously kept under `archive/legacy-root-duplicates/` have been retired where equivalent module-local source copies still exist.
 
 ## Editing rules

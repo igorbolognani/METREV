@@ -1,21 +1,21 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
-import {
-  externalEvidenceReviewStatusSchema,
-  externalEvidenceSourceTypeSchema,
-} from '@metrev/domain-contracts';
+import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 import { withSpan } from '@metrev/telemetry';
 
 import {
+  buildEvidenceExplorerAssistantResponse,
   buildCaseHistoryWorkspace,
   buildDashboardWorkspace,
+  buildEvidenceExplorerWorkspace,
   buildEvaluationComparison,
   buildEvaluationWorkspace,
   buildEvidenceReviewWorkspace,
   buildPrintableEvaluationReport,
   buildRuntimeVersions,
 } from '../presenters/workspace-presenters';
+import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
 function replyForAuthorizationError(
   request: FastifyRequest,
@@ -64,23 +64,6 @@ function buildVersionsFromEvaluation(input?: {
     promptVersion: input?.narrativePromptVersion?.trim() || 'not_applicable',
     modelVersion: input?.modelVersion?.trim() || 'not_applicable',
   });
-}
-
-function parsePositiveInteger(
-  value: string | undefined,
-  fallback: number,
-): number | null {
-  if (!value?.trim()) {
-    return fallback;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return parsed;
 }
 
 export async function registerWorkspaceRoutes(
@@ -273,57 +256,31 @@ export async function registerWorkspaceRoutes(
       page?: string;
       pageSize?: string;
     };
-    const parsedStatus = query.status
-      ? externalEvidenceReviewStatusSchema.safeParse(query.status)
-      : null;
-    const parsedSourceType = query.sourceType
-      ? externalEvidenceSourceTypeSchema.safeParse(query.sourceType)
-      : null;
-    const parsedPage = parsePositiveInteger(query.page, 1);
-    const parsedPageSize = parsePositiveInteger(query.pageSize, 25);
+    const parsedQuery = parseExternalEvidenceListQuery(query);
 
-    if (
-      (parsedStatus && !parsedStatus.success) ||
-      (parsedSourceType && !parsedSourceType.success) ||
-      parsedPage === null ||
-      parsedPageSize === null
-    ) {
+    if (!parsedQuery.success) {
       return reply.code(400).send({
         error: 'invalid_query',
-        details: {
-          status:
-            parsedStatus && !parsedStatus.success
-              ? parsedStatus.error.flatten()
-              : undefined,
-          sourceType:
-            parsedSourceType && !parsedSourceType.success
-              ? parsedSourceType.error.flatten()
-              : undefined,
-          page: parsedPage === null ? ['page must be a positive integer'] : [],
-          pageSize:
-            parsedPageSize === null
-              ? ['pageSize must be a positive integer']
-              : [],
-        },
+        details: parsedQuery.details,
       });
     }
+
+    const parsed = parsedQuery.value;
 
     const evidenceCatalog = await withSpan(
       'workspace.evidence_review',
       () =>
         app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus: parsedStatus?.success ? parsedStatus.data : undefined,
-          searchQuery: query.q,
-          sourceType: parsedSourceType?.success
-            ? parsedSourceType.data
-            : undefined,
-          page: parsedPage,
-          pageSize: parsedPageSize,
+          reviewStatus: parsed.status,
+          searchQuery: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
         }),
       {
         actor_id: actor.userId,
-        review_status: parsedStatus?.success ? parsedStatus.data : 'all',
-        source_type: parsedSourceType?.success ? parsedSourceType.data : 'all',
+        review_status: parsed.status ?? 'all',
+        source_type: parsed.sourceType ?? 'all',
       },
     );
 
@@ -332,8 +289,140 @@ export async function registerWorkspaceRoutes(
         evidenceCatalog,
         versions: buildVersionsFromEvaluation(),
         filters: {
-          status: parsedStatus?.success ? parsedStatus.data : undefined,
-          query: query.q,
+          status: parsed.status,
+          query: parsed.query,
+        },
+      }),
+    );
+  });
+
+  app.get('/evidence/explorer', async (request, reply) => {
+    const actor = requireViewer(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const query = request.query as {
+      status?: string;
+      q?: string;
+      sourceType?: string;
+      page?: string;
+      pageSize?: string;
+    };
+    const parsedQuery = parseExternalEvidenceListQuery(query);
+
+    if (!parsedQuery.success) {
+      return reply.code(400).send({
+        error: 'invalid_query',
+        details: parsedQuery.details,
+      });
+    }
+
+    const parsed = parsedQuery.value;
+    const evidenceCatalog = await withSpan(
+      'workspace.evidence_explorer',
+      () =>
+        app.evaluationRepository.listExternalEvidenceCatalog({
+          reviewStatus: parsed.status,
+          searchQuery: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
+        }),
+      {
+        actor_id: actor.userId,
+        review_status: parsed.status ?? 'all',
+        source_type: parsed.sourceType ?? 'all',
+      },
+    );
+
+    return reply.send(
+      buildEvidenceExplorerWorkspace({
+        evidenceCatalog,
+        versions: buildVersionsFromEvaluation(),
+        filters: {
+          status: parsed.status,
+          query: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
+        },
+      }),
+    );
+  });
+
+  app.get('/evidence/explorer/assistant', async (request, reply) => {
+    const actor = requireViewer(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const query = request.query as {
+      status?: string;
+      q?: string;
+      sourceType?: string;
+      page?: string;
+      pageSize?: string;
+    };
+    const parsedQuery = parseExternalEvidenceListQuery(query);
+
+    if (!parsedQuery.success) {
+      return reply.code(400).send({
+        error: 'invalid_query',
+        details: parsedQuery.details,
+      });
+    }
+
+    const parsed = parsedQuery.value;
+    const evidenceCatalog = await withSpan(
+      'workspace.evidence_explorer_assistant.catalog',
+      () =>
+        app.evaluationRepository.listExternalEvidenceCatalog({
+          reviewStatus: parsed.status,
+          searchQuery: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
+        }),
+      {
+        actor_id: actor.userId,
+        review_status: parsed.status ?? 'all',
+        source_type: parsed.sourceType ?? 'all',
+      },
+    );
+
+    const assistantResult = await withSpan(
+      'workspace.evidence_explorer_assistant.generate',
+      () =>
+        generateEvidenceAssistantBrief({
+          reviewStatus: parsed.status,
+          searchQuery: parsed.query,
+          sourceType: parsed.sourceType,
+          warehouseSnapshot: evidenceCatalog.warehouse_aggregate.snapshot,
+          spotlight: evidenceCatalog.items.slice(0, 3),
+        }),
+      {
+        actor_id: actor.userId,
+        filtered_total: evidenceCatalog.summary.filtered_total,
+      },
+    );
+
+    return reply.send(
+      buildEvidenceExplorerAssistantResponse({
+        evidenceCatalog,
+        narrative: assistantResult.narrative,
+        narrativeMetadata: assistantResult.narrativeMetadata,
+        versions: buildVersionsFromEvaluation({
+          narrativePromptVersion:
+            assistantResult.narrativeMetadata.prompt_version,
+          modelVersion: assistantResult.narrativeMetadata.model,
+        }),
+        filters: {
+          status: parsed.status,
+          query: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
         },
       }),
     );

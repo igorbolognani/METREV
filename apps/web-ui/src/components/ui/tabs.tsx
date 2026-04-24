@@ -24,7 +24,7 @@ export interface TabsProps {
   listClassName?: string;
   onValueChange?: (value: string) => void;
   orientation?: 'horizontal' | 'vertical';
-  items: TabsItem[];
+  items: ReadonlyArray<TabsItem>;
   value?: string;
 }
 

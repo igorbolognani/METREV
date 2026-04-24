@@ -46,6 +46,35 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
           />
         </svg>
       );
+    case 'evidence-explorer':
+      return (
+        <svg
+          aria-hidden="true"
+          className="app-sidebar__nav-icon"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            cx="10"
+            cy="10"
+            fill="none"
+            r="5.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="m14 14 5 5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M8.5 10h3M10 8.5v3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+        </svg>
+      );
     case 'evidence-review':
       return (
         <svg

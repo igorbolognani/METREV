@@ -726,8 +726,7 @@ These folders exist but should be interpreted correctly:
 
 - `archive/legacy-root-duplicates/`: historical duplicates and cleanup leftovers.
 - `copilot_project_starter_detailed/`: generic starter/reference materials.
-- `REPOSITORY_SANITATION_SUMMARY.md`: historical cleanup context.
-- `MANUAL_REVIEW_COMPLEMENT.md`: historical manual review notes.
+- `docs/historical-cleanup-notes.md`: consolidated historical cleanup and manual-review context.
 
 They are useful for background but they are not the active runtime owners.
 

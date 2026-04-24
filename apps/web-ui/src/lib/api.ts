@@ -1,6 +1,8 @@
 import type {
   CaseHistoryWorkspaceResponse,
   DashboardWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
   EvaluationComparisonResponse,
   EvaluationListResponse,
   EvaluationResponse,
@@ -35,6 +37,38 @@ export type EvaluationListSortDirection = 'asc' | 'desc';
 
 export const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+
+function buildExternalEvidenceSearchParams(input?: {
+  status?: ExternalEvidenceReviewStatus;
+  query?: string;
+  sourceType?: ExternalEvidenceSourceTypeFilter;
+  page?: number;
+  pageSize?: number;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (input?.status) {
+    searchParams.set('status', input.status);
+  }
+
+  if (input?.query?.trim()) {
+    searchParams.set('q', input.query.trim());
+  }
+
+  if (input?.sourceType) {
+    searchParams.set('sourceType', input.sourceType);
+  }
+
+  if (input?.page) {
+    searchParams.set('page', String(input.page));
+  }
+
+  if (input?.pageSize) {
+    searchParams.set('pageSize', String(input.pageSize));
+  }
+
+  return searchParams;
+}
 
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -186,28 +220,7 @@ export async function fetchExternalEvidenceCatalog(input?: {
   page?: number;
   pageSize?: number;
 }): Promise<ExternalEvidenceCatalogListResponse> {
-  const searchParams = new URLSearchParams();
-
-  if (input?.status) {
-    searchParams.set('status', input.status);
-  }
-
-  if (input?.query?.trim()) {
-    searchParams.set('q', input.query.trim());
-  }
-
-  if (input?.sourceType) {
-    searchParams.set('sourceType', input.sourceType);
-  }
-
-  if (input?.page) {
-    searchParams.set('page', String(input.page));
-  }
-
-  if (input?.pageSize) {
-    searchParams.set('pageSize', String(input.pageSize));
-  }
-
+  const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
     `${apiBaseUrl}/api/external-evidence${queryString ? `?${queryString}` : ''}`,
@@ -227,28 +240,7 @@ export async function fetchEvidenceReviewWorkspace(input?: {
   page?: number;
   pageSize?: number;
 }): Promise<EvidenceReviewWorkspaceResponse> {
-  const searchParams = new URLSearchParams();
-
-  if (input?.status) {
-    searchParams.set('status', input.status);
-  }
-
-  if (input?.query?.trim()) {
-    searchParams.set('q', input.query.trim());
-  }
-
-  if (input?.sourceType) {
-    searchParams.set('sourceType', input.sourceType);
-  }
-
-  if (input?.page) {
-    searchParams.set('page', String(input.page));
-  }
-
-  if (input?.pageSize) {
-    searchParams.set('pageSize', String(input.pageSize));
-  }
-
+  const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
     `${apiBaseUrl}/api/workspace/evidence/review${queryString ? `?${queryString}` : ''}`,
@@ -259,6 +251,46 @@ export async function fetchEvidenceReviewWorkspace(input?: {
   );
 
   return parseJson<EvidenceReviewWorkspaceResponse>(response);
+}
+
+export async function fetchEvidenceExplorerWorkspace(input?: {
+  status?: ExternalEvidenceReviewStatus;
+  query?: string;
+  sourceType?: ExternalEvidenceSourceTypeFilter;
+  page?: number;
+  pageSize?: number;
+}): Promise<EvidenceExplorerWorkspaceResponse> {
+  const searchParams = buildExternalEvidenceSearchParams(input);
+  const queryString = searchParams.toString();
+  const response = await fetch(
+    `${apiBaseUrl}/api/workspace/evidence/explorer${queryString ? `?${queryString}` : ''}`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson<EvidenceExplorerWorkspaceResponse>(response);
+}
+
+export async function fetchEvidenceExplorerAssistant(input?: {
+  status?: ExternalEvidenceReviewStatus;
+  query?: string;
+  sourceType?: ExternalEvidenceSourceTypeFilter;
+  page?: number;
+  pageSize?: number;
+}): Promise<EvidenceExplorerAssistantResponse> {
+  const searchParams = buildExternalEvidenceSearchParams(input);
+  const queryString = searchParams.toString();
+  const response = await fetch(
+    `${apiBaseUrl}/api/workspace/evidence/explorer/assistant${queryString ? `?${queryString}` : ''}`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson<EvidenceExplorerAssistantResponse>(response);
 }
 
 export async function fetchExternalEvidenceCatalogItem(
@@ -374,6 +406,58 @@ export async function fetchEvaluationCsvExport(evaluationId: string): Promise<{
         response.headers
           .get('content-disposition')
           ?.match(/filename="([^"]+)"/)?.[1] ?? `${evaluationId}.csv`,
+      workspace_schema_version: response.headers.get(
+        'x-metrev-workspace-schema-version',
+      ),
+    },
+  };
+}
+
+export async function fetchEvidenceExplorerCsvExport(input?: {
+  status?: ExternalEvidenceReviewStatus;
+  query?: string;
+  sourceType?: ExternalEvidenceSourceTypeFilter;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  content: string;
+  metadata: Pick<
+    ExportCsvResponseMetadata,
+    'content_type' | 'generated_at' | 'file_name'
+  > & {
+    workspace_schema_version: string | null;
+  };
+}> {
+  const searchParams = buildExternalEvidenceSearchParams(input);
+  const queryString = searchParams.toString();
+  const response = await fetch(
+    `${apiBaseUrl}/api/exports/evidence/explorer/csv${queryString ? `?${queryString}` : ''}`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new Error(
+      payload?.message ?? `Request failed with status ${response.status}`,
+    );
+  }
+
+  return {
+    content: await response.text(),
+    metadata: {
+      content_type: 'text/csv',
+      generated_at:
+        response.headers.get('x-metrev-export-generated-at') ??
+        new Date().toISOString(),
+      file_name:
+        response.headers
+          .get('content-disposition')
+          ?.match(/filename="([^"]+)"/)?.[1] ?? 'evidence-explorer.csv',
       workspace_schema_version: response.headers.get(
         'x-metrev-workspace-schema-version',
       ),

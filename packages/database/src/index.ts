@@ -406,6 +406,90 @@ function toCatalogPagination(input?: { page?: number; pageSize?: number }): {
   };
 }
 
+type ExternalEvidenceAggregateRow = {
+  evidence_type: ExternalEvidenceCatalogItemSummary['evidence_type'];
+  review_status: ExternalEvidenceCatalogItemSummary['review_status'];
+  source_type: ExternalEvidenceCatalogItemSummary['source_type'];
+  publisher: string | null;
+  doi: string | null;
+  source_url: string | null;
+  claim_count: number;
+  reviewed_claim_count: number;
+};
+
+function titleCaseToken(value: string): string {
+  return value
+    .split(/[_\s-]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function createExplorerFacetBuckets(
+  values: Array<string | null | undefined>,
+  formatLabel: (value: string) => string = titleCaseToken,
+): ExternalEvidenceCatalogListResponse['warehouse_aggregate']['facets']['source_types'] {
+  const counts = new Map<string, number>();
+
+  for (const rawValue of values) {
+    const value = rawValue?.trim() || 'not_stated';
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([value, count]) => ({
+      value,
+      label: formatLabel(value),
+      count,
+    }))
+    .sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+}
+
+function buildExternalEvidenceWarehouseAggregate(
+  rows: ExternalEvidenceAggregateRow[],
+  returnedItemCount: number,
+): ExternalEvidenceCatalogListResponse['warehouse_aggregate'] {
+  return {
+    facets: {
+      source_types: createExplorerFacetBuckets(
+        rows.map((row) => row.source_type),
+      ),
+      evidence_types: createExplorerFacetBuckets(
+        rows.map((row) => row.evidence_type),
+      ),
+      review_statuses: createExplorerFacetBuckets(
+        rows.map((row) => row.review_status),
+      ),
+      publishers: createExplorerFacetBuckets(
+        rows.map((row) => row.publisher),
+        (value) => (value === 'not_stated' ? 'Publisher not stated' : value),
+      ),
+    },
+    snapshot: {
+      filtered_item_count: rows.length,
+      returned_item_count: returnedItemCount,
+      claim_count: rows.reduce((total, row) => total + row.claim_count, 0),
+      reviewed_claim_count: rows.reduce(
+        (total, row) => total + row.reviewed_claim_count,
+        0,
+      ),
+      doi_count: rows.filter((row) => Boolean(row.doi)).length,
+      linked_source_count: rows.filter((row) => Boolean(row.source_url)).length,
+      publisher_count: new Set(
+        rows
+          .map((row) => row.publisher?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ).size,
+    },
+  };
+}
+
 type EvaluationListItem = EvaluationListResponse['items'][number];
 
 const evaluationConfidenceScore: Record<ConfidenceLevel, number> = {
@@ -1250,6 +1334,19 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
 
     const pagedItems = filteredItems.slice(skip, skip + pageSize);
     const filteredTotal = filteredItems.length;
+    const warehouseAggregate = buildExternalEvidenceWarehouseAggregate(
+      filteredItems.map((item) => ({
+        evidence_type: item.evidence_type,
+        review_status: item.review_status,
+        source_type: item.source_type,
+        publisher: item.publisher,
+        doi: item.doi,
+        source_url: item.source_url,
+        claim_count: item.claim_count,
+        reviewed_claim_count: item.reviewed_claim_count,
+      })),
+      pagedItems.length,
+    );
 
     return externalEvidenceCatalogListResponseSchema.parse({
       items: pagedItems,
@@ -1267,6 +1364,7 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
         total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
         returned: pagedItems.length,
       },
+      warehouse_aggregate: warehouseAggregate,
     });
   }
 
@@ -1973,6 +2071,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
 
         const [
           records,
+          aggregateRecords,
           total,
           filteredTotal,
           pendingTotal,
@@ -1982,16 +2081,64 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           this.prisma.externalEvidenceCatalogItem.findMany({
             where,
             include: {
-              sourceRecord: true,
-              _count: {
+              sourceRecord: {
                 select: {
-                  claims: true,
+                  sourceType: true,
+                  sourceUrl: true,
+                  sourceCategory: true,
+                  doi: true,
+                  publisher: true,
+                  publishedAt: true,
+                },
+              },
+              claims: {
+                where: {
+                  reviews: {
+                    some: {
+                      status: {
+                        not: 'PENDING',
+                      },
+                    },
+                  },
+                },
+                select: {
+                  id: true,
                 },
               },
             },
             orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
             skip,
             take: pageSize,
+          }),
+          this.prisma.externalEvidenceCatalogItem.findMany({
+            where,
+            select: {
+              evidenceType: true,
+              reviewStatus: true,
+              claimCount: true,
+              sourceRecord: {
+                select: {
+                  sourceType: true,
+                  sourceUrl: true,
+                  doi: true,
+                  publisher: true,
+                },
+              },
+              claims: {
+                where: {
+                  reviews: {
+                    some: {
+                      status: {
+                        not: 'PENDING',
+                      },
+                    },
+                  },
+                },
+                select: {
+                  id: true,
+                },
+              },
+            },
           }),
           this.prisma.externalEvidenceCatalogItem.count(),
           this.prisma.externalEvidenceCatalogItem.count({ where }),
@@ -2007,12 +2154,31 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         ]);
 
         const items = records;
+        const warehouseAggregate = buildExternalEvidenceWarehouseAggregate(
+          aggregateRecords.map((record) => ({
+            evidence_type: normalizeExternalEvidenceType(
+              record.evidenceType,
+              record.sourceRecord.sourceType,
+            ),
+            review_status: mapExternalEvidenceReviewStatus(record.reviewStatus),
+            source_type: mapExternalEvidenceSourceType(
+              record.sourceRecord.sourceType,
+            ),
+            publisher: record.sourceRecord.publisher,
+            doi: record.sourceRecord.doi,
+            source_url: record.sourceRecord.sourceUrl,
+            claim_count: record.claimCount,
+            reviewed_claim_count: record.claims.length,
+          })),
+          items.length,
+        );
 
         return externalEvidenceCatalogListResponseSchema.parse({
           items: items.map((record) =>
             createExternalEvidenceSummary({
               ...record,
-              claimCount: record._count.claims,
+              claimCount: record.claimCount,
+              reviewedClaimCount: record.claims.length,
             }),
           ),
           summary: {
@@ -2026,6 +2192,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
             returned: items.length,
           },
+          warehouse_aggregate: warehouseAggregate,
         });
       },
       {

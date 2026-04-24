@@ -4,10 +4,13 @@ import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import { withSpan } from '@metrev/telemetry';
 
 import {
+  buildEvidenceExplorerWorkspace,
   buildEvaluationWorkspace,
   buildRuntimeVersions,
+  serializeEvidenceExplorerCsv,
   serializeEvaluationCsv,
 } from '../presenters/workspace-presenters';
+import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
 function replyForAuthorizationError(
   request: FastifyRequest,
@@ -73,7 +76,9 @@ export async function registerExportRoutes(
       });
     }
 
-    const history = await app.evaluationRepository.getCaseHistory(evaluation.case_id);
+    const history = await app.evaluationRepository.getCaseHistory(
+      evaluation.case_id,
+    );
     const versions = buildVersions({
       promptVersion: evaluation.narrative_metadata.prompt_version,
       modelVersion:
@@ -130,6 +135,81 @@ export async function registerExportRoutes(
           evaluation.simulation_enrichment?.model_version ??
           evaluation.narrative_metadata.model,
       }),
+    });
+
+    reply.header('content-type', metadata.content_type);
+    reply.header(
+      'content-disposition',
+      `attachment; filename="${metadata.file_name}"`,
+    );
+    reply.header('x-metrev-export-generated-at', metadata.generated_at);
+    reply.header(
+      'x-metrev-workspace-schema-version',
+      metadata.versions.workspace_schema_version,
+    );
+
+    return reply.send(content);
+  });
+
+  app.get('/evidence/explorer/csv', async (request, reply) => {
+    try {
+      requireRole(request.actor, 'VIEWER');
+    } catch (error) {
+      if (error instanceof AuthorizationError) {
+        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+      }
+
+      throw error;
+    }
+
+    const query = request.query as {
+      status?: string;
+      q?: string;
+      sourceType?: string;
+      page?: string;
+      pageSize?: string;
+    };
+    const parsedQuery = parseExternalEvidenceListQuery(query);
+
+    if (!parsedQuery.success) {
+      return reply.code(400).send({
+        error: 'invalid_query',
+        details: parsedQuery.details,
+      });
+    }
+
+    const parsed = parsedQuery.value;
+    const evidenceCatalog = await withSpan(
+      'export.evidence_explorer.csv',
+      () =>
+        app.evaluationRepository.listExternalEvidenceCatalog({
+          reviewStatus: parsed.status,
+          searchQuery: parsed.query,
+          sourceType: parsed.sourceType,
+          page: parsed.page,
+          pageSize: parsed.pageSize,
+        }),
+      {
+        actor_id: request.actor?.userId ?? 'anonymous',
+        review_status: parsed.status ?? 'all',
+        source_type: parsed.sourceType ?? 'all',
+      },
+    );
+
+    const workspace = buildEvidenceExplorerWorkspace({
+      evidenceCatalog,
+      versions: buildVersions(),
+      filters: {
+        status: parsed.status,
+        query: parsed.query,
+        sourceType: parsed.sourceType,
+        page: parsed.page,
+        pageSize: parsed.pageSize,
+      },
+    });
+    const { metadata, content } = serializeEvidenceExplorerCsv({
+      items: workspace.items,
+      versions: workspace.meta.versions,
     });
 
     reply.header('content-type', metadata.content_type);

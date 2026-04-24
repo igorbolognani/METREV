@@ -919,6 +919,74 @@ export const evidenceReviewWorkspaceResponseSchema = z.object({
   items: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
 });
 
+export const evidenceExplorerFacetBucketSchema = z.object({
+  value: z.string().min(1),
+  label: z.string().min(1),
+  count: z.number().int().nonnegative(),
+});
+
+export const evidenceExplorerFacetsSchema = z.object({
+  source_types: z.array(evidenceExplorerFacetBucketSchema),
+  evidence_types: z.array(evidenceExplorerFacetBucketSchema),
+  review_statuses: z.array(evidenceExplorerFacetBucketSchema),
+  publishers: z.array(evidenceExplorerFacetBucketSchema),
+});
+
+export const evidenceExplorerWarehouseSnapshotSchema = z.object({
+  filtered_item_count: z.number().int().nonnegative(),
+  returned_item_count: z.number().int().nonnegative(),
+  claim_count: z.number().int().nonnegative(),
+  reviewed_claim_count: z.number().int().nonnegative(),
+  doi_count: z.number().int().nonnegative(),
+  linked_source_count: z.number().int().nonnegative(),
+  publisher_count: z.number().int().nonnegative(),
+});
+
+export const externalEvidenceCatalogWarehouseAggregateSchema = z.object({
+  facets: evidenceExplorerFacetsSchema,
+  snapshot: evidenceExplorerWarehouseSnapshotSchema,
+});
+
+export const evidenceExplorerWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    search_query: z.string().optional(),
+  }),
+  summary: externalEvidenceCatalogListSummarySchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  items: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  table_groups: z.object({
+    intake_ready: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+    recently_published: z.array(
+      z.lazy(() => externalEvidenceCatalogSummarySchema),
+    ),
+  }),
+  warehouse_facets: evidenceExplorerFacetsSchema,
+  warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,
+  export_csv_href: z.string().min(1),
+});
+
+export const evidenceExplorerAssistantResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    search_query: z.string().optional(),
+  }),
+  warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  assistant: z.object({
+    summary: z.string().nullable(),
+    narrative_metadata: narrativeMetadataSchema,
+    provenance_summary: z.string().min(1),
+    uncertainty_summary: z.string().min(1),
+    recommended_next_checks: z.array(z.string().min(1)),
+    cited_evidence_ids: z.array(z.string().min(1)),
+  }),
+});
+
 export const printableEvaluationReportResponseSchema = z.object({
   meta: workspaceMetaSchema,
   evaluation: evaluationSummarySchema,
@@ -1092,6 +1160,7 @@ export const externalEvidenceCatalogDetailSchema =
 export const externalEvidenceCatalogListResponseSchema = z.object({
   items: z.array(externalEvidenceCatalogSummarySchema),
   summary: externalEvidenceCatalogListSummarySchema,
+  warehouse_aggregate: externalEvidenceCatalogWarehouseAggregateSchema,
 });
 
 export const externalEvidenceReviewRequestSchema = z.object({
@@ -1172,6 +1241,21 @@ export type EvaluationComparisonResponse = z.infer<
 export type EvidenceReviewWorkspaceResponse = z.infer<
   typeof evidenceReviewWorkspaceResponseSchema
 >;
+export type EvidenceExplorerFacetBucket = z.infer<
+  typeof evidenceExplorerFacetBucketSchema
+>;
+export type EvidenceExplorerFacets = z.infer<
+  typeof evidenceExplorerFacetsSchema
+>;
+export type EvidenceExplorerWarehouseSnapshot = z.infer<
+  typeof evidenceExplorerWarehouseSnapshotSchema
+>;
+export type EvidenceExplorerAssistantResponse = z.infer<
+  typeof evidenceExplorerAssistantResponseSchema
+>;
+export type EvidenceExplorerWorkspaceResponse = z.infer<
+  typeof evidenceExplorerWorkspaceResponseSchema
+>;
 export type PrintableEvaluationReportResponse = z.infer<
   typeof printableEvaluationReportResponseSchema
 >;
@@ -1239,6 +1323,9 @@ export type WorkspaceSnapshotRecord = z.infer<
 >;
 export type ExternalEvidenceCatalogListResponse = z.infer<
   typeof externalEvidenceCatalogListResponseSchema
+>;
+export type ExternalEvidenceCatalogWarehouseAggregate = z.infer<
+  typeof externalEvidenceCatalogWarehouseAggregateSchema
 >;
 export type ExternalEvidenceReviewRequest = z.infer<
   typeof externalEvidenceReviewRequestSchema

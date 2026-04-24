@@ -1023,6 +1023,91 @@ describe('api runtime flow', () => {
       }),
     });
 
+    const evidenceExplorerResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/explorer?page=1&pageSize=1',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(evidenceExplorerResponse.statusCode).toBe(200);
+    expect(evidenceExplorerResponse.json()).toMatchObject({
+      filters: {},
+      warehouse_snapshot: expect.objectContaining({
+        filtered_item_count: 2,
+        returned_item_count: 1,
+        claim_count: 2,
+        reviewed_claim_count: 1,
+        doi_count: 2,
+      }),
+      warehouse_facets: expect.objectContaining({
+        source_types: expect.arrayContaining([
+          expect.objectContaining({
+            value: 'crossref',
+            count: 2,
+          }),
+        ]),
+      }),
+      table_groups: expect.objectContaining({
+        intake_ready: expect.arrayContaining([
+          expect.objectContaining({
+            id: acceptedCatalogItem.id,
+          }),
+        ]),
+      }),
+      export_csv_href: '/api/exports/evidence/explorer/csv?page=1&pageSize=1',
+    });
+
+    const evidenceExplorerCsvResponse = await app.inject({
+      method: 'GET',
+      url: '/api/exports/evidence/explorer/csv?status=accepted&sourceType=crossref&q=Pilot&page=1&pageSize=10',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(evidenceExplorerCsvResponse.statusCode).toBe(200);
+    expect(evidenceExplorerCsvResponse.headers['content-type']).toContain(
+      'text/csv',
+    );
+    expect(evidenceExplorerCsvResponse.body).toContain(
+      'id,title,review_status,source_type,evidence_type',
+    );
+    expect(evidenceExplorerCsvResponse.body).toContain(acceptedCatalogItem.id);
+
+    const evidenceAssistantResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/explorer/assistant?status=accepted&sourceType=crossref&q=Pilot&page=1&pageSize=10',
+      headers: {
+        cookie: sessionCookie('viewer-session'),
+      },
+    });
+    expect(evidenceAssistantResponse.statusCode).toBe(200);
+    expect(evidenceAssistantResponse.json()).toMatchObject({
+      filters: {
+        active_status: 'accepted',
+        active_source_type: 'crossref',
+        search_query: 'Pilot',
+      },
+      warehouse_snapshot: expect.objectContaining({
+        filtered_item_count: 1,
+        returned_item_count: 1,
+      }),
+      assistant: expect.objectContaining({
+        summary: expect.any(String),
+        provenance_summary: expect.stringContaining(
+          'filtered warehouse snapshot',
+        ),
+        uncertainty_summary: expect.any(String),
+        recommended_next_checks: expect.any(Array),
+        cited_evidence_ids: [acceptedCatalogItem.id],
+        narrative_metadata: expect.objectContaining({
+          mode: 'stub',
+          status: 'generated',
+          provider: 'internal',
+        }),
+      }),
+    });
+
     await app.close();
   });
 });

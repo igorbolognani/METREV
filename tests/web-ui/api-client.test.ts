@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-    evaluateCase,
-    fetchEvaluationCsvExport,
-    fetchEvaluationList,
+  evaluateCase,
+  fetchEvidenceExplorerAssistant,
+  fetchEvidenceExplorerCsvExport,
+  fetchEvidenceExplorerWorkspace,
+  fetchEvaluationCsvExport,
+  fetchEvaluationList,
 } from '../../apps/web-ui/src/lib/api';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -112,6 +115,174 @@ describe('web API client helpers', () => {
         content_type: 'text/csv',
         generated_at: '2026-04-24T12:00:00.000Z',
         file_name: 'workspace-export.csv',
+        workspace_schema_version: 'workspace-v1',
+      },
+    });
+  });
+
+  it('calls the dedicated explorer workspace route with the expected query string', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          meta: {},
+          filters: {},
+          summary: {
+            total: 0,
+            filtered_total: 0,
+            pending: 0,
+            accepted: 0,
+            rejected: 0,
+            page: 2,
+            page_size: 50,
+            total_pages: 1,
+            returned: 0,
+          },
+          spotlight: [],
+          items: [],
+          table_groups: {
+            intake_ready: [],
+            recently_published: [],
+          },
+          warehouse_facets: {
+            source_types: [],
+            evidence_types: [],
+            review_statuses: [],
+            publishers: [],
+          },
+          warehouse_snapshot: {
+            filtered_item_count: 0,
+            returned_item_count: 0,
+            claim_count: 0,
+            reviewed_claim_count: 0,
+            doi_count: 0,
+            linked_source_count: 0,
+            publisher_count: 0,
+          },
+          export_csv_href: '/api/exports/evidence/explorer/csv',
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await fetchEvidenceExplorerWorkspace({
+      status: 'accepted',
+      query: ' benchmark ',
+      sourceType: 'crossref',
+      page: 2,
+      pageSize: 50,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:4000/api/workspace/evidence/explorer?status=accepted&q=benchmark&sourceType=crossref&page=2&pageSize=50',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('calls the dedicated explorer assistant route with the expected query string', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          meta: {},
+          filters: {},
+          warehouse_snapshot: {
+            filtered_item_count: 1,
+            returned_item_count: 1,
+            claim_count: 1,
+            reviewed_claim_count: 0,
+            doi_count: 1,
+            linked_source_count: 1,
+            publisher_count: 1,
+          },
+          spotlight: [],
+          assistant: {
+            summary: 'stub summary',
+            narrative_metadata: {
+              mode: 'stub',
+              provider: 'internal',
+              model: 'deterministic-summary',
+              status: 'generated',
+              fallback_used: false,
+              prompt_version: 'evidence-assistant-stub-v1',
+              error_message: null,
+            },
+            provenance_summary: 'provenance',
+            uncertainty_summary: 'uncertainty',
+            recommended_next_checks: ['check'],
+            cited_evidence_ids: [],
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await fetchEvidenceExplorerAssistant({
+      status: 'accepted',
+      query: ' benchmark ',
+      sourceType: 'crossref',
+      page: 2,
+      pageSize: 50,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:4000/api/workspace/evidence/explorer/assistant?status=accepted&q=benchmark&sourceType=crossref&page=2&pageSize=50',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('parses explorer CSV export metadata from response headers', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue(
+      new Response('id,title\n1,record\n', {
+        status: 200,
+        headers: {
+          'content-type': 'text/csv',
+          'content-disposition': 'attachment; filename="evidence-explorer.csv"',
+          'x-metrev-export-generated-at': '2026-04-24T12:30:00.000Z',
+          'x-metrev-workspace-schema-version': 'workspace-v1',
+        },
+      }),
+    );
+
+    const result = await fetchEvidenceExplorerCsvExport({
+      status: 'accepted',
+      sourceType: 'crossref',
+      query: 'benchmark',
+      page: 1,
+      pageSize: 25,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:4000/api/exports/evidence/explorer/csv?status=accepted&q=benchmark&sourceType=crossref&page=1&pageSize=25',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    expect(result).toEqual({
+      content: 'id,title\n1,record\n',
+      metadata: {
+        content_type: 'text/csv',
+        generated_at: '2026-04-24T12:30:00.000Z',
+        file_name: 'evidence-explorer.csv',
         workspace_schema_version: 'workspace-v1',
       },
     });

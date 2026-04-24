@@ -106,10 +106,11 @@ const item: ExternalEvidenceCatalogItemDetail = {
 };
 
 describe('external evidence detail view', () => {
-  it('renders metadata, note-aware review controls, claims, and payload disclosures', () => {
+  it('renders the tabbed overview with review controls and provenance framing', () => {
     const html = renderToStaticMarkup(
       React.createElement(ExternalEvidenceDetailView, {
         canReview: true,
+        defaultTab: 'overview',
         item,
         mutationError: null,
         mutationPending: false,
@@ -120,17 +121,71 @@ describe('external evidence detail view', () => {
     );
 
     expect(html).toContain('Analyst review action bar');
+    expect(html).toContain('Open explorer');
+    expect(html).toContain('Detail workbench');
+    expect(html).toContain('Overview');
+    expect(html).toContain('Claims');
+    expect(html).toContain('Provenance');
+    expect(html).toContain('Payloads');
     expect(html).toContain('Source identity and timestamps');
+    expect(html).toContain('Applicability scope');
+  });
+
+  it('renders the structured claims tab on demand', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ExternalEvidenceDetailView, {
+        canReview: true,
+        defaultTab: 'claims',
+        item,
+        mutationError: null,
+        mutationPending: false,
+        onReviewAction: vi.fn(),
+        onReviewNoteChange: vi.fn(),
+        reviewNote: 'Analyst note',
+      }),
+    );
+
     expect(html).toContain('Structured claims');
     expect(html).toContain(
       'Stable COD removal uplift was observed after separator redesign.',
     );
-    expect(html).toContain('Source document record');
-    expect(html).toContain('Access status Green');
-    expect(html).toContain('Supplier-linked documents');
-    expect(html).toContain('Linked by analyst during supplier review.');
-    expect(html).toContain('Applicability scope');
-    expect(html).toContain('Catalog payload');
-    expect(html).toContain('Raw source payload');
+  });
+
+  it('renders the provenance and payload tabs when selected', () => {
+    const provenanceHtml = renderToStaticMarkup(
+      React.createElement(ExternalEvidenceDetailView, {
+        canReview: true,
+        defaultTab: 'provenance',
+        item,
+        mutationError: null,
+        mutationPending: false,
+        onReviewAction: vi.fn(),
+        onReviewNoteChange: vi.fn(),
+        reviewNote: 'Analyst note',
+      }),
+    );
+
+    expect(provenanceHtml).toContain('Source document record');
+    expect(provenanceHtml).toContain('Access status Green');
+    expect(provenanceHtml).toContain('Supplier-linked documents');
+    expect(provenanceHtml).toContain(
+      'Linked by analyst during supplier review.',
+    );
+
+    const payloadHtml = renderToStaticMarkup(
+      React.createElement(ExternalEvidenceDetailView, {
+        canReview: true,
+        defaultTab: 'payloads',
+        item,
+        mutationError: null,
+        mutationPending: false,
+        onReviewAction: vi.fn(),
+        onReviewNoteChange: vi.fn(),
+        reviewNote: 'Analyst note',
+      }),
+    );
+
+    expect(payloadHtml).toContain('Catalog payload');
+    expect(payloadHtml).toContain('Raw source payload');
   });
 });

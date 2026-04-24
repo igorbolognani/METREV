@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    NAV_ITEMS,
-    buildBreadcrumbs,
+  NAV_ITEMS,
+  buildBreadcrumbs,
 } from '../../apps/web-ui/src/lib/navigation';
 
 describe('navigation registry', () => {
-  it('registers the four global destinations in the expected order', () => {
+  it('registers the five global destinations in the expected order', () => {
     expect(NAV_ITEMS.map((item) => item.id)).toEqual([
       'dashboard',
       'input-deck',
+      'evidence-explorer',
       'evidence-review',
       'evaluations',
     ]);
@@ -40,6 +41,20 @@ describe('navigation registry', () => {
 
     expect(buildBreadcrumbs('/evaluations', {})).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
+    ]);
+
+    expect(buildBreadcrumbs('/evidence/explorer', {})).toEqual([
+      { href: '/dashboard', label: 'Dashboard' },
+    ]);
+
+    expect(
+      buildBreadcrumbs('/evidence/explorer/evidence-001', {
+        id: 'evidence-001',
+      }),
+    ).toEqual([
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/evidence/explorer', label: 'Evidence Explorer' },
+      { label: '#evidence-001' },
     ]);
 
     expect(

@@ -5,24 +5,25 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    ExternalEvidenceCatalogItemDetail,
-    ExternalEvidenceReviewAction,
+  ExternalEvidenceCatalogItemDetail,
+  ExternalEvidenceReviewAction,
 } from '@metrev/domain-contracts';
 
 import { EvidenceClaimsTable } from '@/components/evidence-detail/evidence-claims-table';
 import { EvidenceMetadataGrid } from '@/components/evidence-detail/evidence-metadata-grid';
 import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disclosure-card';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import {
-    fetchExternalEvidenceCatalogItem,
-    reviewExternalEvidenceCatalogItem,
+  fetchExternalEvidenceCatalogItem,
+  reviewExternalEvidenceCatalogItem,
 } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
@@ -135,6 +136,7 @@ export function ExternalEvidenceDetail({
 
 export function ExternalEvidenceDetailView({
   canReview,
+  defaultTab = 'overview',
   item,
   mutationError,
   mutationPending,
@@ -143,6 +145,7 @@ export function ExternalEvidenceDetailView({
   reviewNote,
 }: {
   canReview: boolean;
+  defaultTab?: 'overview' | 'claims' | 'provenance' | 'payloads';
   item: ExternalEvidenceCatalogItemDetail;
   mutationError: string | null;
   mutationPending: boolean;
@@ -222,12 +225,27 @@ export function ExternalEvidenceDetailView({
   ).length;
   const structuredClaims = toStructuredClaimRows(item);
   const sourceDocument = item.source_document;
+  const tabs = [
+    { label: 'Overview', value: 'overview' },
+    { badge: structuredClaims.length, label: 'Claims', value: 'claims' },
+    {
+      badge: sourceDocument
+        ? 1 + item.supplier_documents.length
+        : item.supplier_documents.length,
+      label: 'Provenance',
+      value: 'provenance',
+    },
+    { badge: 2, label: 'Payloads', value: 'payloads' },
+  ] as const;
 
   return (
     <div className="workspace-page">
       <WorkspacePageHeader
         actions={
           <>
+            <Link className="button secondary" href="/evidence/explorer">
+              Open explorer
+            </Link>
             <Link className="button secondary" href="/evidence/review">
               Back to queue
             </Link>
@@ -304,116 +322,159 @@ export function ExternalEvidenceDetailView({
       </WorkspaceSection>
 
       <WorkspaceSection
-        description="Source identity, state, and timestamps remain explicit before any downstream intake use."
-        eyebrow="Metadata"
-        title="Source identity and timestamps"
+        description="Move through overview, claims, provenance, and stored payloads without overloading one long page."
+        eyebrow="Evidence layers"
+        title="Detail workbench"
       >
-        <EvidenceMetadataGrid fields={metadataFields} />
-      </WorkspaceSection>
-
-      <div className="workspace-split-grid">
-        <WorkspaceSection
-          description="Structured rows surface extracted claims first, while the raw payload stays available below when the structure is sparse."
-          eyebrow="Claims"
-          title="Structured claims"
+        <Tabs
+          defaultValue={defaultTab}
+          items={tabs}
+          label="Evidence detail tabs"
         >
-          <EvidenceClaimsTable claims={structuredClaims} />
-        </WorkspaceSection>
+          <TabsContent value="overview">
+            <div className="workspace-card-list">
+              <WorkspaceSection
+                description="Source identity, state, and timestamps remain explicit before any downstream intake use."
+                eyebrow="Metadata"
+                title="Source identity and timestamps"
+              >
+                <EvidenceMetadataGrid fields={metadataFields} />
+              </WorkspaceSection>
 
-        <WorkspaceSection
-          description="Narrative summary stays readable while the applicability object remains one click away instead of filling the whole page."
-          eyebrow="Summary"
-          title="Applicability and abstract"
-        >
-          <WorkspaceDataCard>
-            <h3>Abstract</h3>
-            <p>
-              {item.abstract_text ??
-                'No abstract text was stored for this record.'}
-            </p>
-          </WorkspaceDataCard>
-          <WorkspaceDataCard tone="warning">
-            <h3>Provenance note</h3>
-            <p>{item.provenance_note}</p>
-            {item.tags.length > 0 ? (
-              <div className="workspace-chip-list compact">
-                {item.tags.map((tag) => (
-                  <span className="meta-chip" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </WorkspaceDataCard>
-          <WorkspaceDataCard>
-            <h3>Source document record</h3>
-            {sourceDocument ? (
-              <ul className="list-block">
-                <li>Source ID {sourceDocument.id}</li>
-                <li>
-                  Access status {formatToken(sourceDocument.access_status)}
-                </li>
-                <li>Journal {sourceDocument.journal ?? 'Not stated'}</li>
-                <li>License {sourceDocument.license ?? 'Not stated'}</li>
-                <li>{sourceDocument.authors.length} author record(s)</li>
-              </ul>
-            ) : (
-              <p className="muted">
-                No source document metadata was stored for this record.
-              </p>
-            )}
-          </WorkspaceDataCard>
-          <WorkspaceDataCard>
-            <h3>Supplier-linked documents</h3>
-            {item.supplier_documents.length > 0 ? (
-              <div className="workspace-card-list">
-                {item.supplier_documents.map((document) => (
-                  <article className="workspace-inline-card" key={document.id}>
-                    <h3>{formatToken(document.document_type)}</h3>
+              <WorkspaceSection
+                description="Narrative summary stays readable while the applicability object remains one click away instead of filling the whole page."
+                eyebrow="Summary"
+                title="Applicability and abstract"
+              >
+                <div className="workspace-card-list">
+                  <WorkspaceDataCard>
+                    <h3>Abstract</h3>
                     <p>
-                      Supplier {document.supplier_id}
-                      {document.product_id
-                        ? ` · Product ${document.product_id}`
-                        : ''}
+                      {item.abstract_text ??
+                        'No abstract text was stored for this record.'}
                     </p>
-                    <p className="muted">
-                      {document.note ?? 'No analyst note was stored.'}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="muted">
-                No supplier-linked documents were attached to this evidence
-                record.
-              </p>
-            )}
-          </WorkspaceDataCard>
-          <PayloadDisclosureCard
-            countBadge={applicabilityEntryCount}
-            description="Applicability stays explicit but collapsed until the analyst needs the raw object."
-            meta={item.source_category ?? 'Uncategorized'}
-            title="Applicability scope"
-            value={item.applicability_scope}
-          />
-        </WorkspaceSection>
-      </div>
+                  </WorkspaceDataCard>
+                  <WorkspaceDataCard tone="warning">
+                    <h3>Provenance note</h3>
+                    <p>{item.provenance_note}</p>
+                    {item.tags.length > 0 ? (
+                      <div className="workspace-chip-list compact">
+                        {item.tags.map((tag) => (
+                          <span className="meta-chip" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </WorkspaceDataCard>
+                  <PayloadDisclosureCard
+                    countBadge={applicabilityEntryCount}
+                    description="Applicability stays explicit but collapsed until the analyst needs the raw object."
+                    meta={item.source_category ?? 'Uncategorized'}
+                    title="Applicability scope"
+                    value={item.applicability_scope}
+                  />
+                </div>
+              </WorkspaceSection>
+            </div>
+          </TabsContent>
 
-      <WorkspaceSection eyebrow="Stored payloads" title="Audit disclosures">
-        <div className="workspace-detail-grid">
-          <PayloadDisclosureCard
-            description="Normalized catalog payload used by the runtime review surface."
-            meta={`Updated ${formatTimestamp(item.updated_at)}`}
-            title="Catalog payload"
-            value={item.payload}
-          />
-          <PayloadDisclosureCard
-            description="Raw imported source payload retained for auditability and future parser refinement."
-            meta={formatToken(item.source_type)}
-            title="Raw source payload"
-            value={item.raw_payload}
-          />
-        </div>
+          <TabsContent value="claims">
+            <WorkspaceSection
+              description="Structured rows surface extracted claims first, while raw payloads remain in a separate audit tab."
+              eyebrow="Claims"
+              title="Structured claims"
+            >
+              <EvidenceClaimsTable claims={structuredClaims} />
+            </WorkspaceSection>
+          </TabsContent>
+
+          <TabsContent value="provenance">
+            <div className="workspace-card-list">
+              <WorkspaceSection
+                description="Source-document metadata stays explicit for citation, access, and author review."
+                eyebrow="Source"
+                title="Source document record"
+              >
+                <WorkspaceDataCard>
+                  {sourceDocument ? (
+                    <ul className="list-block">
+                      <li>Source ID {sourceDocument.id}</li>
+                      <li>
+                        Access status{' '}
+                        {formatToken(sourceDocument.access_status)}
+                      </li>
+                      <li>Journal {sourceDocument.journal ?? 'Not stated'}</li>
+                      <li>License {sourceDocument.license ?? 'Not stated'}</li>
+                      <li>{sourceDocument.authors.length} author record(s)</li>
+                    </ul>
+                  ) : (
+                    <p className="muted">
+                      No source document metadata was stored for this record.
+                    </p>
+                  )}
+                </WorkspaceDataCard>
+              </WorkspaceSection>
+
+              <WorkspaceSection
+                description="Supplier-linked records remain visible so analysts can bridge literature, supplier, and market evidence without losing provenance."
+                eyebrow="Supplier linkage"
+                title="Supplier-linked documents"
+              >
+                <WorkspaceDataCard>
+                  {item.supplier_documents.length > 0 ? (
+                    <div className="workspace-card-list">
+                      {item.supplier_documents.map((document) => (
+                        <article
+                          className="workspace-inline-card"
+                          key={document.id}
+                        >
+                          <h3>{formatToken(document.document_type)}</h3>
+                          <p>
+                            Supplier {document.supplier_id}
+                            {document.product_id
+                              ? ` · Product ${document.product_id}`
+                              : ''}
+                          </p>
+                          <p className="muted">
+                            {document.note ?? 'No analyst note was stored.'}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">
+                      No supplier-linked documents were attached to this
+                      evidence record.
+                    </p>
+                  )}
+                </WorkspaceDataCard>
+              </WorkspaceSection>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="payloads">
+            <WorkspaceSection
+              eyebrow="Stored payloads"
+              title="Audit disclosures"
+            >
+              <div className="workspace-detail-grid">
+                <PayloadDisclosureCard
+                  description="Normalized catalog payload used by the runtime review surface."
+                  meta={`Updated ${formatTimestamp(item.updated_at)}`}
+                  title="Catalog payload"
+                  value={item.payload}
+                />
+                <PayloadDisclosureCard
+                  description="Raw imported source payload retained for auditability and future parser refinement."
+                  meta={formatToken(item.source_type)}
+                  title="Raw source payload"
+                  value={item.raw_payload}
+                />
+              </div>
+            </WorkspaceSection>
+          </TabsContent>
+        </Tabs>
       </WorkspaceSection>
     </div>
   );

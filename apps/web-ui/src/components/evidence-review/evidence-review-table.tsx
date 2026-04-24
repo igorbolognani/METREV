@@ -4,25 +4,25 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    EvidenceReviewWorkspaceResponse,
-    ExternalEvidenceReviewStatus,
+  ExternalEvidenceCatalogItemSummary,
+  ExternalEvidenceReviewStatus,
 } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { formatToken } from '@/lib/formatting';
 
 void React;
 
-type EvidenceReviewItem = EvidenceReviewWorkspaceResponse['items'][number];
+type EvidenceReviewItem = ExternalEvidenceCatalogItemSummary;
 
 function badgeVariantForReviewStatus(status: ExternalEvidenceReviewStatus) {
   switch (status) {
@@ -55,6 +55,8 @@ function formatOptionalDate(value: string | null) {
 }
 
 export interface EvidenceReviewTableProps {
+  detailActionLabel?: string;
+  detailHrefBase?: string;
   emptyDescription: string;
   emptyTitle: string;
   highlightIds?: string[];
@@ -65,6 +67,8 @@ export interface EvidenceReviewTableProps {
 }
 
 export function EvidenceReviewTable({
+  detailActionLabel = 'Open review detail',
+  detailHrefBase = '/evidence/review',
   emptyDescription,
   emptyTitle,
   highlightIds = [],
@@ -183,9 +187,9 @@ export function EvidenceReviewTable({
                 <TableCell>
                   <Link
                     className="ghost-button"
-                    href={`/evidence/review/${item.id}`}
+                    href={`${detailHrefBase}/${item.id}`}
                   >
-                    Open review detail
+                    {detailActionLabel}
                   </Link>
                 </TableCell>
               </TableRow>
