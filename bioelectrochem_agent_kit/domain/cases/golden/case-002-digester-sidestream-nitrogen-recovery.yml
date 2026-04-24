@@ -1,7 +1,7 @@
 case_id: GOLDEN-002
 case_metadata:
   created_by: system
-  created_at: "2026-04-11"
+  created_at: '2026-04-24'
   case_status: golden_reference
 
 business_context:
@@ -12,8 +12,10 @@ business_context:
     - recovery_value
     - low_energy
     - phased_deployment
+    - product_quality_defensibility
   hard_constraints:
     - product_quality_must_be_defensible
+    - gas_side_safety_review_required
   local_energy_cost_note: relevant but not fully specified
   capex_constraint_level: medium
   opex_sensitivity_level: medium
@@ -26,42 +28,49 @@ technology_context:
 
 feed_and_operation:
   influent_type: digester sidestream concentrate
+  substrate_profile: ammonia-rich sidestream with moderate organics carryover
   influent_cod_mg_per_l: 2500
   pH: 8.2
   temperature_c: 32
   conductivity_ms_per_cm: 18
   hydraulic_retention_time_h: 12
-  flow_note: controlled sidestream operation
+  flow_note: controlled sidestream operation with staged recycle planning
 
 stack_blocks:
   anode_biofilm_support:
     material_family: carbon_felt
-    geometry_note: moderate surface area
-    surface_note: startup expected to be manageable
+    geometry_note: moderate surface area with manageable startup burden
+    surface_note: acclimation pathway is known but long shock-response data is incomplete
   cathode_catalyst_support:
     material_family: hydrogen_evolution_cathode
-    catalyst_note: material family not yet fixed
-    product_side_note: recovery quality is critical
+    catalyst_note: exact cathode family not yet fixed
+    product_side_note: ammonia recovery quality and gas handling are both critical
   membrane_or_separator:
     family: cation_exchange_membrane
     note: present but durability and fouling data are not yet complete
+    fouling_risk: high
   electrical_interconnect_and_sealing:
     current_collection_strategy: defined_at_concept_level_only
-    sealing_note: scale-up detail incomplete
+    sealing_note: scale-up detail remains incomplete
   balance_of_plant:
-    bop_summary: recirculation, gas handling, and dosing expected to be important
-    maintenance_note: gas-side safety and serviceability should be designed early
+    bop_summary: recirculation, gas handling, and dosing are all required for the target pathway
+    maintenance_note: gas-side safety and separator serviceability should be designed early
   sensors_and_analytics:
     sensing_summary: moderate_visibility
     diagnostics_summary: partial process monitoring planned
+    data_quality: medium
   operational_biology:
     biology_summary: partially_characterized
-    inoculum_note: startup plan exists but shock response data are limited
-    startup_note: pilot data needed
+    inoculum_note: startup plan exists but shock-response data is limited
+    startup_note: pilot data is needed before scale-up decisions
+    biofilm_maturity: managed
 
 supplier_context:
   current_suppliers: []
-  preferred_suppliers: []
+  preferred_suppliers:
+    - DuPont Water Solutions
+    - Veolia Water Technologies
+    - Evoqua Water Technologies
   excluded_suppliers: []
   supplier_preference_notes: avoid highly bespoke supply chains where possible
 
@@ -72,10 +81,10 @@ normalization_status:
     - membrane_durability_validation
     - gas_handling_detail
   assumptions:
-    - separator strategy is central to recovery credibility
+    - separator strategy remains central to recovery credibility
   confidence_notes:
-    - recovery-oriented ranking is likely sensitive to cathode and separator details
+    - recovery-oriented ranking remains sensitive to cathode and separator details
   recommended_next_measurements:
     - membrane fouling and durability validation
-    - cathode comparison
+    - cathode comparison under sidestream operation
     - gas-side purity and handling validation

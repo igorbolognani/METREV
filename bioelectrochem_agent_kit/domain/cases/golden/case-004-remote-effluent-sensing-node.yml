@@ -1,0 +1,89 @@
+case_id: GOLDEN-004
+case_metadata:
+  created_by: system
+  created_at: '2026-04-24'
+  case_status: golden_reference
+
+business_context:
+  client_type: municipal_utility
+  primary_objective: sensing
+  decision_horizon: field_validation_sprint
+  priorities:
+    - calibration_stability
+    - false_alarm_control
+    - remote_maintenance
+  hard_constraints:
+    - no_daily_operator_intervention
+    - sensor_node_must_fit_existing_cabinet_envelope
+  local_energy_cost_note: low-power operation matters more than peak energy offset
+  capex_constraint_level: medium
+  opex_sensitivity_level: medium
+
+technology_context:
+  technology_family: microbial_fuel_cell
+  architecture_family: miniaturized_single_chamber
+  membrane_presence: absent
+  primary_target_output: effluent_signal_quality
+
+feed_and_operation:
+  influent_type: municipal secondary effluent
+  substrate_profile: low-strength effluent with intermittent nitrate and cleaning chemical interference
+  influent_cod_mg_per_l: 120
+  pH: 7.4
+  temperature_c: 22
+  conductivity_ms_per_cm: 3.1
+  hydraulic_retention_time_h: 6
+  flow_note: remote bypass loop with intermittent maintenance visits
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: carbon_cloth
+    geometry_note: miniaturized electrode area prioritizes enclosure fit over excess surface reserve
+    surface_note: startup repeatability remains sensitive to cleaning and storage intervals
+  cathode_catalyst_support:
+    material_family: air_cathode
+    mass_transport_limitation_risk: low
+    product_side_note: signal stability matters more than energy recovery
+  membrane_or_separator:
+    family: spacer_only
+    note: no dedicated membrane is used in the current node design
+    fouling_risk: low
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: compact_board_level_interconnect
+    sealing_note: cable gland moisture control remains important in field cabinets
+  balance_of_plant:
+    bop_summary: passive bypass loop with periodic manual calibration checks
+    maintenance_note: cartridge swaps are expected but calibration cadence is not yet locked
+  sensors_and_analytics:
+    sensing_summary: low_visibility
+    diagnostics_summary: drift checks remain manual and sparse
+    data_quality: low
+  operational_biology:
+    biology_summary: early_field_startup
+    inoculum_note: inoculum source is available but seasonal conditioning has not been benchmarked
+    startup_note: biofilm maturity remains early during the field-validation sprint
+    biofilm_maturity: early
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers:
+    - Hach
+    - Xylem Analytics
+    - OpenCell Systems
+  excluded_suppliers: []
+  supplier_preference_notes: prefer serviceable field instrumentation with clear calibration support
+
+normalization_status:
+  defaults_used: []
+  missing_data:
+    - calibration_interval_reference
+    - interference_screening
+    - baseline_noise_window
+  assumptions:
+    - remote maintenance visits remain weekly during the validation sprint
+  confidence_notes:
+    - low observability and early-field biology make signal defensibility fragile
+  recommended_next_measurements:
+    - calibration drift tracking
+    - interference screening across cleaning events
+    - baseline noise window characterization

@@ -9,7 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_ROOT = REPO_ROOT / "bioelectro-copilot-contracts" / "contracts"
 ONTOLOGY_ROOT = CONTRACTS_ROOT / "ontology"
 RULES_ROOT = CONTRACTS_ROOT / "rules"
+RESEARCH_CONTRACTS_ROOT = CONTRACTS_ROOT / "research"
 DOMAIN_ONTOLOGY_ROOT = REPO_ROOT / "bioelectrochem_agent_kit" / "domain" / "ontology"
+DOMAIN_RULES_ROOT = REPO_ROOT / "bioelectrochem_agent_kit" / "domain" / "rules"
 
 
 FORBIDDEN_COMPACT_FIELD_PREFIXES = {
@@ -208,3 +210,66 @@ def test_domain_property_dictionary_uses_canonical_technology_family() -> None:
         "allowed", []
     )
     assert "hybrid_or_other_met" in technology_family.get("legacy_aliases", [])
+
+
+def test_research_contract_pack_declares_core_boundaries() -> None:
+    required_files = {
+        "paper.schema.yaml",
+        "review-table.schema.yaml",
+        "column-definition.schema.yaml",
+        "extraction-result.schema.yaml",
+        "evidence-pack.schema.yaml",
+    }
+
+    existing_files = {path.name for path in RESEARCH_CONTRACTS_ROOT.glob("*.yaml")}
+    assert required_files.issubset(existing_files)
+
+    extraction_result = _load_yaml(
+        RESEARCH_CONTRACTS_ROOT / "extraction-result.schema.yaml"
+    )
+    required_fields = set(
+        (extraction_result.get("extraction_result") or {}).get("required_fields")
+        or []
+    )
+
+    assert {
+        "answer",
+        "evidence_trace",
+        "confidence",
+        "missing_fields",
+        "validation_errors",
+        "normalized_payload",
+    }.issubset(required_fields)
+
+    rules_text = " ".join(extraction_result.get("rules") or [])
+    assert "evidence trace" in rules_text.lower()
+    assert "original values" in rules_text.lower()
+
+
+def test_research_domain_taxonomy_and_metric_rules_cover_runtime_terms() -> None:
+    taxonomy = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "research-taxonomy.yml")
+    technologies = set((taxonomy.get("scope") or {}).get("primary_technologies") or [])
+
+    assert {
+        "MFC",
+        "MEC",
+        "MDC",
+        "BES",
+        "bioelectrochemical_sensor",
+        "hybrid_system",
+    }.issubset(technologies)
+
+    metric_rules = _load_yaml(DOMAIN_RULES_ROOT / "research-metric-normalization.yml")
+    rule_ids = {rule.get("id") for rule in metric_rules.get("rules") or []}
+
+    assert {
+        "research_metric.power_density.mw_m2_to_w_m2",
+        "research_metric.power_density.w_m2_identity",
+        "research_metric.current_density.a_m2_identity",
+        "research_metric.current_density.ma_cm2_to_a_m2",
+        "research_metric.coulombic_efficiency.percent_identity",
+        "research_metric.cod_removal.percent_identity",
+        "research_metric.internal_resistance.ohm_identity",
+        "research_metric.voltage.v_identity",
+        "research_metric.voltage.mv_to_v",
+    }.issubset(rule_ids)

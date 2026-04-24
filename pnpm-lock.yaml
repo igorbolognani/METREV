@@ -71,6 +71,9 @@ importers:
       '@metrev/llm-adapter':
         specifier: workspace:*
         version: link:../../packages/llm-adapter
+      '@metrev/research-intelligence':
+        specifier: workspace:*
+        version: link:../../packages/research-intelligence
       '@metrev/rule-engine':
         specifier: workspace:*
         version: link:../../packages/rule-engine
@@ -264,6 +267,19 @@ importers:
       '@metrev/domain-contracts':
         specifier: workspace:*
         version: link:../domain-contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/research-intelligence:
+    dependencies:
+      '@metrev/domain-contracts':
+        specifier: workspace:*
+        version: link:../domain-contracts
+      '@metrev/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       typescript:
         specifier: ^5.8.3

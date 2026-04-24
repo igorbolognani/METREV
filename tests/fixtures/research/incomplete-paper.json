@@ -1,0 +1,18 @@
+{
+  "paper_id": "fixture-paper-incomplete-001",
+  "source_document_id": "fixture-source-incomplete-001",
+  "title": "Microbial electrochemical system perspective without reported metrics",
+  "authors": [],
+  "year": 2024,
+  "doi": null,
+  "journal": null,
+  "publisher": "METREV Local Evidence Lab",
+  "source_type": "manual",
+  "source_url": null,
+  "pdf_url": null,
+  "abstract_text": "This perspective discusses bioelectrochemical systems for wastewater treatment but does not report electrode materials or quantified electrochemical performance.",
+  "citation_count": null,
+  "metadata": {
+    "fixture": true
+  }
+}

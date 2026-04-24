@@ -1,0 +1,54 @@
+version: 0.1
+canonical_vocabulary_source:
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+normalization_policy:
+  principle: Preserve original reported values while adding deterministic normalized values only for supported unit conversions.
+  missing_behavior: Use null normalized values and record missing_fields when units or values are absent.
+  inference_policy: Do not infer numerical values from prose.
+
+rules:
+  - id: research_metric.power_density.mw_m2_to_w_m2
+    metric_key: power_density_w_m2
+    original_unit: mW/m2
+    normalized_unit: W/m2
+    multiplier: 0.001
+  - id: research_metric.power_density.w_m2_identity
+    metric_key: power_density_w_m2
+    original_unit: W/m2
+    normalized_unit: W/m2
+    multiplier: 1
+  - id: research_metric.current_density.a_m2_identity
+    metric_key: current_density_a_m2
+    original_unit: A/m2
+    normalized_unit: A/m2
+    multiplier: 1
+  - id: research_metric.current_density.ma_cm2_to_a_m2
+    metric_key: current_density_a_m2
+    original_unit: mA/cm2
+    normalized_unit: A/m2
+    multiplier: 10
+  - id: research_metric.coulombic_efficiency.percent_identity
+    metric_key: coulombic_efficiency_pct
+    original_unit: "%"
+    normalized_unit: "%"
+    multiplier: 1
+  - id: research_metric.cod_removal.percent_identity
+    metric_key: cod_removal_pct
+    original_unit: "%"
+    normalized_unit: "%"
+    multiplier: 1
+  - id: research_metric.internal_resistance.ohm_identity
+    metric_key: internal_resistance_ohm
+    original_unit: ohm
+    normalized_unit: ohm
+    multiplier: 1
+  - id: research_metric.voltage.v_identity
+    metric_key: voltage_v
+    original_unit: V
+    normalized_unit: V
+    multiplier: 1
+  - id: research_metric.voltage.mv_to_v
+    metric_key: voltage_v
+    original_unit: mV
+    normalized_unit: V
+    multiplier: 0.001

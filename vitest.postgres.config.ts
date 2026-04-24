@@ -20,6 +20,12 @@ export default defineConfig({
       '@metrev/llm-adapter': fileURLToPath(
         new URL('./packages/llm-adapter/src/index.ts', import.meta.url),
       ),
+      '@metrev/research-intelligence': fileURLToPath(
+        new URL(
+          './packages/research-intelligence/src/index.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/auth': fileURLToPath(
         new URL('./packages/auth/src/index.ts', import.meta.url),
       ),

@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,58 +12,79 @@ import {
 import { runCaseEvaluation } from '@metrev/rule-engine';
 
 import {
+  biogasSynergyGoldenCasePreset,
   buildCaseInputFromFormValues,
   caseIntakePresets,
+  hydrogenRecoveryGoldenCasePreset,
   nitrogenRecoveryGoldenCasePreset,
+  sensingGoldenCasePreset,
   wastewaterGoldenCasePreset,
 } from '../../apps/web-ui/src/lib/case-intake';
 
-describe('wastewater golden case preset', () => {
-  it('registers the validated preset catalog for the intake UI', () => {
+const goldenCasePresets = [
+  wastewaterGoldenCasePreset,
+  nitrogenRecoveryGoldenCasePreset,
+  hydrogenRecoveryGoldenCasePreset,
+  sensingGoldenCasePreset,
+  biogasSynergyGoldenCasePreset,
+];
+
+function sourceDomainCasePath(preset: (typeof goldenCasePresets)[number]) {
+  const caseMetadata = (preset.payload.case_metadata ?? {}) as {
+    source_domain_case?: string;
+  };
+
+  return caseMetadata.source_domain_case;
+}
+
+describe('case intake preset catalog', () => {
+  it('registers the five validated presets for the intake UI', () => {
     expect(caseIntakePresets.map((preset) => preset.id)).toEqual(
-      expect.arrayContaining([
-        wastewaterGoldenCasePreset.id,
-        nitrogenRecoveryGoldenCasePreset.id,
-      ]),
+      goldenCasePresets.map((preset) => preset.id),
     );
   });
 
-  it('builds a valid raw case input that exercises the deterministic rule path', () => {
-    const payload = buildCaseInputFromFormValues(
-      wastewaterGoldenCasePreset.formValues,
-      wastewaterGoldenCasePreset,
-    );
+  it('keeps each runtime preset tied to a canonical domain source path', () => {
+    for (const preset of goldenCasePresets) {
+      const sourcePath = sourceDomainCasePath(preset);
 
-    expect(() => rawCaseInputSchema.parse(payload)).not.toThrow();
-    expect(payload.evidence_records).toHaveLength(1);
-    expect(payload.stack_blocks?.sensors_and_analytics?.data_quality).toBe(
-      'low',
-    );
+      expect(sourcePath).toBeTruthy();
+      expect(preset.sourceReference).toContain(sourcePath!);
+      expect(existsSync(resolve(process.cwd(), sourcePath!))).toBe(true);
+    }
+  });
 
-    const normalized = normalizeCaseInput(payload);
-    const decisionOutput = decisionOutputSchema.parse(
-      runCaseEvaluation(normalized),
-    );
-    const recommendationIds =
-      decisionOutput.prioritized_improvement_options.map(
-        (record) => record.recommendation_id,
+  it.each(goldenCasePresets)(
+    'builds a valid raw case input for $label that exercises the deterministic rule path',
+    (preset) => {
+      const payload = buildCaseInputFromFormValues(preset.formValues, preset);
+
+      expect(() => rawCaseInputSchema.parse(payload)).not.toThrow();
+      expect(payload.evidence_records).toHaveLength(1);
+
+      const normalized = normalizeCaseInput(payload);
+      const decisionOutput = decisionOutputSchema.parse(
+        runCaseEvaluation(normalized),
       );
+      const recommendationIds =
+        decisionOutput.prioritized_improvement_options.map(
+          (record) => record.recommendation_id,
+        );
 
-    expect(recommendationIds).toEqual(
-      expect.arrayContaining(
-        wastewaterGoldenCasePreset.expectedRecommendationIds,
-      ),
-    );
-    expect(decisionOutput.impact_map.length).toBeGreaterThanOrEqual(3);
-    expect(decisionOutput.phased_roadmap.length).toBeGreaterThan(0);
-    expect(
-      decisionOutput.confidence_and_uncertainty_summary.provenance_notes.join(
-        ' ',
-      ),
-    ).toContain('typed evidence');
-  });
+      expect(recommendationIds).toEqual(
+        expect.arrayContaining(preset.expectedRecommendationIds),
+      );
+      expect(decisionOutput.impact_map.length).toBeGreaterThanOrEqual(3);
+      expect(decisionOutput.phased_roadmap.length).toBeGreaterThan(0);
+      expect(
+        decisionOutput.confidence_and_uncertainty_summary.provenance_notes.join(
+          ' ',
+        ),
+      ).toContain('typed evidence');
+    },
+  );
 
-  it('builds a valid nitrogen-recovery case with a membrane-focused improvement path', () => {
+  it('keeps the nitrogen-recovery preset explicit about its missing-data boundary', () => {
     const payload = buildCaseInputFromFormValues(
       nitrogenRecoveryGoldenCasePreset.formValues,
       nitrogenRecoveryGoldenCasePreset,

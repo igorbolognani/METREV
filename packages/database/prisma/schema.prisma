@@ -126,6 +126,28 @@ enum WorkspaceSnapshotType {
   EXPORT_CSV
 }
 
+enum ResearchReviewStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ResearchExtractionJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ResearchExtractionResultStatus {
+  VALID
+  INVALID
+}
+
+enum ResearchEvidencePackStatus {
+  DRAFT
+  REVIEWED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -288,6 +310,7 @@ model ExternalSourceRecord {
   claims               EvidenceClaim[]
   supplierDocuments    SupplierDocument[]
   evaluationUsages     EvaluationSourceUsage[]
+  researchReviewPapers ResearchReviewPaper[]
 
   @@unique([sourceType, sourceKey])
   @@index([sourceType, publishedAt])
@@ -397,6 +420,121 @@ model EvidenceOntologyMapping {
 
   @@unique([claimId, ontologyPath])
   @@index([ontologyPath])
+}
+
+model ResearchReview {
+  id                String                     @id @default(cuid())
+  title             String
+  query             String                     @db.Text
+  status            ResearchReviewStatus       @default(ACTIVE)
+  version           Int                        @default(1)
+  createdBy         String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  papers            ResearchReviewPaper[]
+  columns           ResearchReviewColumn[]
+  extractionJobs    ResearchExtractionJob[]
+  extractionResults ResearchExtractionResult[]
+  evidencePacks     ResearchEvidencePack[]
+
+  @@index([status, updatedAt])
+}
+
+model ResearchReviewPaper {
+  id                String                     @id @default(cuid())
+  reviewId          String
+  sourceRecordId    String
+  position          Int                        @default(0)
+  metadataSnapshot  Json
+  createdAt         DateTime                   @default(now())
+  review            ResearchReview             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  sourceRecord      ExternalSourceRecord       @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  extractionJobs    ResearchExtractionJob[]
+  extractionResults ResearchExtractionResult[]
+
+  @@unique([reviewId, sourceRecordId])
+  @@index([sourceRecordId])
+}
+
+model ResearchReviewColumn {
+  id                String                     @id @default(cuid())
+  reviewId          String
+  columnId          String
+  name              String
+  columnGroup       String
+  columnType        String
+  answerStructure   String
+  instructions      String                     @db.Text
+  outputSchemaKey   String
+  outputSchema      Json
+  visible           Boolean                    @default(true)
+  position          Int                        @default(0)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  review            ResearchReview             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  extractionJobs    ResearchExtractionJob[]
+  extractionResults ResearchExtractionResult[]
+
+  @@unique([reviewId, columnId])
+  @@index([reviewId, visible, position])
+}
+
+model ResearchExtractionJob {
+  id               String                      @id @default(cuid())
+  reviewId         String
+  paperId          String
+  columnId         String
+  status           ResearchExtractionJobStatus @default(QUEUED)
+  extractorVersion String
+  failureDetail    Json?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  review           ResearchReview              @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  paper            ResearchReviewPaper         @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  column           ResearchReviewColumn        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, columnId])
+  @@index([reviewId, status, createdAt])
+}
+
+model ResearchExtractionResult {
+  id                String                         @id @default(cuid())
+  reviewId          String
+  paperId           String
+  columnId          String
+  status            ResearchExtractionResultStatus
+  answer            Json
+  evidenceTrace     Json
+  confidence        String
+  missingFields     String[]
+  validationErrors  String[]
+  normalizedPayload Json
+  extractorVersion  String
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  review            ResearchReview                 @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  paper             ResearchReviewPaper            @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  column            ResearchReviewColumn           @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, columnId])
+  @@index([reviewId, status])
+}
+
+model ResearchEvidencePack {
+  id              String                     @id @default(cuid())
+  reviewId        String
+  title           String
+  status          ResearchEvidencePackStatus @default(DRAFT)
+  sourceResultIds String[]
+  payload         Json
+  decisionInput   Json
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  review          ResearchReview             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, status])
 }
 
 model SupplierProduct {

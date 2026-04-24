@@ -1,0 +1,19 @@
+version: 0.1
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/research-taxonomy.yml
+evidence_pack:
+  required_fields:
+    - pack_id
+    - review_id
+    - title
+    - status
+    - source_result_ids
+    - evidence_items
+    - metrics
+    - missing_fields
+    - confidence
+    - payload
+  optional_fields: []
+rules:
+  - Evidence packs may include only schema-valid extraction results.
+  - Decision ingestion must adapt packs into existing RawEvidenceRecord-shaped evidence rather than coupling review UI to decision internals.
+  - Literature and supplier claims must remain explicitly typed.

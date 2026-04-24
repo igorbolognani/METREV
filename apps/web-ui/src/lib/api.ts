@@ -17,6 +17,15 @@ import type {
   ExternalEvidenceReviewStatus,
   PrintableEvaluationReportResponse,
   RawCaseInput,
+  AddResearchColumnRequest,
+  CreateResearchEvidencePackRequest,
+  CreateResearchReviewRequest,
+  ResearchDecisionIngestionPreview,
+  ResearchEvidencePack,
+  ResearchReviewDetail,
+  ResearchReviewListResponse,
+  RunResearchExtractionsRequest,
+  RunResearchExtractionsResponse,
 } from '@metrev/domain-contracts';
 
 export type ExternalEvidenceSourceTypeFilter =
@@ -463,4 +472,110 @@ export async function fetchEvidenceExplorerCsvExport(input?: {
       ),
     },
   };
+}
+
+export async function fetchResearchReviews(): Promise<ResearchReviewListResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/reviews`, {
+    cache: 'no-store',
+    credentials: 'include',
+  });
+
+  return parseJson<ResearchReviewListResponse>(response);
+}
+
+export async function createResearchReview(
+  payload: CreateResearchReviewRequest,
+): Promise<ResearchReviewDetail> {
+  const response = await fetch(`${apiBaseUrl}/api/research/reviews`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<ResearchReviewDetail>(response);
+}
+
+export async function fetchResearchReview(
+  reviewId: string,
+): Promise<ResearchReviewDetail> {
+  const response = await fetch(`${apiBaseUrl}/api/research/reviews/${reviewId}`, {
+    cache: 'no-store',
+    credentials: 'include',
+  });
+
+  return parseJson<ResearchReviewDetail>(response);
+}
+
+export async function addResearchColumn(
+  reviewId: string,
+  payload: AddResearchColumnRequest,
+): Promise<ResearchReviewDetail> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/reviews/${reviewId}/columns`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return parseJson<ResearchReviewDetail>(response);
+}
+
+export async function runResearchExtractions(
+  reviewId: string,
+  payload: RunResearchExtractionsRequest = { limit: 50 },
+): Promise<RunResearchExtractionsResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/reviews/${reviewId}/extractions/run`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return parseJson<RunResearchExtractionsResponse>(response);
+}
+
+export async function createResearchEvidencePack(
+  reviewId: string,
+  payload: CreateResearchEvidencePackRequest,
+): Promise<ResearchEvidencePack> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/reviews/${reviewId}/evidence-pack`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return parseJson<ResearchEvidencePack>(response);
+}
+
+export async function fetchResearchEvidencePackDecisionInput(
+  packId: string,
+): Promise<ResearchDecisionIngestionPreview> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/evidence-packs/${packId}/decision-input`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson<ResearchDecisionIngestionPreview>(response);
 }

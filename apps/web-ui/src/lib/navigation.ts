@@ -3,6 +3,7 @@ export type NavIcon =
   | 'input-deck'
   | 'evidence-explorer'
   | 'evidence-review'
+  | 'research-tables'
   | 'evaluations';
 
 export interface NavItem {
@@ -42,6 +43,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'evidence-review',
     id: 'evidence-review',
     label: 'Evidence Review',
+  },
+  {
+    href: '/research/reviews',
+    icon: 'research-tables',
+    id: 'research-tables',
+    label: 'Research Tables',
   },
   {
     href: '/evaluations',
@@ -111,6 +118,23 @@ export function buildBreadcrumbs(
 
   if (normalizedPathname === '/evidence/review') {
     return [{ href: '/dashboard', label: 'Dashboard' }];
+  }
+
+  if (normalizedPathname === '/research/reviews') {
+    return [{ href: '/dashboard', label: 'Dashboard' }];
+  }
+
+  if (normalizedPathname.startsWith('/research/reviews/')) {
+    const reviewId =
+      readParam(params, 'id', 'reviewId') ??
+      normalizedPathname.split('/')[3] ??
+      'unknown';
+
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/research/reviews', label: 'Research Tables' },
+      { label: `#${reviewId}` },
+    ];
   }
 
   if (

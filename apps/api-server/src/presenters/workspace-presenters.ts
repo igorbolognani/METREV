@@ -1177,7 +1177,7 @@ export function buildEvidenceReviewWorkspace(input: {
   });
 }
 
-function toFacetBuckets(
+function _toFacetBuckets(
   items: ExternalEvidenceCatalogListResponse['items'],
   getValue: (
     item: ExternalEvidenceCatalogListResponse['items'][number],

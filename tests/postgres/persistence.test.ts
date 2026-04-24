@@ -7,7 +7,18 @@ import {
   type SessionActor,
   type SessionResolver,
 } from '@metrev/auth';
-import { disconnectPrismaClient, getPrismaClient } from '@metrev/database';
+import {
+  PrismaResearchRepository,
+  disconnectPrismaClient,
+  getPrismaClient,
+} from '@metrev/database';
+import {
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  getDefaultResearchColumns,
+  runDeterministicResearchExtraction,
+} from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
 
 const caseId = 'CASE-POSTGRES-SUITE';
@@ -19,6 +30,9 @@ const supplierNames = [
 ];
 const catalogSourceKey = 'postgres-suite-openalex-source';
 const legacyCatalogSourceKey = 'postgres-suite-curated-legacy-source';
+const researchSourceKey = 'postgres-suite-research-source';
+const researchQuery = 'postgres suite research fixture';
+const unmatchedResearchQuery = 'zzqvnomatchfixturetoken';
 
 function requiredDatabaseUrl(): string {
   const databaseUrl = process.env.DATABASE_URL?.trim();
@@ -85,6 +99,19 @@ describe('postgres-backed persistence flow', () => {
         sourceKey: legacyCatalogSourceKey,
       },
     });
+    await prisma.researchReview.deleteMany({
+      where: {
+        query: {
+          in: [researchQuery, unmatchedResearchQuery],
+        },
+      },
+    });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: researchSourceKey,
+      },
+    });
     await prisma.supplier.deleteMany({
       where: {
         normalizedName: {
@@ -108,6 +135,19 @@ describe('postgres-backed persistence flow', () => {
       where: {
         sourceType: 'CURATED_MANIFEST',
         sourceKey: legacyCatalogSourceKey,
+      },
+    });
+    await prisma.researchReview.deleteMany({
+      where: {
+        query: {
+          in: [researchQuery, unmatchedResearchQuery],
+        },
+      },
+    });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: researchSourceKey,
       },
     });
     await prisma.supplier.deleteMany({
@@ -464,6 +504,152 @@ describe('postgres-backed persistence flow', () => {
     } finally {
       await app.close();
     }
+  });
+
+  it('persists research reviews, extraction results, and decision previews through Prisma', async () => {
+    const prisma = getPrismaClient();
+    const repository = new PrismaResearchRepository(prisma);
+    const originalTitle = 'Postgres microbial fuel cell research fixture';
+
+    const sourceRecord = await prisma.externalSourceRecord.create({
+      data: {
+        sourceType: 'OPENALEX',
+        sourceKey: researchSourceKey,
+        title: originalTitle,
+        sourceCategory: 'scholarly_work',
+        sourceUrl: 'https://openalex.org/W-postgres-research-fixture',
+        doi: '10.1000/postgres-research-fixture',
+        publisher: 'METREV Regression Harness',
+        journal: 'METREV Postgres Research Fixtures',
+        authors: [{ name: 'Postgres Fixture Author' }],
+        accessStatus: 'UNKNOWN',
+        publishedAt: new Date('2025-01-02T00:00:00.000Z'),
+        abstractText:
+          'A dual chamber microbial fuel cell using carbon felt anodes and an air cathode reached power density of 850 mW/m2 with COD removal of 82% at pH 7 and 30 C. Membrane fouling and electrode cost remained scale-up challenges.',
+        rawPayload: {
+          cited_by_count: 4,
+          fixture: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.evidenceClaim.create({
+      data: {
+        sourceRecordId: sourceRecord.id,
+        claimType: 'METRIC',
+        content:
+          'Power density of 850 mW/m2 and COD removal of 82% were reported.',
+        extractedValue: '850',
+        unit: 'mW/m2',
+        confidence: 0.82,
+        extractionMethod: 'IMPORT_RULE',
+        extractorVersion: 'postgres-suite-v1',
+        sourceSnippet:
+          'Power density of 850 mW/m2 and COD removal of 82% were reported.',
+        sourceLocator: 'abstract',
+        pageNumber: null,
+        metadata: {
+          fixture: true,
+        },
+      },
+    });
+
+    const columns = getDefaultResearchColumns().filter((column) =>
+      ['paper', 'summary', 'performance_metrics'].includes(column.column_id),
+    );
+    const review = await repository.createResearchReview({
+      query: researchQuery,
+      limit: 1,
+      actorId: actor.userId,
+      columns,
+      extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    });
+
+    expect(review.papers).toHaveLength(1);
+    expect(review.columns.map((column) => column.column_id)).toEqual([
+      'paper',
+      'summary',
+      'performance_metrics',
+    ]);
+
+    const unmatchedReview = await repository.createResearchReview({
+      query: unmatchedResearchQuery,
+      limit: 1,
+      actorId: actor.userId,
+      columns,
+      extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    });
+
+    expect(unmatchedReview.papers).toHaveLength(0);
+    expect(unmatchedReview.paper_count).toBe(0);
+
+    const jobs = await repository.claimQueuedResearchExtractionJobs({
+      reviewId: review.review_id,
+      limit: 10,
+    });
+
+    for (const workItem of jobs) {
+      const result = runDeterministicResearchExtraction({
+        reviewId: review.review_id,
+        paper: workItem.paper,
+        column: workItem.column,
+        claims: workItem.claims,
+      });
+      await repository.saveResearchExtractionResult({
+        jobId: workItem.job.job_id,
+        result,
+      });
+    }
+
+    await prisma.externalSourceRecord.update({
+      where: { id: sourceRecord.id },
+      data: {
+        title:
+          'Mutated live source title that must not rewrite review snapshots',
+      },
+    });
+
+    const refreshed = await repository.getResearchReview(review.review_id);
+    expect(refreshed?.completed_result_count).toBe(3);
+    expect(refreshed?.papers[0]?.title).toBe(originalTitle);
+    expect(refreshed?.extraction_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          column_id: 'performance_metrics',
+          status: 'valid',
+        }),
+      ]),
+    );
+
+    if (!refreshed) {
+      throw new Error('research review was not persisted');
+    }
+
+    const pack = buildResearchEvidencePack({
+      packId: 'postgres-suite-research-pack',
+      review: refreshed,
+      status: 'draft',
+      now: '2026-04-24T12:00:00.000Z',
+    });
+    const decisionInput = buildDecisionIngestionPreview(pack);
+    const savedPack = await repository.createResearchEvidencePack({
+      pack,
+      decisionInput,
+    });
+    const fetchedDecisionInput =
+      await repository.getResearchEvidencePackDecisionInput(savedPack.pack_id);
+
+    expect(savedPack.evidence_items).toHaveLength(1);
+    expect(fetchedDecisionInput).toEqual(
+      expect.objectContaining({
+        pack_id: savedPack.pack_id,
+        measured_metric_candidates: expect.objectContaining({
+          power_density_w_m2: 0.85,
+          cod_removal_pct: 82,
+        }),
+      }),
+    );
   });
 
   it('normalizes legacy external evidence types in workspace responses', async () => {

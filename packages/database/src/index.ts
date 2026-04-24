@@ -42,6 +42,18 @@ import { getPrismaClient } from './prisma-client';
 import { deriveSupplierPersistencePlan } from './supplier-persistence';
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
+export {
+  createResearchRepository,
+  MemoryResearchRepository,
+  PrismaResearchRepository,
+  type AddResearchReviewColumnInput,
+  type ClaimResearchExtractionJobsInput,
+  type CreateResearchEvidencePackInput,
+  type CreateResearchReviewInput,
+  type ResearchExtractionWorkItem,
+  type ResearchRepository,
+  type SaveResearchExtractionResultInput,
+} from './research-repository';
 
 export interface EvaluationRepository {
   saveEvaluation(evaluation: EvaluationResponse): Promise<EvaluationResponse>;

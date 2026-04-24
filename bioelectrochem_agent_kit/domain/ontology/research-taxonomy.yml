@@ -1,0 +1,52 @@
+version: 0.1
+domain: bioelectrochemical-research-intelligence
+scope:
+  primary_technologies:
+    - MFC
+    - MEC
+    - MDC
+    - BES
+    - bioelectrochemical_sensor
+    - hybrid_system
+  source_role: literature_review_and_evidence_pack_generation
+  downstream_boundary: bioelectrochemical_decision_support
+
+review_column_groups:
+  identification:
+    description: Paper identity, citation metadata, and access posture.
+  synthesis:
+    description: Short summaries derived from source text only.
+  scientific_structure:
+    description: Objectives, methods, results, findings, variables, and sample descriptions.
+  application:
+    description: Technology class, application, scale, and deployment context.
+  limitations:
+    description: Challenges, research gaps, future work, and implementation limits.
+  bioelectrochemistry:
+    description: Reactor, materials, microorganisms, substrate, electrolyte, BOP, and instrumentation details.
+  metrics:
+    description: Electrochemical, treatment, product, and efficiency measurements with units and source spans.
+  decision:
+    description: TRL, scalability, cost signal, supplier relevance, implementation risk, and evidence confidence.
+
+technical_detail_sections:
+  - technology
+  - reactor
+  - anode
+  - cathode
+  - membrane_or_separator
+  - biology
+  - substrate
+  - operating_conditions
+  - electrochemical_metrics
+  - treatment_outputs
+  - energy_or_product_outputs
+  - limitations
+  - cost_scale_maturity
+  - evidence_trace
+
+rules:
+  - Research extraction must preserve source text spans for every non-null claim.
+  - Numerical values must retain original unit, normalized unit, source span, and normalization rule id when converted.
+  - Missing fields remain explicit and must not be filled through LLM inference.
+  - Evidence packs are decision-support inputs only after schema validation and analyst-visible confidence review.

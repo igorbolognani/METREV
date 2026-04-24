@@ -102,6 +102,27 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
           />
         </svg>
       );
+    case 'research-tables':
+      return (
+        <svg
+          aria-hidden="true"
+          className="app-sidebar__nav-icon"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M4 5h16v14H4z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M4 10h16M9 5v14M15 5v14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+        </svg>
+      );
     case 'evaluations':
       return (
         <svg

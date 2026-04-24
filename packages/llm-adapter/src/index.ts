@@ -285,12 +285,11 @@ function buildCaseNarrativeMessages(input: {
             .slice(0, 3)
             .map((recommendation) => ({
               recommendation_id: recommendation.recommendation_id,
-              title: recommendation.title,
+              title: recommendation.expected_benefit,
               rationale: recommendation.rationale,
             })),
         missing_data:
-          input.decisionOutput.assumptions_and_defaults_audit
-            .missing_critical_data,
+          input.decisionOutput.assumptions_and_defaults_audit.missing_data,
         defaults_used:
           input.decisionOutput.assumptions_and_defaults_audit.defaults_used,
       }),

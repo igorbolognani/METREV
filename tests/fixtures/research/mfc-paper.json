@@ -1,0 +1,18 @@
+{
+  "paper_id": "fixture-paper-mfc-001",
+  "source_document_id": "fixture-source-mfc-001",
+  "title": "Dual chamber microbial fuel cell wastewater treatment with carbon felt anodes",
+  "authors": [{ "name": "Fixture Author" }],
+  "year": 2025,
+  "doi": "10.1000/mfc-fixture",
+  "journal": "METREV Research Fixtures",
+  "publisher": "METREV Local Evidence Lab",
+  "source_type": "manual",
+  "source_url": "https://example.org/mfc-fixture",
+  "pdf_url": null,
+  "abstract_text": "A dual chamber microbial fuel cell using carbon felt anodes, Pt/C on carbon cloth cathodes, Nafion separator, and acetate wastewater reached power density of 850 mW/m2, current density of 1.2 A/m2, COD removal of 82%, coulombic efficiency of 46%, and voltage of 620 mV at pH 7 and 30 C. Membrane fouling, electrode cost, and scale-up maintenance remained challenges for pilot implementation.",
+  "citation_count": 12,
+  "metadata": {
+    "fixture": true
+  }
+}

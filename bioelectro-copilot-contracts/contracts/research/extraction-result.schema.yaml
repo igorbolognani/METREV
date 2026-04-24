@@ -1,0 +1,27 @@
+version: 0.1
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/research-taxonomy.yml
+extraction_result:
+  required_fields:
+    - review_id
+    - paper_id
+    - column_id
+    - status
+    - answer
+    - evidence_trace
+    - confidence
+    - missing_fields
+    - validation_errors
+    - normalized_payload
+    - extractor_version
+  optional_fields:
+    - result_id
+enums:
+  status:
+    allowed: [valid, invalid]
+  confidence:
+    allowed: [low, medium, high]
+rules:
+  - Valid extraction results with non-null answers require at least one evidence trace.
+  - Invalid extraction results must preserve validation_errors for audit.
+  - Missing reported values must be represented as null and listed in missing_fields.
+  - Normalized numerical metrics must preserve original values, original units, normalized values, normalized units, and rule ids.

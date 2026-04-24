@@ -22,6 +22,9 @@
       "@metrev/audit": ["./packages/audit/src/index.ts"],
       "@metrev/telemetry": ["./packages/telemetry/src/index.ts"],
       "@metrev/llm-adapter": ["./packages/llm-adapter/src/index.ts"],
+      "@metrev/research-intelligence": [
+        "./packages/research-intelligence/src/index.ts"
+      ],
       "@metrev/auth": ["./packages/auth/src/index.ts"],
       "@metrev/database": ["./packages/database/src/index.ts"],
       "@metrev/utils": ["./packages/utils/src/index.ts"]

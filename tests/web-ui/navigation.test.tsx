@@ -6,12 +6,13 @@ import {
 } from '../../apps/web-ui/src/lib/navigation';
 
 describe('navigation registry', () => {
-  it('registers the five global destinations in the expected order', () => {
+  it('registers the global destinations in the expected order', () => {
     expect(NAV_ITEMS.map((item) => item.id)).toEqual([
       'dashboard',
       'input-deck',
       'evidence-explorer',
       'evidence-review',
+      'research-tables',
       'evaluations',
     ]);
 
@@ -88,6 +89,18 @@ describe('navigation registry', () => {
 
     expect(buildBreadcrumbs('/evidence/review', {})).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
+    ]);
+
+    expect(buildBreadcrumbs('/research/reviews', {})).toEqual([
+      { href: '/dashboard', label: 'Dashboard' },
+    ]);
+
+    expect(
+      buildBreadcrumbs('/research/reviews/review-001', { id: 'review-001' }),
+    ).toEqual([
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/research/reviews', label: 'Research Tables' },
+      { label: '#review-001' },
     ]);
 
     expect(

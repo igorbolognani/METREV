@@ -1,0 +1,90 @@
+case_id: GOLDEN-005
+case_metadata:
+  created_by: system
+  created_at: '2026-04-24'
+  case_status: golden_reference
+
+business_context:
+  client_type: digestion_operator
+  primary_objective: biogas_synergy
+  decision_horizon: polishing_integration_review
+  priorities:
+    - methane_slip_control
+    - polishing_value
+    - phased_integration
+    - low_incremental_opex
+  hard_constraints:
+    - digester_uptime_must_not_be_compromised
+    - polishing_loop_must_fit_existing_gas_handling_plan
+  local_energy_cost_note: synergy value depends on avoiding new parasitic load peaks
+  capex_constraint_level: medium
+  opex_sensitivity_level: medium
+
+technology_context:
+  technology_family: microbial_electrochemical_technology
+  architecture_family: hybrid_digester_polishing_loop
+  membrane_presence: present
+  primary_target_output: polishing_and_synergy_signal
+
+feed_and_operation:
+  influent_type: digestate polishing sidestream
+  substrate_profile: partially stabilized digestate with sulfide excursions during upset recovery
+  influent_cod_mg_per_l: 1400
+  pH: 7.8
+  temperature_c: 34
+  conductivity_ms_per_cm: 14
+  hydraulic_retention_time_h: 14
+  flow_note: polishing loop coupled to digester recirculation windows
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: granular_carbon_composite
+    geometry_note: polishing loop favors robust packing over aggressive specific surface area targets
+    surface_note: acclimation remains slow after digester upset events
+  cathode_catalyst_support:
+    material_family: oxygen_reduction_cathode
+    mass_transport_limitation_risk: medium
+    product_side_note: synergy objective is tied to stable polishing more than peak power
+  membrane_or_separator:
+    family: cation_exchange_membrane
+    note: separator is present for polishing control but not yet optimized for sulfide excursions
+    fouling_risk: medium
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: stainless_bus_with_service_disconnects
+    sealing_note: polishing loop maintenance plan is defined but not stress-tested under upset frequency
+  balance_of_plant:
+    bop_summary: hybrid polishing loop with digestate recirculation, staged gas handling, and periodic nutrient trim
+    maintenance_note: integration must not compromise baseline digester uptime
+  sensors_and_analytics:
+    sensing_summary: moderate_visibility
+    diagnostics_summary: polishing performance is visible but methane-slip attribution remains indirect
+    data_quality: medium
+  operational_biology:
+    biology_summary: upset_sensitive
+    inoculum_note: digester-adjacent biomass recovers slowly after sulfide shocks
+    startup_note: acclimation lag remains material after process restarts
+    biofilm_maturity: unknown
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers:
+    - Veolia Water Technologies
+    - Evoqua Water Technologies
+    - BioVolt Process
+  excluded_suppliers: []
+  supplier_preference_notes: prefer integration partners that can support digester uptime and polishing serviceability
+
+normalization_status:
+  defaults_used: []
+  missing_data:
+    - methane_slip_mass_balance
+    - polishing_energy_baseline
+    - sulfide_upset_response
+  assumptions:
+    - polishing value remains subordinate to digester stability during early integration
+  confidence_notes:
+    - synergy ranking remains sensitive to biofilm recovery and methane-slip attribution quality
+  recommended_next_measurements:
+    - methane slip mass balance closure
+    - polishing loop energy baseline
+    - sulfide upset recovery tracking

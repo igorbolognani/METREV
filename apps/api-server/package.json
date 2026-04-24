@@ -18,6 +18,7 @@
     "@metrev/domain-contracts": "workspace:*",
     "@metrev/electrochem-models": "workspace:*",
     "@metrev/llm-adapter": "workspace:*",
+    "@metrev/research-intelligence": "workspace:*",
     "@metrev/rule-engine": "workspace:*",
     "@metrev/telemetry": "workspace:*",
     "fastify": "^5.2.1"

@@ -1,0 +1,91 @@
+case_id: GOLDEN-003
+case_metadata:
+  created_by: system
+  created_at: '2026-04-24'
+  case_status: golden_reference
+
+business_context:
+  client_type: food_and_beverage_operator
+  primary_objective: hydrogen_recovery
+  decision_horizon: pilot_expansion_review
+  priorities:
+    - recover_hydrogen_stream
+    - reduce_aeration_load
+    - phased_deployment
+    - product_quality_defense
+  hard_constraints:
+    - food_safety_boundary_must_remain_clear
+    - applied_voltage_window_must_remain_operator_safe
+  local_energy_cost_note: on-site electricity offsets matter if hydrogen purity can be defended
+  capex_constraint_level: medium
+  opex_sensitivity_level: medium
+
+technology_context:
+  technology_family: microbial_electrolysis_cell
+  architecture_family: dual_chamber
+  membrane_presence: present
+  primary_target_output: hydrogen_stream
+
+feed_and_operation:
+  influent_type: brewery sidestream concentrate
+  substrate_profile: acetate-rich fermentation sidestream with yeast carryover risk
+  influent_cod_mg_per_l: 3200
+  pH: 6.9
+  temperature_c: 31
+  conductivity_ms_per_cm: 11
+  hydraulic_retention_time_h: 10
+  flow_note: pilot recirculation loop with partial gas handling instrumentation
+
+stack_blocks:
+  anode_biofilm_support:
+    material_family: carbon_felt
+    geometry_note: known startup pathway with moderate acclimation time
+    surface_note: carbon felt baseline retained for comparability
+  cathode_catalyst_support:
+    material_family: hydrogen_evolution_cathode
+    reaction_target: HER
+    mass_transport_limitation_risk: high
+    product_side_note: hydrogen purity and cathode salt management remain coupled concerns
+  membrane_or_separator:
+    family: AEM
+    note: alkaline stability check is incomplete under the planned operating window
+    fouling_risk: medium
+  electrical_interconnect_and_sealing:
+    current_collection_strategy: nickel_mesh_current_collection
+    sealing_note: gas-side compression detail is only partly standardized
+  balance_of_plant:
+    bop_summary: recirculation plus controlled applied voltage with partial gas handling automation
+    maintenance_note: gas composition verification still depends on manual lab checks
+  sensors_and_analytics:
+    sensing_summary: low_visibility
+    diagnostics_summary: partial gas flow logging without continuous purity tracking
+    data_quality: low
+  operational_biology:
+    biology_summary: managed
+    inoculum_note: brewery sludge blend has already been acclimated once
+    startup_note: startup is manageable if applied voltage stays inside the tested window
+    biofilm_maturity: managed
+
+supplier_context:
+  current_suppliers: []
+  preferred_suppliers:
+    - Giner
+    - DuPont Water Solutions
+    - De Nora
+  excluded_suppliers: []
+  supplier_preference_notes: prefer suppliers with operator-safe HER packages and membrane support
+
+normalization_status:
+  defaults_used: []
+  missing_data:
+    - hydrogen_purity_validation
+    - gas_composition_logging
+    - applied_voltage_operating_window
+  assumptions:
+    - brewery sidestream variability remains within the current pretreatment envelope
+  confidence_notes:
+    - gas-side performance claims stay weakly supported until purity and applied voltage are logged continuously
+  recommended_next_measurements:
+    - continuous hydrogen purity logging
+    - cathode salt scaling inspection protocol
+    - applied voltage operating window confirmation

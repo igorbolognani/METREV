@@ -7,6 +7,13 @@ import {
   fetchEvidenceExplorerWorkspace,
   fetchEvaluationCsvExport,
   fetchEvaluationList,
+  addResearchColumn,
+  createResearchEvidencePack,
+  createResearchReview,
+  fetchResearchEvidencePackDecisionInput,
+  fetchResearchReview,
+  fetchResearchReviews,
+  runResearchExtractions,
 } from '../../apps/web-ui/src/lib/api';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -301,6 +308,247 @@ describe('web API client helpers', () => {
 
     await expect(fetchEvaluationCsvExport('eval-001')).rejects.toThrow(
       'CSV export failed',
+    );
+  });
+
+  it('calls research review API routes with schema-backed payloads', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await fetchResearchReviews();
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          review_id: 'review-001',
+          title: 'Review',
+          query: 'microbial fuel cell',
+          status: 'active',
+          version: 1,
+          paper_count: 0,
+          column_count: 0,
+          completed_result_count: 0,
+          papers: [],
+          columns: [],
+          extraction_jobs: [],
+          extraction_results: [],
+          evidence_packs: [],
+          created_at: '2026-04-24T12:00:00.000Z',
+          updated_at: '2026-04-24T12:00:00.000Z',
+        }),
+        {
+          status: 201,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await createResearchReview({
+      query: 'microbial fuel cell',
+      limit: 10,
+    });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews',
+      expect.objectContaining({
+        body: JSON.stringify({
+          query: 'microbial fuel cell',
+          limit: 10,
+        }),
+        method: 'POST',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          review_id: 'review-001',
+          title: 'Review',
+          query: 'microbial fuel cell',
+          status: 'active',
+          version: 1,
+          paper_count: 0,
+          column_count: 0,
+          completed_result_count: 0,
+          papers: [],
+          columns: [],
+          extraction_jobs: [],
+          extraction_results: [],
+          evidence_packs: [],
+          created_at: '2026-04-24T12:00:00.000Z',
+          updated_at: '2026-04-24T12:00:00.000Z',
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await fetchResearchReview('review-001');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews/review-001',
+      expect.objectContaining({
+        cache: 'no-store',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          review_id: 'review-001',
+          title: 'Review',
+          query: 'microbial fuel cell',
+          status: 'active',
+          version: 2,
+          paper_count: 0,
+          column_count: 1,
+          completed_result_count: 0,
+          papers: [],
+          columns: [],
+          extraction_jobs: [],
+          extraction_results: [],
+          evidence_packs: [],
+          created_at: '2026-04-24T12:00:00.000Z',
+          updated_at: '2026-04-24T12:00:00.000Z',
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await addResearchColumn('review-001', {
+      column_id: 'research_gaps',
+      name: 'Research Gaps',
+      group: 'limitations',
+      type: 'llm_extracted',
+      answer_structure: 'specified',
+      instructions: 'Extract stated gaps.',
+      output_schema_key: 'generic_list',
+      output_schema: {},
+      visible: true,
+      position: 0,
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews/review-001/columns',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          review_id: 'review-001',
+          attempted: 0,
+          completed: 0,
+          failed: 0,
+          results: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await runResearchExtractions('review-001', { limit: 25 });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews/review-001/extractions/run',
+      expect.objectContaining({
+        body: JSON.stringify({ limit: 25 }),
+        method: 'POST',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          pack_id: 'pack-001',
+          review_id: 'review-001',
+          title: 'Pack',
+          status: 'draft',
+          source_result_ids: [],
+          evidence_items: [],
+          metrics: [],
+          missing_fields: [],
+          confidence: 'low',
+          payload: {},
+          created_at: '2026-04-24T12:00:00.000Z',
+          updated_at: '2026-04-24T12:00:00.000Z',
+        }),
+        {
+          status: 201,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await createResearchEvidencePack('review-001', { status: 'draft' });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/reviews/review-001/evidence-pack',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          pack_id: 'pack-001',
+          review_id: 'review-001',
+          evidence_records: [],
+          measured_metric_candidates: {},
+          missing_data: [],
+          assumptions: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await fetchResearchEvidencePackDecisionInput('pack-001');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/evidence-packs/pack-001/decision-input',
+      expect.objectContaining({
+        cache: 'no-store',
+      }),
     );
   });
 });
