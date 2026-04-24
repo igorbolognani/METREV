@@ -2,7 +2,7 @@
 
 ## Summary
 
-Use 014 as the canonical execution pack for the current METREV local-first product phase. The repository already contains the main contract, presenter, route, workspace, export, and idempotency slice. This plan consolidates that slice into the durable workflow, expands validation across the dedicated surfaces, and keeps Playwright plus final local manual validation as the last follow-through step.
+Use 014 as the canonical execution pack for the current METREV local-first product phase. The repository now contains the main contract, presenter, route, workspace, export, idempotency, focused regression, and Playwright local E2E slices. This plan records that shipped posture, keeps the backend-owned workspace architecture explicit, and limits remaining follow-through to optional manual browser print or export checks or future polish outside this pack.
 
 ## Source-of-truth files
 
@@ -29,7 +29,7 @@ Use 014 as the canonical execution pack for the current METREV local-first produ
 
 - `spec.md`: define the local-first professional workspace target, guardrails, and acceptance criteria
 - `plan.md`: map the execution order across contracts, backend, UI, exports, and validation
-- `tasks.md`: record completed versus remaining workstreams, especially Playwright follow-through
+- `tasks.md`: record the shipped workstreams, the optional manual smoke residue, and any explicit future-slice deferrals
 - `quickstart.md`: document route topology, wireframes, local validation flow, and print/export checks
 - `research.md`: capture the architectural decisions behind backend-owned view models, route separation, and report-template alignment
 - `contracts/`: not required right now because the canonical owners remain the runtime contract package and the report templates
@@ -58,22 +58,22 @@ The current slice adds explicit workspace response schemas, printable report and
 3. Route the web UI through dedicated operational surfaces backed by those payloads and remove overlapping decision logic from the browser.
 4. Keep local exports, report sections, defaults, missing data, evidence posture, and runtime versions explicit across every surface.
 5. Extend runtime and SSR validation so dashboard, submitting, evaluation, history, comparison, evidence review, and report routes are covered by automated checks.
-6. Follow through with Playwright local E2E and final manual print/export validation once the runtime and SSR layer are stable.
+6. Keep Playwright local E2E as part of the validated closure for this pack and treat any additional browser print/export smoke as optional follow-through rather than a blocked acceptance item.
 
 ## Validation strategy
 
 - unit: presenter mappers, report/export serialization, workspace view composition, and deterministic progress rendering
 - integration: Fastify route coverage for workspace/export endpoints, idempotency, and version traceability
-- e2e/manual: seeded local login, dashboard to intake to result to history/compare/evidence/review/report/export flow, plus duplicate-submit check by idempotency key
+- e2e/manual: seeded local login, dashboard to intake to result to history/compare/evidence/review/report/export flow, duplicate-submit check by idempotency key, plus optional browser print/export smoke when needed
 - docs/contracts: keep 014 aligned with the implemented route topology, report structure, and local-only assumptions
 
 ## Critique summary
 
-The current slice can look "done" because the new routes and screens already exist, but that would be a false finish if 014 is not the canonical pack and if the new surfaces are not backed by stronger validation. The real bar is not just route count or page polish; it is backend-owned decision framing, export/report trustworthiness, and repeatable local validation.
+The main risk is reopening the pack for indefinite polish after the architectural and validation goals have already landed. The real bar is backend-owned decision framing, export/report trustworthiness, and repeatable local validation; further visual tuning belongs in a later slice unless it exposes a real regression in those guarantees.
 
 ## Refined final plan
 
-Treat 014 as the maintained execution source. Preserve the additive backend workspace architecture already landed, complete the validation net around the new routes, and only then add the heavier Playwright/manual follow-through. This keeps momentum high without reopening the core architectural decision to move product summaries out of the frontend.
+Treat 014 as the maintained execution source for the shipped local-first product phase. Preserve the additive backend workspace architecture already landed, keep the validation net green around the dedicated routes, and move any later visual-only follow-through into a future slice instead of leaving this pack half-open.
 
 ## Rollback / safety
 

@@ -35,10 +35,10 @@ Extend the existing METREV runtime spine into a full big-data-ready workspace by
 
 ## Current Status
 
-- Stages 1, 2, and 4 are materially implemented in the runtime and covered by focused validation.
+- Stages 1 through 8 are complete and recorded in the durable feature pack artifacts.
 - Stage 3 bootstrap execution completed against the live Postgres database using the committed query plan and curated manifest.
-- Stage 5 evidence review now uses backend-owned status, query, source type, page, and page size controls.
-- Remaining work is concentrated in hardened contract drift reconciliation, broader route payload expansion, remaining route surfaces, and full final validation.
+- Stage 5 evidence review and the evaluations registry both use backend-owned filtering, sorting, and pagination semantics.
+- Stage 8 final validation is complete across contracts, runtime, database, build, bootstrap, and end-to-end local workspace flows.
 
 ## Bootstrap Outcome
 
@@ -47,15 +47,22 @@ Extend the existing METREV runtime spine into a full big-data-ready workspace by
 - Total records stored: 757
 - Total claims stored during bootstrap: 2,473
 - Total supplier documents stored during bootstrap: 5
-- Final persisted inventory: 682 source records, 682 catalog items, 2,094 claims, 5 supplier documents, 14 suppliers, 5 products, 33 recorded runs
+- Final persisted inventory: 686 source records, 698 catalog items, 2,128 claims, 5 supplier documents, 14 suppliers, 5 products, 64 recorded runs
 
 ## Focused Validation Completed
 
 - `pnpm exec vitest run tests/runtime/external-ingestion-shared.test.ts`
 - `pnpm exec vitest run tests/postgres/persistence.test.ts --config vitest.postgres.config.ts`
+- `pnpm exec vitest run tests/runtime/api.test.ts`
 - `pnpm exec vitest run tests/web-ui/external-evidence-review-board.test.tsx`
+- `pnpm exec vitest run tests/web-ui/evaluations-list-view.test.tsx`
 - bounded bootstrap dry-run via `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
 - full bootstrap via `pnpm run db:bootstrap:bigdata`
+- `pnpm run test:python`
+- `pnpm run test:js`
+- `pnpm run test:db`
+- `pnpm run build`
+- `pnpm run test:e2e`
 
 ## Stage Summary
 

@@ -1,5 +1,5 @@
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, isAbsolute, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
@@ -19,6 +19,46 @@ loadWorkspaceEnv(import.meta.url);
 
 type CuratedManifestRecord = Record<string, unknown>;
 
+export function loadCuratedManifestRecords(
+  manifestPath: string,
+  importMetaUrl: string,
+) {
+  const manifest = readJsonFile(manifestPath, importMetaUrl);
+  const resolvedManifestPath = isAbsolute(manifestPath)
+    ? manifestPath
+    : resolve(dirname(fileURLToPath(importMetaUrl)), manifestPath);
+  const manifestFileUrl = pathToFileURL(resolvedManifestPath).href;
+  const directRecords: CuratedManifestRecord[] = Array.isArray(
+    manifest?.records,
+  )
+    ? manifest.records
+    : [];
+  const shardPaths: string[] = Array.isArray(manifest?.shards)
+    ? manifest.shards.filter(
+        (value: unknown): value is string =>
+          typeof value === 'string' && value.trim().length > 0,
+      )
+    : [];
+  const shardRecords = shardPaths.flatMap((shardPath) => {
+    const shard = readJsonFile(shardPath, manifestFileUrl);
+
+    if (Array.isArray(shard)) {
+      return shard as CuratedManifestRecord[];
+    }
+
+    return Array.isArray(shard?.records)
+      ? (shard.records as CuratedManifestRecord[])
+      : [];
+  });
+
+  return {
+    manifest,
+    records: [...directRecords, ...shardRecords],
+    shardCount: shardPaths.length,
+    resolvedManifestPath,
+  };
+}
+
 export async function runCuratedManifestIngestion(overrides = {}) {
   const options = {
     ...parseScriptOptions(),
@@ -31,10 +71,10 @@ export async function runCuratedManifestIngestion(overrides = {}) {
     '../data/curated-bigdata-manifest.json',
   );
   const dryRun = optionFlag(options, 'dryRun', false);
-  const manifest = readJsonFile(manifestPath, import.meta.url);
-  const records: CuratedManifestRecord[] = Array.isArray(manifest?.records)
-    ? manifest.records
-    : [];
+  const { manifest, records, shardCount } = loadCuratedManifestRecords(
+    manifestPath,
+    import.meta.url,
+  );
   const startedAt = new Date();
   const entries = deduplicateEntries(
     records
@@ -53,6 +93,7 @@ export async function runCuratedManifestIngestion(overrides = {}) {
     const output = {
       sourceType: 'CURATED_MANIFEST',
       manifestPath,
+      shardCount,
       dryRun: true,
       ...summary,
     };
@@ -72,6 +113,7 @@ export async function runCuratedManifestIngestion(overrides = {}) {
       summary: {
         manifest_path: manifestPath,
         manifest_version: manifest?.version ?? null,
+        shard_count: shardCount,
       },
       startedAt,
     },
@@ -90,6 +132,7 @@ export async function runCuratedManifestIngestion(overrides = {}) {
         summary: {
           manifest_path: manifestPath,
           manifest_version: manifest?.version ?? null,
+          shard_count: shardCount,
           claims_stored: persisted.claimsStored,
           supplier_documents_stored: persisted.supplierDocumentsStored,
         },
@@ -101,6 +144,7 @@ export async function runCuratedManifestIngestion(overrides = {}) {
       runId: run.id,
       sourceType: 'CURATED_MANIFEST',
       manifestPath,
+      shardCount,
       recordsFetched: records.length,
       ...persisted,
     };

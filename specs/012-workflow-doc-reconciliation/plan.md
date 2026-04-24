@@ -1,10 +1,10 @@
 # Implementation Plan — Workflow And Documentation Reconciliation
 
-Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file remains the detailed plan for the doc and tooling reconciliation sub-slice.
+Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file now records the landed doc and tooling reconciliation sub-slice that closed under the 015 umbrella.
 
 ## Summary
 
-Reconcile the root documentation and workflow surfaces with the shipped runtime by making authority explicit, demoting stale or future-facing references, and documenting local tooling defaults versus optional machine-local integrations.
+Record the root documentation and workflow surfaces as reconciled with the shipped runtime by making authority explicit, demoting stale or future-facing references, and documenting local tooling defaults versus optional machine-local integrations.
 
 ## Source-of-truth files
 
@@ -56,7 +56,7 @@ No runtime or persistence boundary change is intended. This slice is documentati
 ## Validation strategy
 
 - unit: no dedicated unit test required beyond doc-facing runtime authority tests
-- integration: run `pnpm run test`, `pnpm run lint`, and `pnpm run build`
+- integration: run `pnpm run validate:fast`
 - e2e/manual: inspect the updated root docs and confirm the local-view workflow remains executable from the documented commands
 - docs/contracts: ensure the new ADR, feature packs, and README agree on the same active surfaces
 

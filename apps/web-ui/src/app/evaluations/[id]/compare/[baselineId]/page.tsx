@@ -1,4 +1,4 @@
-import { EvaluationComparisonView } from '@/components/evaluation-comparison-view';
+import { EvaluationComparisonView } from '@/components/evaluation/evaluation-comparison-view';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function EvaluationComparisonPage({

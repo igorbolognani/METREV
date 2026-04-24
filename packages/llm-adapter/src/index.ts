@@ -1,12 +1,32 @@
 import type {
-  DecisionOutput,
-  NarrativeMetadata,
-  NormalizedCaseInput,
+    DecisionOutput,
+    NarrativeMetadata,
+    NormalizedCaseInput,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
   narrative: string | null;
   narrativeMetadata: NarrativeMetadata;
+}
+
+const supportedNarrativeModes = new Set(['disabled', 'stub']);
+
+function resolveNarrativeMode() {
+  const requestedMode = process.env.METREV_LLM_MODE?.trim() || 'stub';
+
+  if (supportedNarrativeModes.has(requestedMode)) {
+    return {
+      requestedMode,
+      runtimeMode: requestedMode,
+      unsupportedMode: null,
+    } as const;
+  }
+
+  return {
+    requestedMode,
+    runtimeMode: 'stub',
+    unsupportedMode: requestedMode,
+  } as const;
 }
 
 function buildStubNarrative(input: {
@@ -36,10 +56,10 @@ export async function generateNarrative(input: {
   decisionOutput: DecisionOutput;
   normalizedCase: NormalizedCaseInput;
 }): Promise<NarrativeResult> {
-  const mode = process.env.METREV_LLM_MODE ?? 'stub';
+  const { runtimeMode, unsupportedMode } = resolveNarrativeMode();
   const configuredModel = process.env.METREV_LLM_MODEL ?? null;
 
-  if (mode === 'disabled') {
+  if (runtimeMode === 'disabled') {
     return {
       narrative: null,
       narrativeMetadata: {
@@ -54,7 +74,7 @@ export async function generateNarrative(input: {
     };
   }
 
-  if (mode === 'stub') {
+  if (!unsupportedMode) {
     return {
       narrative: buildStubNarrative(input),
       narrativeMetadata: {
@@ -72,14 +92,13 @@ export async function generateNarrative(input: {
   return {
     narrative: buildStubNarrative(input),
     narrativeMetadata: {
-      mode: mode === 'openai' ? 'openai' : 'ollama',
-      provider: mode,
-      model: configuredModel,
+      mode: 'stub',
+      provider: 'internal',
+      model: 'deterministic-summary',
       status: 'fallback',
       fallback_used: true,
       prompt_version: 'stub-v1',
-      error_message:
-        'Provider-backed narrative generation is not enabled in this runtime build; deterministic fallback used instead.',
+      error_message: `Unsupported METREV_LLM_MODE "${unsupportedMode}" requested; this runtime build supports only "disabled" and "stub", so the deterministic stub narrative was used instead.`,
     },
   };
 }

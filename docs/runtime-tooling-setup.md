@@ -40,7 +40,7 @@ For the broader active-versus-reference classification across the repository, us
 - `packages/database/prisma/schema.prisma` keeps a provider-only `datasource db` block and a repository-owned `generator client` configuration that emits the TypeScript client into `packages/database/generated/prisma/`.
 - `packages/database/src/prisma-client.ts` remains the repository-owned runtime entrypoint for the generated Prisma client plus the `PrismaPg` adapter-backed connection path.
 - `packages/database/scripts/run-prisma-with-direct-url.mjs` remains the required wrapper for migration commands so hosted PostgreSQL deployments can prefer `DIRECT_URL` safely while runtime code continues to use `DATABASE_URL` semantics.
-- If stale docs or editor diagnostics imply the older URL-in-schema posture or suggest bypassing the wrapper/config split, prefer the command-backed repository posture validated by `pnpm prisma:generate`, `pnpm run db:migrate:deploy`, and the current test/build flow.
+- If stale docs or editor diagnostics imply the older URL-in-schema posture or suggest bypassing the wrapper/config split, prefer the command-backed repository posture validated by `pnpm prisma:generate`, `pnpm run db:migrate:deploy`, `pnpm run validate:fast`, and `pnpm run validate:full` when local Docker-backed acceptance is in scope.
 
 ### Context7
 
@@ -74,6 +74,9 @@ For the broader active-versus-reference classification across the repository, us
 ## Validation rule
 
 - A tool is not considered integrated until its repo config, setup steps, and success criteria are all documented.
+- `pnpm run validate:fast` is the promoted fast repository matrix and the current CI contract.
+- `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed and resolve the active published Postgres port before running.
+- `pnpm run validate:full` combines the promoted fast and local matrices.
 
 ## VS Code verification
 

@@ -1,4 +1,4 @@
-version: 0.3
+version: 0.4
 
 evidence_registry:
   source_document:
@@ -65,6 +65,36 @@ evidence_registry:
       - reviews
       - ontology_mappings
 
+  claim_review:
+    required_fields:
+      - id
+      - status
+    optional_fields:
+      - analyst_id
+      - analyst_role
+      - analyst_note
+      - reviewed_at
+
+  ontology_mapping:
+    required_fields:
+      - id
+      - ontology_path
+      - mapping_confidence
+      - mapped_by
+    optional_fields:
+      - note
+
+  supplier_product:
+    required_fields:
+      - id
+      - supplier_id
+      - product_key
+      - display_name
+    optional_fields:
+      - category
+      - trl
+      - metadata
+
   supplier_document:
     required_fields:
       - id
@@ -102,6 +132,65 @@ evidence_registry:
     optional_fields:
       - evaluation_id
       - case_id
+
+api_payloads:
+  external_evidence_catalog_summary:
+    required_fields:
+      - id
+      - title
+      - summary
+      - evidence_type
+      - strength_level
+      - review_status
+      - source_state
+      - source_type
+      - provenance_note
+      - applicability_scope
+      - extracted_claims
+      - tags
+      - created_at
+      - updated_at
+    optional_fields:
+      - source_category
+      - source_url
+      - doi
+      - publisher
+      - published_at
+      - claim_count
+      - reviewed_claim_count
+
+  external_evidence_catalog_detail:
+    inherited_from:
+      - external_evidence_catalog_summary
+    required_fields:
+      - source_document
+      - claims
+      - supplier_documents
+      - payload
+      - raw_payload
+    optional_fields:
+      - abstract_text
+
+  external_evidence_catalog_list_response:
+    required_fields:
+      - items
+      - summary
+
+  external_evidence_bulk_review_request:
+    required_fields:
+      - ids
+      - action
+    optional_fields:
+      - note
+
+  external_evidence_bulk_review_response:
+    required_fields:
+      - action
+      - attempted_ids
+      - succeeded_ids
+      - failed
+    optional_fields:
+      - note
 
 enums:
   evidence_type:
@@ -186,6 +275,9 @@ rules:
   - Supplier claims must never be presented as validated fact without corroboration and explicit review status.
   - Catalog items remain intake-gated until review_status is accepted; parsed or normalized records alone are not intake-ready.
   - Claim extraction must keep source_snippet, extraction_method, and extractor_version explicit so downstream confidence can be challenged.
+  - Claim reviews must preserve analyst identity, role, note, and review timestamp when human acceptance posture changes.
   - Ontology mappings remain advisory unless their mapping confidence and mapped_by provenance are preserved.
+  - Supplier product records must stay linked to supplier identity and must not bypass source-document provenance when shown in registry or report flows.
   - Evaluation lineage must preserve which source documents and claims were used, not only the flattened typed evidence snapshot.
   - Workspace and export snapshots must keep immutable payloads for replay and audit instead of silently rebuilding historical state from mutable live records.
+  - External evidence list, detail, and bulk-review API payloads remain part of the validation-facing contract boundary when they carry review posture or provenance semantics.

@@ -1,4 +1,4 @@
-import { CaseHistoryView } from '@/components/case-history-view';
+import { CaseHistoryView } from '@/components/case-history/case-history-view';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function CaseHistoryPage({

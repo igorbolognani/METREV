@@ -1,4 +1,4 @@
-import { EvaluationResultView } from '@/components/evaluation-result-view';
+import { EvaluationResultView } from '@/components/evaluation/evaluation-result-view';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function EvaluationPage({

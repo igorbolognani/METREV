@@ -45,9 +45,9 @@ The repository already runs a real product path, but the authority model is stil
 
 ## Acceptance criteria
 
-- [ ] The repository contains an accepted ADR and maintained feature pack documenting the authority split and tooling invariants.
-- [ ] Runtime tests fail if the executed contract output sections or runtime-loaded canonical file list drift.
-- [ ] The Prisma posture is documented and validated through repo commands rather than editor assumptions.
+- [x] The repository contains an accepted ADR and maintained feature pack documenting the authority split and tooling invariants.
+- [x] Runtime tests fail if the executed contract output sections or runtime-loaded canonical file list drift.
+- [x] The Prisma posture is documented and validated through repo commands rather than editor assumptions.
 
 ## Clarifications and open questions
 

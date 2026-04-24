@@ -1,4 +1,4 @@
-import { PrintableReportView } from '@/components/printable-report-view';
+import { PrintableReportView } from '@/components/evaluation/printable-report-view';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function EvaluationReportPage({

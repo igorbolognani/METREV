@@ -93,14 +93,27 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm prisma:generate`
 - `pnpm run db:migrate:deploy`
 - `pnpm run db:seed`
-- `pnpm run test:db`
 - `pnpm run lint`
 - `pnpm run test`
+- `pnpm run test:fast`
+- `pnpm run test:db`
+- `pnpm run test:e2e`
 - `pnpm run build`
+- `pnpm run validate:fast`
+- `pnpm run validate:local`
+- `pnpm run validate:full`
 - `pnpm run dev:api`
 - `pnpm run dev:web`
 - `pnpm run dev`
 - `docker compose up --build`
+
+## Validation matrices
+
+- `pnpm run test` is the backward-compatible alias for `pnpm run test:fast` and only covers the fast contract plus JS matrix.
+- `pnpm run validate:fast` is the promoted fast repository matrix. It runs lint, `test:fast`, and build, and it is the same contract used by CI.
+- `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack.
+- `pnpm run validate:full` combines the promoted fast matrix and the promoted local acceptance matrix.
+- `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
 
 ## Supabase-hosted Postgres
 
@@ -183,7 +196,7 @@ This workspace can be published safely after local validation.
 3. Add the remote with `git remote add origin https://github.com/igorbolognani/METREV.git`.
 4. Fetch the remote with `git fetch origin main`.
 5. Merge the remote README-only history with `git merge origin/main --allow-unrelated-histories`.
-6. Run `pnpm run lint`, `pnpm run test`, `pnpm run build`, and `docker compose config`.
+6. Run `pnpm run validate:fast` and `docker compose config`. If you also want the Docker-backed local acceptance path before the first push, run `pnpm run validate:full`.
 7. Stage the tree with `git add -A` and verify that `.env` and `apps/web-ui/.env.local` are not staged.
 8. Commit and push with `git commit -m "Initial import"` and `git push -u origin main`.
 
@@ -191,6 +204,19 @@ This workspace can be published safely after local validation.
 
 - Completed and validated: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards on the dashboard, evaluation, and new-case pages, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, an analyst workbench with summary, evidence, modeling, audit, and comparison modes, PostgreSQL-backed persistence tests, and local Jaeger trace visibility for sign-in, evaluation, persistence, and history flows.
 - Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, and deeper relational expansion of all materials, benchmark, extraction, and normalization entities that still live partly in structured JSON columns.
+
+## 017 Validation Snapshot
+
+- PASS `pnpm run validate:fast`
+- PASS `pnpm run validate:local`
+- PASS `pnpm run test:python`
+- PASS `pnpm run test:js`
+- PASS `pnpm run test:db`
+- PASS `pnpm run build`
+- PASS `pnpm run test:e2e`
+- PASS `pnpm run db:bootstrap:bigdata`
+- Latest big-data bootstrap inventory: 686 source records, 698 catalog items, 2,128 claims, 5 supplier documents, 14 suppliers, 5 products, 64 ingestion runs
+- Playwright E2E bootstrap now resolves the active local-view Docker Postgres port before seeding so the running workspace and the seeded test fixture stay aligned even when the stack was started earlier with a different published port.
 
 ## Analyst Flow
 

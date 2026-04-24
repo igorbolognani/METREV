@@ -9,6 +9,7 @@ import {
   optionValue,
   parseScriptOptions,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
+import { loadCuratedManifestRecords } from '../../packages/database/scripts/ingest-curated-manifest';
 
 describe('external ingestion shared helpers', () => {
   it('parses CLI options with values and flags', () => {
@@ -128,6 +129,29 @@ describe('external ingestion shared helpers', () => {
     );
 
     expect(entry?.catalogItem.evidenceType).toBe('literature_evidence');
+  });
+
+  it('loads sharded curated manifests through the committed snapshot index', () => {
+    const manifest = loadCuratedManifestRecords(
+      '../../packages/database/data/curated-bigdata-manifest.json',
+      import.meta.url,
+    );
+
+    expect(manifest.shardCount).toBe(3);
+    expect(manifest.records).toHaveLength(12);
+    expect(manifest.records[0]).toMatchObject({
+      sourceCategory: 'supplier_profile',
+    });
+    expect(
+      manifest.records.some(
+        (record) => record.sourceCategory === 'market_snapshot',
+      ),
+    ).toBe(true);
+    expect(
+      manifest.records.some(
+        (record) => record.sourceCategory === 'analyst_brief',
+      ),
+    ).toBe(true);
   });
 
   it('extracts heuristic claims from abstract sentences', () => {

@@ -1,10 +1,24 @@
-version: 0.1
+version: 0.2
 supplier_record:
   supplier_id: SUP-000
   supplier_name: Example Supplier
   category: cathode_material
   region: EU
   offerings: []
+  products:
+    - id: PROD-000
+      supplier_id: SUP-000
+      product_key: example_cathode_module
+      display_name: Example Cathode Module
+      category: cathode_material
+      trl: 7
+      metadata: {}
+  source_documents:
+    - id: DOC-000
+      source_document_id: SRC-000
+      document_type: datasheet
+      product_id: PROD-000
+      note: Primary technical reference for the example product.
   evidence_links: []
   quality_notes: []
   normalization_notes: []

@@ -13,7 +13,7 @@
 ## Workstream 3 — Web workspace surfaces
 
 - [x] T5 Migrate dashboard, input deck, submitting, evaluation workspace, history, comparison, evidence review, and printable report surfaces to workspace responses.
-- [ ] T6 Finish any remaining visual refinements and chart-wrapper follow-through that improves quality without reintroducing domain heuristics into the client.
+- [x] T6 Close the remaining chart-wrapper and visual-polish residue for this pack by confirming it is no longer blocking the shipped local-first product phase; keep any further visual-only tuning in a future slice.
 
 ## Workstream 4 — Validation and follow-through
 
@@ -29,7 +29,7 @@
 ## Parallelizable
 
 - [x] P1 Playwright setup and local E2E authoring can proceed after the current route contracts and SSR tests are stable.
-- [ ] P2 Recharts wrappers and later visual polish can proceed after the contract-backed route topology is locked.
+- [x] P2 Recharts wrappers and later visual polish are explicitly deferred to future slices now that the contract-backed route topology and validation posture for 014 are closed.
 
 ## Validation gates
 

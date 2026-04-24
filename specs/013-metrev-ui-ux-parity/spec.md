@@ -1,6 +1,6 @@
 # Feature Specification — Analytical Workspace Refactor
 
-Execution note: 013 remains the UI antecedent for this workstream. Active execution planning now lives in [014-local-first-professional-workspace](../014-local-first-professional-workspace/spec.md).
+Execution note: 013 remains the UI antecedent for this workstream. Active execution planning moved to [014-local-first-professional-workspace](../014-local-first-professional-workspace/spec.md) and later follow-through UI slices.
 
 ## Objective
 
@@ -48,13 +48,14 @@ The runtime already exposes enough deterministic output, provenance, uncertainty
 
 ## Acceptance criteria
 
-- [ ] The decision workspace exposes a decision-first top fold backed by explicit presentation mappers.
-- [ ] The refactor remains explicit about defaults, missing data, confidence, local-only evidence mode, and simulation status.
-- [ ] The implementation reuses the current runtime shape wherever possible and only adds backend support when a real product blocker proves summary data is missing.
+- [x] The decision workspace exposes a decision-first top fold backed by explicit presentation mappers.
+- [x] The refactor remains explicit about defaults, missing data, confidence, local-only evidence mode, and simulation status.
+- [x] The implementation reuses the current runtime shape wherever possible and only adds backend support when a real product blocker proves summary data is missing.
 
 ## Clarifications and open questions
 
-- The approved benchmark remains a composition reference, but 013 is now the canonical umbrella for the broader analytical-workspace refactor.
+- The approved benchmark remains a composition reference, but 013 is no longer the canonical execution umbrella for the refactor.
+- The decision-first direction captured here was absorbed by 014 and subsequent UI follow-through packs.
 - A future Tailwind or shadcn-driven surface is allowed, but the first implementation slices should prioritize product architecture and mapper seams over framework churn.
 
 ## Risks / unknowns

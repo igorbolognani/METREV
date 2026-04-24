@@ -41,14 +41,8 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
-      - name: Lint
-        run: pnpm run lint
-
-      - name: Test
-        run: pnpm run test
-
-      - name: Build
-        run: pnpm run build
+      - name: Run fast validation matrix
+        run: pnpm run validate:fast
 
       - name: Validate Docker Compose
         run: docker compose config

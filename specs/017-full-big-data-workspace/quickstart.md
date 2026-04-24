@@ -50,21 +50,34 @@ Use this workflow to build, seed, validate, and operate the full METREV big-data
 
 ## Validation Sequence
 
-1. Run contract checks.
-   `pnpm run test:python`
-2. Run JavaScript and TypeScript runtime checks.
-   `pnpm run test:js`
-3. Run Postgres-backed persistence checks.
-   `pnpm run test:db`
-4. Run the build.
-   `pnpm run build`
-5. Run end-to-end local workspace checks.
-   `pnpm run test:e2e`
+1. Run the promoted fast repository matrix.
+   `pnpm run validate:fast`
+2. Run the promoted local Docker-backed acceptance matrix.
+   `pnpm run validate:local`
+3. Run the bounded full bootstrap without persisting.
+   `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
+4. Run the full bootstrap.
+   `pnpm run db:bootstrap:bigdata`
+
+## Current Validated Outcomes
+
+- PASS `pnpm run validate:fast`
+- PASS `pnpm run validate:local`
+- PASS `pnpm run test:python`
+- PASS `pnpm run test:js`
+- PASS `pnpm run test:db`
+- PASS `pnpm run build`
+- PASS `pnpm run test:e2e`
+- PASS bounded dry-run bootstrap via `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
+- PASS full bootstrap via `pnpm run db:bootstrap:bigdata`
+- Latest recorded bootstrap inventory: 686 source records, 698 catalog items, 2,128 claims, 5 supplier documents, 14 suppliers, 5 products, 64 ingestion runs
 
 ## Notes
 
 - Domain semantics stay in `bioelectrochem_agent_kit/domain/`.
 - Hardened contract boundaries stay in `bioelectro-copilot-contracts/contracts/`.
 - The runtime adapts those layers through `apps/` and `packages/`.
-- Repository-versioned dataset assets now include a committed query plan in `packages/database/data/bigdata-bootstrap.config.json` and a curated supplier/market manifest in `packages/database/data/curated-bigdata-manifest.json`.
+- The repository-level operating decision for snapshot plus backfill, broad corpus scope, and workspace reorganization lives in `adr/0004-big-data-snapshot-and-workspace-reorg.md`.
+- Repository-versioned dataset assets now include a committed query plan in `packages/database/data/bigdata-bootstrap.config.json`, a sharded curated snapshot index in `packages/database/data/curated-bigdata-manifest.json`, and shard files under `packages/database/data/curated-bigdata-shards/`.
+- Playwright E2E bootstrap resolves the active local-view Docker Postgres port before seeding so the runtime and the test fixture stay on the same database even when an older stack is still running with a different published port.
 - Repository-versioned dataset assets should contain normalized metadata, structured claims, provenance, and explicitly redistributable artifacts by default.

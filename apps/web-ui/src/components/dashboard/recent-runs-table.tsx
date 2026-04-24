@@ -7,12 +7,17 @@ import type { DashboardWorkspaceResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
+    DenseTableActions,
+    DenseTableShell,
+    DenseTableStack,
+} from '@/components/ui/dense-table';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
@@ -61,7 +66,7 @@ export function RecentRunsTable({ runs }: RecentRunsTableProps) {
   }
 
   return (
-    <div className="dashboard-table-shell">
+    <DenseTableShell variant="dashboard">
       <Table>
         <TableHead>
           <tr>
@@ -77,22 +82,22 @@ export function RecentRunsTable({ runs }: RecentRunsTableProps) {
           {runs.map((item) => (
             <TableRow key={item.evaluation_id}>
               <TableCell>
-                <div className="dashboard-table-stack">
+                <DenseTableStack variant="dashboard">
                   <strong>{item.case_id}</strong>
                   <span>
                     {formatToken(item.technology_family)} ·{' '}
                     {formatToken(item.primary_objective)}
                   </span>
-                </div>
+                </DenseTableStack>
               </TableCell>
               <TableCell>
-                <div className="dashboard-table-stack dashboard-table-stack--wide">
+                <DenseTableStack variant="dashboard" wide>
                   <strong>{item.summary}</strong>
                   <span>
                     Narrative{' '}
                     {item.narrative_available ? 'available' : 'not generated'}
                   </span>
-                </div>
+                </DenseTableStack>
               </TableCell>
               <TableCell>
                 <Badge
@@ -102,7 +107,7 @@ export function RecentRunsTable({ runs }: RecentRunsTableProps) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <div className="dashboard-table-stack">
+                <DenseTableStack variant="dashboard">
                   <Badge
                     variant={badgeVariantForSimulationStatus(
                       item.simulation_summary?.status,
@@ -117,11 +122,11 @@ export function RecentRunsTable({ runs }: RecentRunsTableProps) {
                       ? `${item.simulation_summary.derived_observation_count} derived observations`
                       : 'No simulation series stored'}
                   </span>
-                </div>
+                </DenseTableStack>
               </TableCell>
               <TableCell>{formatTimestamp(item.created_at)}</TableCell>
               <TableCell>
-                <div className="dashboard-table-actions">
+                <DenseTableActions variant="dashboard">
                   <Link
                     className="ghost-button"
                     href={`/evaluations/${item.evaluation_id}`}
@@ -134,12 +139,12 @@ export function RecentRunsTable({ runs }: RecentRunsTableProps) {
                   >
                     Case history
                   </Link>
-                </div>
+                </DenseTableActions>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DenseTableShell>
   );
 }

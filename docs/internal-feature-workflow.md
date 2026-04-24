@@ -78,16 +78,42 @@ specs/
 
 ## Prompt surface
 
-Use the root prompts in this order when helpful:
+Use the root prompts in these groups when helpful.
+
+Staged workflow prompts:
 
 1. `.github/prompts/clarify-feature.prompt.md`
 2. `.github/prompts/start-feature.prompt.md`
 3. `.github/prompts/plan-feature.prompt.md`
 4. `.github/prompts/ship-change.prompt.md`
 
+Specialist prompts:
+
+- `.github/prompts/debug-bug.prompt.md` for root-cause triage and smallest-safe-fix planning
+- `.github/prompts/refactor-module.prompt.md` for behavior-preserving refactors with explicit invariants
+- `.github/prompts/critique-integration.prompt.md` for strict integration review focused on drift, validation, and setup gaps
+
 The default autonomous one-shot entrypoint is `.github/prompts/ship-change.prompt.md`.
 That prompt is backed by the root `workflow-orchestrator` agent and should compose the staged workflow for medium and large changes without external Spec Kit tooling.
 The staged prompts remain the manual path when tighter control over clarification, bootstrap, or planning is preferable.
+The specialist prompts are optional overlays for debugging, refactoring, and critique once the main workflow path is already clear.
+
+## Agent and skill surface
+
+The root-owned workflow also includes specialized agent and skill surfaces that should stay discoverable in the maintained docs.
+
+Agents:
+
+- `workflow-orchestrator` for autonomous staged execution across the maintained workflow
+- `planner` for decomposition, dependency ordering, and implementation planning
+- `reviewer` for correctness, regression, architectural fit, and missing-validation review
+- `validation-sentinel` for provenance, defaults, uncertainty, and trustworthiness checks
+
+Skills:
+
+- `spec-workflow` for medium and large feature delivery
+- `enforce-provenance` when outputs, recommendations, or persisted results need trust review
+- `use-context7` when implementation depends on current framework or library documentation
 
 If `specify` or `specify init` is not installed locally, that is expected here.
 This internal workflow replaces external Spec Kit tooling in this repository.

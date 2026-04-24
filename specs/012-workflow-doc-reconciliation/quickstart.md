@@ -38,6 +38,5 @@ Execution note: use `../015-repository-authority-and-structure-consolidation/qui
 
 ## Verification commands and checks
 
-- `pnpm run test`
-- `pnpm run build`
+- `pnpm run validate:fast`
 - `pnpm run local:view:status`

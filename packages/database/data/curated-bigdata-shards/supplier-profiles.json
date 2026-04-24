@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "name": "metrev-curated-bigdata-suppliers",
+  "records": [
+    {
+      "sourceKey": "supplier-sgl-carbon-graphite-felt-profile",
+      "title": "Commercial graphite felt portfolios positioned for bioelectrochemical pilot retrofits",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.sglcarbon.com/en/markets-solutions/solutions/industrial-technologies/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated desk research indicates graphite felt formats remain one of the easiest commercial electrode options to source for wastewater bioelectrochemical pilots because they are available in sheets, rolls, and custom cuts.",
+      "tags": ["supplier", "graphite-felt", "anode", "pilot"],
+      "supplierDocument": {
+        "supplierName": "SGL Carbon",
+        "documentType": "PROFILE",
+        "productKey": "graphite-felt-portfolio",
+        "productDisplayName": "Graphite felt electrode portfolio",
+        "productCategory": "anode_material",
+        "trl": 9,
+        "note": "Curated supplier profile for commercially available electrode substrates."
+      },
+      "claims": [
+        {
+          "content": "Commercial graphite felt sheets are available in configurable formats suitable for pilot-scale electrode retrofits in wastewater reactors.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.74,
+          "analystNote": "Desk-research synthesis from supplier portfolio positioning."
+        },
+        {
+          "content": "Graphite felt supply maturity reduces procurement risk compared with custom laboratory electrodes for early deployment phases.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.69
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-toray-carbon-paper-profile",
+      "title": "Carbon paper and cloth offerings remain a commercial benchmark for cathode and sensor assemblies",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.toray.com/global/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated supplier review places carbon paper and cloth products as a benchmark for repeatable cathode assemblies and electrochemical sensing layers in modular BES hardware.",
+      "tags": ["supplier", "carbon-paper", "cathode", "sensor"],
+      "supplierDocument": {
+        "supplierName": "Toray",
+        "documentType": "PROFILE",
+        "productKey": "carbon-paper-cloth-portfolio",
+        "productDisplayName": "Carbon paper and cloth portfolio",
+        "productCategory": "cathode_material",
+        "trl": 9,
+        "note": "Curated supplier profile for carbon paper and cloth materials."
+      },
+      "claims": [
+        {
+          "content": "Commercial carbon paper and cloth products support repeatable cathode subassemblies across pilot and demonstration hardware builds.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.72
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-chemours-nafion-profile",
+      "title": "Ionomer membrane portfolios continue to anchor premium separator options for BES pilots",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.chemours.com/en/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-15",
+      "summary": "Curated supplier review suggests premium ionomer membranes remain commercially accessible but carry a clear economic premium relative to lower-cost separators.",
+      "tags": ["supplier", "membrane", "separator", "premium"],
+      "supplierDocument": {
+        "supplierName": "Chemours",
+        "documentType": "PROFILE",
+        "productKey": "ionomer-membrane-portfolio",
+        "productDisplayName": "Ionomer membrane portfolio",
+        "productCategory": "separator",
+        "trl": 9,
+        "note": "Curated supplier profile for ionomer membrane offerings."
+      },
+      "claims": [
+        {
+          "content": "Premium ionomer membranes remain a commercial benchmark for high-selectivity separator designs in BES pilot hardware.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.73
+        },
+        {
+          "content": "Separator cost remains a limiting factor when translating premium membrane chemistries into large-area wastewater deployments.",
+          "claimType": "ECONOMIC",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-dupont-ion-exchange-profile",
+      "title": "Ion-exchange materials remain relevant for nutrient-recovery and selective transport architectures",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.dupont.com/water.html",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-01-18",
+      "summary": "Curated supplier review highlights ion-exchange materials as commercially relevant building blocks for nutrient-recovery and selective transport modules layered into BES process trains.",
+      "tags": ["supplier", "ion-exchange", "nutrient-recovery"],
+      "supplierDocument": {
+        "supplierName": "DuPont Water Solutions",
+        "documentType": "PROFILE",
+        "productKey": "ion-exchange-portfolio",
+        "productDisplayName": "Ion-exchange materials portfolio",
+        "productCategory": "membrane_or_resin",
+        "trl": 9,
+        "note": "Curated supplier profile for ion-exchange materials used in selective transport applications."
+      },
+      "claims": [
+        {
+          "content": "Commercial ion-exchange materials are relevant to nutrient-recovery and selective transport stages paired with BES reactors.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.71
+        }
+      ]
+    },
+    {
+      "sourceKey": "supplier-fuel-cell-store-electrode-accessories",
+      "title": "Accessory and lab-to-pilot transition components remain easy to source through specialist electrochemistry distributors",
+      "sourceType": "SUPPLIER_PROFILE",
+      "sourceUrl": "https://www.fuelcellstore.com/",
+      "sourceCategory": "supplier_profile",
+      "publishedAt": "2026-02-14",
+      "summary": "Curated supplier review suggests specialist electrochemistry distributors remain useful for accelerants like clamps, gaskets, and reference components during lab-to-pilot transition work.",
+      "tags": ["supplier", "distributor", "accessories"],
+      "supplierDocument": {
+        "supplierName": "Fuel Cell Store",
+        "documentType": "PROFILE",
+        "productKey": "electrochemistry-accessories",
+        "productDisplayName": "Electrochemistry accessory portfolio",
+        "productCategory": "balance_of_plant",
+        "trl": 9,
+        "note": "Curated distributor profile for transition components."
+      },
+      "claims": [
+        {
+          "content": "Specialist electrochemistry distributors reduce procurement friction for accessory components needed in lab-to-pilot BES transitions.",
+          "claimType": "SUPPLIER_CLAIM",
+          "confidence": 0.71
+        }
+      ]
+    }
+  ]
+}

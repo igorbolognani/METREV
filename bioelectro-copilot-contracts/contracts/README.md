@@ -38,11 +38,24 @@ The hardened contract boundary now needs to stay aligned with six related surfac
 - `source_document` → the imported or curated external record with provider metadata, access posture, and raw payload retention
 - `catalog_item` → the analyst-facing evidence registry record that carries review posture, applicability scope, and intake-facing summary fields
 - `evidence_claim` → typed extracted or curated claims with extraction provenance, confidence, review state, and ontology mapping support
+- `claim_review` → analyst review facts attached to extracted claims so acceptance posture changes stay attributable
+- `ontology_mapping` → advisory mappings that remain challengeable because confidence and mapped-by provenance stay explicit
+- `supplier_product` → supplier-linked product records that remain connected to canonical supplier and evidence provenance
 - `supplier_document` → source documents linked to supplier and optional product context without bypassing the canonical evidence registry
 - `evaluation_lineage` → persisted source and claim usage records showing what a decision run actually used
 - `workspace_snapshot` → immutable persisted payloads for evaluation, report, and export replay
 
+The validation-facing boundary also now includes the evidence-review payload family used by the runtime API:
+
+- `external_evidence_catalog_summary`
+- `external_evidence_catalog_detail`
+- `external_evidence_catalog_list_response`
+- `external_evidence_bulk_review_request`
+- `external_evidence_bulk_review_response`
+
 This boundary exists so storage, serialization, APIs, and future database integrations can remain explicit about provenance and review posture instead of flattening everything into anonymous evidence blobs.
+
+The repository-level decision that ratifies the dual snapshot-plus-backfill posture, broad corpus scope, and workspace reorganization is recorded in `adr/0004-big-data-snapshot-and-workspace-reorg.md`.
 
 ## Runtime Alignment Note
 

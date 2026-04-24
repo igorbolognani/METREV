@@ -66,17 +66,20 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      'server-only': fileURLToPath(
+        new URL('./tests/fixtures/server-only-stub.ts', import.meta.url),
+      ),
     },
   },
   test: {
-    include: ['tests/runtime/**/*.test.ts', 'tests/web-ui/**/*.test.tsx'],
+    include: ['tests/runtime/**/*.test.ts', 'tests/web-ui/**/*.test.{ts,tsx}'],
     environment: 'node',
     coverage: {
       reporter: ['text', 'html'],
       include: [
         'packages/**/*.ts',
         'apps/api-server/src/**/*.ts',
-        'apps/web-ui/src/**/*.tsx',
+        'apps/web-ui/src/**/*.{ts,tsx}',
       ],
     },
   },

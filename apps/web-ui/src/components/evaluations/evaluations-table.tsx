@@ -7,17 +7,22 @@ import type { EvaluationListResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
+    DenseTableActions,
+    DenseTableShell,
+    DenseTableStack,
+} from '@/components/ui/dense-table';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import {
-  type EvaluationSortDirection,
-  type EvaluationSortKey,
+    type EvaluationSortDirection,
+    type EvaluationSortKey,
 } from '@/lib/evaluations-list-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
@@ -103,7 +108,7 @@ export function EvaluationsTable({ items }: EvaluationsTableProps) {
   }
 
   return (
-    <div className="detail-table-shell">
+    <DenseTableShell>
       <Table>
         <TableHead>
           <tr>
@@ -120,19 +125,19 @@ export function EvaluationsTable({ items }: EvaluationsTableProps) {
           {items.map((item) => (
             <TableRow key={item.evaluation_id}>
               <TableCell>
-                <div className="detail-table-stack detail-table-stack--wide">
+                <DenseTableStack wide>
                   <strong>{item.evaluation_id}</strong>
                   <span>{item.summary}</span>
-                </div>
+                </DenseTableStack>
               </TableCell>
               <TableCell>
-                <div className="detail-table-stack">
+                <DenseTableStack>
                   <strong>{item.case_id}</strong>
                   <span>
                     {formatToken(item.technology_family)} ·{' '}
                     {formatToken(item.primary_objective)}
                   </span>
-                </div>
+                </DenseTableStack>
               </TableCell>
               <TableCell>
                 <Badge
@@ -157,7 +162,7 @@ export function EvaluationsTable({ items }: EvaluationsTableProps) {
               </TableCell>
               <TableCell>{formatTimestamp(item.created_at)}</TableCell>
               <TableCell>
-                <div className="detail-table-actions">
+                <DenseTableActions>
                   <Link
                     className="ghost-button"
                     href={`/evaluations/${item.evaluation_id}`}
@@ -170,12 +175,12 @@ export function EvaluationsTable({ items }: EvaluationsTableProps) {
                   >
                     Case history
                   </Link>
-                </div>
+                </DenseTableActions>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DenseTableShell>
   );
 }

@@ -9,6 +9,12 @@ import type { CaseHistoryWorkspaceResponse } from '@metrev/domain-contracts';
 import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disclosure-card';
 import { Badge } from '@/components/ui/badge';
 import {
+    DenseChipList,
+    DenseTableActions,
+    DenseTableShell,
+    DenseTableStack,
+} from '@/components/ui/dense-table';
+import {
     Table,
     TableBody,
     TableCell,
@@ -27,6 +33,9 @@ import { fetchCaseHistoryWorkspace } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
+
+const MAX_VISIBLE_AUDIT_EVENTS = 20;
+const MAX_VISIBLE_EVIDENCE_ROWS = 25;
 
 function listOrEmpty(items: string[], emptyMessage: string) {
   if (items.length === 0) {
@@ -80,19 +89,16 @@ function badgeVariantForStrength(value: string) {
 }
 
 function renderChipList(values: string[], emptyMessage: string) {
-  if (values.length === 0) {
-    return <p className="muted">{emptyMessage}</p>;
+  return <DenseChipList emptyMessage={emptyMessage} values={values} />;
+}
+
+function catalogEvidenceDetailHref(evidenceId: string) {
+  if (!evidenceId.startsWith('catalog:')) {
+    return null;
   }
 
-  return (
-    <div className="workspace-chip-list compact">
-      {values.map((value) => (
-        <span className="meta-chip" key={value}>
-          {value}
-        </span>
-      ))}
-    </div>
-  );
+  const catalogItemId = evidenceId.slice('catalog:'.length).trim();
+  return catalogItemId ? `/evidence/review/${catalogItemId}` : null;
 }
 
 export function CaseHistoryView({ caseId }: { caseId: string }) {
@@ -131,6 +137,15 @@ export function CaseHistoryWorkspaceView({
 }: {
   workspace: CaseHistoryWorkspaceResponse;
 }) {
+  const [showAllAuditEvents, setShowAllAuditEvents] = React.useState(false);
+  const [showAllEvidenceRows, setShowAllEvidenceRows] = React.useState(false);
+  const visibleAuditEvents = showAllAuditEvents
+    ? workspace.audit_events
+    : workspace.audit_events.slice(0, MAX_VISIBLE_AUDIT_EVENTS);
+  const visibleEvidenceRecords = showAllEvidenceRows
+    ? workspace.evidence_records
+    : workspace.evidence_records.slice(0, MAX_VISIBLE_EVIDENCE_ROWS);
+
   return (
     <div className="workspace-page">
       <WorkspacePageHeader
@@ -192,7 +207,7 @@ export function CaseHistoryWorkspaceView({
         title="Stored evaluation runs"
       >
         {workspace.timeline.length > 0 ? (
-          <div className="detail-table-shell">
+          <DenseTableShell>
             <Table>
               <TableHead>
                 <tr>
@@ -207,14 +222,14 @@ export function CaseHistoryWorkspaceView({
                 {workspace.timeline.map((item) => (
                   <TableRow key={item.evaluation.evaluation_id}>
                     <TableCell>
-                      <div className="detail-table-stack detail-table-stack--wide">
+                      <DenseTableStack wide>
                         <strong>{item.evaluation.summary}</strong>
                         <span>
                           {item.is_latest ? 'Latest run' : 'Historical run'} ·{' '}
                           {formatToken(item.evaluation.technology_family)} ·{' '}
                           {formatToken(item.evaluation.primary_objective)}
                         </span>
-                      </div>
+                      </DenseTableStack>
                     </TableCell>
                     <TableCell>{item.delta_summary}</TableCell>
                     <TableCell>
@@ -230,7 +245,7 @@ export function CaseHistoryWorkspaceView({
                       {formatTimestamp(item.evaluation.created_at)}
                     </TableCell>
                     <TableCell>
-                      <div className="detail-table-actions">
+                      <DenseTableActions>
                         <Link
                           className="ghost-button"
                           href={`/evaluations/${item.evaluation.evaluation_id}`}
@@ -245,13 +260,13 @@ export function CaseHistoryWorkspaceView({
                             Compare pair
                           </Link>
                         ) : null}
-                      </div>
+                      </DenseTableActions>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DenseTableShell>
         ) : (
           <WorkspaceEmptyState
             description="Complete an evaluation first to populate the case timeline."
@@ -305,7 +320,7 @@ export function CaseHistoryWorkspaceView({
         >
           {workspace.audit_events.length > 0 ? (
             <div className="case-history-audit-list">
-              {workspace.audit_events.map((event) => (
+              {visibleAuditEvents.map((event) => (
                 <PayloadDisclosureCard
                   countBadge={Object.keys(event.payload).length}
                   description={`Stored event payload for ${event.actor_role}${event.evaluation_id ? ` on ${event.evaluation_id}` : ''}.`}
@@ -315,6 +330,21 @@ export function CaseHistoryWorkspaceView({
                   value={event.payload}
                 />
               ))}
+              {workspace.audit_events.length > MAX_VISIBLE_AUDIT_EVENTS ? (
+                <div className="detail-table-summary-note">
+                  <span>
+                    Showing {visibleAuditEvents.length} of{' '}
+                    {workspace.audit_events.length} audit event(s).
+                  </span>
+                  <button
+                    className="ghost-button"
+                    onClick={() => setShowAllAuditEvents((value) => !value)}
+                    type="button"
+                  >
+                    {showAllAuditEvents ? 'Show less' : 'Show all audit events'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <WorkspaceEmptyState
@@ -330,7 +360,7 @@ export function CaseHistoryWorkspaceView({
           title="Attached evidence table"
         >
           {workspace.evidence_records.length > 0 ? (
-            <div className="detail-table-shell">
+            <DenseTableShell>
               <Table>
                 <TableHead>
                   <tr>
@@ -338,17 +368,18 @@ export function CaseHistoryWorkspaceView({
                     <TableHeaderCell>Strength</TableHeaderCell>
                     <TableHeaderCell>Limitations</TableHeaderCell>
                     <TableHeaderCell>Tags</TableHeaderCell>
+                    <TableHeaderCell>Links</TableHeaderCell>
                   </tr>
                 </TableHead>
                 <TableBody>
-                  {workspace.evidence_records.map((record) => (
+                  {visibleEvidenceRecords.map((record) => (
                     <TableRow key={record.evidence_id}>
                       <TableCell>
-                        <div className="detail-table-stack detail-table-stack--wide">
+                        <DenseTableStack wide>
                           <strong>{record.title}</strong>
                           <span>{record.summary}</span>
                           <span>{formatToken(record.evidence_type)}</span>
-                        </div>
+                        </DenseTableStack>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -360,33 +391,59 @@ export function CaseHistoryWorkspaceView({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="detail-table-stack">
+                        <DenseTableStack>
                           <p>{record.provenance_note}</p>
                           <span>
                             {record.limitations.length > 0
                               ? record.limitations.join(' · ')
                               : 'No explicit limitations recorded'}
                           </span>
-                        </div>
+                        </DenseTableStack>
                       </TableCell>
                       <TableCell>
-                        {record.tags.length > 0 ? (
-                          <div className="workspace-chip-list compact">
-                            {record.tags.map((tag) => (
-                              <span className="meta-chip" key={tag}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
+                        <DenseChipList
+                          emptyMessage="No tags stored"
+                          values={record.tags}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {catalogEvidenceDetailHref(record.evidence_id) ? (
+                          <Link
+                            className="ghost-button"
+                            href={
+                              catalogEvidenceDetailHref(record.evidence_id) ??
+                              '#'
+                            }
+                          >
+                            Open catalog detail
+                          </Link>
                         ) : (
-                          <span className="muted">No tags stored</span>
+                          <span className="muted">
+                            No catalog detail link available
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </div>
+              {workspace.evidence_records.length > MAX_VISIBLE_EVIDENCE_ROWS ? (
+                <div className="detail-table-summary-note">
+                  <span>
+                    Showing {visibleEvidenceRecords.length} of{' '}
+                    {workspace.evidence_records.length} attached evidence
+                    record(s).
+                  </span>
+                  <button
+                    className="ghost-button"
+                    onClick={() => setShowAllEvidenceRows((value) => !value)}
+                    type="button"
+                  >
+                    {showAllEvidenceRows ? 'Show less' : 'Show all evidence'}
+                  </button>
+                </div>
+              ) : null}
+            </DenseTableShell>
           ) : (
             <WorkspaceEmptyState
               description="No evidence records are attached to this case yet."

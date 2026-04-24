@@ -14,11 +14,33 @@ vi.mock('next/link', () => ({
     React.createElement('a', { href, ...props }, children),
 }));
 
+function buildAttachedEvidenceRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    evidence_id: 'catalog:catalog-item-accepted-001',
+    evidence_type: 'literature_evidence',
+    title: 'Accepted sidestream benchmark',
+    summary: 'Accepted benchmark record for industrial sidestream treatment.',
+    applicability_scope: {},
+    strength_level: 'strong',
+    provenance_note: 'Imported and accepted for analyst intake.',
+    quantitative_metrics: {},
+    operating_conditions: {},
+    block_mapping: [],
+    limitations: ['Pilot-scale comparability remains bounded.'],
+    contradiction_notes: [],
+    benchmark_context: 'crossref via Journal of MET Studies',
+    tags: ['sidestream', 'benchmark', 'accepted'],
+    ...overrides,
+  };
+}
+
 describe('case history view', () => {
   it('renders timeline tables, collapsed audit disclosures, and structured evidence context', async () => {
     const { historyWorkspace, repository } = await buildWorkspaceViewFixtures();
 
     try {
+      historyWorkspace.evidence_records = [buildAttachedEvidenceRecord()];
+
       const html = renderToStaticMarkup(
         React.createElement(CaseHistoryWorkspaceView, {
           workspace: historyWorkspace,
@@ -33,8 +55,35 @@ describe('case history view', () => {
       expect(html).toContain(
         'Accepted benchmark source imported into the workspace.',
       );
+      expect(html).toContain('/evidence/review/catalog-item-accepted-001');
       expect(html).toContain('Audit payload disclosures');
       expect(html).toContain('Attached evidence table');
+    } finally {
+      await repository.disconnect();
+    }
+  });
+
+  it('bounds large evidence tables behind an explicit show-all control', async () => {
+    const { historyWorkspace, repository } = await buildWorkspaceViewFixtures();
+
+    try {
+      historyWorkspace.evidence_records = Array.from(
+        { length: 26 },
+        (_, index) =>
+          buildAttachedEvidenceRecord({
+            evidence_id: `catalog:catalog-item-${index + 1}`,
+            title: `Evidence ${index + 1}`,
+          }),
+      );
+
+      const html = renderToStaticMarkup(
+        React.createElement(CaseHistoryWorkspaceView, {
+          workspace: historyWorkspace,
+        }),
+      );
+
+      expect(html).toContain('Showing 25 of 26 attached evidence record(s).');
+      expect(html).toContain('Show all evidence');
     } finally {
       await repository.disconnect();
     }

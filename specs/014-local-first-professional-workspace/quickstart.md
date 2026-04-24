@@ -138,8 +138,6 @@
 
 ## Verification commands and checks
 
-- `pnpm run test:js`
-- `pnpm run lint`
-- `pnpm run build`
-- `pnpm run test:e2e`
+- `pnpm run validate:fast`
+- `pnpm run validate:local`
 - `pnpm run local:view:status`

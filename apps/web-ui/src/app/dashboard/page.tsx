@@ -1,4 +1,4 @@
-import { DashboardWorkspace } from '@/components/dashboard-workspace';
+import { DashboardWorkspace } from '@/components/dashboard/dashboard-workspace';
 import { requireAuthenticatedSession } from '@/lib/require-session';
 
 export default async function DashboardPage() {

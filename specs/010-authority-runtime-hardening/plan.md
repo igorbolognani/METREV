@@ -1,10 +1,10 @@
 # Implementation Plan — Authority Runtime Hardening
 
-Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file remains the detailed hardening plan for the authority-runtime sub-slice.
+Execution note: use `../015-repository-authority-and-structure-consolidation/plan.md` for umbrella coordination. This file now records the landed hardening sub-slice that was closed through the 015 umbrella.
 
 ## Summary
 
-Harden the live authority model by documenting the current contract-first executed rule path, adding runtime assertions around canonical file loading and output sections, and aligning Prisma docs and command behavior with the validated Prisma 7 repository posture.
+Record the live authority model as a closed hardening slice by documenting the current contract-first executed rule path, keeping runtime assertions around canonical file loading and output sections in place, and preserving the validated Prisma 7 repository posture across docs and commands.
 
 ## Source-of-truth files
 
@@ -56,7 +56,7 @@ No product data-model rewrite is required. This slice adds authority metadata, r
 ## Validation strategy
 
 - unit: assert runtime authority metadata and output-section alignment in the Vitest suite
-- integration: run `pnpm run test`, `pnpm run prisma:generate`, and `pnpm run build`
+- integration: run `pnpm prisma:generate` and `pnpm run validate:fast`
 - e2e/manual: verify the documented local flow still uses `DIRECT_URL` for migrations and `DATABASE_URL` for runtime
 - docs/contracts: ensure the planning-only boundary note cites canonical owner files and the ADR matches the code path
 

@@ -48,11 +48,11 @@ The current repository already has the core runtime spine for deterministic eval
 
 ## Acceptance criteria
 
-- [ ] Prisma, repository, and runtime contracts support large-scale documents, claims, suppliers, mappings, review state, usage links, and immutable workspace snapshots.
-- [ ] A repository-versioned big-data snapshot can bootstrap a fresh local database with at least 200 source documents, 1000 claims, 50 evaluations, and 30 suppliers.
-- [ ] Acquisition and backfill commands support OpenAlex, Crossref, Europe PMC, and curated manifests with dedupe, checkpoints, provenance, and bounded validation runs.
-- [ ] Dashboard, evaluations registry, evaluation workspace, comparison, case history, evidence review, and printable report operate on backend-owned payloads that remain explicit about defaults, missing data, provenance, and uncertainty.
-- [ ] Full validation passes across contracts, runtime, database, build, and end-to-end local workspace flows.
+- [x] Prisma, repository, and runtime contracts support large-scale documents, claims, suppliers, mappings, review state, usage links, and immutable workspace snapshots.
+- [x] A repository-versioned big-data snapshot can bootstrap a fresh local database with at least 200 source documents, 1000 claims, 50 evaluations, and 30 suppliers.
+- [x] Acquisition and backfill commands support OpenAlex, Crossref, Europe PMC, and curated manifests with dedupe, checkpoints, provenance, and bounded validation runs.
+- [x] Dashboard, evaluations registry, evaluation workspace, comparison, case history, evidence review, and printable report operate on backend-owned payloads that remain explicit about defaults, missing data, provenance, and uncertainty.
+- [x] Full validation passes across contracts, runtime, database, build, and end-to-end local workspace flows.
 
 ## Clarifications and open questions
 

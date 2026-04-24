@@ -15,8 +15,7 @@ Execution note: use `../015-repository-authority-and-structure-consolidation/qui
 ## Setup
 
 1. Run `pnpm prisma:generate`.
-2. Run `pnpm run test`.
-3. Run `pnpm run build`.
+2. Run `pnpm run validate:fast`.
 
 ## Happy path
 
@@ -27,7 +26,7 @@ Execution note: use `../015-repository-authority-and-structure-consolidation/qui
 ## Failure path
 
 1. Change a canonical output section or the runtime authority metadata incorrectly.
-2. Re-run `pnpm run test`.
+2. Re-run `pnpm run validate:fast`.
 3. Confirm the runtime contract tests fail before the drift ships.
 
 ## Edge case
@@ -39,5 +38,4 @@ Execution note: use `../015-repository-authority-and-structure-consolidation/qui
 ## Verification commands and checks
 
 - `pnpm prisma:generate`
-- `pnpm run test`
-- `pnpm run build`
+- `pnpm run validate:fast`

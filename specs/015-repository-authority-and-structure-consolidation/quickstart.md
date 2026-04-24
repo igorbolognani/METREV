@@ -43,6 +43,4 @@
 - `rg -n "github|context7|serena" .vscode/mcp.json .vscode/mcp.template.jsonc docs/runtime-tooling-setup.md`
 - `rg -n "Prisma 7|provider-only datasource|historical note|active repository-authority surface|target physical normalization" README.md docs/ adr/ REPOSITORY_SANITATION_SUMMARY.md MANUAL_REVIEW_COMPLEMENT.md specs/015-repository-authority-and-structure-consolidation/`
 - `pnpm prisma:generate`
-- `pnpm run lint`
-- `pnpm run test`
-- `pnpm run build`
+- `pnpm run validate:fast`

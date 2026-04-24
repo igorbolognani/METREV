@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "name": "metrev-curated-bigdata-analyst-briefs",
+  "records": [
+    {
+      "sourceKey": "report-industrial-effluent-bes-2026-q1",
+      "title": "Curated analyst brief on industrial effluent segments most compatible with BES demonstration programs",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-10",
+      "summary": "Curated analyst synthesis identifies food and beverage, agro-industrial, and high-COD side streams as the most compatible early segments for BES demonstrations when energy recovery and monitoring are paired.",
+      "tags": ["analyst-brief", "industrial-effluent", "compatibility"],
+      "claims": [
+        {
+          "content": "Food and beverage side streams remain among the most compatible early industrial targets for BES demonstrations.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.77,
+          "reviewStatus": "ACCEPTED",
+          "analystId": "system-seed",
+          "analystRole": "ANALYST",
+          "analystNote": "Curated acceptance for seed scenario coverage."
+        },
+        {
+          "content": "High-COD side streams improve the probability of pairing energy recovery with diagnostic monitoring in early demonstrations.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.73
+        }
+      ]
+    },
+    {
+      "sourceKey": "report-nutrient-recovery-bes-2026-q1",
+      "title": "Curated analyst brief on nutrient-recovery pathways layered on top of BES process trains",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-10",
+      "summary": "Curated analyst synthesis suggests nutrient-recovery pathways are strongest when selective transport modules are placed downstream of stable primary electroactive zones.",
+      "tags": ["analyst-brief", "nutrient-recovery", "selective-transport"],
+      "claims": [
+        {
+          "content": "Nutrient-recovery pathways are strongest when selective transport modules are placed downstream of stable primary electroactive zones.",
+          "claimType": "ARCHITECTURE",
+          "confidence": 0.74
+        },
+        {
+          "content": "Selective transport stages increase architectural complexity and must be justified by a clear recovery objective.",
+          "claimType": "LIMITATION",
+          "confidence": 0.67
+        }
+      ]
+    },
+    {
+      "sourceKey": "report-bes-troubleshooting-2026",
+      "title": "Curated troubleshooting brief highlights startup conditioning and fouling control as recurring pilot pain points",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "analyst_brief",
+      "publishedAt": "2026-02-18",
+      "summary": "Curated analyst synthesis highlights startup conditioning, inoculum variability, and fouling control as recurring pilot pain points that directly affect confidence framing.",
+      "tags": ["analyst-brief", "troubleshooting", "fouling"],
+      "claims": [
+        {
+          "content": "Startup conditioning and inoculum variability remain recurring pilot pain points that should be surfaced explicitly in uncertainty framing.",
+          "claimType": "LIMITATION",
+          "confidence": 0.78
+        },
+        {
+          "content": "Fouling control should be tracked as an operational condition rather than hidden inside narrative summaries.",
+          "claimType": "CONDITION",
+          "confidence": 0.72
+        }
+      ]
+    }
+  ]
+}

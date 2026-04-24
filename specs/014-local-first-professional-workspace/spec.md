@@ -50,18 +50,19 @@ The current runtime already has deterministic evaluation, evidence review, and p
 
 ## Acceptance criteria
 
-- [ ] The product works locally end to end without introducing a new production dependency.
-- [ ] The frontend no longer decides posture, readiness, gaps, uncertainty framing, or primary trend summaries on its own.
-- [ ] Dashboard, input deck, submitting, evaluation, history, comparison, evidence review, and printable report behave as dedicated surfaces with consistent visual language.
-- [ ] Print/PDF, JSON, and CSV exports work as local-first product capabilities.
-- [ ] Audit, defaults, missing data, uncertainty, evidence posture, and runtime versions remain explicit across the workspace and export flows.
+- [x] The product works locally end to end without introducing a new production dependency.
+- [x] The frontend no longer decides posture, readiness, gaps, uncertainty framing, or primary trend summaries on its own.
+- [x] Dashboard, input deck, submitting, evaluation, history, comparison, evidence review, and printable report behave as dedicated surfaces with consistent visual language.
+- [x] Print/PDF, JSON, and CSV exports work as local-first product capabilities.
+- [x] Audit, defaults, missing data, uncertainty, evidence posture, and runtime versions remain explicit across the workspace and export flows.
 
 ## Clarifications and open questions
 
 - 013 remains the antecedent UI/parity pack, but 014 is now the canonical execution pack for this local-first product phase.
 - English is the official UI language for this phase.
 - Recharts remains an allowed incremental enhancement, but only if chart quality clearly improves without pulling domain heuristics back into the client.
-- Playwright-backed local E2E is part of the target validation posture, but it may land as a follow-through slice after the current runtime and SSR coverage are stable.
+- Playwright-backed local E2E is now part of the validated posture for this phase.
+- A brief manual browser print or export smoke remains optional follow-through, not a blocker for 014 closure.
 
 ## Risks / unknowns
 

@@ -19,10 +19,18 @@ const actor: SessionActor = {
   sessionToken: 'analyst-session',
 };
 
+const originalLlmMode = process.env.METREV_LLM_MODE;
+
 describe('case evaluation service', () => {
   const repository = new MemoryEvaluationRepository();
 
   afterEach(async () => {
+    if (originalLlmMode === undefined) {
+      delete process.env.METREV_LLM_MODE;
+    } else {
+      process.env.METREV_LLM_MODE = originalLlmMode;
+    }
+
     await repository.disconnect();
   });
 
@@ -108,5 +116,33 @@ describe('case evaluation service', () => {
         (stage) => stage.stage_id === 'simulation_enrichment',
       )?.status,
     ).toBe('skipped');
+  });
+
+  it('falls back to the deterministic stub narrative when an unsupported LLM mode is requested', async () => {
+    process.env.METREV_LLM_MODE = 'openai';
+
+    const logger = {
+      warn: vi.fn(),
+    } as Pick<FastifyBaseLogger, 'warn'>;
+
+    const evaluation = await createPersistedCaseEvaluation({
+      rawInput: rawCaseInputSchema.parse(fixture),
+      actor,
+      evaluationRepository: repository,
+      logger,
+      environment: 'test',
+    });
+
+    expect(evaluation.narrative).toContain('Case CASE-001');
+    expect(evaluation.narrative_metadata).toMatchObject({
+      mode: 'stub',
+      provider: 'internal',
+      model: 'deterministic-summary',
+      status: 'fallback',
+      fallback_used: true,
+    });
+    expect(evaluation.narrative_metadata.error_message).toContain(
+      'Unsupported METREV_LLM_MODE "openai" requested',
+    );
   });
 });

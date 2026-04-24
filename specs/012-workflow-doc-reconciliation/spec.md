@@ -45,9 +45,9 @@ The runtime is ahead of some of its documentation and legacy reference surfaces.
 
 ## Acceptance criteria
 
-- [ ] `README.md`, `stack.md`, and runtime-tooling docs no longer imply contradictory runtime truths.
-- [ ] Optional MCP integrations are documented as optional and not silently presented as active-by-default.
-- [ ] Future-facing relation and report assets are labeled clearly enough that reviewers do not mistake them for runtime behavior.
+- [x] `README.md`, `stack.md`, and runtime-tooling docs no longer imply contradictory runtime truths.
+- [x] Optional MCP integrations are documented as optional and not silently presented as active-by-default.
+- [x] Future-facing relation and report assets are labeled clearly enough that reviewers do not mistake them for runtime behavior.
 
 ## Clarifications and open questions
 

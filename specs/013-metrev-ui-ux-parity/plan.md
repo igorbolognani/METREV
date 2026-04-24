@@ -1,10 +1,10 @@
 # Implementation Plan — Analytical Workspace Refactor
 
-Execution note: 013 remains the historical UI refactor pack. The active local-first execution plan now lives in [014-local-first-professional-workspace](../014-local-first-professional-workspace/plan.md).
+Execution note: 013 remains the historical UI refactor pack. The active local-first execution plan moved to [014-local-first-professional-workspace](../014-local-first-professional-workspace/plan.md) and later follow-through UI slices.
 
 ## Summary
 
-Use `specs/013-metrev-ui-ux-parity/` as the canonical umbrella for a broader analytical-workspace refactor: decision workspace first, then input, comparison, history/audit, and evidence review, with explicit output-side presentation mappers separating product composition from the raw runtime payload.
+Keep `specs/013-metrev-ui-ux-parity/` as the antecedent design record for the broader analytical-workspace refactor that informed 014 and later UI follow-through: decision workspace first, then input, comparison, history/audit, and evidence review, with explicit output-side presentation mappers separating product composition from the raw runtime payload.
 
 ## Source-of-truth files
 
@@ -48,7 +48,7 @@ Frontend and presentation-model changes come first. Small runtime summary enrich
 
 ## Implementation steps
 
-1. Recast 013 as the durable umbrella for the analytical-workspace refactor while keeping the benchmark as a reference surface.
+1. Recast 013 as an antecedent reference pack while keeping the benchmark as a composition reference surface.
 2. Introduce explicit decision presentation mappers in `evaluation-workbench.ts` and refactor the decision workspace top fold first.
 3. Follow through on input workspace, comparison/history, and evidence review using the same workspace language.
 4. Add targeted tests and validate the refactor incrementally through the local analyst flow.
@@ -66,7 +66,7 @@ The benchmark is useful because it raises the density and clarity bar, but the r
 
 ## Refined final plan
 
-Treat the benchmark as a composition reference. Keep METREV's semantics and deterministic logic intact, then push the product toward scan-first decision reading, clearer task separation, and a stable mapper seam between runtime output and UI composition.
+Treat the benchmark as a composition reference and keep 013 as the historical design record that fed the active successor packs. Preserve METREV's semantics and deterministic logic, and treat any remaining follow-through as successor-pack work instead of reopening 013 as a live umbrella.
 
 ## Rollback / safety
 

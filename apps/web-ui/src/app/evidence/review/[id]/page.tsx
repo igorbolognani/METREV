@@ -1,4 +1,4 @@
-import { ExternalEvidenceDetail } from '@/components/external-evidence-detail';
+import { ExternalEvidenceDetail } from '@/components/evidence-detail/external-evidence-detail';
 import { requireRoleSession } from '@/lib/require-session';
 
 export default async function ExternalEvidenceDetailPage({

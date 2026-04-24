@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "name": "metrev-curated-bigdata-market",
+  "records": [
+    {
+      "sourceKey": "market-bes-pilot-integrators-2026",
+      "title": "Market scan shows wastewater pilot integrators converging on modular skid-mounted BES packages",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-02",
+      "summary": "Curated market scan across public announcements and vendor positioning suggests pilot integrators increasingly package BES hardware into modular skids to reduce commissioning friction.",
+      "tags": ["market", "pilot", "integrator", "modular"],
+      "claims": [
+        {
+          "content": "Pilot integrators increasingly package BES hardware into modular skid-mounted systems to reduce on-site commissioning effort.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.76
+        },
+        {
+          "content": "Modular packaging improves applicability for industrial wastewater demonstrations where utility tie-ins and footprint constraints are critical.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-carbon-felt-procurement-2026",
+      "title": "Electrode substrate procurement is commercially easier than catalyst procurement for early BES pilots",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-02",
+      "summary": "Curated market scan indicates pilot teams can source carbon-based substrate materials faster than specialty catalyst packages, shifting early bottlenecks toward coatings and balance-of-plant integration.",
+      "tags": ["market", "procurement", "electrode", "catalyst"],
+      "claims": [
+        {
+          "content": "Carbon-based substrate procurement is commercially easier than specialty catalyst procurement for early BES pilot builds.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.74
+        },
+        {
+          "content": "Specialty catalyst availability remains a limiting factor for cathode package standardization across pilot deployments.",
+          "claimType": "LIMITATION",
+          "confidence": 0.68
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-membrane-fouling-service-2026",
+      "title": "Service offerings around membrane cleaning and replacement are emerging as deployment support differentiators",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-05",
+      "summary": "Curated market review suggests service models for membrane cleaning, replacement, and condition monitoring are becoming part of commercial wastewater pilot proposals.",
+      "tags": ["market", "service", "membrane", "operations"],
+      "claims": [
+        {
+          "content": "Membrane cleaning and replacement services are becoming a commercial differentiator in wastewater pilot proposals.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.71
+        },
+        {
+          "content": "Operational fouling management remains a limiting factor that vendors increasingly address with service packaging rather than material-only sales.",
+          "claimType": "LIMITATION",
+          "confidence": 0.69
+        }
+      ]
+    },
+    {
+      "sourceKey": "market-bes-monitoring-stack-2026",
+      "title": "Monitoring and telemetry bundles are moving from optional add-ons to default commercial packages",
+      "sourceType": "MARKET_SNAPSHOT",
+      "sourceCategory": "market_snapshot",
+      "publishedAt": "2026-02-12",
+      "summary": "Curated market review shows current, voltage, and effluent quality monitoring increasingly bundled into commercial pilot packages as a default rather than an add-on.",
+      "tags": ["market", "telemetry", "monitoring"],
+      "claims": [
+        {
+          "content": "Current, voltage, and effluent quality telemetry are increasingly bundled into commercial BES pilot packages by default.",
+          "claimType": "MARKET_SIGNAL",
+          "confidence": 0.75
+        }
+      ]
+    }
+  ]
+}

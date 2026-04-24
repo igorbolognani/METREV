@@ -1,12 +1,38 @@
-version: 0.1
+version: 0.2
 supplier_normalization:
   fields:
     supplier_name:
       normalize: trim_case
+    product_key:
+      normalize: snake_case
     region:
       allowed: [EU, UK, USA, LATAM, APAC, global, unknown]
     category:
-      allowed: [anode_material, cathode_material, membrane, separator, bop, sensor, service, integrator, other]
+      allowed:
+        [
+          anode_material,
+          cathode_material,
+          membrane,
+          separator,
+          bop,
+          sensor,
+          service,
+          integrator,
+          other,
+        ]
+    document_type:
+      allowed:
+        [
+          profile,
+          datasheet,
+          specification,
+          certificate,
+          market_brief,
+          case_study,
+          patent_filing,
+          report,
+          other,
+        ]
 
-  rule:
-    Never compare supplier options without recording category and region.
+  rule: Never compare supplier options without recording category and region.
+    Never surface supplier product records without a stable product_key and an explicit link back to source-document provenance.
