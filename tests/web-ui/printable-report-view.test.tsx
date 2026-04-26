@@ -19,11 +19,13 @@ describe('printable report view', () => {
 
       expect(reportHtml).toContain('Printable report');
       expect(reportHtml).toContain('Print / Save as PDF');
+      expect(reportHtml).toContain('Ask this report');
       expect(reportHtml).toContain('Report');
       expect(reportHtml).toContain('Audit');
       expect(reportHtml).toContain('Stack diagnosis');
       expect(reportHtml).toContain('Action shortlist');
       expect(reportHtml).toContain('Qualified candidates');
+      expect(reportHtml).not.toContain('report-conversation-drawer');
       expect(reportHtml).toContain(
         'Improves confidence, reduces false precision, and protects follow-on engineering and procurement decisions.',
       );

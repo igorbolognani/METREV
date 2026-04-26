@@ -24,8 +24,6 @@ const supplierSuggestions = [
   'Evoqua Water Technologies',
 ];
 
-const membraneSuggestions = ['present', 'absent', 'unknown'];
-
 const evidenceTypeOptions = [
   { label: 'Internal benchmark', value: 'internal_benchmark' },
   { label: 'Literature evidence', value: 'literature_evidence' },
@@ -56,8 +54,8 @@ export function CaseFormSuppliersEvidenceStep({
   return (
     <div className="workspace-form-layout">
       <WorkspaceDataCard>
-        <span className="badge subtle">Step 3</span>
-        <h3>Supplier context</h3>
+        <span className="badge subtle">Step 10</span>
+        <h3>Suppliers & constraints</h3>
         <div className="workspace-form-grid workspace-form-grid--two">
           <ChipInput
             hint="Preferred vendors that should remain explicit in the shortlist logic."
@@ -78,13 +76,32 @@ export function CaseFormSuppliersEvidenceStep({
             value={formValues.currentSuppliers}
           />
           <ChipInput
-            hint="Record whether the current stack already includes a membrane or separator."
-            label="Membrane presence"
-            maxItems={1}
-            onValueChange={(value) => onFieldChange('membranePresence', value)}
-            placeholder="present"
-            suggestions={membraneSuggestions}
-            value={formValues.membranePresence}
+            hint="Suppliers that should remain out of shortlist consideration for this run."
+            label="Excluded suppliers"
+            onValueChange={(value) => onFieldChange('excludedSuppliers', value)}
+            placeholder="Add an excluded supplier"
+            suggestions={supplierSuggestions}
+            value={formValues.excludedSuppliers ?? ''}
+          />
+          <Textarea
+            className="workspace-form-field--wide"
+            hint="Explain supplier fit, install constraints, service expectations, or sourcing boundaries that matter to the shortlist."
+            label="Supplier preference notes"
+            onChange={(event) =>
+              onFieldChange('supplierPreferenceNotes', event.target.value)
+            }
+            placeholder="Prefer retrofit-friendly vendors with wastewater references and maintainable cathode assemblies."
+            value={formValues.supplierPreferenceNotes ?? ''}
+          />
+          <Textarea
+            className="workspace-form-field--wide"
+            hint="Separate hard constraints with commas when you want them carried as distinct rule-facing items."
+            label="Hard constraints"
+            onChange={(event) =>
+              onFieldChange('hardConstraints', event.target.value)
+            }
+            placeholder="Retrofit must fit the current skid envelope, no chlorinated catalyst handling on site"
+            value={formValues.hardConstraints ?? ''}
           />
         </div>
       </WorkspaceDataCard>

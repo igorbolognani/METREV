@@ -35,6 +35,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install Python validation dependencies
+        run: python -m pip install -r requirements-dev.txt
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 

@@ -143,3 +143,96 @@ export function SimulationMultiLineChart({
     </div>
   );
 }
+
+export function SimulationHeatmapChart({
+  height = 320,
+  series,
+}: {
+  height?: number;
+  series: SimulationSeries;
+}) {
+  const points = series.points.filter(
+    (point) => typeof point.z === 'number' && Number.isFinite(point.z),
+  );
+
+  if (points.length === 0) {
+    return (
+      <WorkspaceEmptyState
+        title="No operating window"
+        description="This operating-window series does not include z-axis values."
+      />
+    );
+  }
+
+  const xValues = [...new Set(points.map((point) => point.x))].sort(
+    (left, right) => left - right,
+  );
+  const yValues = [...new Set(points.map((point) => point.y))].filter(
+    (value): value is number => typeof value === 'number',
+  );
+  yValues.sort((left, right) => right - left);
+  const zValues = points.map((point) => point.z as number);
+  const minZ = Math.min(...zValues);
+  const maxZ = Math.max(...zValues);
+  const range = Math.max(1, maxZ - minZ);
+  const pointMap = new Map(
+    points.map((point) => [`${point.x}:${point.y}`, point]),
+  );
+
+  return (
+    <div
+      className="simulation-heatmap"
+      style={{
+        minHeight: height,
+        gridTemplateColumns: `minmax(56px, auto) repeat(${xValues.length}, minmax(28px, 1fr))`,
+      }}
+    >
+      <span className="simulation-heatmap__corner">
+        {axisLabel(series.y_axis)}
+      </span>
+      {xValues.map((xValue) => (
+        <span className="simulation-heatmap__axis" key={`x-${xValue}`}>
+          {xValue}
+        </span>
+      ))}
+      {yValues.map((yValue) => (
+        <React.Fragment key={`row-${yValue}`}>
+          <span className="simulation-heatmap__axis">{yValue}</span>
+          {xValues.map((xValue) => {
+            const point = pointMap.get(`${xValue}:${yValue}`);
+            const zValue =
+              typeof point?.z === 'number' && Number.isFinite(point.z)
+                ? point.z
+                : null;
+            const intensity =
+              zValue === null ? 0 : Math.max(0, Math.min(1, (zValue - minZ) / range));
+
+            return (
+              <span
+                aria-label={`${axisLabel(series.x_axis)} ${xValue}, ${axisLabel(series.y_axis)} ${yValue}, score ${zValue ?? 'n/a'}`}
+                className={`simulation-heatmap__cell${
+                  point?.label === 'current'
+                    ? ' simulation-heatmap__cell--current'
+                    : ''
+                }`}
+                key={`${xValue}-${yValue}`}
+                style={{
+                  backgroundColor:
+                    zValue === null
+                      ? 'rgba(148, 163, 184, 0.14)'
+                      : `rgba(31, 111, 95, ${0.2 + intensity * 0.72})`,
+                }}
+                title={`${xValue} / ${yValue}: ${zValue ?? 'n/a'}`}
+              >
+                {zValue ?? ''}
+              </span>
+            );
+          })}
+        </React.Fragment>
+      ))}
+      <span className="simulation-heatmap__footer">
+        {axisLabel(series.x_axis)}
+      </span>
+    </div>
+  );
+}

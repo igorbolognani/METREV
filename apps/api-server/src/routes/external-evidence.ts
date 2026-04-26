@@ -2,10 +2,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-  externalEvidenceBulkReviewRequestSchema,
-  externalEvidenceReviewRequestSchema,
-  externalEvidenceReviewStatusSchema,
-  externalEvidenceSourceTypeSchema,
+    externalEvidenceBulkReviewRequestSchema,
+    externalEvidenceReviewRequestSchema,
+    externalEvidenceReviewStatusSchema,
+    externalEvidenceSourceTypeSchema,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -54,10 +54,10 @@ export async function registerExternalEvidenceRoutes(
 ): Promise<void> {
   app.get('/', async (request, reply) => {
     try {
-      requireRole(request.actor, 'VIEWER');
+      requireRole(request.actor, 'ANALYST');
     } catch (error) {
       if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+        return replyForAuthorizationError(request, reply, error, 'ANALYST');
       }
 
       throw error;
@@ -173,10 +173,10 @@ export async function registerExternalEvidenceRoutes(
 
   app.get('/:id', async (request, reply) => {
     try {
-      requireRole(request.actor, 'VIEWER');
+      requireRole(request.actor, 'ANALYST');
     } catch (error) {
       if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+        return replyForAuthorizationError(request, reply, error, 'ANALYST');
       }
 
       throw error;

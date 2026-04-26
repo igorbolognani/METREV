@@ -49,20 +49,15 @@ const workspace = {
     tabs: [
       { key: 'overview', label: 'Overview' },
       { key: 'runs', label: 'Runs' },
-      { key: 'evidence', label: 'Evidence' },
-      { key: 'research', label: 'Research' },
+      { key: 'reports', label: 'Reports' },
     ],
     badges: [
       { key: 'runs', label: '2 runs', tone: 'muted' },
       { key: 'high-confidence', label: '1 high confidence', tone: 'success' },
     ],
     primary_actions: [
-      { key: 'new-evaluation', label: 'New evaluation', href: '/cases/new' },
-      {
-        key: 'review-evidence',
-        label: 'Review evidence',
-        href: '/evidence/review',
-      },
+      { key: 'configure-stack', label: 'Configure stack', href: '/cases/new' },
+      { key: 'open-reports', label: 'Open reports', href: '/reports' },
     ],
     copy: {
       headline: 'Decision workspace',
@@ -151,33 +146,33 @@ describe('dashboard workspace', () => {
         workspace,
       }),
     );
-    const evidenceHtml = renderToStaticMarkup(
+    const reportsHtml = renderToStaticMarkup(
       React.createElement(DashboardWorkspaceView, {
-        activeTab: 'evidence',
+        activeTab: 'reports',
         workspace,
       }),
     );
 
     expect(overviewHtml).toContain('Decision workspace');
-    expect(overviewHtml).toContain('Workspace focus');
+    expect(overviewHtml).toContain('Workspace home');
     expect(overviewHtml).toContain('Overview');
     expect(overviewHtml).toContain('Runs');
-    expect(overviewHtml).toContain('Evidence');
-    expect(overviewHtml).toContain('Research');
+    expect(overviewHtml).toContain('Reports');
     expect(overviewHtml).toContain('Saved runs');
     expect(overviewHtml).toContain('High-confidence runs');
     expect(overviewHtml).toContain('CASE-002');
     expect(overviewHtml).toContain('Open latest run');
     expect(overviewHtml).toContain('Open case history');
-    expect(overviewHtml).toContain('Open input deck');
-    expect(overviewHtml).toContain('Open research reviews');
-    expect(overviewHtml).toContain('Research reviews');
+    expect(overviewHtml).toContain('Configure stack');
+    expect(overviewHtml).toContain('Open evaluations');
+    expect(overviewHtml).toContain('Open reports');
     expect(overviewHtml).toContain('Run momentum');
     expect(overviewHtml).toContain('Confidence posture');
     expect(overviewHtml).not.toContain('Accepted sidestream benchmark');
     expect(overviewHtml).not.toContain('Primary modules');
 
-    expect(evidenceHtml).toContain('Evidence backlog');
-    expect(evidenceHtml).toContain('Accepted sidestream benchmark');
+    expect(reportsHtml).toContain('Recent reports');
+    expect(reportsHtml).toContain('Open reports');
+    expect(reportsHtml).toContain('CASE-002 report');
   });
 });

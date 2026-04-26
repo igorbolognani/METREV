@@ -1,6 +1,6 @@
 import type {
-  ExternalEvidenceCatalogItemSummary,
-  RawCaseInput,
+    ExternalEvidenceCatalogItemSummary,
+    RawCaseInput,
 } from '@metrev/domain-contracts';
 
 type EvidenceRecordInput = NonNullable<
@@ -11,10 +11,14 @@ export interface CaseIntakeFormValues {
   caseId: string;
   technologyFamily: string;
   architectureFamily: string;
+  reactorArchitectureType?: string;
+  reactorSolidsTolerance?: string;
+  reactorServiceabilityLevel?: string;
   primaryObjective: string;
   deploymentContext: string;
   decisionHorizon: string;
   currentTrl: string;
+  operatingRegime?: string;
   painPoints: string;
   influentType: string;
   substrateProfile: string;
@@ -22,8 +26,35 @@ export interface CaseIntakeFormValues {
   ph: string;
   conductivity: string;
   hydraulicRetentionTime: string;
+  anodeMaterialFamily?: string;
+  anodeSurfaceTreatment?: string;
+  anodeBiofilmSupportLevel?: string;
+  cathodeReactionTarget?: string;
+  cathodeCatalystFamily?: string;
+  cathodeMassTransportLimitationRisk?: string;
+  cathodeGasHandlingInterface?: string;
+  membraneSeparatorType?: string;
+  membraneFoulingRisk?: string;
+  membraneCrossoverControlLevel?: string;
+  electricalCurrentCollectionStrategy?: string;
+  electricalSealingStrategy?: string;
+  electricalCorrosionProtectionLevel?: string;
+  balanceFlowControl?: string;
+  balanceGasHandlingReadiness?: string;
+  balanceDosingCapability?: string;
+  balanceSummary?: string;
+  sensorsDataQuality?: string;
+  sensorsVoltageCurrentLogging?: string;
+  sensorsWaterQualityCoverage?: string;
+  biologyBiofilmMaturity?: string;
+  biologyContaminationRisk?: string;
+  biologyInoculumSource?: string;
+  biologyStartupProtocol?: string;
   preferredSuppliers: string;
   currentSuppliers: string;
+  excludedSuppliers?: string;
+  supplierPreferenceNotes?: string;
+  hardConstraints?: string;
   membranePresence: string;
   assumptionsNote: string;
   evidenceType: EvidenceRecordInput['evidence_type'];
@@ -47,10 +78,14 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
   caseId: '',
   technologyFamily: 'microbial_fuel_cell',
   architectureFamily: '',
+  reactorArchitectureType: '',
+  reactorSolidsTolerance: '',
+  reactorServiceabilityLevel: '',
   primaryObjective: 'wastewater_treatment',
   deploymentContext: '',
   decisionHorizon: '',
   currentTrl: '',
+  operatingRegime: '',
   painPoints: '',
   influentType: '',
   substrateProfile: '',
@@ -58,8 +93,35 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
   ph: '',
   conductivity: '',
   hydraulicRetentionTime: '',
+  anodeMaterialFamily: '',
+  anodeSurfaceTreatment: '',
+  anodeBiofilmSupportLevel: '',
+  cathodeReactionTarget: '',
+  cathodeCatalystFamily: '',
+  cathodeMassTransportLimitationRisk: '',
+  cathodeGasHandlingInterface: '',
+  membraneSeparatorType: '',
+  membraneFoulingRisk: '',
+  membraneCrossoverControlLevel: '',
+  electricalCurrentCollectionStrategy: '',
+  electricalSealingStrategy: '',
+  electricalCorrosionProtectionLevel: '',
+  balanceFlowControl: '',
+  balanceGasHandlingReadiness: '',
+  balanceDosingCapability: '',
+  balanceSummary: '',
+  sensorsDataQuality: '',
+  sensorsVoltageCurrentLogging: '',
+  sensorsWaterQualityCoverage: '',
+  biologyBiofilmMaturity: '',
+  biologyContaminationRisk: '',
+  biologyInoculumSource: '',
+  biologyStartupProtocol: '',
   preferredSuppliers: '',
   currentSuppliers: '',
+  excludedSuppliers: '',
+  supplierPreferenceNotes: '',
+  hardConstraints: '',
   membranePresence: '',
   assumptionsNote: '',
   evidenceType: 'internal_benchmark',
@@ -89,6 +151,232 @@ function splitCommaSeparated(value: string): string[] {
 
 function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function trimToUndefined(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function readStringValue(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (entry): entry is string =>
+      typeof entry === 'string' && entry.trim().length > 0,
+  );
+}
+
+function resolveOptionalFormText(
+  value: string | undefined,
+  presetValue: unknown,
+): string | undefined {
+  if (typeof value === 'undefined') {
+    return trimToUndefined(readStringValue(presetValue));
+  }
+
+  return trimToUndefined(value);
+}
+
+export function normalizeCaseIntakeFormValues(
+  values?: Partial<CaseIntakeFormValues>,
+): CaseIntakeFormValues {
+  return {
+    ...defaultCaseIntakeFormValues,
+    ...values,
+  };
+}
+
+export function hydrateCaseIntakeFormValues(
+  values?: Partial<CaseIntakeFormValues>,
+  presetPayload?: RawCaseInput,
+): CaseIntakeFormValues {
+  const normalized = normalizeCaseIntakeFormValues(values);
+
+  if (!presetPayload) {
+    return normalized;
+  }
+
+  return {
+    ...normalized,
+    reactorArchitectureType:
+      normalized.reactorArchitectureType ||
+      readStringValue(
+        presetPayload.stack_blocks?.reactor_architecture?.architecture_type,
+      ) ||
+      normalized.architectureFamily,
+    reactorSolidsTolerance:
+      normalized.reactorSolidsTolerance ||
+      readStringValue(
+        presetPayload.stack_blocks?.reactor_architecture?.solids_tolerance,
+      ),
+    reactorServiceabilityLevel:
+      normalized.reactorServiceabilityLevel ||
+      readStringValue(
+        presetPayload.stack_blocks?.reactor_architecture?.serviceability_level,
+      ),
+    operatingRegime:
+      normalized.operatingRegime ||
+      readStringValue(presetPayload.feed_and_operation?.operating_regime),
+    anodeMaterialFamily:
+      normalized.anodeMaterialFamily ||
+      readStringValue(
+        presetPayload.stack_blocks?.anode_biofilm_support?.material_family,
+      ),
+    anodeSurfaceTreatment:
+      normalized.anodeSurfaceTreatment ||
+      readStringValue(
+        presetPayload.stack_blocks?.anode_biofilm_support?.surface_treatment,
+      ),
+    anodeBiofilmSupportLevel:
+      normalized.anodeBiofilmSupportLevel ||
+      readStringValue(
+        presetPayload.stack_blocks?.anode_biofilm_support
+          ?.biofilm_support_level,
+      ),
+    cathodeReactionTarget:
+      normalized.cathodeReactionTarget ||
+      readStringValue(
+        presetPayload.stack_blocks?.cathode_catalyst_support?.reaction_target,
+      ),
+    cathodeCatalystFamily:
+      normalized.cathodeCatalystFamily ||
+      readStringValue(
+        presetPayload.stack_blocks?.cathode_catalyst_support?.catalyst_family,
+      ),
+    cathodeMassTransportLimitationRisk:
+      normalized.cathodeMassTransportLimitationRisk ||
+      readStringValue(
+        presetPayload.stack_blocks?.cathode_catalyst_support
+          ?.mass_transport_limitation_risk,
+      ),
+    cathodeGasHandlingInterface:
+      normalized.cathodeGasHandlingInterface ||
+      readStringValue(
+        presetPayload.stack_blocks?.cathode_catalyst_support
+          ?.gas_handling_interface,
+      ),
+    membraneSeparatorType:
+      normalized.membraneSeparatorType ||
+      readStringValue(presetPayload.stack_blocks?.membrane_or_separator?.type),
+    membraneFoulingRisk:
+      normalized.membraneFoulingRisk ||
+      readStringValue(
+        presetPayload.stack_blocks?.membrane_or_separator?.fouling_risk,
+      ),
+    membraneCrossoverControlLevel:
+      normalized.membraneCrossoverControlLevel ||
+      readStringValue(
+        presetPayload.stack_blocks?.membrane_or_separator
+          ?.crossover_control_level,
+      ),
+    electricalCurrentCollectionStrategy:
+      normalized.electricalCurrentCollectionStrategy ||
+      readStringValue(
+        presetPayload.stack_blocks?.electrical_interconnect_and_sealing
+          ?.current_collection_strategy,
+      ),
+    electricalSealingStrategy:
+      normalized.electricalSealingStrategy ||
+      readStringValue(
+        presetPayload.stack_blocks?.electrical_interconnect_and_sealing
+          ?.sealing_strategy,
+      ),
+    electricalCorrosionProtectionLevel:
+      normalized.electricalCorrosionProtectionLevel ||
+      readStringValue(
+        presetPayload.stack_blocks?.electrical_interconnect_and_sealing
+          ?.corrosion_protection_level,
+      ),
+    balanceFlowControl:
+      normalized.balanceFlowControl ||
+      readStringValue(
+        presetPayload.stack_blocks?.balance_of_plant?.flow_control,
+      ),
+    balanceGasHandlingReadiness:
+      normalized.balanceGasHandlingReadiness ||
+      readStringValue(
+        presetPayload.stack_blocks?.balance_of_plant?.gas_handling_readiness,
+      ),
+    balanceDosingCapability:
+      normalized.balanceDosingCapability ||
+      readStringValue(
+        presetPayload.stack_blocks?.balance_of_plant?.dosing_capability,
+      ),
+    balanceSummary:
+      normalized.balanceSummary ||
+      readStringValue(
+        presetPayload.stack_blocks?.balance_of_plant?.bop_summary,
+      ),
+    sensorsDataQuality:
+      normalized.sensorsDataQuality ||
+      readStringValue(
+        presetPayload.stack_blocks?.sensors_and_analytics?.data_quality,
+      ),
+    sensorsVoltageCurrentLogging:
+      normalized.sensorsVoltageCurrentLogging ||
+      readStringValue(
+        presetPayload.stack_blocks?.sensors_and_analytics
+          ?.voltage_current_logging,
+      ),
+    sensorsWaterQualityCoverage:
+      normalized.sensorsWaterQualityCoverage ||
+      readStringValue(
+        presetPayload.stack_blocks?.sensors_and_analytics
+          ?.water_quality_coverage,
+      ),
+    biologyBiofilmMaturity:
+      normalized.biologyBiofilmMaturity ||
+      readStringValue(
+        presetPayload.stack_blocks?.operational_biology?.biofilm_maturity,
+      ),
+    biologyContaminationRisk:
+      normalized.biologyContaminationRisk ||
+      readStringValue(
+        presetPayload.stack_blocks?.operational_biology?.contamination_risk,
+      ),
+    biologyInoculumSource:
+      normalized.biologyInoculumSource ||
+      readStringValue(
+        presetPayload.stack_blocks?.operational_biology?.inoculum_source,
+      ),
+    biologyStartupProtocol:
+      normalized.biologyStartupProtocol ||
+      readStringValue(
+        presetPayload.stack_blocks?.operational_biology?.startup_protocol,
+      ),
+    excludedSuppliers:
+      normalized.excludedSuppliers ||
+      readStringArray(presetPayload.supplier_context?.excluded_suppliers).join(
+        ', ',
+      ),
+    supplierPreferenceNotes:
+      normalized.supplierPreferenceNotes ||
+      readStringValue(
+        presetPayload.supplier_context?.supplier_preference_notes,
+      ),
+    hardConstraints:
+      normalized.hardConstraints ||
+      readStringArray(presetPayload.business_context?.hard_constraints).join(
+        ', ',
+      ),
+    membranePresence:
+      normalized.membranePresence ||
+      readStringValue(
+        presetPayload.stack_blocks?.reactor_architecture?.membrane_presence,
+      ) ||
+      readStringValue(presetPayload.technology_context?.membrane_presence),
+  };
 }
 
 function buildEvidenceRecords(
@@ -160,8 +448,11 @@ export function buildCaseInputFromFormValues(
   ]);
   const currentSuppliers = splitCommaSeparated(values.currentSuppliers);
   const preferredSuppliers = splitCommaSeparated(values.preferredSuppliers);
+  const excludedSuppliers = splitCommaSeparated(values.excludedSuppliers ?? '');
+  const hardConstraints = splitCommaSeparated(values.hardConstraints ?? '');
   const painPoints = splitCommaSeparated(values.painPoints);
   const presetPayload = preset?.payload;
+  const presetStackBlocks = presetPayload?.stack_blocks;
 
   return {
     ...presetPayload,
@@ -175,6 +466,10 @@ export function buildCaseInputFromFormValues(
         values.decisionHorizon.trim() ||
         presetPayload?.business_context?.decision_horizon,
       deployment_context: values.deploymentContext.trim() || undefined,
+      hard_constraints:
+        typeof values.hardConstraints === 'undefined'
+          ? (presetPayload?.business_context?.hard_constraints ?? [])
+          : hardConstraints,
     },
     technology_context: {
       ...presetPayload?.technology_context,
@@ -198,6 +493,188 @@ export function buildCaseInputFromFormValues(
       hydraulic_retention_time_h: parseOptionalNumber(
         values.hydraulicRetentionTime,
       ),
+      operating_regime:
+        resolveOptionalFormText(
+          values.operatingRegime,
+          presetPayload?.feed_and_operation?.operating_regime,
+        ) ?? undefined,
+    },
+    stack_blocks: {
+      ...presetStackBlocks,
+      reactor_architecture: {
+        ...presetStackBlocks?.reactor_architecture,
+        architecture_type:
+          resolveOptionalFormText(
+            values.reactorArchitectureType,
+            presetStackBlocks?.reactor_architecture?.architecture_type,
+          ) ||
+          values.architectureFamily.trim() ||
+          undefined,
+        solids_tolerance:
+          resolveOptionalFormText(
+            values.reactorSolidsTolerance,
+            presetStackBlocks?.reactor_architecture?.solids_tolerance,
+          ) ?? undefined,
+        serviceability_level:
+          resolveOptionalFormText(
+            values.reactorServiceabilityLevel,
+            presetStackBlocks?.reactor_architecture?.serviceability_level,
+          ) ?? undefined,
+        membrane_presence:
+          values.membranePresence.trim() ||
+          readStringValue(
+            presetStackBlocks?.reactor_architecture?.membrane_presence,
+          ) ||
+          readStringValue(
+            presetPayload?.technology_context?.membrane_presence,
+          ) ||
+          undefined,
+      },
+      anode_biofilm_support: {
+        ...presetStackBlocks?.anode_biofilm_support,
+        material_family:
+          resolveOptionalFormText(
+            values.anodeMaterialFamily,
+            presetStackBlocks?.anode_biofilm_support?.material_family,
+          ) ?? undefined,
+        surface_treatment:
+          resolveOptionalFormText(
+            values.anodeSurfaceTreatment,
+            presetStackBlocks?.anode_biofilm_support?.surface_treatment,
+          ) ?? undefined,
+        biofilm_support_level:
+          resolveOptionalFormText(
+            values.anodeBiofilmSupportLevel,
+            presetStackBlocks?.anode_biofilm_support?.biofilm_support_level,
+          ) ?? undefined,
+      },
+      cathode_catalyst_support: {
+        ...presetStackBlocks?.cathode_catalyst_support,
+        reaction_target:
+          resolveOptionalFormText(
+            values.cathodeReactionTarget,
+            presetStackBlocks?.cathode_catalyst_support?.reaction_target,
+          ) ?? undefined,
+        catalyst_family:
+          resolveOptionalFormText(
+            values.cathodeCatalystFamily,
+            presetStackBlocks?.cathode_catalyst_support?.catalyst_family,
+          ) ?? undefined,
+        mass_transport_limitation_risk:
+          resolveOptionalFormText(
+            values.cathodeMassTransportLimitationRisk,
+            presetStackBlocks?.cathode_catalyst_support
+              ?.mass_transport_limitation_risk,
+          ) ?? undefined,
+        gas_handling_interface:
+          resolveOptionalFormText(
+            values.cathodeGasHandlingInterface,
+            presetStackBlocks?.cathode_catalyst_support?.gas_handling_interface,
+          ) ?? undefined,
+      },
+      membrane_or_separator: {
+        ...presetStackBlocks?.membrane_or_separator,
+        type:
+          resolveOptionalFormText(
+            values.membraneSeparatorType,
+            presetStackBlocks?.membrane_or_separator?.type,
+          ) ?? undefined,
+        fouling_risk:
+          resolveOptionalFormText(
+            values.membraneFoulingRisk,
+            presetStackBlocks?.membrane_or_separator?.fouling_risk,
+          ) ?? undefined,
+        crossover_control_level:
+          resolveOptionalFormText(
+            values.membraneCrossoverControlLevel,
+            presetStackBlocks?.membrane_or_separator?.crossover_control_level,
+          ) ?? undefined,
+      },
+      electrical_interconnect_and_sealing: {
+        ...presetStackBlocks?.electrical_interconnect_and_sealing,
+        current_collection_strategy:
+          resolveOptionalFormText(
+            values.electricalCurrentCollectionStrategy,
+            presetStackBlocks?.electrical_interconnect_and_sealing
+              ?.current_collection_strategy,
+          ) ?? undefined,
+        sealing_strategy:
+          resolveOptionalFormText(
+            values.electricalSealingStrategy,
+            presetStackBlocks?.electrical_interconnect_and_sealing
+              ?.sealing_strategy,
+          ) ?? undefined,
+        corrosion_protection_level:
+          resolveOptionalFormText(
+            values.electricalCorrosionProtectionLevel,
+            presetStackBlocks?.electrical_interconnect_and_sealing
+              ?.corrosion_protection_level,
+          ) ?? undefined,
+      },
+      balance_of_plant: {
+        ...presetStackBlocks?.balance_of_plant,
+        flow_control:
+          resolveOptionalFormText(
+            values.balanceFlowControl,
+            presetStackBlocks?.balance_of_plant?.flow_control,
+          ) ?? undefined,
+        gas_handling_readiness:
+          resolveOptionalFormText(
+            values.balanceGasHandlingReadiness,
+            presetStackBlocks?.balance_of_plant?.gas_handling_readiness,
+          ) ?? undefined,
+        dosing_capability:
+          resolveOptionalFormText(
+            values.balanceDosingCapability,
+            presetStackBlocks?.balance_of_plant?.dosing_capability,
+          ) ?? undefined,
+        bop_summary:
+          resolveOptionalFormText(
+            values.balanceSummary,
+            presetStackBlocks?.balance_of_plant?.bop_summary,
+          ) ?? undefined,
+      },
+      sensors_and_analytics: {
+        ...presetStackBlocks?.sensors_and_analytics,
+        data_quality:
+          resolveOptionalFormText(
+            values.sensorsDataQuality,
+            presetStackBlocks?.sensors_and_analytics?.data_quality,
+          ) ?? undefined,
+        voltage_current_logging:
+          resolveOptionalFormText(
+            values.sensorsVoltageCurrentLogging,
+            presetStackBlocks?.sensors_and_analytics?.voltage_current_logging,
+          ) ?? undefined,
+        water_quality_coverage:
+          resolveOptionalFormText(
+            values.sensorsWaterQualityCoverage,
+            presetStackBlocks?.sensors_and_analytics?.water_quality_coverage,
+          ) ?? undefined,
+      },
+      operational_biology: {
+        ...presetStackBlocks?.operational_biology,
+        biofilm_maturity:
+          resolveOptionalFormText(
+            values.biologyBiofilmMaturity,
+            presetStackBlocks?.operational_biology?.biofilm_maturity,
+          ) ?? undefined,
+        contamination_risk:
+          resolveOptionalFormText(
+            values.biologyContaminationRisk,
+            presetStackBlocks?.operational_biology?.contamination_risk,
+          ) ?? undefined,
+        inoculum_source:
+          resolveOptionalFormText(
+            values.biologyInoculumSource,
+            presetStackBlocks?.operational_biology?.inoculum_source,
+          ) ?? undefined,
+        startup_protocol:
+          resolveOptionalFormText(
+            values.biologyStartupProtocol,
+            presetStackBlocks?.operational_biology?.startup_protocol,
+          ) ?? undefined,
+      },
     },
     supplier_context: {
       ...presetPayload?.supplier_context,
@@ -207,7 +684,14 @@ export function buildCaseInputFromFormValues(
           : (presetPayload?.supplier_context?.current_suppliers ?? []),
       preferred_suppliers: preferredSuppliers,
       excluded_suppliers:
-        presetPayload?.supplier_context?.excluded_suppliers ?? [],
+        typeof values.excludedSuppliers === 'undefined'
+          ? (presetPayload?.supplier_context?.excluded_suppliers ?? [])
+          : excludedSuppliers,
+      supplier_preference_notes:
+        resolveOptionalFormText(
+          values.supplierPreferenceNotes,
+          presetPayload?.supplier_context?.supplier_preference_notes,
+        ) ?? undefined,
     },
     evidence_records: buildEvidenceRecords(
       values,

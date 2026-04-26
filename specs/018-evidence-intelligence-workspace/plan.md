@@ -1,5 +1,7 @@
 # Implementation Plan — Evidence Intelligence Workspace
 
+> 020 reconciliation note: treat this plan as internal/advanced evidence tooling. Warehouse facets and the local-first evidence assistant are not the client-primary report chat. The report conversation boundary lives in `specs/020-metrev-three-phase-product-plan/contracts/report-conversation-boundary.md`.
+
 ## Summary
 
 Use 018 as the durable execution pack for the evidence-intelligence wave. The shipped slice now includes dedicated explorer routes and navigation, a tabbed evidence-detail workbench, a dedicated runtime explorer workspace contract and CSV export, page-scoped facets and grouped tables in the explorer UI, and conservative cleanup that consolidates historical notes into maintained docs.

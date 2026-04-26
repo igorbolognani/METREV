@@ -22,6 +22,7 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 | Optional local MCP templates         | `.vscode/mcp.template.jsonc`                                                                                                                                          | Keep only optional local servers here. Do not duplicate workspace-owned defaults.                                                                       |
 | Optional local Serena project config | `.serena/project.yml`                                                                                                                                                 | Repo-local helper config for contributors who install Serena locally. It is not a mandatory runtime dependency.                                         |
 | Repository-wide cleanup umbrella     | `specs/015-repository-authority-and-structure-consolidation/`                                                                                                         | Use this feature pack to coordinate the remaining consolidation work across docs, workflow, reference assets, and structure.                            |
+| Active product roadmap               | `specs/020-metrev-three-phase-product-plan/`                                                                                                                          | Current owner for public landing, scientific instrument workspace, internal intelligence grouping, and report-grounded conversation.                    |
 
 ## Reference-only or future-facing surfaces
 
@@ -30,7 +31,11 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 - `bioelectrochem_agent_kit/.github/` and `bioelectrochem_agent_kit/docs/mcp-integration-guidance.md` are antecedent domain-kit workflow references. In this repository, the active workflow surface is the root one.
 - `bioelectrochem_agent_kit/ALL_FILES_CODE.md` is a generated export artifact and should not be edited as live source.
 - `bioelectro-copilot-contracts/contracts/ontology/relations.yaml` and the contract report templates remain future-facing until a validated runtime consumer is added.
-- `specs/013-metrev-ui-ux-parity/` remains an antecedent UI/workspace pack while `specs/014-local-first-professional-workspace/` is the active execution surface for the current local-first product phase.
+- `specs/013-metrev-ui-ux-parity/` remains an antecedent UI/workspace pack.
+- `specs/014-local-first-professional-workspace/` remains local-first workspace background context.
+- `specs/016-metrev-ui-refactor/` is superseded as active execution and should be used only as historical design-system context.
+- `specs/017-full-big-data-workspace/` remains the completed big-data/cockpit baseline.
+- `specs/018-evidence-intelligence-workspace/` and `specs/019-research-intelligence-review-table-engine/` are internal/advanced evidence and research instruments under the 020 product roadmap.
 - `specs/_examples/` remains example-only workflow material; use `specs/_templates/` and maintained numbered packs for live work.
 - `docs/historical-cleanup-notes.md` is the consolidated historical note for earlier cleanup waves. It provides background context only.
 - Historical duplicate copies previously kept under `archive/legacy-root-duplicates/` have been retired where equivalent module-local source copies still exist.

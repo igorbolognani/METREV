@@ -18,18 +18,19 @@ describe('public landing page', () => {
     const html = renderToStaticMarkup(React.createElement(PublicLandingPage));
 
     expect(html).toContain(
-      'Auditable decision-support for bioelectrochemical evaluation.',
+      'Engineer better bioelectrochemical systems from evidence, not guesswork.',
     );
-    expect(html).toContain('Current workspace map');
-    expect(html).toContain('Input Deck');
-    expect(html).toContain('Evidence Review');
-    expect(html).toContain('All Evaluations');
-    expect(html).toContain('Overview');
-    expect(html).toContain('Roadmap &amp; Suppliers');
-    expect(html).toContain('Defaults and missing data stay visible');
-    expect(html).toContain('Not presented as live product scope');
-    expect(html).toContain('/dashboard');
+    expect(html).toContain('Dashboard, Configure Stack, Evaluations, Reports');
+    expect(html).toContain('Configure stack');
+    expect(html).toContain(
+      'Generate a report-ready recommendation with traceable rationale.',
+    );
+    expect(html).toContain('Ask this report');
+    expect(html).toContain(
+      'Evidence review, research tables, ingestion, and raw audit tools remain available for internal/advanced users',
+    );
     expect(html).toContain('/login?callbackUrl=%2Fdashboard');
-    expect(html).toContain('generic chat-first copilot');
+    expect(html).not.toContain('AI-first');
+    expect(html).not.toContain('generic chat-first copilot');
   });
 });

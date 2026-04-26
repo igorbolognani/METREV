@@ -16,6 +16,8 @@ import type {
   ExternalEvidenceReviewRequest,
   ExternalEvidenceReviewStatus,
   PrintableEvaluationReportResponse,
+  ReportConversationRequest,
+  ReportConversationResponse,
   RawCaseInput,
   AddResearchColumnRequest,
   CreateResearchEvidencePackRequest,
@@ -362,6 +364,28 @@ export async function fetchPrintableEvaluationReport(
   );
 
   return parseJson<PrintableEvaluationReportResponse>(response);
+}
+
+export async function askReportConversation(
+  evaluationId: string,
+  payload: Omit<ReportConversationRequest, 'evaluation_id'>,
+): Promise<ReportConversationResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/workspace/evaluations/${evaluationId}/report/conversation`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...payload,
+        evaluation_id: evaluationId,
+      }),
+    },
+  );
+
+  return parseJson<ReportConversationResponse>(response);
 }
 
 export async function fetchEvaluationJsonExport(

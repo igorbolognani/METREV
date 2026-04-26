@@ -8,7 +8,7 @@ import * as React from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import { fetchEvaluationList } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
-import { NAV_ITEMS } from '@/lib/navigation';
+import { getNavItemsForRole } from '@/lib/navigation';
 
 interface PaletteItem {
   disabled?: boolean;
@@ -20,7 +20,7 @@ interface PaletteItem {
   onSelect: () => void;
 }
 
-export function CommandPalette() {
+export function CommandPalette({ role }: { role?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -53,7 +53,7 @@ export function CommandPalette() {
   }, [recentEvaluations]);
 
   const items = React.useMemo<PaletteItem[]>(() => {
-    const navigationItems = NAV_ITEMS.map((item) => ({
+    const navigationItems = getNavItemsForRole(role).map((item) => ({
       disabled: item.disabled,
       group: 'Navigation',
       hint: item.href,
@@ -90,7 +90,7 @@ export function CommandPalette() {
     }));
 
     return [...navigationItems, ...evaluationItems, ...caseItems];
-  }, [recentCases, recentEvaluations, router]);
+  }, [recentCases, recentEvaluations, role, router]);
 
   React.useEffect(() => {
     if (pathname.includes('/report')) {

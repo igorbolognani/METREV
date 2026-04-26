@@ -1060,6 +1060,62 @@ export const printableEvaluationReportResponseSchema = z.object({
   }),
 });
 
+export const reportConversationTurnSchema = z.object({
+  turn_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  actor: z.enum(['user', 'assistant', 'system']),
+  message: z.string().min(1),
+  selected_section: z.string().trim().min(1).nullable().default(null),
+  created_at: z.string().min(1),
+});
+
+export const reportConversationCitationSchema = z.object({
+  citation_id: z.string().min(1),
+  label: z.string().min(1),
+  section: z.string().min(1),
+  source_document_id: z.string().nullable().default(null),
+  claim_id: z.string().nullable().default(null),
+  note: z.string().nullable().default(null),
+});
+
+export const reportConversationGroundingSchema = z.object({
+  evaluation_id: z.string().min(1),
+  report_title: z.string().min(1),
+  selected_section: z.string().nullable().default(null),
+  used_sections: z.array(z.string().min(1)),
+  source_usage_count: z.number().int().nonnegative(),
+  claim_usage_count: z.number().int().nonnegative(),
+  snapshot_count: z.number().int().nonnegative(),
+});
+
+export const reportConversationMetadataSchema = z.object({
+  conversation_id: z.string().min(1),
+  mode: z.enum(['client', 'internal']).default('client'),
+  context_version: z.string().min(1),
+  persisted: z.boolean(),
+  created_at: z.string().min(1),
+});
+
+export const reportConversationRequestSchema = z.object({
+  evaluation_id: z.string().trim().min(1),
+  message: z.string().trim().min(1).max(2000),
+  selected_section: z.string().trim().min(1).max(120).optional(),
+  conversation_id: z.string().trim().min(1).optional(),
+  turn_history: z.array(reportConversationTurnSchema).max(12).optional(),
+});
+
+export const reportConversationResponseSchema = z.object({
+  conversation_id: z.string().min(1),
+  answer: z.string().nullable(),
+  citations: z.array(reportConversationCitationSchema),
+  grounding_summary: reportConversationGroundingSchema,
+  uncertainty_summary: z.string().min(1),
+  recommended_next_checks: z.array(z.string().min(1)),
+  narrative_metadata: narrativeMetadataSchema,
+  metadata: reportConversationMetadataSchema,
+  refusal_reason: z.string().nullable().default(null),
+});
+
 export const exportCsvResponseMetadataSchema = z.object({
   file_name: z.string().min(1),
   content_type: z.literal('text/csv'),
@@ -1323,6 +1379,24 @@ export type EvidenceExplorerWorkspaceResponse = z.infer<
 >;
 export type PrintableEvaluationReportResponse = z.infer<
   typeof printableEvaluationReportResponseSchema
+>;
+export type ReportConversationTurn = z.infer<
+  typeof reportConversationTurnSchema
+>;
+export type ReportConversationCitation = z.infer<
+  typeof reportConversationCitationSchema
+>;
+export type ReportConversationGrounding = z.infer<
+  typeof reportConversationGroundingSchema
+>;
+export type ReportConversationMetadata = z.infer<
+  typeof reportConversationMetadataSchema
+>;
+export type ReportConversationRequest = z.infer<
+  typeof reportConversationRequestSchema
+>;
+export type ReportConversationResponse = z.infer<
+  typeof reportConversationResponseSchema
 >;
 export type ExportCsvResponseMetadata = z.infer<
   typeof exportCsvResponseMetadataSchema

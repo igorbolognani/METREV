@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { Tooltip } from '@/components/ui/tooltip';
-import { NAV_ITEMS, type NavIcon } from '@/lib/navigation';
+import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';
 
 export interface PrimaryNavProps {
   collapsed?: boolean;
+  role?: string;
 }
 
 function NavigationIcon({ icon }: { icon: NavIcon }) {
@@ -124,6 +125,7 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
         </svg>
       );
     case 'evaluations':
+    case 'reports':
       return (
         <svg
           aria-hidden="true"
@@ -147,46 +149,66 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
   }
 }
 
-export function PrimaryNav({ collapsed = false }: PrimaryNavProps) {
+export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
   const pathname = usePathname();
+  const visibleItems = getNavItemsForRole(role);
+  const sections = [
+    {
+      label: 'Workspace',
+      items: visibleItems.filter((item) => item.section === 'primary'),
+    },
+    {
+      label: 'Advanced/Internal',
+      items: visibleItems.filter((item) => item.section === 'advanced'),
+    },
+  ].filter((section) => section.items.length > 0);
 
   return (
     <nav aria-label="Primary" className="app-sidebar__nav">
-      {NAV_ITEMS.map((item) => {
-        const isActive =
-          pathname === item.href ||
-          (item.href !== '/' && pathname.startsWith(item.href));
+      {sections.map((section) => (
+        <div className="app-sidebar__nav-section" key={section.label}>
+          {!collapsed ? (
+            <span className="app-sidebar__section-label">
+              {section.label}
+            </span>
+          ) : null}
+          {section.items.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/' && pathname.startsWith(item.href));
 
-        const navItem = item.disabled ? (
-          <span
-            aria-disabled="true"
-            className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
-            key={item.id}
-          >
-            <NavigationIcon icon={item.icon} />
-            {!collapsed ? <span>{item.label}</span> : null}
-          </span>
-        ) : (
-          <Link
-            className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
-            href={item.href}
-            key={item.id}
-          >
-            <NavigationIcon icon={item.icon} />
-            {!collapsed ? <span>{item.label}</span> : null}
-          </Link>
-        );
+            const navItem = item.disabled ? (
+              <span
+                aria-disabled="true"
+                className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
+                key={item.id}
+              >
+                <NavigationIcon icon={item.icon} />
+                {!collapsed ? <span>{item.label}</span> : null}
+              </span>
+            ) : (
+              <Link
+                className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
+                href={item.href}
+                key={item.id}
+              >
+                <NavigationIcon icon={item.icon} />
+                {!collapsed ? <span>{item.label}</span> : null}
+              </Link>
+            );
 
-        if (!collapsed) {
-          return navItem;
-        }
+            if (!collapsed) {
+              return navItem;
+            }
 
-        return (
-          <Tooltip content={item.label} key={item.id} side="right">
-            {navItem}
-          </Tooltip>
-        );
-      })}
+            return (
+              <Tooltip content={item.label} key={item.id} side="right">
+                {navItem}
+              </Tooltip>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }

@@ -35,7 +35,7 @@ export function AppSidebar({
               {!collapsed ? <strong>METREV</strong> : null}
               {!collapsed ? (
                 <span className="app-sidebar__brand-note">
-                  Decision, evidence, and audit surfaces
+                  Stack decisions, reports, and traceable audit
                 </span>
               ) : null}
             </div>
@@ -50,7 +50,7 @@ export function AppSidebar({
             </Button>
           </div>
 
-          <PrimaryNav collapsed={collapsed} />
+          <PrimaryNav collapsed={collapsed} role={role} />
 
           {!collapsed ? (
             <section

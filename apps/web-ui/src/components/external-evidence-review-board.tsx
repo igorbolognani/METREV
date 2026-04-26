@@ -361,7 +361,7 @@ export function EvidenceReviewWorkspaceView({
       value: workspace.summary.pending,
     },
     {
-      detail: 'Eligible for explicit attachment in the input deck.',
+      detail: 'Eligible for explicit attachment in the stack cockpit.',
       key: 'accepted',
       label: 'Accepted',
       tone: 'success' as const,
@@ -413,7 +413,7 @@ export function EvidenceReviewWorkspaceView({
               </Link>
             ))}
             <Link className="button secondary" href="/cases/new">
-              Open input deck
+              Open stack cockpit
             </Link>
           </>
         }

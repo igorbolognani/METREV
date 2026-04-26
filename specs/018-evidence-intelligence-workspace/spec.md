@@ -1,5 +1,7 @@
 # Feature Specification — Evidence Intelligence Workspace
 
+> 020 reconciliation note: this feature is an Advanced/Internal evidence instrument. The evidence explorer and evidence assistant remain useful warehouse-facing tools, but they are not the final client-facing report conversation feature. Report-grounded conversation is owned by `specs/020-metrev-three-phase-product-plan/`.
+
 ## Objective
 
 Implement the next METREV evidence-intelligence wave as a durable workspace feature pack, now expanded to include a dedicated explorer backend contract, warehouse-scoped filtered facets and metrics, explorer CSV export, a local-first evidence assistant with explicit fallback semantics, and conservative historical-doc cleanup alongside the navigable explorer and tabbed evidence-detail workbench.

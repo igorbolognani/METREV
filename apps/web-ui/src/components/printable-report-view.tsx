@@ -4,7 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
 
-import type { PrintableEvaluationReportResponse } from '@metrev/domain-contracts';
+import type {
+  PrintableEvaluationReportResponse,
+  ReportConversationResponse,
+} from '@metrev/domain-contracts';
 
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
@@ -17,7 +20,7 @@ import {
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
-import { fetchPrintableEvaluationReport } from '@/lib/api';
+import { askReportConversation, fetchPrintableEvaluationReport } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 import {
     usePrintableReportTab,
@@ -106,6 +109,21 @@ export function PrintableReportWorkspaceView({
   onTabChange?: (nextTab: PrintableReportTab) => void;
   report: PrintableEvaluationReportResponse;
 }) {
+  const [conversationOpen, setConversationOpen] = React.useState(false);
+  const [conversationId, setConversationId] = React.useState<string | null>(
+    null,
+  );
+  const [question, setQuestion] = React.useState('');
+  const [chatMessages, setChatMessages] = React.useState<
+    Array<{
+      id: string;
+      role: 'user' | 'assistant';
+      text: string;
+      response?: ReportConversationResponse;
+    }>
+  >([]);
+  const [chatError, setChatError] = React.useState<string | null>(null);
+  const [isAsking, setIsAsking] = React.useState(false);
   const presentation = report.presentation;
   const tabs = presentation?.tabs.map((tab) => ({
     badge:
@@ -154,6 +172,55 @@ export function PrintableReportWorkspaceView({
     },
   ];
 
+  async function handleAskReport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion || isAsking) {
+      return;
+    }
+
+    setQuestion('');
+    setChatError(null);
+    setIsAsking(true);
+    setChatMessages((current) => [
+      ...current,
+      {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        text: trimmedQuestion,
+      },
+    ]);
+
+    try {
+      const response = await askReportConversation(
+        report.evaluation.evaluation_id,
+        {
+          message: trimmedQuestion,
+          conversation_id: conversationId ?? undefined,
+          selected_section: activeTab,
+        },
+      );
+      setConversationId(response.conversation_id);
+      setChatMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          text:
+            response.answer ??
+            response.refusal_reason ??
+            'Report conversation is unavailable in the current LLM mode.',
+          response,
+        },
+      ]);
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsAsking(false);
+    }
+  }
+
   return (
     <div className="workspace-page report-page">
       <WorkspacePageHeader
@@ -176,6 +243,13 @@ export function PrintableReportWorkspaceView({
                 </Link>
               </Button>
             ) : null}
+            <Button
+              onClick={() => setConversationOpen((current) => !current)}
+              size="sm"
+              variant="outline"
+            >
+              Ask this report
+            </Button>
             <Button onClick={() => window.print()} size="sm" variant="default">
               Print / Save as PDF
             </Button>
@@ -367,6 +441,78 @@ export function PrintableReportWorkspaceView({
           </div>
         </TabsContent>
       </WorkspaceTabShell>
+
+      {conversationOpen ? (
+        <aside
+          aria-label="Ask this report"
+          className="report-conversation-drawer"
+        >
+          <div className="workspace-data-card__header">
+            <div>
+              <span className="badge subtle">Report grounded</span>
+              <h3>Ask this report</h3>
+              <p>
+                Answers are constrained to this report, its audit summary, and
+                persisted lineage.
+              </p>
+            </div>
+            <Button
+              aria-label="Close report conversation"
+              onClick={() => setConversationOpen(false)}
+              size="sm"
+              variant="ghost"
+            >
+              Close
+            </Button>
+          </div>
+          <div className="report-conversation-drawer__messages">
+            {chatMessages.length === 0 ? (
+              <p className="muted">
+                Ask for clarification on diagnosis, recommendations,
+                confidence, missing measurements, suppliers, or executive
+                wording.
+              </p>
+            ) : null}
+            {chatMessages.map((message) => (
+              <article
+                className={`report-conversation-message report-conversation-message--${message.role}`}
+                key={message.id}
+              >
+                <strong>{message.role === 'user' ? 'You' : 'METREV'}</strong>
+                <p>{message.text}</p>
+                {message.response ? (
+                  <div className="report-conversation-trace">
+                    <span>{message.response.uncertainty_summary}</span>
+                    <div className="workspace-chip-list compact">
+                      {message.response.citations.slice(0, 4).map((citation) => (
+                        <span className="meta-chip" key={citation.citation_id}>
+                          {citation.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+            {chatError ? <p className="error">{chatError}</p> : null}
+          </div>
+          <form
+            className="report-conversation-drawer__form"
+            onSubmit={handleAskReport}
+          >
+            <textarea
+              aria-label="Question about this report"
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="Ask about the diagnosis, confidence, missing measurements, or recommendations..."
+              rows={3}
+              value={question}
+            />
+            <Button disabled={isAsking || !question.trim()} type="submit">
+              {isAsking ? 'Asking...' : 'Ask'}
+            </Button>
+          </form>
+        </aside>
+      ) : null}
     </div>
   );
 }

@@ -175,6 +175,12 @@ export function EvaluationsTable({ items }: EvaluationsTableProps) {
                   >
                     Case history
                   </Link>
+                  <Link
+                    className="ghost-button"
+                    href={`/evaluations/${item.evaluation_id}/report`}
+                  >
+                    Report
+                  </Link>
                 </DenseTableActions>
               </TableCell>
             </TableRow>

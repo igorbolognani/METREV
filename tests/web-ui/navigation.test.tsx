@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  NAV_ITEMS,
-  buildBreadcrumbs,
+    NAV_ITEMS,
+    buildBreadcrumbs,
 } from '../../apps/web-ui/src/lib/navigation';
 
 describe('navigation registry', () => {
@@ -10,10 +10,11 @@ describe('navigation registry', () => {
     expect(NAV_ITEMS.map((item) => item.id)).toEqual([
       'dashboard',
       'input-deck',
+      'evaluations',
+      'reports',
       'evidence-explorer',
       'evidence-review',
       'research-tables',
-      'evaluations',
     ]);
 
     expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe(
@@ -30,7 +31,7 @@ describe('navigation registry', () => {
 
     expect(buildBreadcrumbs('/cases/new/submitting', {})).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/cases/new', label: 'Input Deck' },
+      { href: '/cases/new', label: 'Configure Stack' },
     ]);
 
     expect(

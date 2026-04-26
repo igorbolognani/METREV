@@ -3,23 +3,27 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import {
-  PrismaResearchRepository,
-  disconnectPrismaClient,
-  getPrismaClient,
+    PrismaResearchRepository,
+    disconnectPrismaClient,
+    getPrismaClient,
 } from '@metrev/database';
 import {
-  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-  buildDecisionIngestionPreview,
-  buildResearchEvidencePack,
-  getDefaultResearchColumns,
-  runDeterministicResearchExtraction,
+    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    buildDecisionIngestionPreview,
+    buildResearchEvidencePack,
+    getDefaultResearchColumns,
+    runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
+import {
+    normalizeOpenAlexWork,
+    persistNormalizedEntries,
+} from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 const caseId = 'CASE-POSTGRES-SUITE';
 const lineageCaseId = 'CASE-POSTGRES-LINEAGE-SUITE';
@@ -29,6 +33,9 @@ const supplierNames = [
   'Blocked Supplier',
 ];
 const catalogSourceKey = 'postgres-suite-openalex-source';
+const ingestionCatalogSourceKey = 'https://openalex.org/WPOSTGRESINGESTION';
+const initialIngestionRunId = 'postgres-ingestion-run-1';
+const reingestionRunId = 'postgres-ingestion-run-2';
 const legacyCatalogSourceKey = 'postgres-suite-curated-legacy-source';
 const researchSourceKey = 'postgres-suite-research-source';
 const researchQuery = 'postgres suite research fixture';
@@ -95,6 +102,19 @@ describe('postgres-backed persistence flow', () => {
     });
     await prisma.externalSourceRecord.deleteMany({
       where: {
+        sourceType: 'OPENALEX',
+        sourceKey: ingestionCatalogSourceKey,
+      },
+    });
+    await prisma.ingestionRun.deleteMany({
+      where: {
+        id: {
+          in: [initialIngestionRunId, reingestionRunId],
+        },
+      },
+    });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
         sourceType: 'CURATED_MANIFEST',
         sourceKey: legacyCatalogSourceKey,
       },
@@ -119,7 +139,7 @@ describe('postgres-backed persistence flow', () => {
         },
       },
     });
-  });
+  }, 30_000);
 
   afterAll(async () => {
     const prisma = getPrismaClient();
@@ -129,6 +149,19 @@ describe('postgres-backed persistence flow', () => {
       where: {
         sourceType: 'OPENALEX',
         sourceKey: catalogSourceKey,
+      },
+    });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: ingestionCatalogSourceKey,
+      },
+    });
+    await prisma.ingestionRun.deleteMany({
+      where: {
+        id: {
+          in: [initialIngestionRunId, reingestionRunId],
+        },
       },
     });
     await prisma.externalSourceRecord.deleteMany({
@@ -158,7 +191,7 @@ describe('postgres-backed persistence flow', () => {
       },
     });
     await disconnectPrismaClient();
-  });
+  }, 30_000);
 
   it('persists create, retrieve, list, history, and supplier relations through Prisma', async () => {
     const app = await buildApp({ sessionResolver });
@@ -506,6 +539,120 @@ describe('postgres-backed persistence flow', () => {
     }
   });
 
+  it('persists report conversation sessions and turns through Prisma', async () => {
+    const originalMode = process.env.METREV_LLM_MODE;
+    process.env.METREV_LLM_MODE = 'stub';
+
+    const app = await buildApp({ sessionResolver });
+
+    try {
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/cases/evaluate',
+        headers: {
+          'content-type': 'application/json',
+          cookie: `${defaultSessionCookieName}=postgres-suite`,
+        },
+        payload: {
+          ...fixture,
+          case_id: caseId,
+        },
+      });
+
+      expect(createResponse.statusCode).toBe(201);
+      const created = createResponse.json();
+      const conversationId = `postgres-report-conv-${created.evaluation_id}`;
+
+      const conversationResponse = await app.inject({
+        method: 'POST',
+        url: `/api/workspace/evaluations/${created.evaluation_id}/report/conversation`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: `${defaultSessionCookieName}=postgres-suite`,
+        },
+        payload: {
+          evaluation_id: created.evaluation_id,
+          conversation_id: conversationId,
+          message: 'Explain the report confidence posture and next checks.',
+          selected_section: 'confidence_and_uncertainty_summary',
+        },
+      });
+
+      expect(conversationResponse.statusCode).toBe(200);
+      const responseBody = conversationResponse.json();
+      expect(responseBody).toMatchObject({
+        conversation_id: conversationId,
+        answer: expect.any(String),
+        grounding_summary: expect.objectContaining({
+          evaluation_id: created.evaluation_id,
+          selected_section: 'confidence_and_uncertainty_summary',
+        }),
+        metadata: expect.objectContaining({
+          persisted: true,
+          context_version: 'report-context-v1',
+        }),
+        refusal_reason: null,
+      });
+
+      const prisma = getPrismaClient();
+      const session = await prisma.reportConversationSession.findUnique({
+        where: { id: conversationId },
+        include: {
+          turns: {
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      });
+
+      expect(session).toEqual(
+        expect.objectContaining({
+          id: conversationId,
+          evaluationId: created.evaluation_id,
+          createdBy: actor.userId,
+        }),
+      );
+      expect(session?.turns).toHaveLength(2);
+      expect(session?.turns[0]).toEqual(
+        expect.objectContaining({
+          actor: 'user',
+          selectedSection: 'confidence_and_uncertainty_summary',
+          message: 'Explain the report confidence posture and next checks.',
+          refusalReason: null,
+        }),
+      );
+      expect(session?.turns[1]).toEqual(
+        expect.objectContaining({
+          actor: 'assistant',
+          selectedSection: 'confidence_and_uncertainty_summary',
+          message: responseBody.answer,
+          refusalReason: null,
+          narrativeMetadata: expect.objectContaining({
+            mode: 'stub',
+            provider: 'internal',
+            status: 'generated',
+          }),
+          grounding: expect.objectContaining({
+            evaluation_id: created.evaluation_id,
+            selected_section: 'confidence_and_uncertainty_summary',
+          }),
+          citations: expect.arrayContaining([
+            expect.objectContaining({
+              citation_id: 'report:stack-diagnosis',
+            }),
+          ]),
+        }),
+      );
+    } finally {
+      if (originalMode === undefined) {
+        delete process.env.METREV_LLM_MODE;
+      } else {
+        process.env.METREV_LLM_MODE = originalMode;
+      }
+
+      await app.close();
+    }
+  });
+
   it('persists research reviews, extraction results, and decision previews through Prisma', async () => {
     const prisma = getPrismaClient();
     const repository = new PrismaResearchRepository(prisma);
@@ -722,4 +869,203 @@ describe('postgres-backed persistence flow', () => {
       await app.close();
     }
   });
+
+  it('preserves analyst review posture and stable claim ids across re-ingestion', async () => {
+    const prisma = getPrismaClient();
+    await prisma.ingestionRun.createMany({
+      data: [
+        {
+          id: initialIngestionRunId,
+          sourceType: 'OPENALEX',
+          triggerMode: 'test',
+          query: 'postgres ingestion persistence',
+          status: 'STARTED',
+          summary: {},
+          startedAt: new Date('2026-04-22T00:00:00.000Z'),
+        },
+        {
+          id: reingestionRunId,
+          sourceType: 'OPENALEX',
+          triggerMode: 'test',
+          query: 'postgres ingestion persistence',
+          status: 'STARTED',
+          summary: {},
+          startedAt: new Date('2026-04-23T00:00:00.000Z'),
+        },
+      ],
+    });
+
+    const initialEntry = normalizeOpenAlexWork(
+      {
+        id: ingestionCatalogSourceKey,
+        display_name: 'Postgres ingestion persistence regression',
+        doi: 'https://doi.org/10.5555/postgres-ingestion-persistence',
+        publication_date: '2026-02-14',
+        abstract_inverted_index: {
+          Stable: [0],
+          current: [1],
+          density: [2],
+          reached: [3],
+          '1.9': [4],
+          'A/m2': [5],
+          under: [6],
+          neutral: [7],
+          pH: [8],
+          Membrane: [9],
+          fouling: [10],
+          remained: [11],
+          the: [12],
+          main: [13],
+          'limitation.': [14],
+        },
+        open_access: {
+          is_oa: true,
+          oa_status: 'green',
+        },
+        primary_location: {
+          landing_page_url:
+            'https://example.org/postgres-ingestion-persistence',
+          source: {
+            display_name: 'Integration Regression Journal',
+          },
+        },
+        type: 'article',
+      },
+      'postgres ingestion persistence',
+      '2026-04-22T00:00:00.000Z',
+    );
+
+    expect(initialEntry).not.toBeNull();
+
+    await persistNormalizedEntries(prisma, [initialEntry], {
+      runId: initialIngestionRunId,
+    });
+
+    const initialCatalogItem =
+      await prisma.externalEvidenceCatalogItem.findFirstOrThrow({
+        where: {
+          title: 'Postgres ingestion persistence regression',
+          sourceRecord: {
+            sourceType: 'OPENALEX',
+            sourceKey: ingestionCatalogSourceKey,
+          },
+        },
+        include: {
+          claims: {
+            include: {
+              reviews: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      });
+
+    const persistedTrackedClaim = initialCatalogItem.claims[0];
+
+    expect(persistedTrackedClaim).toBeDefined();
+
+    await prisma.externalEvidenceCatalogItem.update({
+      where: { id: initialCatalogItem.id },
+      data: {
+        reviewStatus: 'ACCEPTED',
+        sourceState: 'REVIEWED',
+      },
+    });
+    await prisma.evidenceClaimReview.create({
+      data: {
+        claimId: persistedTrackedClaim!.id,
+        status: 'ACCEPTED',
+        analystId: actor.userId,
+        analystRole: actor.role,
+        analystNote: 'Accepted during ingestion persistence regression.',
+        reviewedAt: new Date('2026-04-22T00:00:00.000Z'),
+      },
+    });
+
+    const reingestedEntry = normalizeOpenAlexWork(
+      {
+        id: ingestionCatalogSourceKey,
+        display_name: 'Postgres ingestion persistence regression',
+        doi: '10.5555/postgres-ingestion-persistence',
+        publication_date: '2026-02-14',
+        abstract_inverted_index: {
+          Stable: [0],
+          current: [1],
+          density: [2],
+          reached: [3],
+          '1.9': [4],
+          'A/m2': [5],
+          under: [6],
+          neutral: [7],
+          pH: [8],
+          Membrane: [9],
+          fouling: [10],
+          remained: [11],
+          the: [12],
+          main: [13],
+          'limitation.': [14],
+          Instrumentation: [15],
+          coverage: [16],
+          improved: [17],
+          after: [18],
+          'recalibration.': [19],
+        },
+        open_access: {
+          is_oa: true,
+          oa_status: 'green',
+        },
+        primary_location: {
+          landing_page_url:
+            'https://example.org/postgres-ingestion-persistence-v2',
+          source: {
+            display_name: 'Integration Regression Journal',
+          },
+        },
+        type: 'article',
+      },
+      'postgres ingestion persistence',
+      '2026-04-23T00:00:00.000Z',
+    );
+
+    expect(reingestedEntry).not.toBeNull();
+
+    await persistNormalizedEntries(prisma, [reingestedEntry], {
+      runId: reingestionRunId,
+    });
+
+    const reingestedCatalogItem =
+      await prisma.externalEvidenceCatalogItem.findUniqueOrThrow({
+        where: {
+          id: initialCatalogItem.id,
+        },
+        include: {
+          claims: {
+            include: {
+              reviews: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      });
+    const reingestedTrackedClaim = reingestedCatalogItem.claims.find(
+      (claim) => claim.content === persistedTrackedClaim!.content,
+    );
+
+    expect(reingestedCatalogItem.reviewStatus).toBe('ACCEPTED');
+    expect(reingestedCatalogItem.sourceState).toBe('REVIEWED');
+    expect(reingestedTrackedClaim?.id).toBe(persistedTrackedClaim!.id);
+    expect(reingestedTrackedClaim?.reviews).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: 'ACCEPTED',
+          analystId: actor.userId,
+          analystRole: actor.role,
+        }),
+      ]),
+    );
+  }, 60_000);
 });

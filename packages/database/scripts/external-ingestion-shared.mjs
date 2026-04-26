@@ -136,7 +136,6 @@ function stripMarkup(value) {
       .trim() || null
   );
 }
-
 function nonEmptyString(value) {
   const normalized = normalizeWhitespace(value);
   return normalized ? normalized : null;
@@ -1249,8 +1248,21 @@ export function deduplicateEntries(entries) {
   const map = new Map();
 
   for (const entry of entries.filter(Boolean)) {
-    const key = `${entry.sourceRecord.sourceType}:${entry.sourceRecord.sourceKey}`;
-    map.set(key, entry);
+    const doi = nonEmptyString(entry.sourceRecord.doi)?.toLowerCase();
+    const normalizedDoi = doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
+    const normalizedTitle = nonEmptyString(entry.sourceRecord.title)
+      ?.toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+    const key =
+      normalizedDoi ||
+      nonEmptyString(entry.sourceRecord.hashDedup) ||
+      normalizedTitle ||
+      `${entry.sourceRecord.sourceType}:${entry.sourceRecord.sourceKey}`;
+
+    if (!map.has(key)) {
+      map.set(key, entry);
+    }
   }
 
   return Array.from(map.values());
@@ -1549,6 +1561,31 @@ async function syncSupplierDocuments(
   return storedDocuments;
 }
 
+function resolveCatalogReviewStatus(existingStatus, incomingStatus) {
+  if (existingStatus && existingStatus !== 'PENDING') {
+    return existingStatus;
+  }
+
+  return incomingStatus;
+}
+
+function resolveCatalogSourceState(existingState, incomingState) {
+  const rank = {
+    RAW: 0,
+    PARSED: 1,
+    NORMALIZED: 2,
+    REVIEWED: 3,
+  };
+
+  if (!existingState) {
+    return incomingState;
+  }
+
+  return (rank[existingState] ?? 0) >= (rank[incomingState] ?? 0)
+    ? existingState
+    : incomingState;
+}
+
 export async function persistNormalizedEntries(
   prisma,
   entries,
@@ -1559,124 +1596,146 @@ export async function persistNormalizedEntries(
   let supplierDocumentsStored = 0;
 
   for (const entry of entries) {
-    await prisma.$transaction(async (transaction) => {
-      const sourceRecord = await transaction.externalSourceRecord.upsert({
-        where: {
-          sourceType_sourceKey: {
+    await prisma.$transaction(
+      async (transaction) => {
+        const sourceRecord = await transaction.externalSourceRecord.upsert({
+          where: {
+            sourceType_sourceKey: {
+              sourceType: entry.sourceRecord.sourceType,
+              sourceKey: entry.sourceRecord.sourceKey,
+            },
+          },
+          update: {
+            sourceUrl: entry.sourceRecord.sourceUrl,
+            title: entry.sourceRecord.title,
+            sourceCategory: entry.sourceRecord.sourceCategory,
+            doi: entry.sourceRecord.doi,
+            publisher: entry.sourceRecord.publisher,
+            journal: entry.sourceRecord.journal,
+            authors: entry.sourceRecord.authors,
+            language: entry.sourceRecord.language,
+            license: entry.sourceRecord.license,
+            accessStatus: entry.sourceRecord.accessStatus,
+            publishedAt: entry.sourceRecord.publishedAt
+              ? new Date(entry.sourceRecord.publishedAt)
+              : null,
+            asOf: entry.sourceRecord.asOf
+              ? new Date(entry.sourceRecord.asOf)
+              : null,
+            pdfUrl: entry.sourceRecord.pdfUrl,
+            xmlUrl: entry.sourceRecord.xmlUrl,
+            hashDedup: entry.sourceRecord.hashDedup,
+            ingestionRunId: runId,
+            abstractText: entry.sourceRecord.abstractText,
+            rawPayload: entry.sourceRecord.rawPayload,
+          },
+          create: {
             sourceType: entry.sourceRecord.sourceType,
             sourceKey: entry.sourceRecord.sourceKey,
+            sourceUrl: entry.sourceRecord.sourceUrl,
+            title: entry.sourceRecord.title,
+            sourceCategory: entry.sourceRecord.sourceCategory,
+            doi: entry.sourceRecord.doi,
+            publisher: entry.sourceRecord.publisher,
+            journal: entry.sourceRecord.journal,
+            authors: entry.sourceRecord.authors,
+            language: entry.sourceRecord.language,
+            license: entry.sourceRecord.license,
+            accessStatus: entry.sourceRecord.accessStatus,
+            publishedAt: entry.sourceRecord.publishedAt
+              ? new Date(entry.sourceRecord.publishedAt)
+              : null,
+            asOf: entry.sourceRecord.asOf
+              ? new Date(entry.sourceRecord.asOf)
+              : null,
+            pdfUrl: entry.sourceRecord.pdfUrl,
+            xmlUrl: entry.sourceRecord.xmlUrl,
+            hashDedup: entry.sourceRecord.hashDedup,
+            ingestionRunId: runId,
+            abstractText: entry.sourceRecord.abstractText,
+            rawPayload: entry.sourceRecord.rawPayload,
           },
-        },
-        update: {
-          sourceUrl: entry.sourceRecord.sourceUrl,
-          title: entry.sourceRecord.title,
-          sourceCategory: entry.sourceRecord.sourceCategory,
-          doi: entry.sourceRecord.doi,
-          publisher: entry.sourceRecord.publisher,
-          journal: entry.sourceRecord.journal,
-          authors: entry.sourceRecord.authors,
-          language: entry.sourceRecord.language,
-          license: entry.sourceRecord.license,
-          accessStatus: entry.sourceRecord.accessStatus,
-          publishedAt: entry.sourceRecord.publishedAt
-            ? new Date(entry.sourceRecord.publishedAt)
-            : null,
-          asOf: entry.sourceRecord.asOf
-            ? new Date(entry.sourceRecord.asOf)
-            : null,
-          pdfUrl: entry.sourceRecord.pdfUrl,
-          xmlUrl: entry.sourceRecord.xmlUrl,
-          hashDedup: entry.sourceRecord.hashDedup,
-          ingestionRunId: runId,
-          abstractText: entry.sourceRecord.abstractText,
-          rawPayload: entry.sourceRecord.rawPayload,
-        },
-        create: {
-          sourceType: entry.sourceRecord.sourceType,
-          sourceKey: entry.sourceRecord.sourceKey,
-          sourceUrl: entry.sourceRecord.sourceUrl,
-          title: entry.sourceRecord.title,
-          sourceCategory: entry.sourceRecord.sourceCategory,
-          doi: entry.sourceRecord.doi,
-          publisher: entry.sourceRecord.publisher,
-          journal: entry.sourceRecord.journal,
-          authors: entry.sourceRecord.authors,
-          language: entry.sourceRecord.language,
-          license: entry.sourceRecord.license,
-          accessStatus: entry.sourceRecord.accessStatus,
-          publishedAt: entry.sourceRecord.publishedAt
-            ? new Date(entry.sourceRecord.publishedAt)
-            : null,
-          asOf: entry.sourceRecord.asOf
-            ? new Date(entry.sourceRecord.asOf)
-            : null,
-          pdfUrl: entry.sourceRecord.pdfUrl,
-          xmlUrl: entry.sourceRecord.xmlUrl,
-          hashDedup: entry.sourceRecord.hashDedup,
-          ingestionRunId: runId,
-          abstractText: entry.sourceRecord.abstractText,
-          rawPayload: entry.sourceRecord.rawPayload,
-        },
-        select: { id: true },
-      });
+          select: { id: true },
+        });
 
-      const catalogItem = await transaction.externalEvidenceCatalogItem.upsert({
-        where: {
+        const catalogItemKey = {
           sourceRecordId_evidenceType_title: {
             sourceRecordId: sourceRecord.id,
             evidenceType: entry.catalogItem.evidenceType,
             title: entry.catalogItem.title,
           },
-        },
-        update: {
-          summary: entry.catalogItem.summary,
-          strengthLevel: entry.catalogItem.strengthLevel,
-          provenanceNote: entry.catalogItem.provenanceNote,
-          reviewStatus: entry.catalogItem.reviewStatus,
-          sourceState: entry.catalogItem.sourceState,
-          applicabilityScope: entry.catalogItem.applicabilityScope,
-          extractedClaims: entry.catalogItem.extractedClaims,
-          tags: entry.catalogItem.tags,
-          payload: entry.catalogItem.payload,
-        },
-        create: {
-          sourceRecordId: sourceRecord.id,
-          evidenceType: entry.catalogItem.evidenceType,
-          title: entry.catalogItem.title,
-          summary: entry.catalogItem.summary,
-          strengthLevel: entry.catalogItem.strengthLevel,
-          provenanceNote: entry.catalogItem.provenanceNote,
-          reviewStatus: entry.catalogItem.reviewStatus,
-          sourceState: entry.catalogItem.sourceState,
-          applicabilityScope: entry.catalogItem.applicabilityScope,
-          extractedClaims: entry.catalogItem.extractedClaims,
-          tags: entry.catalogItem.tags,
-          payload: entry.catalogItem.payload,
-        },
-        select: { id: true },
-      });
+        };
+        const existingCatalogItem =
+          await transaction.externalEvidenceCatalogItem.findUnique({
+            where: catalogItemKey,
+            select: { id: true, reviewStatus: true, sourceState: true },
+          });
+        const nextReviewStatus = resolveCatalogReviewStatus(
+          existingCatalogItem?.reviewStatus,
+          entry.catalogItem.reviewStatus,
+        );
+        const nextSourceState = resolveCatalogSourceState(
+          existingCatalogItem?.sourceState,
+          entry.catalogItem.sourceState,
+        );
 
-      const claimCount = await syncClaims(
-        transaction,
-        sourceRecord.id,
-        catalogItem.id,
-        entry.claims,
-      );
-      const supplierDocumentCount = await syncSupplierDocuments(
-        transaction,
-        sourceRecord.id,
-        entry.supplierDocuments,
-      );
+        const catalogItem =
+          await transaction.externalEvidenceCatalogItem.upsert({
+            where: catalogItemKey,
+            update: {
+              summary: entry.catalogItem.summary,
+              strengthLevel: entry.catalogItem.strengthLevel,
+              provenanceNote: entry.catalogItem.provenanceNote,
+              reviewStatus: nextReviewStatus,
+              sourceState: nextSourceState,
+              applicabilityScope: entry.catalogItem.applicabilityScope,
+              extractedClaims: entry.catalogItem.extractedClaims,
+              tags: entry.catalogItem.tags,
+              payload: entry.catalogItem.payload,
+            },
+            create: {
+              sourceRecordId: sourceRecord.id,
+              evidenceType: entry.catalogItem.evidenceType,
+              title: entry.catalogItem.title,
+              summary: entry.catalogItem.summary,
+              strengthLevel: entry.catalogItem.strengthLevel,
+              provenanceNote: entry.catalogItem.provenanceNote,
+              reviewStatus: entry.catalogItem.reviewStatus,
+              sourceState: entry.catalogItem.sourceState,
+              applicabilityScope: entry.catalogItem.applicabilityScope,
+              extractedClaims: entry.catalogItem.extractedClaims,
+              tags: entry.catalogItem.tags,
+              payload: entry.catalogItem.payload,
+            },
+            select: { id: true, reviewStatus: true, sourceState: true },
+          });
 
-      await transaction.externalEvidenceCatalogItem.update({
-        where: { id: catalogItem.id },
-        data: { claimCount },
-      });
+        const claimCount = await syncClaims(
+          transaction,
+          sourceRecord.id,
+          catalogItem.id,
+          entry.claims,
+        );
+        const supplierDocumentCount = await syncSupplierDocuments(
+          transaction,
+          sourceRecord.id,
+          entry.supplierDocuments,
+        );
 
-      recordsStored += 1;
-      claimsStored += claimCount;
-      supplierDocumentsStored += supplierDocumentCount;
-    });
+        await transaction.externalEvidenceCatalogItem.update({
+          where: { id: catalogItem.id },
+          data: { claimCount },
+        });
+
+        recordsStored += 1;
+        claimsStored += claimCount;
+        supplierDocumentsStored += supplierDocumentCount;
+      },
+      {
+        maxWait: 10_000,
+        timeout: 60_000,
+      },
+    );
   }
 
   return {

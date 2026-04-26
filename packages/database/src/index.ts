@@ -3,56 +3,66 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  caseHistoryResponseSchema,
-  evaluationClaimUsageSchema,
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  evaluationSourceUsageSchema,
-  evidenceClaimSchema,
-  evidenceClaimTypeSchema,
-  evidenceExtractionMethodSchema,
-  evidenceStrengthSchema,
-  evidenceTypeSchema,
-  externalEvidenceAccessStatusSchema,
-  externalEvidenceBulkReviewResponseSchema,
-  externalEvidenceCatalogDetailSchema,
-  externalEvidenceCatalogListResponseSchema,
-  ontologyMappingSourceSchema,
-  simulationEnrichmentSchema,
-  sourceDocumentRecordSchema,
-  supplierDocumentSchema,
-  supplierDocumentTypeSchema,
-  workspaceSnapshotRecordSchema,
-  type CaseHistoryResponse,
-  type ConfidenceLevel,
-  type EvaluationListResponse,
-  type EvaluationResponse,
-  type EvidenceClaim,
-  type ExternalEvidenceBulkReviewResponse,
-  type ExternalEvidenceCatalogItemDetail,
-  type ExternalEvidenceCatalogItemSummary,
-  type ExternalEvidenceCatalogListResponse,
-  type ExternalEvidenceReviewAction,
-  type ExternalEvidenceReviewStatus,
-  type ExternalEvidenceSourceType,
+    caseHistoryResponseSchema,
+    evaluationClaimUsageSchema,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    evaluationSourceUsageSchema,
+    evidenceClaimSchema,
+    evidenceClaimTypeSchema,
+    evidenceExtractionMethodSchema,
+    evidenceStrengthSchema,
+    evidenceTypeSchema,
+    externalEvidenceAccessStatusSchema,
+    externalEvidenceBulkReviewResponseSchema,
+    externalEvidenceCatalogDetailSchema,
+    externalEvidenceCatalogListResponseSchema,
+    ontologyMappingSourceSchema,
+    reportConversationTurnSchema,
+    simulationEnrichmentSchema,
+    sourceDocumentRecordSchema,
+    supplierDocumentSchema,
+    supplierDocumentTypeSchema,
+    workspaceSnapshotRecordSchema,
+    type CaseHistoryResponse,
+    type ConfidenceLevel,
+    type EvaluationListResponse,
+    type EvaluationResponse,
+    type EvidenceClaim,
+    type ExternalEvidenceBulkReviewResponse,
+    type ExternalEvidenceCatalogItemDetail,
+    type ExternalEvidenceCatalogItemSummary,
+    type ExternalEvidenceCatalogListResponse,
+    type ExternalEvidenceReviewAction,
+    type ExternalEvidenceReviewStatus,
+    type ExternalEvidenceSourceType,
+    type NarrativeMetadata,
+    type ReportConversationCitation,
+    type ReportConversationGrounding,
+    type ReportConversationTurn,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
 import { getPrismaClient } from './prisma-client';
 import { deriveSupplierPersistencePlan } from './supplier-persistence';
 
+const PRISMA_TRANSACTION_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 60_000,
+} as const;
+
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-  createResearchRepository,
-  MemoryResearchRepository,
-  PrismaResearchRepository,
-  type AddResearchReviewColumnInput,
-  type ClaimResearchExtractionJobsInput,
-  type CreateResearchEvidencePackInput,
-  type CreateResearchReviewInput,
-  type ResearchExtractionWorkItem,
-  type ResearchRepository,
-  type SaveResearchExtractionResultInput,
+    createResearchRepository,
+    MemoryResearchRepository,
+    PrismaResearchRepository,
+    type AddResearchReviewColumnInput,
+    type ClaimResearchExtractionJobsInput,
+    type CreateResearchEvidencePackInput,
+    type CreateResearchReviewInput,
+    type ResearchExtractionWorkItem,
+    type ResearchRepository,
+    type SaveResearchExtractionResultInput
 } from './research-repository';
 
 export interface EvaluationRepository {
@@ -75,6 +85,9 @@ export interface EvaluationRepository {
   reviewExternalEvidenceCatalogItems(
     input: ReviewExternalEvidenceCatalogItemsInput,
   ): Promise<ExternalEvidenceBulkReviewResponse>;
+  saveReportConversationTurn(
+    input: SaveReportConversationTurnInput,
+  ): Promise<ReportConversationTurn>;
   disconnect(): Promise<void>;
 }
 
@@ -109,6 +122,20 @@ export interface ReviewExternalEvidenceCatalogItemsInput {
   actorRole: string;
   actorId?: string;
   note?: string;
+}
+
+export interface SaveReportConversationTurnInput {
+  conversationId: string;
+  evaluationId: string;
+  actor: 'user' | 'assistant' | 'system';
+  actorId?: string;
+  message: string;
+  selectedSection?: string | null;
+  reportSnapshotId?: string | null;
+  narrativeMetadata?: NarrativeMetadata | null;
+  citations?: ReportConversationCitation[] | null;
+  grounding?: ReportConversationGrounding | null;
+  refusalReason?: string | null;
 }
 
 export interface MemoryEvaluationRepositoryOptions {
@@ -969,6 +996,24 @@ function createWorkspaceSnapshotRecord(record: {
   });
 }
 
+function createReportConversationTurn(record: {
+  id: string;
+  conversationId: string;
+  actor: string;
+  selectedSection: string | null;
+  message: string;
+  createdAt: Date;
+}): ReportConversationTurn {
+  return reportConversationTurnSchema.parse({
+    turn_id: record.id,
+    conversation_id: record.conversationId,
+    actor: record.actor,
+    message: record.message,
+    selected_section: record.selectedSection,
+    created_at: record.createdAt.toISOString(),
+  });
+}
+
 function createExternalEvidenceSummary(record: {
   id: string;
   evidenceType: string;
@@ -1251,6 +1296,7 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     string,
     ExternalEvidenceCatalogItemDetail
   >();
+  private readonly reportConversationTurns: ReportConversationTurn[] = [];
 
   constructor(options: MemoryEvaluationRepositoryOptions = {}) {
     for (const item of options.externalEvidenceCatalogItems ?? []) {
@@ -1403,6 +1449,31 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       ...current,
       review_status: input.action === 'accept' ? 'accepted' : 'rejected',
       source_state: 'reviewed',
+      claims:
+        input.action === 'accept'
+          ? current.claims.map((claim) => ({
+              ...claim,
+              reviews:
+                claim.reviews.length > 0
+                  ? claim.reviews
+                  : [
+                      {
+                        id: randomUUID(),
+                        status: 'accepted',
+                        analyst_id: input.actorId ?? null,
+                        analyst_role: input.actorRole,
+                        analyst_note:
+                          input.note ??
+                          'Catalog item accepted; claim review state synchronized.',
+                        reviewed_at: new Date().toISOString(),
+                      },
+                    ],
+            }))
+          : current.claims,
+      reviewed_claim_count:
+        input.action === 'accept'
+          ? current.claims.length
+          : current.reviewed_claim_count,
       updated_at: new Date().toISOString(),
     });
 
@@ -1442,6 +1513,24 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       failed,
       note: input.note?.trim() || undefined,
     });
+  }
+
+  async saveReportConversationTurn(
+    input: SaveReportConversationTurnInput,
+  ): Promise<ReportConversationTurn> {
+    const createdAt = new Date();
+    const turn = reportConversationTurnSchema.parse({
+      turn_id: randomUUID(),
+      conversation_id: input.conversationId,
+      actor: input.actor,
+      message: input.message,
+      selected_section: input.selectedSection ?? null,
+      created_at: createdAt.toISOString(),
+    });
+
+    this.reportConversationTurns.push(turn);
+
+    return turn;
   }
 
   async disconnect(): Promise<void> {
@@ -1806,7 +1895,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 },
               });
             }
-          });
+          }, PRISMA_TRANSACTION_OPTIONS);
         } catch (error) {
           if (
             idempotencyKey &&
@@ -2089,81 +2178,85 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           pendingTotal,
           acceptedTotal,
           rejectedTotal,
-        ] = await this.prisma.$transaction([
-          this.prisma.externalEvidenceCatalogItem.findMany({
-            where,
-            include: {
-              sourceRecord: {
-                select: {
-                  sourceType: true,
-                  sourceUrl: true,
-                  sourceCategory: true,
-                  doi: true,
-                  publisher: true,
-                  publishedAt: true,
-                },
-              },
-              claims: {
-                where: {
-                  reviews: {
-                    some: {
-                      status: {
-                        not: 'PENDING',
+        ] = await this.prisma.$transaction(
+          async (tx) =>
+            Promise.all([
+              tx.externalEvidenceCatalogItem.findMany({
+                where,
+                include: {
+                  sourceRecord: {
+                    select: {
+                      sourceType: true,
+                      sourceUrl: true,
+                      sourceCategory: true,
+                      doi: true,
+                      publisher: true,
+                      publishedAt: true,
+                    },
+                  },
+                  claims: {
+                    where: {
+                      reviews: {
+                        some: {
+                          status: {
+                            not: 'PENDING',
+                          },
+                        },
                       },
+                    },
+                    select: {
+                      id: true,
                     },
                   },
                 },
+                orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+                skip,
+                take: pageSize,
+              }),
+              tx.externalEvidenceCatalogItem.findMany({
+                where,
                 select: {
-                  id: true,
-                },
-              },
-            },
-            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-            skip,
-            take: pageSize,
-          }),
-          this.prisma.externalEvidenceCatalogItem.findMany({
-            where,
-            select: {
-              evidenceType: true,
-              reviewStatus: true,
-              claimCount: true,
-              sourceRecord: {
-                select: {
-                  sourceType: true,
-                  sourceUrl: true,
-                  doi: true,
-                  publisher: true,
-                },
-              },
-              claims: {
-                where: {
-                  reviews: {
-                    some: {
-                      status: {
-                        not: 'PENDING',
+                  evidenceType: true,
+                  reviewStatus: true,
+                  claimCount: true,
+                  sourceRecord: {
+                    select: {
+                      sourceType: true,
+                      sourceUrl: true,
+                      doi: true,
+                      publisher: true,
+                    },
+                  },
+                  claims: {
+                    where: {
+                      reviews: {
+                        some: {
+                          status: {
+                            not: 'PENDING',
+                          },
+                        },
                       },
+                    },
+                    select: {
+                      id: true,
                     },
                   },
                 },
-                select: {
-                  id: true,
-                },
-              },
-            },
-          }),
-          this.prisma.externalEvidenceCatalogItem.count(),
-          this.prisma.externalEvidenceCatalogItem.count({ where }),
-          this.prisma.externalEvidenceCatalogItem.count({
-            where: { reviewStatus: 'PENDING' },
-          }),
-          this.prisma.externalEvidenceCatalogItem.count({
-            where: { reviewStatus: 'ACCEPTED' },
-          }),
-          this.prisma.externalEvidenceCatalogItem.count({
-            where: { reviewStatus: 'REJECTED' },
-          }),
-        ]);
+              }),
+              tx.externalEvidenceCatalogItem.count(),
+              tx.externalEvidenceCatalogItem.count({ where }),
+              tx.externalEvidenceCatalogItem.count({
+                where: { reviewStatus: 'PENDING' },
+              }),
+              tx.externalEvidenceCatalogItem.count({
+                where: { reviewStatus: 'ACCEPTED' },
+              }),
+              tx.externalEvidenceCatalogItem.count({
+                where: { reviewStatus: 'REJECTED' },
+              }),
+            ]),
+          PRISMA_TRANSACTION_OPTIONS,
+        );
 
         const items = records;
         const warehouseAggregate = buildExternalEvidenceWarehouseAggregate(
@@ -2307,6 +2400,30 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             },
           });
 
+          if (nextReviewStatus === 'ACCEPTED') {
+            const claimReviewRows = current.claims
+              .filter(
+                (claim) =>
+                  !claim.reviews.some((review) => review.status !== 'PENDING'),
+              )
+              .map((claim) => ({
+                claimId: claim.id,
+                status: 'ACCEPTED' as const,
+                analystId: input.actorId ?? null,
+                analystRole: input.actorRole,
+                analystNote:
+                  input.note ??
+                  'Catalog item accepted; claim review state synchronized.',
+                reviewedAt: new Date(),
+              }));
+
+            if (claimReviewRows.length > 0) {
+              await tx.evidenceClaimReview.createMany({
+                data: claimReviewRows,
+              });
+            }
+          }
+
           await tx.auditEvent.create({
             data: {
               id: randomUUID(),
@@ -2329,8 +2446,23 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             },
           });
 
-          return record;
-        });
+          return tx.externalEvidenceCatalogItem.findUnique({
+            where: { id: record.id },
+            include: {
+              sourceRecord: {
+                include: {
+                  supplierDocuments: true,
+                },
+              },
+              claims: {
+                include: {
+                  reviews: true,
+                  ontologyMappings: true,
+                },
+              },
+            },
+          });
+        }, PRISMA_TRANSACTION_OPTIONS);
 
         if (!updated) {
           return null;
@@ -2386,6 +2518,56 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         actor_id: input.actorId ?? 'anonymous',
         attempted_count: input.catalogItemIds.length,
         review_action: input.action,
+      },
+    );
+  }
+
+  async saveReportConversationTurn(
+    input: SaveReportConversationTurnInput,
+  ): Promise<ReportConversationTurn> {
+    return withSpan(
+      'database.report_conversation.turn.save',
+      async () => {
+        const record = await this.prisma.$transaction(async (tx) => {
+          await tx.reportConversationSession.upsert({
+            where: { id: input.conversationId },
+            update: {
+              reportSnapshotId: input.reportSnapshotId ?? undefined,
+            },
+            create: {
+              id: input.conversationId,
+              evaluationId: input.evaluationId,
+              reportSnapshotId: input.reportSnapshotId ?? null,
+              createdBy: input.actorId ?? null,
+            },
+          });
+
+          return tx.reportConversationTurn.create({
+            data: {
+              conversationId: input.conversationId,
+              actor: input.actor,
+              selectedSection: input.selectedSection ?? null,
+              message: input.message,
+              narrativeMetadata: input.narrativeMetadata
+                ? toPrismaJsonObject(input.narrativeMetadata)
+                : Prisma.JsonNull,
+              citations: input.citations
+                ? toRequiredPrismaJsonValue(input.citations)
+                : Prisma.JsonNull,
+              grounding: input.grounding
+                ? toPrismaJsonObject(input.grounding)
+                : Prisma.JsonNull,
+              refusalReason: input.refusalReason ?? null,
+            },
+          });
+        }, PRISMA_TRANSACTION_OPTIONS);
+
+        return createReportConversationTurn(record);
+      },
+      {
+        evaluation_id: input.evaluationId,
+        conversation_id: input.conversationId,
+        actor: input.actor,
       },
     );
   }

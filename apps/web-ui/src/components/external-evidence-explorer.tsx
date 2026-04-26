@@ -379,7 +379,7 @@ export function EvidenceExplorerView({
               ),
             )}
             <Link className="button secondary" href="/cases/new">
-              Open input deck
+              Open stack cockpit
             </Link>
           </>
         }

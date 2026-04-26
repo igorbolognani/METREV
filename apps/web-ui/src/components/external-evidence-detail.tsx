@@ -314,7 +314,7 @@ export function ExternalEvidenceDetailView({
               <Link href="/evidence/review">Back to queue</Link>
             </Button>
             <Button asChild size="sm" variant="outline">
-              <Link href="/cases/new">Open input deck</Link>
+              <Link href="/cases/new">Open stack cockpit</Link>
             </Button>
           </>
         }

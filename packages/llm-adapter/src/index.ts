@@ -1,14 +1,30 @@
 import type {
-  DecisionOutput,
-  EvidenceExplorerWarehouseSnapshot,
-  ExternalEvidenceCatalogItemSummary,
-  NarrativeMetadata,
-  NormalizedCaseInput,
+    DecisionOutput,
+    EvidenceExplorerWarehouseSnapshot,
+    ExternalEvidenceCatalogItemSummary,
+    NarrativeMetadata,
+    NormalizedCaseInput,
+    PrintableEvaluationReportResponse,
+    ReportConversationCitation,
+    ReportConversationGrounding,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
   narrative: string | null;
   narrativeMetadata: NarrativeMetadata;
+}
+
+export interface ReportConversationContextPackage {
+  report: PrintableEvaluationReportResponse;
+  normalizedCase: NormalizedCaseInput;
+  decisionOutput: DecisionOutput;
+  grounding: ReportConversationGrounding;
+  citations: ReportConversationCitation[];
+  selectedSection?: string | null;
+}
+
+export interface ReportConversationAnswerResult extends NarrativeResult {
+  refusalReason: string | null;
 }
 
 type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama';
@@ -390,4 +406,127 @@ export async function generateNarrative(input: {
     ollamaPromptVersion: 'ollama-case-v1',
     buildOllamaMessages: () => buildCaseNarrativeMessages(input),
   });
+}
+
+function resolveReportConversationRefusal(message: string): string | null {
+  const normalized = message.toLowerCase();
+  const matches = (patterns: RegExp[]) =>
+    patterns.some((pattern) => pattern.test(normalized));
+
+  if (
+    matches([
+      /\braw database\b/,
+      /\bdump\b/,
+      /\ball articles\b/,
+      /\bfull warehouse\b/,
+    ])
+  ) {
+    return 'This report assistant can explain the generated report, but it cannot dump the raw database or full evidence warehouse.';
+  }
+
+  if (
+    matches([/\bguarantee(?:d|s)?\b/, /\bcertain\b/, /\bbuy this supplier\b/])
+  ) {
+    return 'This report assistant cannot provide guarantees or supplier purchase certainty. It can explain the report confidence, caveats, and next checks.';
+  }
+
+  if (matches([/\bwhat if\b/, /\bsimulate\b/, /\brecalculate\b/])) {
+    return 'Speculative what-if answers need deterministic recalculation first. This assistant can explain the current report and identify what should be recalculated.';
+  }
+
+  return null;
+}
+
+function buildReportConversationStubAnswer(input: {
+  context: ReportConversationContextPackage;
+  message: string;
+  refusalReason: string | null;
+}): string {
+  const { report } = input.context;
+  const confidence = report.sections.confidence_and_uncertainty_summary;
+  const topRecommendation = report.sections.prioritized_improvements[0];
+  const selectedSection = input.context.selectedSection?.trim();
+
+  if (input.refusalReason) {
+    return `${input.refusalReason} For this report, the safest next step is to review the confidence summary and the recommended next checks: ${
+      confidence.next_tests.slice(0, 2).join('; ') || confidence.summary
+    }`;
+  }
+
+  if (selectedSection) {
+    return `For the ${selectedSection} section of ${report.title}, the report should be read with ${confidence.confidence_level} confidence. ${confidence.summary}`;
+  }
+
+  if (topRecommendation) {
+    return `${report.title} identifies ${topRecommendation.recommendation_id} as the leading improvement path: ${topRecommendation.expected_benefit}. The rationale is ${topRecommendation.rationale}. Confidence is ${confidence.confidence_level}, so the next checks are ${confidence.next_tests.slice(0, 2).join('; ') || 'to close the missing measurements listed in the report'}.`;
+  }
+
+  return `${report.title} does not identify a dominant improvement path. The report should be used to validate the current stack diagnosis, close missing measurements, and revisit the assumptions/defaults audit before committing to a change.`;
+}
+
+function buildReportConversationMessages(input: {
+  context: ReportConversationContextPackage;
+  message: string;
+  refusalReason: string | null;
+}) {
+  return [
+    {
+      role: 'system' as const,
+      content:
+        'You answer questions about one METREV report. Use only the supplied report context. Do not browse, dump databases, reveal raw internals, invent evidence, guarantee outcomes, or run what-if simulations. Keep the answer concise and cite report sections conceptually.',
+    },
+    {
+      role: 'user' as const,
+      content: JSON.stringify({
+        user_question: input.message,
+        refusal_reason: input.refusalReason,
+        selected_section: input.context.selectedSection ?? null,
+        grounding: input.context.grounding,
+        citations: input.context.citations,
+        report: {
+          title: input.context.report.title,
+          subtitle: input.context.report.subtitle,
+          evaluation: input.context.report.evaluation,
+          sections: input.context.report.sections,
+          lineage_counts: {
+            source_usages:
+              input.context.report.evaluation_lineage.source_usages.length,
+            claim_usages:
+              input.context.report.evaluation_lineage.claim_usages.length,
+            workspace_snapshots:
+              input.context.report.evaluation_lineage.workspace_snapshots
+                .length,
+          },
+        },
+      }),
+    },
+  ];
+}
+
+export async function generateReportConversationAnswer(input: {
+  context: ReportConversationContextPackage;
+  message: string;
+}): Promise<ReportConversationAnswerResult> {
+  const refusalReason = resolveReportConversationRefusal(input.message);
+  const result = await generateNarrativeWithRuntime({
+    stubNarrative: buildReportConversationStubAnswer({
+      context: input.context,
+      message: input.message,
+      refusalReason,
+    }),
+    disabledPromptVersion: 'report-conversation-disabled-v1',
+    stubPromptVersion: 'report-conversation-stub-v1',
+    ollamaPromptVersion: 'report-conversation-ollama-v1',
+    buildOllamaMessages: () =>
+      buildReportConversationMessages({
+        context: input.context,
+        message: input.message,
+        refusalReason,
+      }),
+  });
+
+  return {
+    ...result,
+    refusalReason,
+  };
 }

@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  analystEmail,
-  analystPassword,
-  playwrightApiBaseUrl,
-  seededEvidenceSummary,
-  seededEvidenceTitle,
+    analystEmail,
+    analystPassword,
+    playwrightApiBaseUrl,
+    seededEvidenceSummary,
+    seededEvidenceTitle,
 } from './support/local-runtime';
 
 async function signInAsAnalyst(page: import('@playwright/test').Page) {
@@ -112,7 +112,7 @@ test.describe('local-first professional workspace', () => {
 
     await signInAsAnalyst(page);
 
-    await page.getByRole('link', { name: 'Evidence review' }).first().click();
+    await page.getByRole('link', { name: 'Evidence Review' }).first().click();
     await expect(page).toHaveURL(/\/evidence\/review$/);
 
     await page.getByLabel('Search catalog').fill(seededEvidenceTitle);
@@ -131,7 +131,7 @@ test.describe('local-first professional workspace', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: 'Accept for intake' }).click();
 
-    await page.getByRole('link', { name: 'Open input deck' }).click();
+    await page.getByRole('link', { name: 'Open stack cockpit' }).click();
     await expect(page).toHaveURL(/\/cases\/new$/);
 
     const wastewaterPreset = page
@@ -144,7 +144,7 @@ test.describe('local-first professional workspace', () => {
       .click();
 
     await page.getByLabel('Case identifier').fill(caseId);
-    await page.getByRole('button', { name: /^3 Suppliers & Evidence/ }).click();
+    await page.getByRole('button', { name: /Suppliers & Constraints/ }).click();
 
     await page
       .getByRole('button', { name: 'Include evidence' })
@@ -152,7 +152,7 @@ test.describe('local-first professional workspace', () => {
       .click();
     await expect(page.getByText('1 selected')).toBeVisible();
 
-    await page.getByRole('button', { name: /^4 Review & Submit/ }).click();
+    await page.getByRole('button', { name: /Review & Submit/ }).click();
     await page
       .getByLabel('Working assumptions')
       .fill('playwright assumption, runtime local validation');
@@ -176,10 +176,32 @@ test.describe('local-first professional workspace', () => {
     await page.getByRole('link', { name: 'Export CSV' }).click();
     await expect((await csvDownload).suggestedFilename()).toMatch(/\.csv$/);
 
-    await page.getByRole('link', { name: 'Report' }).click();
+    await page
+      .getByTestId('evaluation-workspace')
+      .getByRole('link', { name: 'Report' })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/evaluations/${firstEvaluationId}/report$`),
     );
+    await page.getByRole('button', { name: 'Ask this report' }).click();
+    const reportDrawer = page.getByRole('complementary', {
+      name: 'Ask this report',
+    });
+    await expect(reportDrawer).toBeVisible();
+    await reportDrawer
+      .getByLabel('Question about this report')
+      .fill('Explain the report confidence posture and next checks.');
+    await reportDrawer.getByRole('button', { name: 'Ask' }).click();
+    await expect(
+      reportDrawer.locator('.report-conversation-message--user'),
+    ).toContainText('Explain the report confidence posture and next checks.');
+    await expect(
+      reportDrawer.locator('.report-conversation-message--assistant'),
+    ).toBeVisible();
+    await expect(
+      reportDrawer.locator('.report-conversation-trace'),
+    ).toBeVisible();
+
     await page.evaluate(() => {
       Object.defineProperty(window, '__playwrightPrintCalled', {
         configurable: true,
@@ -207,11 +229,12 @@ test.describe('local-first professional workspace', () => {
       .toBe(true);
     await page.emulateMedia({ media: 'print' });
     await expect(page.locator('.report-page')).toBeVisible();
+    await expect(page.locator('.report-conversation-drawer')).toBeHidden();
     await page.emulateMedia({ media: 'screen' });
 
     await page.goto('/cases/new');
     await expect(page).toHaveURL(/\/cases\/new$/);
-    await page.getByRole('button', { name: /^4 Review & Submit/ }).click();
+    await page.getByRole('button', { name: /Review & Submit/ }).click();
     await page
       .getByLabel('Working assumptions')
       .fill('playwright assumption rerun, runtime local validation');
@@ -230,7 +253,11 @@ test.describe('local-first professional workspace', () => {
       throw new Error(`Could not extract case id from ${page.url()}`);
     }
     await expect(
-      page.getByRole('heading', { name: historyCaseIdMatch[1], exact: true }),
+      page.getByRole('heading', {
+        level: 1,
+        name: `${historyCaseIdMatch[1]} history`,
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(
       page
@@ -254,7 +281,10 @@ test.describe('local-first professional workspace', () => {
     );
     await expect(page).toHaveURL(/\/compare\//);
     await expect(
-      page.getByRole('heading', { name: /run comparison$/ }),
+      page.getByRole('heading', {
+        level: 1,
+        name: new RegExp(`^${compareCaseId} (run )?comparison$`),
+      }),
     ).toBeVisible();
   });
 

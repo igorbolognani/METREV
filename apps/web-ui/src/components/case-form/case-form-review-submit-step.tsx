@@ -42,6 +42,8 @@ export interface CaseFormReviewSubmitStepProps {
   onFieldChange: (field: keyof CaseIntakeFormValues, value: string) => void;
   preferredSupplierCount: number;
   selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[];
+  stackSummary: Array<{ key: string; label: string; value: string }>;
+  warningMessages: string[];
 }
 
 export function CaseFormReviewSubmitStep({
@@ -51,6 +53,8 @@ export function CaseFormReviewSubmitStep({
   onFieldChange,
   preferredSupplierCount,
   selectedCatalogEvidence,
+  stackSummary,
+  warningMessages,
 }: CaseFormReviewSubmitStepProps) {
   const painPoints = splitCommaSeparated(formValues.painPoints);
   const preferredSuppliers = splitCommaSeparated(formValues.preferredSuppliers);
@@ -59,7 +63,7 @@ export function CaseFormReviewSubmitStep({
   return (
     <div className="workspace-form-layout">
       <WorkspaceDataCard>
-        <span className="badge subtle">Step 4</span>
+        <span className="badge subtle">Step 11</span>
         <h3>Review the deterministic handoff</h3>
         <div className="case-form-review-grid">
           <section className="workspace-inline-card">
@@ -125,6 +129,30 @@ export function CaseFormReviewSubmitStep({
       </WorkspaceDataCard>
 
       <div className="case-form-review-grid">
+        <WorkspaceDataCard>
+          <h3>Stack summary</h3>
+          <div className="workspace-chip-list compact">
+            {stackSummary.map((entry) => (
+              <span className="meta-chip" key={entry.key}>
+                {entry.label}: {entry.value}
+              </span>
+            ))}
+          </div>
+        </WorkspaceDataCard>
+        <WorkspaceDataCard>
+          <h3>Missing or default-sensitive warnings</h3>
+          {warningMessages.length > 0 ? (
+            <ul className="workspace-bullet-list compact">
+              {warningMessages.map((entry) => (
+                <li key={entry}>{entry}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">
+              No explicit cockpit warnings are open for the configured stack.
+            </p>
+          )}
+        </WorkspaceDataCard>
         <WorkspaceDataCard>
           <h3>Pain points</h3>
           {renderSummaryChips(painPoints, 'No pain points were added yet.')}

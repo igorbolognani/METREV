@@ -1,5 +1,7 @@
 # 016 Metrev UI Refactor Plan
 
+> Status: historical reference only. New product execution should follow `specs/020-metrev-three-phase-product-plan/`.
+
 ## Objective
 
 Rebuild the runtime workspace UI in controlled stages so the shell, cockpit, intake flow, evidence review, and history surfaces become more navigable and more contract-transparent without breaking the existing runtime stack.

@@ -4,11 +4,11 @@ import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-  buildEvidenceExplorerWorkspace,
-  buildEvaluationWorkspace,
-  buildRuntimeVersions,
-  serializeEvidenceExplorerCsv,
-  serializeEvaluationCsv,
+    buildEvaluationWorkspace,
+    buildEvidenceExplorerWorkspace,
+    buildRuntimeVersions,
+    serializeEvaluationCsv,
+    serializeEvidenceExplorerCsv,
 } from '../presenters/workspace-presenters';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
@@ -153,10 +153,10 @@ export async function registerExportRoutes(
 
   app.get('/evidence/explorer/csv', async (request, reply) => {
     try {
-      requireRole(request.actor, 'VIEWER');
+      requireRole(request.actor, 'ANALYST');
     } catch (error) {
       if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+        return replyForAuthorizationError(request, reply, error, 'ANALYST');
       }
 
       throw error;

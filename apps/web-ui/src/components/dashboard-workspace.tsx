@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { EvidenceBacklogTable } from '@/components/dashboard/evidence-backlog-table';
 import { RecentRunsTable } from '@/components/dashboard/recent-runs-table';
 import { TabsContent } from '@/components/ui/tabs';
 import { Sparkline } from '@/components/workbench/sparkline';
@@ -74,14 +73,10 @@ export function DashboardWorkspaceView({
 }) {
   const latestRun = workspace.recent_runs[0] ?? null;
   const presentation = workspace.presentation;
-  const tabItems = presentation?.tabs.map((tab) => ({
-    value: tab.key,
-    label: tab.label,
-  })) ?? [
+  const tabItems = [
     { value: 'overview', label: 'Overview' },
     { value: 'runs', label: 'Runs' },
-    { value: 'evidence', label: 'Evidence' },
-    { value: 'research', label: 'Research' },
+    { value: 'reports', label: 'Reports' },
   ];
   const summaryItems = [
     {
@@ -124,41 +119,34 @@ export function DashboardWorkspaceView({
       ),
     },
     {
-      key: 'pending-evidence',
-      label: 'Pending evidence',
-      value: workspace.summary.pending_evidence,
-      detail: `${workspace.summary.accepted_evidence} accepted and ${workspace.summary.rejected_evidence} rejected records stay visible for audit.`,
-      tone: 'warning' as const,
+      key: 'tracked-cases',
+      label: 'Tracked cases',
+      value: workspace.summary.total_cases,
+      detail: 'Distinct configured cases available for continuation and history review.',
+      tone: 'default' as const,
     },
   ];
   const actionTiles = [
     {
       description:
-        'Draft a new case with explicit assumptions and compact step guidance.',
+        'Configure a system stack with validation, defaults, and deterministic submission.',
       href: workspace.quick_actions.new_evaluation_href,
-      label: 'Open input deck',
-      title: 'Input deck',
+      label: 'Configure stack',
+      title: 'New evaluation',
     },
     {
       description:
-        'Search saved evaluations and reopen workspaces without repeating dashboard metrics.',
+        'Search saved evaluations and reopen diagnosis, recommendations, modeling, report, and audit.',
       href: '/evaluations',
       label: 'Open evaluations',
       title: 'Evaluation registry',
     },
     {
       description:
-        'Review evidence records without showing the same catalog in multiple places.',
-      href: workspace.quick_actions.evidence_review_href,
-      label: 'Open evidence review',
-      title: 'Evidence review',
-    },
-    {
-      description:
-        'Open the research workspace for review packs and extraction follow-up.',
-      href: '/research/reviews',
-      label: 'Open research reviews',
-      title: 'Research reviews',
+        'Open printable client deliverables generated from saved evaluations.',
+      href: '/reports',
+      label: 'Open reports',
+      title: 'Reports',
     },
   ];
 
@@ -171,13 +159,7 @@ export function DashboardWorkspaceView({
               className="button"
               href={workspace.quick_actions.new_evaluation_href}
             >
-              New evaluation
-            </Link>
-            <Link
-              className="button secondary"
-              href={workspace.quick_actions.evidence_review_href}
-            >
-              Evidence review
+              Configure stack
             </Link>
           </>
         }
@@ -202,14 +184,13 @@ export function DashboardWorkspaceView({
           if (
             value === 'overview' ||
             value === 'runs' ||
-            value === 'evidence' ||
-            value === 'research'
+            value === 'reports'
           ) {
             onTabChange?.(value);
           }
         }}
-        summary="Summary first, details by tab, and no repeated tables in the first fold."
-        title="Workspace focus"
+        summary="Continue recent work, start a new configuration, or open report-ready outputs without foregrounding internal evidence operations."
+        title="Workspace home"
       >
         <TabsContent value="overview">
           <div className="workspace-band-grid">
@@ -297,39 +278,32 @@ export function DashboardWorkspaceView({
           </article>
         </TabsContent>
 
-        <TabsContent value="evidence">
+        <TabsContent value="reports">
           <article className="workspace-band">
             <div className="workspace-band__header">
               <div>
-                <h3>Evidence backlog</h3>
+                <h3>Recent reports</h3>
                 <p>
-                  Pending, accepted, and rejected records remain visible in one
-                  professional table.
+                  Open printable report outputs from the same saved evaluations
+                  shown in the workspace registry.
                 </p>
               </div>
-              <Link className="button secondary" href="/evidence/review">
-                Open review queue
+              <Link className="button secondary" href="/reports">
+                Open reports
               </Link>
             </div>
-            <EvidenceBacklogTable items={workspace.evidence_backlog} />
-          </article>
-        </TabsContent>
-
-        <TabsContent value="research">
-          <article className="workspace-band summary-callout">
-            <span className="badge subtle">Research reviews</span>
-            <h3>
-              Open the research workspace when the decision needs deeper
-              evidence synthesis.
-            </h3>
-            <p>
-              Reviews, extraction, and evidence-pack follow-up now live behind a
-              dedicated research route instead of the dashboard first fold.
-            </p>
-            <div className="workspace-action-row">
-              <Link className="button secondary" href="/research/reviews">
-                Open research reviews
-              </Link>
+            <div className="workspace-card-list">
+              {workspace.recent_runs.map((run) => (
+                <Link
+                  className="workspace-inline-card"
+                  href={`/evaluations/${run.evaluation_id}/report`}
+                  key={run.evaluation_id}
+                >
+                  <strong>{run.case_id} report</strong>
+                  <span>{formatToken(run.confidence_level)} confidence</span>
+                  <p>{run.summary}</p>
+                </Link>
+              ))}
             </div>
           </article>
         </TabsContent>

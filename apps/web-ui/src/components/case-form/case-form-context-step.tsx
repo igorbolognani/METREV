@@ -54,7 +54,7 @@ export function CaseFormContextStep({
     <div className="workspace-form-layout">
       <WorkspaceDataCard>
         <span className="badge subtle">Step 1</span>
-        <h3>Case context</h3>
+        <h3>Context & objective</h3>
         <div className="workspace-form-grid workspace-form-grid--two">
           <Input
             hint="Optional case identifier for direct history lookup."
@@ -68,15 +68,6 @@ export function CaseFormContextStep({
             onValueChange={(value) => onFieldChange('technologyFamily', value)}
             options={[...technologyFamilyOptions]}
             value={formValues.technologyFamily}
-          />
-          <Input
-            hint="Single chamber, dual chamber, modular stack, or another runtime label."
-            label="Architecture family"
-            onChange={(event) =>
-              onFieldChange('architectureFamily', event.target.value)
-            }
-            placeholder="single_chamber_air_cathode"
-            value={formValues.architectureFamily}
           />
           <Select
             label="Primary objective"
@@ -122,8 +113,8 @@ export function CaseFormContextStep({
         <h3>What this step should make explicit</h3>
         <p>
           Keep the decision frame concrete. The downstream deterministic run
-          uses this step to interpret evidence, missing data, compare targets,
-          and supplier relevance.
+          uses this step to interpret the stack choices, evidence posture,
+          missing data, and supplier relevance that follow.
         </p>
       </WorkspaceDataCard>
     </div>

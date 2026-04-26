@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  type EvaluationResponse,
-  type ExternalEvidenceCatalogItemDetail,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    type EvaluationResponse,
+    type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -517,8 +517,18 @@ describe('api runtime flow', () => {
       },
     });
 
-    expect(listResponse.statusCode).toBe(200);
-    expect(listResponse.json()).toMatchObject({
+    expect(listResponse.statusCode).toBe(403);
+
+    const analystListResponse = await app.inject({
+      method: 'GET',
+      url: '/api/external-evidence',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+
+    expect(analystListResponse.statusCode).toBe(200);
+    expect(analystListResponse.json()).toMatchObject({
       items: [
         expect.objectContaining({
           id: pendingCatalogItem.id,
@@ -541,8 +551,18 @@ describe('api runtime flow', () => {
       },
     });
 
-    expect(detailResponse.statusCode).toBe(200);
-    expect(detailResponse.json()).toMatchObject({
+    expect(detailResponse.statusCode).toBe(403);
+
+    const analystDetailResponse = await app.inject({
+      method: 'GET',
+      url: `/api/external-evidence/${pendingCatalogItem.id}`,
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+
+    expect(analystDetailResponse.statusCode).toBe(200);
+    expect(analystDetailResponse.json()).toMatchObject({
       id: pendingCatalogItem.id,
       title: pendingCatalogItem.title,
       review_status: 'pending',
@@ -600,7 +620,7 @@ describe('api runtime flow', () => {
       method: 'GET',
       url: '/api/external-evidence?status=accepted',
       headers: {
-        cookie: sessionCookie('viewer-session'),
+        cookie: sessionCookie('analyst-session'),
       },
     });
 
@@ -640,7 +660,7 @@ describe('api runtime flow', () => {
       method: 'GET',
       url: '/api/external-evidence?sourceType=openalex&page=1&pageSize=1',
       headers: {
-        cookie: sessionCookie('viewer-session'),
+        cookie: sessionCookie('analyst-session'),
       },
     });
 
@@ -747,7 +767,7 @@ describe('api runtime flow', () => {
       method: 'GET',
       url: `/api/external-evidence/${openAlexCatalogItem.id}`,
       headers: {
-        cookie: sessionCookie('viewer-session'),
+        cookie: sessionCookie('analyst-session'),
       },
     });
 
@@ -853,11 +873,11 @@ describe('api runtime flow', () => {
     expect(workspaceResponse.statusCode).toBe(200);
     expect(workspaceResponse.json()).toMatchObject({
       presentation: expect.objectContaining({
-        default_tab: 'summary',
+        default_tab: 'diagnosis',
         tabs: expect.arrayContaining([
           expect.objectContaining({
-            key: 'actions',
-            label: 'Actions',
+            key: 'recommendations',
+            label: 'Recommendations',
           }),
         ]),
       }),
@@ -933,6 +953,187 @@ describe('api runtime flow', () => {
     expect(csvExportResponse.body).toContain('section,label,primary_value');
 
     await app.close();
+  });
+
+  it('answers report conversation requests with grounded stub responses and refusal framing', async () => {
+    const originalMode = process.env.METREV_LLM_MODE;
+    process.env.METREV_LLM_MODE = 'stub';
+
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [acceptedCatalogItem],
+    });
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/cases/evaluate',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('analyst-session'),
+        },
+        payload: fixture,
+      });
+
+      const created = withPersistedLineage(
+        evaluationResponseSchema.parse(createResponse.json()),
+      );
+      await repository.saveEvaluation(created);
+
+      const conversationResponse = await app.inject({
+        method: 'POST',
+        url: `/api/workspace/evaluations/${created.evaluation_id}/report/conversation`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('viewer-session'),
+        },
+        payload: {
+          evaluation_id: created.evaluation_id,
+          message: 'Explain the lead recommendation and confidence posture.',
+          selected_section: 'stack_diagnosis',
+        },
+      });
+
+      expect(conversationResponse.statusCode).toBe(200);
+      const conversationBody = conversationResponse.json();
+      expect(conversationBody).toMatchObject({
+        conversation_id: expect.any(String),
+        answer: expect.any(String),
+        grounding_summary: expect.objectContaining({
+          evaluation_id: created.evaluation_id,
+          selected_section: 'stack_diagnosis',
+          source_usage_count: 1,
+          claim_usage_count: 1,
+          snapshot_count: 1,
+        }),
+        citations: expect.arrayContaining([
+          expect.objectContaining({
+            section: 'input_support',
+          }),
+        ]),
+        narrative_metadata: expect.objectContaining({
+          mode: 'stub',
+          provider: 'internal',
+          status: 'generated',
+        }),
+        metadata: expect.objectContaining({
+          conversation_id: expect.any(String),
+          mode: 'client',
+          context_version: 'report-context-v1',
+          persisted: true,
+        }),
+        refusal_reason: null,
+      });
+
+      const refusalResponse = await app.inject({
+        method: 'POST',
+        url: `/api/workspace/evaluations/${created.evaluation_id}/report/conversation`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('viewer-session'),
+        },
+        payload: {
+          evaluation_id: created.evaluation_id,
+          conversation_id: conversationBody.conversation_id,
+          message: 'What if we simulate a new separator for this case?',
+        },
+      });
+
+      expect(refusalResponse.statusCode).toBe(200);
+      const refusalBody = refusalResponse.json();
+      expect(refusalBody.conversation_id).toBe(
+        conversationBody.conversation_id,
+      );
+      expect(refusalBody.refusal_reason).toContain(
+        'Speculative what-if answers need deterministic recalculation first.',
+      );
+      expect(refusalBody.answer).toContain(
+        'Speculative what-if answers need deterministic recalculation first.',
+      );
+      expect(refusalBody.narrative_metadata).toMatchObject({
+        mode: 'stub',
+        provider: 'internal',
+      });
+    } finally {
+      if (originalMode === undefined) {
+        delete process.env.METREV_LLM_MODE;
+      } else {
+        process.env.METREV_LLM_MODE = originalMode;
+      }
+
+      await app.close();
+    }
+  });
+
+  it('returns a no-answer posture when report conversation runtime is disabled', async () => {
+    const originalMode = process.env.METREV_LLM_MODE;
+    process.env.METREV_LLM_MODE = 'disabled';
+
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [acceptedCatalogItem],
+    });
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/cases/evaluate',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('analyst-session'),
+        },
+        payload: fixture,
+      });
+
+      const created = withPersistedLineage(
+        evaluationResponseSchema.parse(createResponse.json()),
+      );
+      await repository.saveEvaluation(created);
+
+      const conversationResponse = await app.inject({
+        method: 'POST',
+        url: `/api/workspace/evaluations/${created.evaluation_id}/report/conversation`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('viewer-session'),
+        },
+        payload: {
+          evaluation_id: created.evaluation_id,
+          message: 'Summarize the report uncertainty posture.',
+        },
+      });
+
+      expect(conversationResponse.statusCode).toBe(200);
+      expect(conversationResponse.json()).toMatchObject({
+        conversation_id: expect.any(String),
+        answer: null,
+        refusal_reason: null,
+        narrative_metadata: expect.objectContaining({
+          mode: 'disabled',
+          status: 'disabled',
+          fallback_used: false,
+        }),
+        metadata: expect.objectContaining({
+          mode: 'client',
+          context_version: 'report-context-v1',
+          persisted: true,
+        }),
+      });
+    } finally {
+      if (originalMode === undefined) {
+        delete process.env.METREV_LLM_MODE;
+      } else {
+        process.env.METREV_LLM_MODE = originalMode;
+      }
+
+      await app.close();
+    }
   });
 
   it('serves dedicated history, comparison, and evidence review workspace routes', async () => {
@@ -1036,8 +1237,17 @@ describe('api runtime flow', () => {
         cookie: sessionCookie('viewer-session'),
       },
     });
-    expect(evidenceReviewResponse.statusCode).toBe(200);
-    expect(evidenceReviewResponse.json()).toMatchObject({
+    expect(evidenceReviewResponse.statusCode).toBe(403);
+
+    const analystEvidenceReviewResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/review?status=accepted&q=benchmark',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+    expect(analystEvidenceReviewResponse.statusCode).toBe(200);
+    expect(analystEvidenceReviewResponse.json()).toMatchObject({
       presentation: expect.objectContaining({
         default_tab: 'queue',
         tabs: expect.arrayContaining([
@@ -1062,8 +1272,17 @@ describe('api runtime flow', () => {
         cookie: sessionCookie('viewer-session'),
       },
     });
-    expect(evidenceExplorerResponse.statusCode).toBe(200);
-    expect(evidenceExplorerResponse.json()).toMatchObject({
+    expect(evidenceExplorerResponse.statusCode).toBe(403);
+
+    const analystEvidenceExplorerResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/explorer?page=1&pageSize=1',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+    expect(analystEvidenceExplorerResponse.statusCode).toBe(200);
+    expect(analystEvidenceExplorerResponse.json()).toMatchObject({
       presentation: expect.objectContaining({
         default_tab: 'catalog',
         tabs: expect.arrayContaining([
@@ -1105,14 +1324,25 @@ describe('api runtime flow', () => {
         cookie: sessionCookie('viewer-session'),
       },
     });
-    expect(evidenceExplorerCsvResponse.statusCode).toBe(200);
-    expect(evidenceExplorerCsvResponse.headers['content-type']).toContain(
-      'text/csv',
-    );
-    expect(evidenceExplorerCsvResponse.body).toContain(
+    expect(evidenceExplorerCsvResponse.statusCode).toBe(403);
+
+    const analystEvidenceExplorerCsvResponse = await app.inject({
+      method: 'GET',
+      url: '/api/exports/evidence/explorer/csv?status=accepted&sourceType=crossref&q=Pilot&page=1&pageSize=10',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+    expect(analystEvidenceExplorerCsvResponse.statusCode).toBe(200);
+    expect(
+      analystEvidenceExplorerCsvResponse.headers['content-type'],
+    ).toContain('text/csv');
+    expect(analystEvidenceExplorerCsvResponse.body).toContain(
       'id,title,review_status,source_type,evidence_type',
     );
-    expect(evidenceExplorerCsvResponse.body).toContain(acceptedCatalogItem.id);
+    expect(analystEvidenceExplorerCsvResponse.body).toContain(
+      acceptedCatalogItem.id,
+    );
 
     const evidenceAssistantResponse = await app.inject({
       method: 'GET',
@@ -1121,8 +1351,17 @@ describe('api runtime flow', () => {
         cookie: sessionCookie('viewer-session'),
       },
     });
-    expect(evidenceAssistantResponse.statusCode).toBe(200);
-    expect(evidenceAssistantResponse.json()).toMatchObject({
+    expect(evidenceAssistantResponse.statusCode).toBe(403);
+
+    const analystEvidenceAssistantResponse = await app.inject({
+      method: 'GET',
+      url: '/api/workspace/evidence/explorer/assistant?status=accepted&sourceType=crossref&q=Pilot&page=1&pageSize=10',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+    expect(analystEvidenceAssistantResponse.statusCode).toBe(200);
+    expect(analystEvidenceAssistantResponse.json()).toMatchObject({
       presentation: expect.objectContaining({
         default_tab: 'assistant',
       }),

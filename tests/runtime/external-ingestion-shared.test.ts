@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  extractClaimCandidates,
-  normalizeCuratedManifestRecord,
-  normalizeEuropePmcWork,
-  optionFlag,
-  optionNumber,
-  optionValue,
-  parseScriptOptions,
+    deduplicateEntries,
+    extractClaimCandidates,
+    normalizeCuratedManifestRecord,
+    normalizeEuropePmcWork,
+    optionFlag,
+    optionNumber,
+    optionValue,
+    parseScriptOptions,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 import { loadCuratedManifestRecords } from '../../packages/database/scripts/ingest-curated-manifest';
 
@@ -171,12 +172,38 @@ describe('external ingestion shared helpers', () => {
     });
     expect(claims[1].claimType).toBe('LIMITATION');
   });
+
+  it('deduplicates entries by normalized DOI before falling back to source keys', () => {
+    const firstEntry = {
+      sourceRecord: {
+        sourceType: 'OPENALEX',
+        sourceKey: 'https://openalex.org/W-FIRST',
+        doi: 'https://doi.org/10.1000/test-doi',
+        hashDedup: 'hash-first',
+        title: 'Electrochemical wastewater diagnosis',
+      },
+    };
+    const duplicateEntry = {
+      sourceRecord: {
+        sourceType: 'CROSSREF',
+        sourceKey: '10.1000/test-doi',
+        doi: '10.1000/test-doi',
+        hashDedup: 'hash-second',
+        title: 'Electrochemical wastewater diagnosis updated',
+      },
+    };
+
+    const deduplicated = deduplicateEntries([firstEntry, duplicateEntry]);
+
+    expect(deduplicated).toHaveLength(1);
+    expect(deduplicated[0]).toBe(firstEntry);
+  });
 });
 
 import {
-  expandOpenAlexAbstract,
-  normalizeCrossrefWork,
-  normalizeOpenAlexWork,
+    expandOpenAlexAbstract,
+    normalizeCrossrefWork,
+    normalizeOpenAlexWork,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 describe('external ingestion normalization', () => {

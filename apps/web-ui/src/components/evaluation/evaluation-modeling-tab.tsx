@@ -3,7 +3,10 @@
 import type { EvaluationResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
-import { SimulationMultiLineChart } from '@/components/charts/simulation-multi-line-chart';
+import {
+    SimulationHeatmapChart,
+    SimulationMultiLineChart,
+} from '@/components/charts/simulation-multi-line-chart';
 import { Badge } from '@/components/ui/badge';
 import { SignalBadge } from '@/components/workbench/signal-badge';
 import {
@@ -59,6 +62,13 @@ export function EvaluationModelingTab({
     );
   }
 
+  const operatingWindowSeries = simulation.series.filter(
+    (series) => series.series_type === 'operating_window',
+  );
+  const lineSeries = simulation.series.filter(
+    (series) => series.series_type !== 'operating_window',
+  );
+
   return (
     <div className="workspace-form-layout">
       {simulation.status !== 'completed' ? (
@@ -81,13 +91,26 @@ export function EvaluationModelingTab({
         </div>
       ) : null}
 
-      <ChartPanel
-        meta={`Model ${simulation.model_version}`}
-        summary={`${simulation.series.length} series available in the current model artifact.`}
-        title={formatToken(simulation.status)}
-      >
-        <SimulationMultiLineChart series={simulation.series} />
-      </ChartPanel>
+      {lineSeries.length > 0 ? (
+        <ChartPanel
+          meta={`Model ${simulation.model_version}`}
+          summary={`${lineSeries.length} line series and ${operatingWindowSeries.length} operating-window map(s) available in the current model artifact.`}
+          title={formatToken(simulation.status)}
+        >
+          <SimulationMultiLineChart series={lineSeries} />
+        </ChartPanel>
+      ) : null}
+
+      {operatingWindowSeries.map((series) => (
+        <ChartPanel
+          key={series.series_id}
+          meta={series.provenance_note}
+          summary="Sensitivity map from x/y operating conditions to modeled operating-window score."
+          title={series.title}
+        >
+          <SimulationHeatmapChart series={series} />
+        </ChartPanel>
+      ))}
 
       <div className="workspace-detail-grid">
         <WorkspaceDataCard>

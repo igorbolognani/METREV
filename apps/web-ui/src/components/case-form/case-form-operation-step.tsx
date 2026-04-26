@@ -46,8 +46,8 @@ export function CaseFormOperationStep({
   return (
     <div className="workspace-form-layout">
       <WorkspaceDataCard>
-        <span className="badge subtle">Step 2</span>
-        <h3>Operation</h3>
+        <span className="badge subtle">Step 9</span>
+        <h3>Operating envelope</h3>
         <div className="workspace-form-grid workspace-form-grid--two">
           <ChipInput
             className="workspace-form-field--wide"
@@ -77,6 +77,16 @@ export function CaseFormOperationStep({
             }
             placeholder="Describe biodegradability, solids profile, or sidestream composition."
             value={formValues.substrateProfile}
+          />
+          <Textarea
+            className="workspace-form-field--wide"
+            hint="Describe the operating mode, recirculation logic, or shift pattern that constrains this run."
+            label="Operating regime"
+            onChange={(event) =>
+              onFieldChange('operatingRegime', event.target.value)
+            }
+            placeholder="Continuous recirculation with batch cleaning stopouts"
+            value={formValues.operatingRegime ?? ''}
           />
           <Input
             error={temperatureError ?? undefined}

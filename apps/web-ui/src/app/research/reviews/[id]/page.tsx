@@ -1,5 +1,10 @@
+import * as React from 'react';
+
+import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
 import { ResearchReviewDetailWorkspace } from '@/components/research/research-review-detail';
-import { requireAuthenticatedSession } from '@/lib/require-session';
+import { requireRoleSession } from '@/lib/require-session';
+
+void React;
 
 export default async function ResearchReviewDetailPage({
   params,
@@ -7,7 +12,14 @@ export default async function ResearchReviewDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireAuthenticatedSession(`/research/reviews/${id}`);
+  const { session, authorized } = await requireRoleSession(
+    `/research/reviews/${id}`,
+    'ANALYST',
+  );
+
+  if (!authorized) {
+    return <AnalystRoleRequiredPanel email={session.user.email} />;
+  }
 
   return (
     <main>

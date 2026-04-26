@@ -22,4 +22,16 @@ describe('intake submitting screen', () => {
     expect(html).toContain('Currently running.');
     expect(html).toContain('Queued next.');
   });
+
+  it('keeps the stack cockpit recovery copy explicit when the submission fails', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(IntakeSubmittingProgressView, {
+        activeStageIndex: progressStages.length - 1,
+        error: 'boom',
+      }),
+    );
+
+    expect(html).toContain('Draft saved');
+    expect(html).toContain('stack cockpit can reopen with context');
+  });
 });

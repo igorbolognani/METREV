@@ -78,11 +78,6 @@ function resolveActivePostgresPort() {
 }
 
 function resolveLocalDatabaseUrl() {
-  const explicitUrl = process.env.PLAYWRIGHT_DATABASE_URL?.trim();
-  if (explicitUrl) {
-    return explicitUrl;
-  }
-
   const user = process.env.POSTGRES_USER?.trim() || 'metrev';
   const password = process.env.POSTGRES_PASSWORD?.trim() || 'metrev';
   const database = process.env.POSTGRES_DB?.trim() || 'metrev';
@@ -135,15 +130,21 @@ async function main() {
   const runtimeUrl = localViewRuntimeUrl();
   const startedLocalView = await ensureLocalViewStack(runtimeUrl);
   const localDatabaseUrl = resolveLocalDatabaseUrl();
+  const localComposeEnv = localViewComposeEnv();
   const validationEnv = {
     DATABASE_URL: localDatabaseUrl,
     DIRECT_URL: localDatabaseUrl,
+    PLAYWRIGHT_DATABASE_URL: localDatabaseUrl,
+    PLAYWRIGHT_BASE_URL: runtimeUrl,
+    PLAYWRIGHT_API_BASE_URL:
+      process.env.PLAYWRIGHT_API_BASE_URL?.trim() ||
+      localComposeEnv.NEXT_PUBLIC_API_BASE_URL,
   };
 
   console.log(`Using local validation database ${localDatabaseUrl}.`);
   execPnpm(['run', 'db:seed'], validationEnv);
   execPnpm(['run', 'test:db'], validationEnv);
-  execPnpm(['run', 'test:e2e']);
+  execPnpm(['run', 'test:e2e'], validationEnv);
 
   if (startedLocalView) {
     console.log(

@@ -117,8 +117,13 @@ describe('workspace presenters', () => {
         versions: current.audit_record.runtime_versions,
       });
       const firstSeries = workspace.evaluation.simulation_enrichment?.series[0];
+      const operatingWindowSeries =
+        workspace.evaluation.simulation_enrichment?.series.find(
+          (series) => series.series_type === 'operating_window',
+        ) ?? null;
 
       expect(firstSeries).toBeDefined();
+      expect(operatingWindowSeries).toBeDefined();
 
       const rows = buildSimulationChartRows([
         firstSeries!,
@@ -174,6 +179,26 @@ describe('workspace presenters', () => {
             simulation_enrichment: workspace.evaluation.simulation_enrichment
               ? {
                   ...workspace.evaluation.simulation_enrichment,
+                  series: operatingWindowSeries ? [operatingWindowSeries] : [],
+                }
+              : null,
+          },
+        }),
+      );
+
+      expect(modelingHtml).toContain('Operating window map');
+      expect(modelingHtml).toContain(
+        'Sensitivity map from x/y operating conditions to modeled operating-window score.',
+      );
+      expect(modelingHtml).toContain('simulation-heatmap__cell');
+
+      const failedModelingHtml = renderToStaticMarkup(
+        React.createElement(EvaluationModelingTab, {
+          evaluation: {
+            ...workspace.evaluation,
+            simulation_enrichment: workspace.evaluation.simulation_enrichment
+              ? {
+                  ...workspace.evaluation.simulation_enrichment,
                   failure_detail: {
                     reason: 'Model diverged during iteration 4',
                   },
@@ -184,11 +209,11 @@ describe('workspace presenters', () => {
         }),
       );
 
-      expect(modelingHtml).toContain(
+      expect(failedModelingHtml).toContain(
         'Modeling could not complete successfully',
       );
-      expect(modelingHtml).toContain('Model payload');
-      expect(modelingHtml).toContain('Simulation provenance');
+      expect(failedModelingHtml).toContain('Model payload');
+      expect(failedModelingHtml).toContain('Simulation provenance');
 
       const evidenceHtml = renderToStaticMarkup(
         React.createElement(EvaluationEvidenceTab, {

@@ -66,7 +66,7 @@ export function AppShell({ children, signOutAction, user }: AppShellProps) {
         <WorkspaceBreadcrumbs />
         {children}
       </div>
-      <CommandPalette />
+      <CommandPalette role={user.role} />
     </div>
   );
 }

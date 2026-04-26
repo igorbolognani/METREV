@@ -24,9 +24,12 @@ export function CaseFormStepper({
   const currentIndex = getCaseFormStepIndex(currentStep);
 
   return (
-    <section className="case-form-stepper" aria-label="Input deck wizard steps">
+    <section
+      className="case-form-stepper"
+      aria-label="Stack cockpit wizard steps"
+    >
       <div className="case-form-stepper__summary">
-        <span className="badge subtle">Wizard flow</span>
+        <span className="badge subtle">Cockpit flow</span>
         <strong>
           Step {currentIndex + 1} of {caseFormSteps.length}
         </strong>

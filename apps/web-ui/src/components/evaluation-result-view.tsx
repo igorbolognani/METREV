@@ -7,9 +7,10 @@ import * as React from 'react';
 import { EvaluationActionsTab } from '@/components/evaluation/evaluation-actions-tab';
 import { EvaluationAuditTab } from '@/components/evaluation/evaluation-audit-tab';
 import { EvaluationCompareCandidateSelect } from '@/components/evaluation/evaluation-compare-candidate-select';
-import { EvaluationEvidenceTab } from '@/components/evaluation/evaluation-evidence-tab';
 import { EvaluationModelingTab } from '@/components/evaluation/evaluation-modeling-tab';
 import { EvaluationOverviewTab } from '@/components/evaluation/evaluation-overview-tab';
+import { EvaluationReportTab } from '@/components/evaluation/evaluation-report-tab';
+import { EvaluationRoadmapSuppliersTab } from '@/components/evaluation/evaluation-roadmap-suppliers-tab';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -131,7 +132,7 @@ export function EvaluationResultView({
 
 export function EvaluationWorkspaceView({
   workspace,
-  activeTab = 'summary',
+  activeTab = 'diagnosis',
   onTabChange,
 }: {
   workspace: Awaited<ReturnType<typeof fetchEvaluationWorkspace>>;
@@ -145,34 +146,42 @@ export function EvaluationWorkspaceView({
     value: tab.key,
     label: tab.label,
     badge:
-      tab.key === 'actions'
+      tab.key === 'recommendations'
         ? evaluation.decision_output.prioritized_improvement_options.length
-        : tab.key === 'model'
+        : tab.key === 'modeling'
           ? (simulation?.series.length ?? 0)
-          : tab.key === 'audit'
+        : tab.key === 'audit'
             ? evaluation.decision_output.assumptions_and_defaults_audit
                 .defaults_used.length +
               evaluation.decision_output.assumptions_and_defaults_audit
                 .missing_data.length
-            : tab.key === 'evidence'
-              ? evaluation.audit_record.typed_evidence.length
+            : tab.key === 'roadmap'
+              ? evaluation.decision_output.phased_roadmap.length +
+                evaluation.decision_output.supplier_shortlist.length
               : undefined,
   })) ?? [
-    { value: 'summary', label: 'Summary' },
+    { value: 'diagnosis', label: 'Diagnosis' },
     {
-      value: 'actions',
-      label: 'Actions',
+      value: 'recommendations',
+      label: 'Recommendations',
       badge: evaluation.decision_output.prioritized_improvement_options.length,
     },
     {
-      value: 'model',
-      label: 'Model',
+      value: 'modeling',
+      label: 'Modeling',
       badge: simulation?.series.length ?? 0,
     },
     {
-      value: 'evidence',
-      label: 'Evidence',
-      badge: evaluation.audit_record.typed_evidence.length,
+      value: 'roadmap',
+      label: 'Roadmap & Suppliers',
+      badge:
+        evaluation.decision_output.phased_roadmap.length +
+        evaluation.decision_output.supplier_shortlist.length,
+    },
+    {
+      value: 'report',
+      label: 'Report',
+      badge: evaluation.decision_output.prioritized_improvement_options.length,
     },
     {
       value: 'audit',
@@ -254,29 +263,33 @@ export function EvaluationWorkspaceView({
         label="Evaluation workspace tabs"
         onTabChange={(value) => {
           if (
-            value === 'summary' ||
-            value === 'actions' ||
-            value === 'model' ||
-            value === 'evidence' ||
+            value === 'diagnosis' ||
+            value === 'recommendations' ||
+            value === 'modeling' ||
+            value === 'roadmap' ||
+            value === 'report' ||
             value === 'audit'
           ) {
             onTabChange?.(value);
           }
         }}
-        summary="Top KPIs render once, while detailed action, evidence, and audit layers stay separated by tab."
+        summary="Diagnosis, recommendations, modeling, roadmap, report, and audit remain separated so the client path stays readable."
         title="Decision layers"
       >
-        <TabsContent value="summary">
+        <TabsContent value="diagnosis">
           <EvaluationOverviewTab workspace={workspace} />
         </TabsContent>
-        <TabsContent value="actions">
+        <TabsContent value="recommendations">
           <EvaluationActionsTab evaluation={evaluation} />
         </TabsContent>
-        <TabsContent value="model">
+        <TabsContent value="modeling">
           <EvaluationModelingTab evaluation={evaluation} />
         </TabsContent>
-        <TabsContent value="evidence">
-          <EvaluationEvidenceTab workspace={workspace} />
+        <TabsContent value="roadmap">
+          <EvaluationRoadmapSuppliersTab evaluation={evaluation} />
+        </TabsContent>
+        <TabsContent value="report">
+          <EvaluationReportTab evaluation={evaluation} />
         </TabsContent>
         <TabsContent value="audit">
           <EvaluationAuditTab

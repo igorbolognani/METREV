@@ -1,5 +1,7 @@
 # 016 Metrev UI Refactor
 
+> Status: superseded for active product execution by `specs/017-full-big-data-workspace/`, `specs/018-evidence-intelligence-workspace/`, `specs/019-research-intelligence-review-table-engine/`, and especially `specs/020-metrev-three-phase-product-plan/`. Keep this pack as historical UI/design-system context only.
+
 ## Goal
 
 Deliver a staged UI refactor for the METREV runtime workspace so analysts can navigate, compare, and review evaluations with denser information, clearer workflow state, and explicit access to the contract-backed data already available in the runtime payloads.

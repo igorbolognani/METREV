@@ -4,18 +4,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-  addResearchColumnRequestSchema,
-  createResearchEvidencePackRequestSchema,
-  createResearchReviewRequestSchema,
-  runResearchExtractionsRequestSchema,
-  runResearchExtractionsResponseSchema,
+    addResearchColumnRequestSchema,
+    createResearchEvidencePackRequestSchema,
+    createResearchReviewRequestSchema,
+    runResearchExtractionsRequestSchema,
+    runResearchExtractionsResponseSchema,
 } from '@metrev/domain-contracts';
 import {
-  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-  buildDecisionIngestionPreview,
-  buildResearchEvidencePack,
-  getDefaultResearchColumns,
-  runDeterministicResearchExtraction,
+    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    buildDecisionIngestionPreview,
+    buildResearchEvidencePack,
+    getDefaultResearchColumns,
+    runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 import { withSpan } from '@metrev/telemetry';
 
@@ -42,22 +42,6 @@ function replyForAuthorizationError(
   });
 }
 
-function requireViewer(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): { userId: string; role: string } | undefined {
-  try {
-    return requireRole(request.actor, 'VIEWER');
-  } catch (error) {
-    if (error instanceof AuthorizationError) {
-      void replyForAuthorizationError(request, reply, error, 'VIEWER');
-      return undefined;
-    }
-
-    throw error;
-  }
-}
-
 function requireAnalyst(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -78,7 +62,7 @@ export async function registerResearchRoutes(
   app: FastifyInstance,
 ): Promise<void> {
   app.get('/reviews', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }
@@ -125,7 +109,7 @@ export async function registerResearchRoutes(
   });
 
   app.get('/reviews/:reviewId', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }
@@ -196,7 +180,9 @@ export async function registerResearchRoutes(
       return reply;
     }
 
-    const parsed = runResearchExtractionsRequestSchema.safeParse(request.body ?? {});
+    const parsed = runResearchExtractionsRequestSchema.safeParse(
+      request.body ?? {},
+    );
     if (!parsed.success) {
       return reply.code(400).send({
         error: 'invalid_input',
@@ -310,7 +296,7 @@ export async function registerResearchRoutes(
   });
 
   app.get('/evidence-packs/:packId/decision-input', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }

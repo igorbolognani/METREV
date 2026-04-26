@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import {
-  MemoryEvaluationRepository,
-  MemoryResearchRepository,
+    MemoryEvaluationRepository,
+    MemoryResearchRepository,
 } from '@metrev/database';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -90,9 +90,62 @@ describe('research API flow', () => {
         title: 'MFC fixture review',
         paper_count: 2,
       });
-      expect(created.columns.map((column: { column_id: string }) => column.column_id)).toContain(
-        'performance_metrics',
-      );
+      expect(
+        created.columns.map(
+          (column: { column_id: string }) => column.column_id,
+        ),
+      ).toContain('performance_metrics');
+
+      const viewerListResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/reviews',
+        headers: {
+          cookie: sessionCookie('research-viewer-session'),
+        },
+      });
+
+      expect(viewerListResponse.statusCode).toBe(403);
+
+      const analystListResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/reviews',
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(analystListResponse.statusCode).toBe(200);
+      expect(analystListResponse.json()).toMatchObject({
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            review_id: created.review_id,
+          }),
+        ]),
+      });
+
+      const viewerDetailResponse = await app.inject({
+        method: 'GET',
+        url: `/api/research/reviews/${created.review_id}`,
+        headers: {
+          cookie: sessionCookie('research-viewer-session'),
+        },
+      });
+
+      expect(viewerDetailResponse.statusCode).toBe(403);
+
+      const analystDetailResponse = await app.inject({
+        method: 'GET',
+        url: `/api/research/reviews/${created.review_id}`,
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(analystDetailResponse.statusCode).toBe(200);
+      expect(analystDetailResponse.json()).toMatchObject({
+        review_id: created.review_id,
+        title: 'MFC fixture review',
+      });
 
       const extractionResponse = await app.inject({
         method: 'POST',
@@ -178,8 +231,18 @@ describe('research API flow', () => {
         },
       });
 
-      expect(decisionInputResponse.statusCode).toBe(200);
-      expect(decisionInputResponse.json()).toMatchObject({
+      expect(decisionInputResponse.statusCode).toBe(403);
+
+      const analystDecisionInputResponse = await app.inject({
+        method: 'GET',
+        url: `/api/research/evidence-packs/${pack.pack_id}/decision-input`,
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(analystDecisionInputResponse.statusCode).toBe(200);
+      expect(analystDecisionInputResponse.json()).toMatchObject({
         pack_id: pack.pack_id,
         review_id: created.review_id,
         evidence_records: expect.any(Array),

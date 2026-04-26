@@ -1,54 +1,54 @@
 import type {
-  CaseHistoryResponse,
-  CaseHistoryWorkspaceResponse,
-  ConfidenceLevel,
-  DashboardWorkspaceResponse,
-  EvaluationComparisonResponse,
-  EvaluationListResponse,
-  EvaluationResponse,
-  EvaluationSummary,
-  EvaluationWorkspaceResponse,
-  EvidenceExplorerAssistantResponse,
-  EvidenceExplorerWorkspaceResponse,
-  EvidenceRecord,
-  EvidenceReviewWorkspaceResponse,
-  ExportCsvResponseMetadata,
-  ExternalEvidenceCatalogListResponse,
-  NarrativeMetadata,
-  PrintableEvaluationReportResponse,
-  RuntimeVersion,
-  SignalSourceKind,
-  SimulationEnrichment,
-  TraceabilitySummary,
-  WorkspaceAttentionItem,
-  WorkspaceBriefCard,
-  WorkspaceCopy,
-  WorkspaceHeroCard,
-  WorkspaceImpactItem,
-  WorkspaceLeadAction,
-  WorkspaceMetricRecord,
-  WorkspacePresentation,
-  WorkspaceRoadmapItem,
-  WorkspaceTone,
+    CaseHistoryResponse,
+    CaseHistoryWorkspaceResponse,
+    ConfidenceLevel,
+    DashboardWorkspaceResponse,
+    EvaluationComparisonResponse,
+    EvaluationListResponse,
+    EvaluationResponse,
+    EvaluationSummary,
+    EvaluationWorkspaceResponse,
+    EvidenceExplorerAssistantResponse,
+    EvidenceExplorerWorkspaceResponse,
+    EvidenceRecord,
+    EvidenceReviewWorkspaceResponse,
+    ExportCsvResponseMetadata,
+    ExternalEvidenceCatalogListResponse,
+    NarrativeMetadata,
+    PrintableEvaluationReportResponse,
+    RuntimeVersion,
+    SignalSourceKind,
+    SimulationEnrichment,
+    TraceabilitySummary,
+    WorkspaceAttentionItem,
+    WorkspaceBriefCard,
+    WorkspaceCopy,
+    WorkspaceHeroCard,
+    WorkspaceImpactItem,
+    WorkspaceLeadAction,
+    WorkspaceMetricRecord,
+    WorkspacePresentation,
+    WorkspaceRoadmapItem,
+    WorkspaceTone,
 } from '@metrev/domain-contracts';
 import {
-  caseHistoryWorkspaceResponseSchema,
-  dashboardWorkspaceResponseSchema,
-  evaluationComparisonResponseSchema,
-  evaluationWorkspaceResponseSchema,
-  evidenceExplorerAssistantResponseSchema,
-  evidenceExplorerWorkspaceResponseSchema,
-  evidenceReviewWorkspaceResponseSchema,
-  exportCsvResponseMetadataSchema,
-  loadContractCompatibilityDefinition,
-  loadContractDefaultsPolicy,
-  loadContractDiagnosticsDefinition,
-  loadContractImprovementsDefinition,
-  loadContractOutputDefinition,
-  loadContractScoringModel,
-  loadContractSensitivityPolicy,
-  loadContractStackOntology,
-  printableEvaluationReportResponseSchema,
+    caseHistoryWorkspaceResponseSchema,
+    dashboardWorkspaceResponseSchema,
+    evaluationComparisonResponseSchema,
+    evaluationWorkspaceResponseSchema,
+    evidenceExplorerAssistantResponseSchema,
+    evidenceExplorerWorkspaceResponseSchema,
+    evidenceReviewWorkspaceResponseSchema,
+    exportCsvResponseMetadataSchema,
+    loadContractCompatibilityDefinition,
+    loadContractDefaultsPolicy,
+    loadContractDiagnosticsDefinition,
+    loadContractImprovementsDefinition,
+    loadContractOutputDefinition,
+    loadContractScoringModel,
+    loadContractSensitivityPolicy,
+    loadContractStackOntology,
+    printableEvaluationReportResponseSchema,
 } from '@metrev/domain-contracts';
 
 const WORKSPACE_SCHEMA_VERSION = '015.0.0';
@@ -841,8 +841,7 @@ export function buildDashboardWorkspace(input: {
       tabs: [
         { key: 'overview', label: 'Overview' },
         { key: 'runs', label: 'Runs' },
-        { key: 'evidence', label: 'Evidence' },
-        { key: 'research', label: 'Research' },
+        { key: 'reports', label: 'Reports' },
       ],
       badges: [
         {
@@ -855,20 +854,10 @@ export function buildDashboardWorkspace(input: {
           label: `${highConfidenceRuns} high confidence`,
           tone: highConfidenceRuns > 0 ? 'success' : 'muted',
         },
-        {
-          key: 'pending-evidence',
-          label: `${input.evidenceCatalog.summary.pending} pending evidence`,
-          tone:
-            input.evidenceCatalog.summary.pending > 0 ? 'warning' : 'success',
-        },
       ],
       primaryActions: [
-        { key: 'new-evaluation', label: 'New evaluation', href: '/cases/new' },
-        {
-          key: 'review-evidence',
-          label: 'Review evidence',
-          href: '/evidence/review',
-        },
+        { key: 'new-evaluation', label: 'Configure stack', href: '/cases/new' },
+        { key: 'reports', label: 'Open reports', href: '/reports' },
         ...(latestEvaluation
           ? [
               {
@@ -899,7 +888,7 @@ export function buildDashboardWorkspace(input: {
     hero: {
       title: 'Bioelectrochemical decision workspace',
       subtitle:
-        'Deterministic evaluation, evidence review, case history, and reporting now share one operational surface.',
+        'Configure stacks, continue evaluations, open reports, and trace decisions when needed.',
       latest_case_id: latestEvaluation?.case_id ?? null,
       latest_summary: latestEvaluation?.summary ?? null,
     },
@@ -946,6 +935,7 @@ export function buildEvaluationWorkspace(input: {
     (item) => item.evaluation_id !== input.evaluation.evaluation_id,
   );
   const defaultCompareTargetId = compareCandidates[0]?.evaluation_id ?? null;
+  const workspaceTitle = `${input.evaluation.case_id} decision workspace`;
   const overview = buildEvaluationOverview(input.evaluation);
   const confidenceLevel =
     input.evaluation.decision_output.confidence_and_uncertainty_summary
@@ -969,15 +959,16 @@ export function buildEvaluationWorkspace(input: {
       },
     }),
     presentation: createPresentation({
-      pageTitle: overview.title,
+      pageTitle: workspaceTitle,
       shortSummary:
         input.evaluation.decision_output.current_stack_diagnosis.summary,
-      defaultTab: 'summary',
+      defaultTab: 'diagnosis',
       tabs: [
-        { key: 'summary', label: 'Summary' },
-        { key: 'actions', label: 'Actions' },
-        { key: 'model', label: 'Model' },
-        { key: 'evidence', label: 'Evidence' },
+        { key: 'diagnosis', label: 'Diagnosis' },
+        { key: 'recommendations', label: 'Recommendations' },
+        { key: 'modeling', label: 'Modeling' },
+        { key: 'roadmap', label: 'Roadmap & Suppliers' },
+        { key: 'report', label: 'Report' },
         { key: 'audit', label: 'Audit' },
       ],
       badges: [
@@ -1019,7 +1010,7 @@ export function buildEvaluationWorkspace(input: {
         },
       ],
       copy: {
-        headline: overview.title,
+        headline: workspaceTitle,
         summary:
           input.evaluation.decision_output.current_stack_diagnosis.summary,
         detail:
@@ -1035,7 +1026,7 @@ export function buildEvaluationWorkspace(input: {
       compare_candidates: compareCandidates,
     },
     overview: {
-      title: `${input.evaluation.case_id} decision workspace`,
+      title: workspaceTitle,
       subtitle:
         input.evaluation.decision_output.current_stack_diagnosis.summary,
       hero_cards: overview.heroCards,
@@ -1476,7 +1467,7 @@ export function buildEvidenceReviewWorkspace(input: {
         headline: 'Evidence review queue',
         summary: `${input.evidenceCatalog.summary.pending} pending record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
         detail: input.filters?.query?.trim()
-          ? `Filtered by \"${input.filters.query.trim()}\".`
+          ? `Filtered by "${input.filters.query.trim()}".`
           : undefined,
       },
     }),

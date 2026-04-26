@@ -3,31 +3,34 @@
 import { useWorkspaceTabState } from '@/lib/workspace-tab-query-state';
 
 export const evaluationTabValues = [
-  'summary',
-  'actions',
-  'model',
-  'evidence',
+  'diagnosis',
+  'recommendations',
+  'modeling',
+  'roadmap',
+  'report',
   'audit',
 ] as const;
 
 export type EvaluationTab = (typeof evaluationTabValues)[number];
 
 const evaluationTabAliases: Record<string, EvaluationTab> = {
-  actions: 'actions',
+  actions: 'recommendations',
   audit: 'audit',
-  evidence: 'evidence',
-  model: 'model',
-  modeling: 'model',
-  overview: 'summary',
-  recommendations: 'actions',
-  roadmap: 'actions',
-  summary: 'summary',
+  diagnosis: 'diagnosis',
+  evidence: 'audit',
+  model: 'modeling',
+  modeling: 'modeling',
+  overview: 'diagnosis',
+  recommendations: 'recommendations',
+  report: 'report',
+  roadmap: 'roadmap',
+  summary: 'diagnosis',
 };
 
 export function useEvaluationTab() {
   return useWorkspaceTabState({
     aliases: evaluationTabAliases,
     allowed: evaluationTabValues,
-    defaultTab: 'summary',
+    defaultTab: 'diagnosis',
   });
 }

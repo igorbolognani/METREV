@@ -116,7 +116,7 @@ describe('external evidence review board', () => {
       expect(queueHtml).toContain('Priority records');
       expect(queueHtml).toContain('Evidence catalog');
       expect(queueHtml).toContain('Review State');
-      expect(queueHtml).toContain('Open input deck');
+      expect(queueHtml).toContain('Open stack cockpit');
       expect(queueHtml).toContain('Open review detail');
 
       expect(selectedHtml).toContain('Selected records');

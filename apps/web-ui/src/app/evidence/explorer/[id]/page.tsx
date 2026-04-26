@@ -1,5 +1,10 @@
+import * as React from 'react';
+
+import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
 import { ExternalEvidenceDetail } from '@/components/evidence-detail/external-evidence-detail';
 import { requireRoleSession } from '@/lib/require-session';
+
+void React;
 
 export default async function ExternalEvidenceExplorerDetailPage({
   params,
@@ -7,14 +12,18 @@ export default async function ExternalEvidenceExplorerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { authorized } = await requireRoleSession(
+  const { session, authorized } = await requireRoleSession(
     `/evidence/explorer/${id}`,
     'ANALYST',
   );
 
+  if (!authorized) {
+    return <AnalystRoleRequiredPanel email={session.user.email} />;
+  }
+
   return (
     <main>
-      <ExternalEvidenceDetail catalogItemId={id} canReview={authorized} />
+      <ExternalEvidenceDetail catalogItemId={id} canReview />
     </main>
   );
 }

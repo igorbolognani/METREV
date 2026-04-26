@@ -16,7 +16,7 @@ vi.mock('@/lib/case-form-query-state', async () => {
 
   return {
     ...actual,
-    useCaseFormStep: () => ['context', vi.fn()] as const,
+    useCaseFormStep: () => ['context-objective', vi.fn()] as const,
   };
 });
 
@@ -71,26 +71,25 @@ async function renderCaseForm() {
 }
 
 describe('case form', () => {
-  it('renders the stage 3 intake wizard with stepper, autosave state, and preset deck', async () => {
+  it('renders the stack cockpit wizard with stepper, autosave state, and preset deck', async () => {
     const html = await renderCaseForm();
 
-    expect(html).toContain('One navigation system, one drafting surface');
-    expect(html).toContain('Wizard flow');
-    expect(html).toContain('Step 1 of 4');
+    expect(html).toContain('One cockpit, one stack configuration surface');
+    expect(html).toContain('Cockpit flow');
+    expect(html).toContain('Step 1 of 11');
     expect(html).toContain('Autosave ready');
-    expect(html).toContain('Case context');
-    expect(html).toContain('Operation');
-    expect(html).toContain('Suppliers &amp; Evidence');
+    expect(html).toContain('Context &amp; Objective');
+    expect(html).toContain('Reactor Architecture');
+    expect(html).toContain('Operating Envelope');
+    expect(html).toContain('Suppliers &amp; Constraints');
     expect(html).toContain('Review &amp; Submit');
     expect(html).toContain('Current TRL');
     expect(html).toContain('Decision horizon');
     expect(html).toContain('Deployment context');
-    expect(html).toContain(
-      'Capture context, operating envelope, supplier posture',
-    );
+    expect(html).toContain('Configure the current METREV stack block by block');
     expect(html).toContain('Validated presets');
     expect(html).toContain('Review evidence queue');
-    expect(html).toContain('Next: Operation');
+    expect(html).toContain('Next: Reactor Architecture');
     expect(html).toContain('Next step');
   });
 });

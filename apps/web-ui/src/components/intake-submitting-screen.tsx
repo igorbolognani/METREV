@@ -86,9 +86,9 @@ export function IntakeSubmittingScreen() {
     return (
       <WorkspaceEmptyState
         title="No pending submission"
-        description="Return to the input deck and submit a case to start the deterministic evaluation flow."
+        description="Return to the stack cockpit and submit a case to start the deterministic evaluation flow."
         primaryHref="/cases/new"
-        primaryLabel="Back to input deck"
+        primaryLabel="Back to stack cockpit"
       />
     );
   }
@@ -138,7 +138,7 @@ export function IntakeSubmittingProgressView({
     },
     {
       detail: error
-        ? 'The draft was preserved so the input deck can reopen with context after the redirect.'
+        ? 'The draft was preserved so the stack cockpit can reopen with context after the redirect.'
         : 'Draft state remains preserved if the evaluation fails before the workspace opens.',
       key: 'failure-posture',
       label: 'Failure posture',

@@ -1,20 +1,22 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
+import { reportConversationRequestSchema } from '@metrev/domain-contracts';
 import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-  buildEvidenceExplorerAssistantResponse,
-  buildCaseHistoryWorkspace,
-  buildDashboardWorkspace,
-  buildEvidenceExplorerWorkspace,
-  buildEvaluationComparison,
-  buildEvaluationWorkspace,
-  buildEvidenceReviewWorkspace,
-  buildPrintableEvaluationReport,
-  buildRuntimeVersions,
+    buildCaseHistoryWorkspace,
+    buildDashboardWorkspace,
+    buildEvaluationComparison,
+    buildEvaluationWorkspace,
+    buildEvidenceExplorerAssistantResponse,
+    buildEvidenceExplorerWorkspace,
+    buildEvidenceReviewWorkspace,
+    buildPrintableEvaluationReport,
+    buildRuntimeVersions,
 } from '../presenters/workspace-presenters';
+import { createPersistedReportConversation } from '../services/report-conversation';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
 function replyForAuthorizationError(
@@ -49,6 +51,22 @@ function requireViewer(
   } catch (error) {
     if (error instanceof AuthorizationError) {
       void replyForAuthorizationError(request, reply, error, 'VIEWER');
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
+function requireAnalyst(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): { userId: string; role: string } | undefined {
+  try {
+    return requireRole(request.actor, 'ANALYST');
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      void replyForAuthorizationError(request, reply, error, 'ANALYST');
       return undefined;
     }
 
@@ -244,7 +262,7 @@ export async function registerWorkspaceRoutes(
   );
 
   app.get('/evidence/review', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }
@@ -297,7 +315,7 @@ export async function registerWorkspaceRoutes(
   });
 
   app.get('/evidence/explorer', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }
@@ -352,7 +370,7 @@ export async function registerWorkspaceRoutes(
   });
 
   app.get('/evidence/explorer/assistant', async (request, reply) => {
-    const actor = requireViewer(request, reply);
+    const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
     }
@@ -463,4 +481,76 @@ export async function registerWorkspaceRoutes(
       }),
     );
   });
+
+  app.post(
+    '/evaluations/:evaluationId/report/conversation',
+    async (request, reply) => {
+      const actor = requireViewer(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const { evaluationId } = request.params as { evaluationId: string };
+      const parsed = reportConversationRequestSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      if (parsed.data.evaluation_id !== evaluationId) {
+        return reply.code(400).send({
+          error: 'evaluation_mismatch',
+          message: 'The request evaluation_id must match the route parameter.',
+        });
+      }
+
+      const evaluation = await withSpan(
+        'workspace.report_conversation.evaluation.get',
+        () => app.evaluationRepository.getEvaluation(evaluationId),
+        {
+          evaluation_id: evaluationId,
+          actor_id: actor.userId,
+        },
+      );
+
+      if (!evaluation) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Evaluation ${evaluationId} was not found.`,
+        });
+      }
+
+      const report = buildPrintableEvaluationReport({
+        evaluation,
+        versions: buildVersionsFromEvaluation({
+          narrativePromptVersion: evaluation.narrative_metadata.prompt_version,
+          modelVersion:
+            evaluation.simulation_enrichment?.model_version ??
+            evaluation.narrative_metadata.model,
+        }),
+      });
+      const response = await withSpan(
+        'workspace.report_conversation.respond',
+        () =>
+          createPersistedReportConversation({
+            actorId: actor.userId,
+            conversationId: parsed.data.conversation_id,
+            evaluation,
+            evaluationRepository: app.evaluationRepository,
+            message: parsed.data.message,
+            report,
+            selectedSection: parsed.data.selected_section ?? null,
+          }),
+        {
+          evaluation_id: evaluationId,
+          actor_id: actor.userId,
+        },
+      );
+
+      return reply.send(response);
+    },
+  );
 }

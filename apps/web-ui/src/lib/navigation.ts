@@ -1,6 +1,7 @@
 export type NavIcon =
   | 'dashboard'
   | 'input-deck'
+  | 'reports'
   | 'evidence-explorer'
   | 'evidence-review'
   | 'research-tables'
@@ -12,6 +13,8 @@ export interface NavItem {
   icon: NavIcon;
   id: string;
   label: string;
+  minimumRole?: 'ANALYST' | 'ADMIN';
+  section: 'primary' | 'advanced';
 }
 
 export interface BreadcrumbItem {
@@ -25,38 +28,73 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'dashboard',
     id: 'dashboard',
     label: 'Dashboard',
+    section: 'primary',
   },
   {
     href: '/cases/new',
     icon: 'input-deck',
     id: 'input-deck',
-    label: 'Input Deck',
+    label: 'Configure Stack',
+    section: 'primary',
+  },
+  {
+    href: '/evaluations',
+    icon: 'evaluations',
+    id: 'evaluations',
+    label: 'Evaluations',
+    section: 'primary',
+  },
+  {
+    href: '/reports',
+    icon: 'reports',
+    id: 'reports',
+    label: 'Reports',
+    section: 'primary',
   },
   {
     href: '/evidence/explorer',
     icon: 'evidence-explorer',
     id: 'evidence-explorer',
     label: 'Evidence Explorer',
+    minimumRole: 'ANALYST',
+    section: 'advanced',
   },
   {
     href: '/evidence/review',
     icon: 'evidence-review',
     id: 'evidence-review',
     label: 'Evidence Review',
+    minimumRole: 'ANALYST',
+    section: 'advanced',
   },
   {
     href: '/research/reviews',
     icon: 'research-tables',
     id: 'research-tables',
     label: 'Research Tables',
-  },
-  {
-    href: '/evaluations',
-    icon: 'evaluations',
-    id: 'evaluations',
-    label: 'All Evaluations',
+    minimumRole: 'ANALYST',
+    section: 'advanced',
   },
 ];
+
+export function canUseNavItem(
+  item: NavItem,
+  role: string | null | undefined,
+): boolean {
+  if (!item.minimumRole) {
+    return true;
+  }
+
+  if (item.minimumRole === 'ADMIN') {
+    return role === 'ADMIN';
+  }
+
+  return role === 'ANALYST' || role === 'ADMIN';
+}
+
+export function getNavItemsForRole(role: string | null | undefined) {
+  return NAV_ITEMS.filter((item) => canUseNavItem(item, role));
+}
 
 function normalizePathname(pathname: string): string {
   if (!pathname) {
@@ -104,11 +142,15 @@ export function buildBreadcrumbs(
   if (normalizedPathname === '/cases/new/submitting') {
     return [
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/cases/new', label: 'Input Deck' },
+      { href: '/cases/new', label: 'Configure Stack' },
     ];
   }
 
   if (normalizedPathname === '/evaluations') {
+    return [{ href: '/dashboard', label: 'Dashboard' }];
+  }
+
+  if (normalizedPathname === '/reports') {
     return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 

@@ -202,8 +202,11 @@ This workspace can be published safely after local validation.
 
 ## Current MVP status
 
-- Completed and validated: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards on the dashboard, evaluation, and new-case pages, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, an analyst workbench with summary, evidence, modeling, audit, and comparison modes, PostgreSQL-backed persistence tests, and local Jaeger trace visibility for sign-in, evaluation, persistence, and history flows.
-- Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, and deeper relational expansion of all materials, benchmark, extraction, and normalization entities that still live partly in structured JSON columns.
+- Active product roadmap: `specs/020-metrev-three-phase-product-plan/`.
+- Client-facing surfaces: public educational landing, dashboard, configure stack/new evaluation, evaluation workspace, evaluation registry, case history, comparison, printable report, exports, and report-grounded explanation.
+- Internal/advanced surfaces: evidence explorer, evidence review, research tables, ingestion/bootstrap tooling, raw provenance inspection, and deeper audit/warehouse operations.
+- Completed and validated baseline: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, analyst workbench surfaces, PostgreSQL-backed persistence tests, and local Jaeger trace visibility.
+- Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, deeper relational expansion of materials/benchmarks/extractions that still live partly in structured JSON columns, and production-like big-data intelligence claims until bootstrap validation is rerun and recorded under 020.
 
 ## 017 Validation Snapshot
 
