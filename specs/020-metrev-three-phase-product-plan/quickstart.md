@@ -64,4 +64,4 @@ Update this table whenever the full implementation is validated.
 | `pnpm run db:bootstrap:bigdata`                                                                 | PASS   | Full bounded bootstrap completed with 31 runs, 758 stored records, and inventory summary output. |
 | `pnpm run test:e2e`                                                                             | PASS   | Playwright E2E entrypoint passed after disabling the unstable Next dev segment explorer path.    |
 | `pnpm run validate:fast`                                                                        | PASS   | Lint, JS tests, Python contract checks, and build all passed end to end.                         |
-| `pnpm run validate:local`                                                                       | PASS   | Passed against an isolated Docker local-view stack after pinning local runtime and database env. |
+| `pnpm run validate:local`                                                                       | PASS   | Passed against an isolated Docker local-view stack after pinning local runtime and database env; this is now the second CI gate after `validate:fast`. |

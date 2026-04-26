@@ -1,3 +1,18 @@
+# Reference Only: Generated File Code Listing
+
+This file is a generated repository export retained for historical and search convenience only.
+
+Do not treat it as an active source-of-truth surface for implementation, validation, workflow, or repository authority decisions.
+
+Use these surfaces instead:
+
+- `docs/repository-authority-map.md`
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `bioelectrochem_agent_kit/domain/`
+- `bioelectro-copilot-contracts/contracts/`
+- `apps/`, `packages/`, and `tests/`
+
 # Complete File Code Listing
 
 ## `.github/agents/client-intake-normalizer.agent.md`

@@ -54,12 +54,12 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - [x] Repository authority docs identify 020 as the active product roadmap.
 - [x] README distinguishes client-facing surfaces from internal/advanced surfaces.
 - [x] 016/018/019 specs are reconciled so future agents do not treat stale wording as active direction.
-- [ ] Public landing tests cover science/value sections and absence of prototype route-map copy.
-- [ ] Navigation and dashboard tests reflect client-first IA and Advanced/Internal grouping.
-- [ ] Evaluation/report tests cover new tab labels, heatmap rendering, print-safe report, and report conversation UI.
-- [ ] Runtime/API tests cover report conversation contracts, stub mode, fallback behavior, and persistence.
-- [ ] Bootstrap/data tests cover dry-run, dedupe, review-state preservation, claim-review counts, and lineage persistence.
-- [ ] Validation results are recorded in `quickstart.md`.
+- [x] Public landing tests cover science/value sections and absence of prototype route-map copy.
+- [x] Navigation and dashboard tests reflect client-first IA and Advanced/Internal grouping.
+- [x] Evaluation/report tests cover new tab labels, heatmap rendering, print-safe report, and report conversation UI.
+- [x] Runtime/API tests cover report conversation contracts, stub mode, fallback behavior, and persistence.
+- [x] Bootstrap/data tests cover dry-run, dedupe, review-state preservation, claim-review counts, and lineage persistence.
+- [x] Validation results are recorded in `quickstart.md`.
 
 ## Guardrails
 
@@ -68,4 +68,3 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - Keep business logic out of the UI.
 - Never claim production-like big-data intelligence unless the bootstrap and validation matrix has been run and recorded.
 - Keep evidence and audit traceable, but expose them through deliberate "why", "trace", and Advanced/Internal interactions.
-

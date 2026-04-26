@@ -49,3 +49,38 @@ jobs:
 
       - name: Validate Docker Compose
         run: docker compose config
+
+  validate-local:
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run local validation matrix
+        run: pnpm run validate:local
+
+      - name: Stop local-view stack
+        if: always()
+        run: pnpm run local:view:down

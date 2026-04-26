@@ -110,8 +110,8 @@ The staged/manual path remains available through the clarify, start-feature, and
 ## Validation matrices
 
 - `pnpm run test` is the backward-compatible alias for `pnpm run test:fast` and only covers the fast contract plus JS matrix.
-- `pnpm run validate:fast` is the promoted fast repository matrix. It runs lint, `test:fast`, and build, and it is the same contract used by CI.
-- `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack.
+- `pnpm run validate:fast` is the promoted fast repository matrix. It runs lint, `test:fast`, and build, and it is the first CI gate.
+- `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack. It now runs as the second CI gate after the fast matrix passes.
 - `pnpm run validate:full` combines the promoted fast matrix and the promoted local acceptance matrix.
 - `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
 
@@ -208,7 +208,7 @@ This workspace can be published safely after local validation.
 - Completed and validated baseline: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, analyst workbench surfaces, PostgreSQL-backed persistence tests, and local Jaeger trace visibility.
 - Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, deeper relational expansion of materials/benchmarks/extractions that still live partly in structured JSON columns, and production-like big-data intelligence claims until bootstrap validation is rerun and recorded under 020.
 
-## 017 Validation Snapshot
+## Current Validation Snapshot
 
 - PASS `pnpm run validate:fast`
 - PASS `pnpm run validate:local`
