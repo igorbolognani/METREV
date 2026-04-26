@@ -4,9 +4,8 @@ import type { EvaluationWorkspaceResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
 import { RawEvaluationDisclosure } from '@/components/evaluation/raw-evaluation-disclosure';
-import { Collapsible } from '@/components/ui/collapsible';
-import { SignalBadge } from '@/components/workbench/signal-badge';
 import { WorkspaceDataCard } from '@/components/workspace-chrome';
+import { DisclosurePanel } from '@/components/workspace/disclosure-panel';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
@@ -33,19 +32,6 @@ function traceabilityCounts(workspace: EvaluationWorkspaceResponse) {
     `${traceability.missing_data_count} missing-data flags`,
     `${traceability.evidence_count} evidence refs`,
   ];
-}
-
-function formatPersistedUsage(
-  value:
-    | EvaluationWorkspaceResponse['evaluation']['source_usages'][number]
-    | EvaluationWorkspaceResponse['evaluation']['claim_usages'][number],
-) {
-  const targetId =
-    'source_document_id' in value ? value.source_document_id : value.claim_id;
-
-  return `${formatToken(value.usage_type)} · ${targetId}${
-    value.note ? ` · ${value.note}` : ''
-  }`;
 }
 
 export function EvaluationAuditTab({
@@ -148,84 +134,16 @@ export function EvaluationAuditTab({
             <h3>Generated</h3>
             <p>{formatTimestamp(workspace.meta.generated_at)}</p>
             <p className="muted">
-              {workspace.meta.traceability.transformation_stages.join(' → ')}
+              {workspace.meta.traceability.transformation_stages.join(' -> ')}
             </p>
           </article>
         </div>
 
-        <article className="workspace-inline-card">
-          <h3>Typed evidence snapshot</h3>
-          {evaluation.audit_record.typed_evidence.length > 0 ? (
-            <div className="workspace-card-list">
-              {evaluation.audit_record.typed_evidence.map((record) => (
-                <article
-                  className="workspace-inline-card"
-                  key={record.evidence_id}
-                >
-                  <div className="workspace-data-card__header">
-                    <div>
-                      <h3>{record.title}</h3>
-                      <p>{record.summary}</p>
-                    </div>
-                    <SignalBadge
-                      kind={
-                        record.evidence_type === 'internal_benchmark'
-                          ? 'measured'
-                          : 'inferred'
-                      }
-                    />
-                  </div>
-                  <p className="muted">
-                    {formatToken(record.evidence_type)} ·{' '}
-                    {formatToken(record.strength_level)}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">
-              No typed evidence records were attached to this evaluation.
-            </p>
-          )}
-        </article>
-
-        <div className="workspace-detail-grid">
-          <article className="workspace-inline-card">
-            <h3>Persisted source usage</h3>
-            {listOrEmpty(
-              evaluation.source_usages.map((usage) =>
-                formatPersistedUsage(usage),
-              ),
-              'No persisted source usage records were read back for this evaluation.',
-            )}
-          </article>
-          <article className="workspace-inline-card">
-            <h3>Persisted claim usage</h3>
-            {listOrEmpty(
-              evaluation.claim_usages.map((usage) =>
-                formatPersistedUsage(usage),
-              ),
-              'No persisted claim usage records were read back for this evaluation.',
-            )}
-          </article>
-        </div>
-
-        <article className="workspace-inline-card">
-          <h3>Workspace snapshot inventory</h3>
-          {listOrEmpty(
-            evaluation.workspace_snapshots.map(
-              (snapshot) =>
-                `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
-            ),
-            'No immutable workspace snapshots were read back for this evaluation.',
-          )}
-        </article>
-
-        <Collapsible title="View audit record">
+        <DisclosurePanel title="Traceability payload">
           <pre className="code-block evaluation-raw-pre">
             {JSON.stringify(evaluation.audit_record, null, 2)}
           </pre>
-        </Collapsible>
+        </DisclosurePanel>
       </WorkspaceDataCard>
 
       <RawEvaluationDisclosure evaluationId={evaluationId} />

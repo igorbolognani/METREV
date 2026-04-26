@@ -20,8 +20,9 @@ describe('external evidence explorer', () => {
       await buildWorkspaceViewFixtures();
 
     try {
-      const html = renderToStaticMarkup(
+      const catalogHtml = renderToStaticMarkup(
         React.createElement(EvidenceExplorerView, {
+          activeTab: 'catalog',
           assistant: null,
           assistantError: null,
           assistantRequested: false,
@@ -42,23 +43,102 @@ describe('external evidence explorer', () => {
         }),
       );
 
-      expect(html).toContain('Evidence intelligence explorer');
-      expect(html).toContain('Generate assistant brief');
-      expect(html).toContain('Export current slice CSV');
-      expect(html).toContain('Warehouse facets');
-      expect(html).toContain('Filtered warehouse snapshot');
-      expect(html).toContain('Source types');
-      expect(html).toContain('Warehouse-aware evidence briefing');
-      expect(html).toContain('Curated spotlight');
-      expect(html).toContain('Intake-ready records');
-      expect(html).toContain('Recently published on this page');
-      expect(html).toContain('Full explorer catalog');
-      expect(html).toContain('Open review queue');
-      expect(html).toContain('Open evidence detail');
-      expect(html).toContain(
+      const facetsHtml = renderToStaticMarkup(
+        React.createElement(EvidenceExplorerView, {
+          activeTab: 'facets',
+          assistant: null,
+          assistantError: null,
+          assistantRequested: false,
+          assistantRunning: false,
+          filter: 'all',
+          onFilterChange: vi.fn(),
+          onNextPage: vi.fn(),
+          onPageSizeChange: vi.fn(),
+          onPreviousPage: vi.fn(),
+          onRequestAssistant: vi.fn(),
+          onSearchInputChange: vi.fn(),
+          onSourceTypeChange: vi.fn(),
+          onTabChange: vi.fn(),
+          page: 1,
+          pageSize: 25,
+          searchInput: 'benchmark',
+          sourceType: 'all',
+          workspace: evidenceExplorerWorkspace,
+        }),
+      );
+
+      const assistantHtml = renderToStaticMarkup(
+        React.createElement(EvidenceExplorerView, {
+          activeTab: 'assistant',
+          assistant: null,
+          assistantError: null,
+          assistantRequested: false,
+          assistantRunning: false,
+          filter: 'all',
+          onFilterChange: vi.fn(),
+          onNextPage: vi.fn(),
+          onPageSizeChange: vi.fn(),
+          onPreviousPage: vi.fn(),
+          onRequestAssistant: vi.fn(),
+          onSearchInputChange: vi.fn(),
+          onSourceTypeChange: vi.fn(),
+          onTabChange: vi.fn(),
+          page: 1,
+          pageSize: 25,
+          searchInput: 'benchmark',
+          sourceType: 'all',
+          workspace: evidenceExplorerWorkspace,
+        }),
+      );
+
+      const exportHtml = renderToStaticMarkup(
+        React.createElement(EvidenceExplorerView, {
+          activeTab: 'exports',
+          assistant: null,
+          assistantError: null,
+          assistantRequested: false,
+          assistantRunning: false,
+          filter: 'all',
+          onFilterChange: vi.fn(),
+          onNextPage: vi.fn(),
+          onPageSizeChange: vi.fn(),
+          onPreviousPage: vi.fn(),
+          onRequestAssistant: vi.fn(),
+          onSearchInputChange: vi.fn(),
+          onSourceTypeChange: vi.fn(),
+          onTabChange: vi.fn(),
+          page: 1,
+          pageSize: 25,
+          searchInput: 'benchmark',
+          sourceType: 'all',
+          workspace: evidenceExplorerWorkspace,
+        }),
+      );
+
+      expect(catalogHtml).toContain('Evidence explorer');
+      expect(catalogHtml).toContain('Explorer layers');
+      expect(catalogHtml).toContain('Catalog');
+      expect(catalogHtml).toContain('Facets');
+      expect(catalogHtml).toContain('Assistant');
+      expect(catalogHtml).toContain('Exports');
+      expect(catalogHtml).toContain('Curated spotlight');
+      expect(catalogHtml).toContain('Intake-ready records');
+      expect(catalogHtml).toContain('Recently published on this page');
+      expect(catalogHtml).toContain('Full explorer catalog');
+      expect(catalogHtml).toContain('Open review queue');
+      expect(catalogHtml).toContain('Open evidence detail');
+
+      expect(facetsHtml).toContain('Filtered warehouse snapshot');
+      expect(facetsHtml).toContain('Source types');
+      expect(assistantHtml).toContain('Warehouse-aware evidence briefing');
+      expect(assistantHtml).toContain('Generate assistant brief');
+      expect(exportHtml).toContain('Export current slice CSV');
+      expect(exportHtml).toContain(
         'http://localhost:4000/api/exports/evidence/explorer/csv?status=accepted&amp;q=benchmark&amp;sourceType=crossref&amp;page=1&amp;pageSize=25',
       );
-      expect(html).toContain('/evidence/explorer/catalog-item-accepted-001');
+      expect(catalogHtml).toContain(
+        '/evidence/explorer/catalog-item-accepted-001',
+      );
     } finally {
       await repository.disconnect();
     }

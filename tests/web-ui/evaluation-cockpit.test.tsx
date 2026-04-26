@@ -65,21 +65,20 @@ describe('evaluation workspace', () => {
       const html = renderToStaticMarkup(
         React.createElement(EvaluationWorkspaceView, {
           workspace: renderWorkspace,
-          activeTab: 'overview',
+          activeTab: 'summary',
           onTabChange: vi.fn(),
         }),
       );
 
       expect(html).toContain('Evaluation workspace');
-      expect(html).toContain('Overview');
-      expect(html).toContain('Recommendations');
-      expect(html).toContain('Modeling');
-      expect(html).toContain('Roadmap &amp; Suppliers');
+      expect(html).toContain('Summary');
+      expect(html).toContain('Actions');
+      expect(html).toContain('Model');
+      expect(html).toContain('Evidence');
       expect(html).toContain('Audit');
       expect(html).toContain('Decision posture');
-      expect(html).toContain('Delivery readiness');
       expect(html).toContain('Lead action');
-      expect(html).toContain('Read full narrative');
+      expect(html).toContain('Narrative');
       expect(html).toContain('Improves confidence');
       expect(html).toContain('Case history');
       expect(html).toContain('Export JSON');
@@ -91,6 +90,7 @@ describe('evaluation workspace', () => {
       );
       expect(html).not.toContain('Comparison dock');
       expect(html).not.toContain('History rail');
+      expect(html).not.toContain('Roadmap &amp; Suppliers');
     } finally {
       await repository.disconnect();
     }

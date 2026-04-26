@@ -27,8 +27,9 @@ describe('external evidence review board', () => {
     };
 
     try {
-      const html = renderToStaticMarkup(
+      const queueHtml = renderToStaticMarkup(
         React.createElement(EvidenceReviewWorkspaceView, {
+          activeTab: 'queue',
           bulkAction: null,
           bulkActionError: null,
           bulkDialogOpen: false,
@@ -63,18 +64,64 @@ describe('external evidence review board', () => {
         }),
       );
 
-      expect(html).toContain('Imported evidence control surface');
-      expect(html).toContain('Dense review workflow');
-      expect(html).toContain('Select all visible');
-      expect(html).toContain('Rows per page');
-      expect(html).toContain('Source type');
-      expect(html).toContain('Previous page');
-      expect(html).toContain('Accept selected');
-      expect(html).toContain('Priority records');
-      expect(html).toContain('Evidence catalog');
-      expect(html).toContain('Review State');
-      expect(html).toContain('Open input deck');
-      expect(html).toContain('Open review detail');
+      const selectedHtml = renderToStaticMarkup(
+        React.createElement(EvidenceReviewWorkspaceView, {
+          activeTab: 'selected',
+          bulkAction: null,
+          bulkActionError: null,
+          bulkDialogOpen: false,
+          bulkNote: '',
+          bulkResult,
+          isBulkActionPending: false,
+          onBulkDialogOpenChange: vi.fn(),
+          onBulkNoteChange: vi.fn(),
+          onClearSelection: vi.fn(),
+          onConfirmBulkAction: vi.fn(),
+          workspace: evidenceWorkspace,
+          filter: 'accepted',
+          onNextPage: vi.fn(),
+          onPageSizeChange: vi.fn(),
+          onPreviousPage: vi.fn(),
+          onRequestBulkAction: vi.fn(),
+          onResultDialogOpenChange: vi.fn(),
+          searchInput: 'benchmark',
+          onFilterChange: vi.fn(),
+          onSearchInputChange: vi.fn(),
+          onSelectAllVisible: vi.fn(),
+          onSourceTypeChange: vi.fn(),
+          onToggleSelection: vi.fn(),
+          onTabChange: vi.fn(),
+          page: 1,
+          pageSize: 25,
+          resultDialogOpen: false,
+          selectedIds: ['evidence-1'],
+          sourceType: 'all',
+          visibleItems: evidenceWorkspace.items,
+          visibleSpotlight: evidenceWorkspace.spotlight,
+          visibleSummary: evidenceWorkspace.summary,
+        }),
+      );
+
+      expect(queueHtml).toContain('Evidence review queue');
+      expect(queueHtml).toContain('Review layers');
+      expect(queueHtml).toContain('Queue');
+      expect(queueHtml).toContain('Selected');
+      expect(queueHtml).toContain('Audit');
+      expect(queueHtml).toContain('Dense review workflow');
+      expect(queueHtml).toContain('Select all visible');
+      expect(queueHtml).toContain('Rows per page');
+      expect(queueHtml).toContain('Source type');
+      expect(queueHtml).toContain('Previous page');
+      expect(queueHtml).toContain('Accept selected');
+      expect(queueHtml).toContain('Priority records');
+      expect(queueHtml).toContain('Evidence catalog');
+      expect(queueHtml).toContain('Review State');
+      expect(queueHtml).toContain('Open input deck');
+      expect(queueHtml).toContain('Open review detail');
+
+      expect(selectedHtml).toContain('Selected records');
+      expect(selectedHtml).toContain('Selection review');
+      expect(selectedHtml).toContain('No selected records');
     } finally {
       await repository.disconnect();
     }

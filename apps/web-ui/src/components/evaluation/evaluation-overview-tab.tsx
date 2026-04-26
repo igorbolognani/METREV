@@ -3,29 +3,12 @@
 import type { EvaluationWorkspaceResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { SignalBadge } from '@/components/workbench/signal-badge';
-import {
-    WorkspaceDataCard,
-    WorkspaceStatCard,
-} from '@/components/workspace-chrome';
+import { WorkspaceDataCard } from '@/components/workspace-chrome';
+import { DisclosurePanel } from '@/components/workspace/disclosure-panel';
+import { PropertyTable } from '@/components/workspace/property-table';
 import { formatToken } from '@/lib/formatting';
 
 void React;
-
-function cardTone(
-  tone: string,
-): 'default' | 'accent' | 'warning' | 'success' | 'critical' {
-  switch (tone) {
-    case 'accent':
-    case 'warning':
-    case 'success':
-    case 'critical':
-      return tone;
-    default:
-      return 'default';
-  }
-}
 
 function listOrEmpty(items: string[], emptyMessage: string) {
   if (items.length === 0) {
@@ -64,45 +47,21 @@ export function EvaluationOverviewTab({
 
   return (
     <div className="workspace-form-layout">
-      <section className="workspace-stats-grid">
-        {workspace.overview.hero_cards.map((card) => (
-          <WorkspaceStatCard
-            detail={card.detail}
-            key={card.key}
-            label={card.label}
-            tone={cardTone(card.tone)}
-            value={card.value}
-          />
-        ))}
-      </section>
-
-      <section className="workspace-detail-grid">
-        {workspace.overview.brief_cards.map((card) => (
-          <WorkspaceDataCard key={card.key}>
-            <span className="badge subtle">{card.label}</span>
-            <h3>{card.value}</h3>
-            <p>{card.detail}</p>
-          </WorkspaceDataCard>
-        ))}
-      </section>
-
       <WorkspaceDataCard tone="accent">
         <div className="workspace-data-card__header">
           <div>
             <span className="badge subtle">Lead action</span>
             <h3>{leadAction.title}</h3>
+            <p>{leadAction.rationale}</p>
           </div>
-          <span className="meta-chip">{leadAction.phase}</span>
+          <div className="workspace-chip-list compact">
+            <span className="meta-chip">
+              {leadAction.confidence_label} confidence
+            </span>
+            <span className="meta-chip">{leadAction.effort_label} effort</span>
+          </div>
         </div>
-        <p className="evaluation-lead-benefit">{leadAction.benefit_label}</p>
-        <p>{leadAction.rationale}</p>
-        <div className="workspace-chip-list compact">
-          <span className="meta-chip">{leadAction.score_label}</span>
-          <span className="meta-chip">
-            {leadAction.confidence_label} confidence
-          </span>
-          <span className="meta-chip">{leadAction.effort_label} effort</span>
-        </div>
+
         <div className="workspace-detail-grid">
           <article className="workspace-inline-card">
             <h3>Blocking dependencies</h3>
@@ -119,6 +78,7 @@ export function EvaluationOverviewTab({
             )}
           </article>
         </div>
+
         <div className="evaluation-chip-cluster">
           <strong>Supplier candidates</strong>
           <div className="workspace-chip-list compact">
@@ -138,21 +98,15 @@ export function EvaluationOverviewTab({
       </WorkspaceDataCard>
 
       <WorkspaceDataCard>
-        <span className="badge subtle">Key metrics</span>
-        <div className="workspace-card-list">
-          {workspace.overview.key_metrics.map((metric) => (
-            <article className="workspace-inline-card" key={metric.key}>
-              <div className="workspace-data-card__header">
-                <div>
-                  <h3>{metric.label}</h3>
-                  <p>{metric.note}</p>
-                </div>
-                <SignalBadge kind={metric.source_kind} />
-              </div>
-              <strong>{metric.value}</strong>
-            </article>
-          ))}
-        </div>
+        <span className="badge subtle">Run properties</span>
+        <PropertyTable
+          caption="Run properties"
+          rows={workspace.overview.brief_cards.map((card) => ({
+            label: card.label,
+            source: card.detail,
+            value: card.value,
+          }))}
+        />
       </WorkspaceDataCard>
 
       <div className="workspace-detail-grid">
@@ -165,7 +119,7 @@ export function EvaluationOverviewTab({
                   <h3>{entry.title}</h3>
                   <p>{entry.impact}</p>
                   <p className="muted">
-                    {entry.economic} · {entry.readiness} · {entry.score_label}
+                    {entry.economic} - {entry.readiness} - {entry.score_label}
                   </p>
                 </article>
               ))}
@@ -191,13 +145,26 @@ export function EvaluationOverviewTab({
         </WorkspaceDataCard>
       </div>
 
+      <WorkspaceDataCard>
+        <span className="badge subtle">Key metrics</span>
+        <PropertyTable
+          caption="Key metrics"
+          rows={workspace.overview.key_metrics.map((metric) => ({
+            label: metric.label,
+            source: `${formatToken(metric.source_kind)} - ${metric.note}`,
+            unit: metric.unit,
+            value: metric.value,
+          }))}
+        />
+      </WorkspaceDataCard>
+
       {evaluation.narrative ? (
-        <Collapsible
-          meta={narrativeMeta(workspace).join(' · ')}
-          title="Read full narrative"
+        <DisclosurePanel
+          meta={narrativeMeta(workspace).join(' - ')}
+          title="Narrative"
         >
           <p>{evaluation.narrative}</p>
-        </Collapsible>
+        </DisclosurePanel>
       ) : null}
     </div>
   );

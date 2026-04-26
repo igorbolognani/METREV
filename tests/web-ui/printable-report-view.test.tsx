@@ -10,20 +10,33 @@ describe('printable report view', () => {
     const { report, repository } = await buildWorkspaceViewFixtures();
 
     try {
-      const html = renderToStaticMarkup(
+      const reportHtml = renderToStaticMarkup(
         React.createElement(PrintableReportWorkspaceView, {
+          activeTab: 'report',
           report,
         }),
       );
 
-      expect(html).toContain('Printable report');
-      expect(html).toContain('Print / Save as PDF');
-      expect(html).toContain('Stack diagnosis');
-      expect(html).toContain('Action shortlist');
-      expect(html).toContain('Qualified candidates');
-      expect(html).toContain('Defaults used');
-      expect(html).toContain('Persisted provenance and snapshots');
-      expect(html).toContain('Supports the prioritized improvement shortlist.');
+      expect(reportHtml).toContain('Printable report');
+      expect(reportHtml).toContain('Print / Save as PDF');
+      expect(reportHtml).toContain('Report');
+      expect(reportHtml).toContain('Audit');
+      expect(reportHtml).toContain('Stack diagnosis');
+      expect(reportHtml).toContain('Action shortlist');
+      expect(reportHtml).toContain('Qualified candidates');
+      expect(reportHtml).toContain(
+        'Improves confidence, reduces false precision, and protects follow-on engineering and procurement decisions.',
+      );
+
+      const auditHtml = renderToStaticMarkup(
+        React.createElement(PrintableReportWorkspaceView, {
+          activeTab: 'audit',
+          report,
+        }),
+      );
+
+      expect(auditHtml).toContain('Defaults used');
+      expect(auditHtml).toContain('Persisted provenance and snapshots');
     } finally {
       await repository.disconnect();
     }

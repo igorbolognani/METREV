@@ -61,8 +61,9 @@ describe('evaluations list view', () => {
   });
 
   it('renders the evaluations registry with filters and row actions', () => {
-    const html = renderToStaticMarkup(
+    const catalogHtml = renderToStaticMarkup(
       React.createElement(EvaluationsWorkspaceView, {
+        activeTab: 'catalog',
         confidenceFilter: 'all',
         items,
         onConfidenceFilterChange: vi.fn(),
@@ -88,11 +89,46 @@ describe('evaluations list view', () => {
       }),
     );
 
-    expect(html).toContain('All evaluations');
-    expect(html).toContain('Server-driven sorting and filtering');
-    expect(html).toContain('Evaluation registry');
-    expect(html).toContain('Previous page');
-    expect(html).toContain('Open result');
-    expect(html).toContain('Case history');
+    const auditHtml = renderToStaticMarkup(
+      React.createElement(EvaluationsWorkspaceView, {
+        activeTab: 'audit',
+        confidenceFilter: 'all',
+        items,
+        onConfidenceFilterChange: vi.fn(),
+        onNextPage: vi.fn(),
+        onPageSizeChange: vi.fn(),
+        onPreviousPage: vi.fn(),
+        onSearchInputChange: vi.fn(),
+        onSortDirectionChange: vi.fn(),
+        onSortKeyChange: vi.fn(),
+        onTabChange: vi.fn(),
+        page: 1,
+        pageSize: 25,
+        searchInput: '',
+        summary: {
+          total: items.length,
+          filtered_total: items.length,
+          page: 1,
+          page_size: 25,
+          total_pages: 1,
+          returned: items.length,
+        },
+        sortDirection: 'desc',
+        sortKey: 'created_at',
+      }),
+    );
+
+    expect(catalogHtml).toContain('All evaluations');
+    expect(catalogHtml).toContain('Registry layers');
+    expect(catalogHtml).toContain('Catalog');
+    expect(catalogHtml).toContain('Audit');
+    expect(catalogHtml).toContain('Server-driven sorting and filtering');
+    expect(catalogHtml).toContain('Evaluation registry');
+    expect(catalogHtml).toContain('Previous page');
+    expect(catalogHtml).toContain('Open result');
+    expect(catalogHtml).toContain('Case history');
+
+    expect(auditHtml).toContain('Current filter state');
+    expect(auditHtml).toContain('Registry posture');
   });
 });

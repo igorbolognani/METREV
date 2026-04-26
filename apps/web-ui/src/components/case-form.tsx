@@ -14,9 +14,10 @@ import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
 import {
     WorkspaceDataCard,
+    WorkspacePageHeader,
     WorkspaceSection,
-    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
 import {
     clearPendingSubmission,
     clearSubmissionError,
@@ -216,6 +217,43 @@ export function CaseForm() {
     caseFormSteps.find((step) => step.value === currentStep) ??
     caseFormSteps[0];
   const autosaveLabel = formatAutosaveTimestamp(lastSavedAt);
+  const summaryItems = [
+    {
+      detail: formValues.architectureFamily || 'Architecture still open.',
+      key: 'scenario',
+      label: 'Scenario',
+      tone: 'accent' as const,
+      value: `${formatToken(formValues.technologyFamily)} / ${formatToken(formValues.primaryObjective)}`,
+    },
+    {
+      detail:
+        formValues.conductivity || formValues.hydraulicRetentionTime
+          ? `${formValues.conductivity || '?'} mS/cm - ${formValues.hydraulicRetentionTime || '?'} h`
+          : 'Conductivity and retention time are not set yet.',
+      key: 'envelope',
+      label: 'Operating envelope',
+      tone: 'default' as const,
+      value:
+        formValues.temperature || formValues.ph
+          ? `${formValues.temperature || '?'} °C - pH ${formValues.ph || '?'}`
+          : 'Still incomplete',
+    },
+    {
+      detail: `${countCommaSeparated(formValues.currentSuppliers)} current supplier entries recorded.`,
+      key: 'suppliers',
+      label: 'Supplier context',
+      tone: 'success' as const,
+      value: `${preferredSupplierCount} preferred`,
+    },
+    {
+      detail:
+        'Accepted catalog evidence and manual typed support remain explicit in the payload.',
+      key: 'evidence',
+      label: 'Evidence',
+      tone: 'warning' as const,
+      value: `${evidenceCount} attached`,
+    },
+  ];
   const contextValidationErrors = {
     currentTrl:
       showStepValidation.context && !formValues.currentTrl.trim()
@@ -447,38 +485,21 @@ export function CaseForm() {
 
   return (
     <form className="workspace-page" onSubmit={handleSubmit}>
-      <section className="workspace-stats-grid" aria-label="Input deck summary">
-        <WorkspaceStatCard
-          detail={formValues.architectureFamily || 'Architecture still open.'}
-          label="Scenario"
-          tone="accent"
-          value={`${formatToken(formValues.technologyFamily)} / ${formatToken(formValues.primaryObjective)}`}
-        />
-        <WorkspaceStatCard
-          detail={
-            formValues.conductivity || formValues.hydraulicRetentionTime
-              ? `${formValues.conductivity || '?'} mS/cm · ${formValues.hydraulicRetentionTime || '?'} h`
-              : 'Conductivity and retention time are not set yet.'
-          }
-          label="Operating envelope"
-          value={
-            formValues.temperature || formValues.ph
-              ? `${formValues.temperature || '?'} °C · pH ${formValues.ph || '?'}`
-              : 'Still incomplete'
-          }
-        />
-        <WorkspaceStatCard
-          detail={`${countCommaSeparated(formValues.currentSuppliers)} current supplier entries recorded.`}
-          label="Supplier context"
-          value={`${preferredSupplierCount} preferred`}
-        />
-        <WorkspaceStatCard
-          detail="Accepted catalog evidence and manual typed support remain explicit in the payload."
-          label="Evidence"
-          tone="warning"
-          value={`${evidenceCount} attached`}
-        />
-      </section>
+      <WorkspacePageHeader
+        badge="Input deck"
+        chips={[
+          autosaveLabel,
+          `${currentStepIndex + 1} of ${caseFormStepValues.length} steps`,
+        ]}
+        description="Capture context, operating envelope, supplier posture, evidence, and assumptions in one predictable flow before handing the case into the deterministic workspace."
+        title={
+          formValues.caseId.trim() ||
+          activePreset?.label ||
+          'Draft a new evaluation'
+        }
+      />
+
+      <SummaryRail items={summaryItems} label="Input deck summary" />
 
       <WorkspaceSection
         actions={

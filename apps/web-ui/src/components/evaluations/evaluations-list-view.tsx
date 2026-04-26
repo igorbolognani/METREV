@@ -10,17 +10,25 @@ import type { EvaluationListResponse } from '@metrev/domain-contracts';
 
 import { EvaluationsFilters } from '@/components/evaluations/evaluations-filters';
 import { EvaluationsTable } from '@/components/evaluations/evaluations-table';
+import { TabsContent } from '@/components/ui/tabs';
 import {
+    WorkspaceDataCard,
     WorkspaceEmptyState,
     WorkspacePageHeader,
     WorkspaceSection,
     WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
+import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchEvaluationList } from '@/lib/api';
 import {
-    type EvaluationConfidenceFilter,
     useEvaluationsListQueryState,
+    type EvaluationConfidenceFilter,
 } from '@/lib/evaluations-list-query-state';
+import {
+    useEvaluationsViewTab,
+    type EvaluationsViewTab,
+} from '@/lib/evaluations-view-query-state';
 
 void React;
 
@@ -35,6 +43,7 @@ export function EvaluationsListView() {
     sortDirection,
     sortKey,
   } = useEvaluationsListQueryState();
+  const [activeTab, setActiveTab] = useEvaluationsViewTab();
   const deferredSearch = useDeferredValue(searchInput);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
@@ -142,6 +151,8 @@ export function EvaluationsListView() {
       onSearchInputChange={handleSearchInputChange}
       onSortDirectionChange={handleSortDirectionChange}
       onSortKeyChange={handleSortKeyChange}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
       page={page}
       pageSize={pageSize}
       searchInput={searchInput}
@@ -153,6 +164,7 @@ export function EvaluationsListView() {
 }
 
 export function EvaluationsWorkspaceView({
+  activeTab = 'catalog',
   confidenceFilter,
   items,
   onConfidenceFilterChange,
@@ -162,6 +174,7 @@ export function EvaluationsWorkspaceView({
   onSearchInputChange,
   onSortDirectionChange,
   onSortKeyChange,
+  onTabChange,
   page,
   pageSize,
   searchInput,
@@ -169,6 +182,7 @@ export function EvaluationsWorkspaceView({
   sortDirection,
   sortKey,
 }: {
+  activeTab?: EvaluationsViewTab;
   confidenceFilter: EvaluationConfidenceFilter;
   items: EvaluationListResponse['items'];
   onConfidenceFilterChange: (nextValue: EvaluationConfidenceFilter) => void;
@@ -180,6 +194,7 @@ export function EvaluationsWorkspaceView({
   onSortKeyChange: (
     nextValue: 'created_at' | 'confidence_level' | 'case_id',
   ) => void;
+  onTabChange?: (nextTab: EvaluationsViewTab) => void;
   page: number;
   pageSize: number;
   searchInput: string;
@@ -187,6 +202,38 @@ export function EvaluationsWorkspaceView({
   sortDirection: 'asc' | 'desc';
   sortKey: 'created_at' | 'confidence_level' | 'case_id';
 }) {
+  const summaryItems = [
+    {
+      detail:
+        'Rows returned on the current page for the active search and confidence state.',
+      key: 'returned',
+      label: 'Visible rows',
+      tone: 'accent' as const,
+      value: summary.returned,
+    },
+    {
+      detail: 'Records matching the current server-side filter state.',
+      key: 'filtered',
+      label: 'Filtered rows',
+      tone: 'success' as const,
+      value: summary.filtered_total,
+    },
+    {
+      detail: 'All persisted evaluations currently saved in the runtime.',
+      key: 'total',
+      label: 'Total rows',
+      tone: 'default' as const,
+      value: summary.total,
+    },
+    {
+      detail: 'Server-owned page count for the current filter slice.',
+      key: 'pages',
+      label: 'Pages',
+      tone: 'warning' as const,
+      value: summary.total_pages,
+    },
+  ];
+
   return (
     <div className="workspace-page">
       <WorkspacePageHeader
@@ -201,32 +248,87 @@ export function EvaluationsWorkspaceView({
         title="All evaluations"
       />
 
-      <WorkspaceSection
-        description="Confidence, search, and sort state persist in the URL while the backend owns filtering, sorting, and pagination."
-        eyebrow="Workspace list"
-        title="Evaluation registry"
+      <SummaryRail items={summaryItems} label="Evaluations registry summary" />
+
+      <WorkspaceTabShell
+        activeTab={activeTab}
+        items={[
+          { value: 'catalog', label: 'Catalog', badge: summary.returned },
+          { value: 'audit', label: 'Audit', badge: summary.filtered_total },
+        ]}
+        label="Evaluation registry tabs"
+        onTabChange={(value) => {
+          if (value === 'catalog' || value === 'audit') {
+            onTabChange?.(value);
+          }
+        }}
+        summary="Keep the registry table and the current server-owned state separate so filtering logic stays legible."
+        title="Registry layers"
       >
-        <EvaluationsFilters
-          confidenceFilter={confidenceFilter}
-          filteredCount={summary.filtered_total}
-          onConfidenceFilterChange={onConfidenceFilterChange}
-          onNextPage={onNextPage}
-          onPageSizeChange={onPageSizeChange}
-          onPreviousPage={onPreviousPage}
-          onSearchInputChange={onSearchInputChange}
-          onSortDirectionChange={onSortDirectionChange}
-          onSortKeyChange={onSortKeyChange}
-          page={page}
-          pageSize={pageSize}
-          searchInput={searchInput}
-          sortDirection={sortDirection}
-          sortKey={sortKey}
-          totalCount={summary.total}
-          totalPages={summary.total_pages}
-          visibleCount={summary.returned}
-        />
-        <EvaluationsTable items={items} />
-      </WorkspaceSection>
+        <TabsContent value="catalog">
+          <WorkspaceSection
+            description="Confidence, search, and sort state persist in the URL while the backend owns filtering, sorting, and pagination."
+            eyebrow="Workspace list"
+            title="Evaluation registry"
+          >
+            <EvaluationsFilters
+              confidenceFilter={confidenceFilter}
+              filteredCount={summary.filtered_total}
+              onConfidenceFilterChange={onConfidenceFilterChange}
+              onNextPage={onNextPage}
+              onPageSizeChange={onPageSizeChange}
+              onPreviousPage={onPreviousPage}
+              onSearchInputChange={onSearchInputChange}
+              onSortDirectionChange={onSortDirectionChange}
+              onSortKeyChange={onSortKeyChange}
+              page={page}
+              pageSize={pageSize}
+              searchInput={searchInput}
+              sortDirection={sortDirection}
+              sortKey={sortKey}
+              totalCount={summary.total}
+              totalPages={summary.total_pages}
+              visibleCount={summary.returned}
+            />
+            <EvaluationsTable items={items} />
+          </WorkspaceSection>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <div className="workspace-detail-grid">
+            <WorkspaceDataCard>
+              <span className="badge subtle">Current filter state</span>
+              <div className="workspace-chip-list compact">
+                <span className="meta-chip">
+                  Confidence: {confidenceFilter}
+                </span>
+                <span className="meta-chip">
+                  Search: {searchInput || 'none'}
+                </span>
+                <span className="meta-chip">Sort: {sortKey}</span>
+                <span className="meta-chip">Direction: {sortDirection}</span>
+              </div>
+              <p>
+                Page {page} of {summary.total_pages} with {summary.returned}{' '}
+                visible row(s).
+              </p>
+            </WorkspaceDataCard>
+            <WorkspaceDataCard>
+              <span className="badge subtle">Registry posture</span>
+              <p>
+                {summary.filtered_total} filtered row(s) remain connected to
+                case history and direct result navigation.
+              </p>
+              <div className="workspace-chip-list compact">
+                <span className="meta-chip">
+                  Total records: {summary.total}
+                </span>
+                <span className="meta-chip">Page size: {pageSize}</span>
+              </div>
+            </WorkspaceDataCard>
+          </div>
+        </TabsContent>
+      </WorkspaceTabShell>
     </div>
   );
 }

@@ -725,6 +725,52 @@ export const externalEvidenceCatalogListSummarySchema = z.object({
   returned: z.number().int().nonnegative().default(0),
 });
 
+export const workspaceCopySchema = z.object({
+  headline: z.string().trim().min(1).max(80),
+  summary: z.string().trim().min(1).max(180),
+  detail: z.string().trim().min(1).max(320).optional(),
+});
+
+export const workspaceTabSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(32),
+});
+
+export const workspaceBadgeSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(48),
+  tone: workspaceToneSchema,
+});
+
+export const workspacePrimaryActionSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(48),
+  href: z.string().trim().min(1),
+});
+
+export const workspacePropertyRowSchema = z.object({
+  label: z.string().trim().min(1),
+  value: z.string().trim().min(1),
+  unit: z.string().trim().min(1).nullable().optional(),
+  source: z.string().trim().min(1).nullable().optional(),
+});
+
+export const workspacePropertyGroupSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  rows: z.array(workspacePropertyRowSchema).min(1),
+});
+
+export const workspacePresentationSchema = z.object({
+  page_title: z.string().trim().min(1).max(80),
+  short_summary: z.string().trim().min(1).max(180),
+  default_tab: z.string().trim().min(1),
+  tabs: z.array(workspaceTabSchema).default([]),
+  badges: z.array(workspaceBadgeSchema).default([]),
+  primary_actions: z.array(workspacePrimaryActionSchema).default([]),
+  copy: workspaceCopySchema.optional(),
+});
+
 export const workspaceHeroCardSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
@@ -789,6 +835,7 @@ export const workspaceMetricRecordSchema = z.object({
 
 export const dashboardWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   summary: z.object({
     total_runs: z.number().int().nonnegative(),
     total_cases: z.number().int().nonnegative(),
@@ -821,6 +868,7 @@ export const dashboardWorkspaceResponseSchema = z.object({
 
 export const evaluationWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   evaluation: evaluationResponseSchema,
   history_summary: z.object({
     total_runs: z.number().int().nonnegative(),
@@ -857,6 +905,7 @@ export const caseHistoryTimelineItemSchema = z.object({
 
 export const caseHistoryWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   case: caseSnapshotSchema,
   timeline: z.array(caseHistoryTimelineItemSchema),
   evidence_records: z.array(evidenceRecordSchema),
@@ -894,6 +943,7 @@ export const supplierShortlistDeltaSchema = z.object({
 
 export const evaluationComparisonResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   current_evaluation: evaluationSummarySchema,
   baseline_evaluation: evaluationSummarySchema,
   conclusion: z.object({
@@ -910,6 +960,7 @@ export const evaluationComparisonResponseSchema = z.object({
 
 export const evidenceReviewWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     search_query: z.string().optional(),
@@ -949,6 +1000,7 @@ export const externalEvidenceCatalogWarehouseAggregateSchema = z.object({
 
 export const evidenceExplorerWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
@@ -970,6 +1022,7 @@ export const evidenceExplorerWorkspaceResponseSchema = z.object({
 
 export const evidenceExplorerAssistantResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
@@ -989,6 +1042,7 @@ export const evidenceExplorerAssistantResponseSchema = z.object({
 
 export const printableEvaluationReportResponseSchema = z.object({
   meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
   evaluation: evaluationSummarySchema,
   evaluation_lineage: z
     .lazy(() => evaluationLineageSchema)
@@ -1209,6 +1263,17 @@ export type CaseSnapshot = z.infer<typeof caseSnapshotSchema>;
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type CaseHistoryResponse = z.infer<typeof caseHistoryResponseSchema>;
 export type WorkspaceTone = z.infer<typeof workspaceToneSchema>;
+export type WorkspaceCopy = z.infer<typeof workspaceCopySchema>;
+export type WorkspaceTab = z.infer<typeof workspaceTabSchema>;
+export type WorkspaceBadge = z.infer<typeof workspaceBadgeSchema>;
+export type WorkspacePrimaryAction = z.infer<
+  typeof workspacePrimaryActionSchema
+>;
+export type WorkspacePropertyRow = z.infer<typeof workspacePropertyRowSchema>;
+export type WorkspacePropertyGroup = z.infer<
+  typeof workspacePropertyGroupSchema
+>;
+export type WorkspacePresentation = z.infer<typeof workspacePresentationSchema>;
 export type WorkspaceHeroCard = z.infer<typeof workspaceHeroCardSchema>;
 export type WorkspaceBriefCard = z.infer<typeof workspaceBriefCardSchema>;
 export type WorkspaceAttentionItem = z.infer<

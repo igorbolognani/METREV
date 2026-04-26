@@ -13,14 +13,16 @@ import type {
     ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
+import { TabsContent } from '@/components/ui/tabs';
 import {
     WorkspaceDataCard,
     WorkspaceEmptyState,
     WorkspacePageHeader,
     WorkspaceSection,
     WorkspaceSkeleton,
-    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
+import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
     addResearchColumn,
     createResearchEvidencePack,
@@ -31,6 +33,8 @@ import {
 import { formatToken } from '@/lib/formatting';
 
 void React;
+
+type ResearchReviewDetailTab = 'table' | 'columns' | 'papers' | 'pack';
 
 function resultKey(paperId: string, columnId: string) {
   return `${paperId}:${columnId}`;
@@ -222,11 +226,17 @@ function EvidencePackViewer({
 }
 
 export function ResearchReviewDetailWorkspace({
+  activeTab,
+  onTabChange,
   reviewId,
 }: {
+  activeTab?: ResearchReviewDetailTab;
+  onTabChange?: (nextTab: ResearchReviewDetailTab) => void;
   reviewId: string;
 }) {
   const queryClient = useQueryClient();
+  const [internalActiveTab, setInternalActiveTab] =
+    React.useState<ResearchReviewDetailTab>('table');
   const [pack, setPack] = React.useState<ResearchEvidencePack | null>(null);
   const query = useQuery({
     queryKey: ['research-review', reviewId],
@@ -308,6 +318,30 @@ export function ResearchReviewDetailWorkspace({
   ).length;
   const selectedPack = pack ?? review.evidence_packs[0] ?? null;
   const decisionInput = selectedPack ? (decisionInputQuery.data ?? null) : null;
+  const resolvedActiveTab = activeTab ?? internalActiveTab;
+  const summaryItems = [
+    {
+      detail: 'Source-document rows attached to this review.',
+      key: 'papers',
+      label: 'Papers',
+      tone: 'accent' as const,
+      value: review.paper_count,
+    },
+    {
+      detail: 'Schema-backed table columns currently visible.',
+      key: 'columns',
+      label: 'Columns',
+      tone: 'default' as const,
+      value: columns.length,
+    },
+    {
+      detail: 'Cell-level extraction results saved for this review.',
+      key: 'results',
+      label: 'Results',
+      tone: 'success' as const,
+      value: review.completed_result_count,
+    },
+  ];
 
   return (
     <div className="workspace-page">
@@ -348,83 +382,124 @@ export function ResearchReviewDetailWorkspace({
         title={review.title}
       />
 
-      <section className="workspace-stats-grid">
-        <WorkspaceStatCard
-          detail="Source-document rows attached to this review."
-          label="Papers"
-          tone="accent"
-          value={review.paper_count}
-        />
-        <WorkspaceStatCard
-          detail="Schema-backed table columns currently visible."
-          label="Columns"
-          value={columns.length}
-        />
-        <WorkspaceStatCard
-          detail="Cell-level extraction results saved for this review."
-          label="Results"
-          tone="success"
-          value={review.completed_result_count}
-        />
-      </section>
+      <SummaryRail
+        items={summaryItems}
+        label="Research review detail summary"
+      />
 
-      <WorkspaceSection title="Review table" eyebrow="Living table">
-        <div className="evidence-review-table-shell">
-          <table>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.column_id}>{column.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {review.papers.map((paper) => (
-                <tr key={paper.paper_id}>
-                  {columns.map((column) => (
-                    <td key={`${paper.paper_id}-${column.column_id}`}>
-                      {column.column_id === 'paper' ? (
-                        <strong>{paper.title}</strong>
-                      ) : (
-                        renderCell(
-                          cells.get(
-                            resultKey(paper.paper_id, column.column_id),
-                          ),
-                        )
-                      )}
-                    </td>
+      <WorkspaceTabShell
+        activeTab={resolvedActiveTab}
+        items={[
+          { value: 'table', label: 'Table', badge: review.paper_count },
+          { value: 'columns', label: 'Columns', badge: columns.length },
+          { value: 'papers', label: 'Papers', badge: review.papers.length },
+          {
+            value: 'pack',
+            label: 'Pack',
+            badge: selectedPack
+              ? selectedPack.evidence_items.length
+              : undefined,
+          },
+        ]}
+        label="Research review detail tabs"
+        onTabChange={(value) => {
+          if (
+            value === 'table' ||
+            value === 'columns' ||
+            value === 'papers' ||
+            value === 'pack'
+          ) {
+            if (activeTab === undefined) {
+              setInternalActiveTab(value);
+            }
+            onTabChange?.(value);
+          }
+        }}
+        summary="Separate the living extraction table, column schema changes, paper context, and decision-pack bridge."
+        title="Research detail layers"
+      >
+        <TabsContent value="table">
+          <WorkspaceSection title="Review table" eyebrow="Living table">
+            <div className="evidence-review-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    {columns.map((column) => (
+                      <th key={column.column_id}>{column.name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {review.papers.map((paper) => (
+                    <tr key={paper.paper_id}>
+                      {columns.map((column) => (
+                        <td key={`${paper.paper_id}-${column.column_id}`}>
+                          {column.column_id === 'paper' ? (
+                            <strong>{paper.title}</strong>
+                          ) : (
+                            renderCell(
+                              cells.get(
+                                resultKey(paper.paper_id, column.column_id),
+                              ),
+                            )
+                          )}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </WorkspaceSection>
+                </tbody>
+              </table>
+            </div>
+          </WorkspaceSection>
+        </TabsContent>
 
-      <WorkspaceSection title="Add structured column" eyebrow="Column registry">
-        <AddColumnPanel
-          onAddColumn={(column) => addColumnMutation.mutate(column)}
-          pending={addColumnMutation.isPending}
-        />
-      </WorkspaceSection>
-
-      <WorkspaceSection title="Paper details" eyebrow="Evidence trace">
-        <div className="workspace-card-list">
-          {review.papers.slice(0, 3).map((paper) => (
-            <PaperDetailsPanel
-              key={paper.paper_id}
-              paper={paper}
-              results={review.extraction_results.filter(
-                (result) => result.paper_id === paper.paper_id,
-              )}
+        <TabsContent value="columns">
+          <WorkspaceSection
+            title="Add structured column"
+            eyebrow="Column registry"
+          >
+            <AddColumnPanel
+              onAddColumn={(column) => addColumnMutation.mutate(column)}
+              pending={addColumnMutation.isPending}
             />
-          ))}
-        </div>
-      </WorkspaceSection>
+            <WorkspaceDataCard>
+              <span className="badge subtle">Visible columns</span>
+              <div className="workspace-chip-list compact">
+                {columns.map((column) => (
+                  <span className="meta-chip" key={column.column_id}>
+                    {column.name}
+                  </span>
+                ))}
+              </div>
+            </WorkspaceDataCard>
+          </WorkspaceSection>
+        </TabsContent>
 
-      <WorkspaceSection title="Evidence pack" eyebrow="Decision bridge">
-        <EvidencePackViewer decisionInput={decisionInput} pack={selectedPack} />
-      </WorkspaceSection>
+        <TabsContent value="papers">
+          <WorkspaceSection title="Paper details" eyebrow="Evidence trace">
+            <div className="workspace-card-list">
+              {review.papers.slice(0, 3).map((paper) => (
+                <PaperDetailsPanel
+                  key={paper.paper_id}
+                  paper={paper}
+                  results={review.extraction_results.filter(
+                    (result) => result.paper_id === paper.paper_id,
+                  )}
+                />
+              ))}
+            </div>
+          </WorkspaceSection>
+        </TabsContent>
+
+        <TabsContent value="pack">
+          <WorkspaceSection title="Evidence pack" eyebrow="Decision bridge">
+            <EvidencePackViewer
+              decisionInput={decisionInput}
+              pack={selectedPack}
+            />
+          </WorkspaceSection>
+        </TabsContent>
+      </WorkspaceTabShell>
     </div>
   );
 }

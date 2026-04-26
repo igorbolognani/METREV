@@ -8,6 +8,7 @@ import type { CaseHistoryWorkspaceResponse } from '@metrev/domain-contracts';
 
 import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disclosure-card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     DenseChipList,
     DenseTableActions,
@@ -22,6 +23,7 @@ import {
     TableHeaderCell,
     TableRow,
 } from '@/components/ui/table';
+import { TabsContent } from '@/components/ui/tabs';
 import {
     WorkspaceDataCard,
     WorkspaceEmptyState,
@@ -29,7 +31,13 @@ import {
     WorkspaceSection,
     WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
+import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchCaseHistoryWorkspace } from '@/lib/api';
+import {
+    useCaseHistoryTab,
+    type CaseHistoryTab,
+} from '@/lib/case-history-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
@@ -102,6 +110,7 @@ function catalogEvidenceDetailHref(evidenceId: string) {
 }
 
 export function CaseHistoryView({ caseId }: { caseId: string }) {
+  const [activeTab, setActiveTab] = useCaseHistoryTab();
   const query = useQuery({
     queryKey: ['case-history-workspace', caseId],
     queryFn: () => fetchCaseHistoryWorkspace(caseId),
@@ -129,329 +138,440 @@ export function CaseHistoryView({ caseId }: { caseId: string }) {
     );
   }
 
-  return <CaseHistoryWorkspaceView workspace={workspace} />;
+  return (
+    <CaseHistoryWorkspaceView
+      activeTab={activeTab}
+      onTabChange={(nextTab) => {
+        void setActiveTab(nextTab);
+      }}
+      workspace={workspace}
+    />
+  );
 }
 
 export function CaseHistoryWorkspaceView({
+  activeTab = 'timeline',
+  onTabChange,
   workspace,
 }: {
+  activeTab?: CaseHistoryTab;
+  onTabChange?: (nextTab: CaseHistoryTab) => void;
   workspace: CaseHistoryWorkspaceResponse;
 }) {
   const [showAllAuditEvents, setShowAllAuditEvents] = React.useState(false);
   const [showAllEvidenceRows, setShowAllEvidenceRows] = React.useState(false);
+  const presentation = workspace.presentation;
   const visibleAuditEvents = showAllAuditEvents
     ? workspace.audit_events
     : workspace.audit_events.slice(0, MAX_VISIBLE_AUDIT_EVENTS);
   const visibleEvidenceRecords = showAllEvidenceRows
     ? workspace.evidence_records
     : workspace.evidence_records.slice(0, MAX_VISIBLE_EVIDENCE_ROWS);
+  const tabs = presentation?.tabs.map((tab) => ({
+    badge:
+      tab.key === 'timeline'
+        ? workspace.timeline.length
+        : tab.key === 'evidence'
+          ? workspace.evidence_records.length
+          : workspace.audit_events.length,
+    label: tab.label,
+    value: tab.key,
+  })) ?? [
+    {
+      value: 'timeline',
+      label: 'Timeline',
+      badge: workspace.timeline.length,
+    },
+    {
+      value: 'evidence',
+      label: 'Evidence',
+      badge: workspace.evidence_records.length,
+    },
+    { value: 'audit', label: 'Audit', badge: workspace.audit_events.length },
+  ];
+  const latestRun = workspace.timeline[0]?.evaluation;
+  const summaryItems = [
+    {
+      detail: latestRun
+        ? `Latest run ${formatTimestamp(latestRun.created_at)}`
+        : 'No saved runs recorded yet.',
+      key: 'saved-runs',
+      label: 'Saved runs',
+      tone: 'accent' as const,
+      value: workspace.timeline.length,
+    },
+    {
+      detail:
+        'Shared evidence remains attached at the case level across reruns.',
+      key: 'linked-evidence',
+      label: 'Linked evidence',
+      tone: 'success' as const,
+      value: workspace.evidence_records.length,
+    },
+    {
+      detail:
+        'Chronology and mutation payloads stay available from the case audit trail.',
+      key: 'audit-events',
+      label: 'Audit events',
+      value: workspace.audit_events.length,
+    },
+    {
+      detail: `${workspace.case.missing_data.length} missing-data flag(s) remain attached to the case snapshot.`,
+      key: 'defaults',
+      label: 'Defaults tracked',
+      tone:
+        workspace.case.defaults_used.length > 0
+          ? ('warning' as const)
+          : ('default' as const),
+      value: workspace.case.defaults_used.length,
+    },
+  ];
 
   return (
     <div className="workspace-page">
       <WorkspacePageHeader
         actions={
           workspace.current_evaluation_id ? (
-            <Link
-              className="button secondary"
-              href={`/evaluations/${workspace.current_evaluation_id}`}
-            >
-              Open latest workspace
-            </Link>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/evaluations/${workspace.current_evaluation_id}`}>
+                {presentation?.primary_actions?.[0]?.label ??
+                  'Open latest workspace'}
+              </Link>
+            </Button>
           ) : null
         }
         badge="Case history"
         chips={[
-          `${workspace.timeline.length} stored run(s)`,
-          `${workspace.evidence_records.length} evidence record(s)`,
+          `Workspace schema ${workspace.meta.versions.workspace_schema_version}`,
+          ...(presentation?.badges.map((badge) => badge.label) ?? [
+            `${workspace.timeline.length} stored run(s)`,
+            `${workspace.case.defaults_used.length} default(s)`,
+          ]),
           `Updated ${formatTimestamp(workspace.case.updated_at)}`,
         ]}
-        description={`Chronological history for ${formatToken(
-          workspace.case.technology_family,
-        )} / ${formatToken(workspace.case.primary_objective)}.`}
-        title={workspace.case.case_id}
+        description={
+          presentation?.short_summary ??
+          `Chronological history for ${formatToken(
+            workspace.case.technology_family,
+          )} / ${formatToken(workspace.case.primary_objective)}.`
+        }
+        title={presentation?.page_title ?? workspace.case.case_id}
       />
 
-      <WorkspaceSection
-        description="Defaults, missing data, and explicit assumptions remain attached to the whole case, not only to the latest run."
-        eyebrow="Case snapshot"
-        title="Defaults, missing data, and assumptions"
-      >
-        <div className="workspace-detail-grid">
-          <WorkspaceDataCard>
-            <h3>Defaults used</h3>
-            {renderChipList(
-              workspace.case.defaults_used,
-              'No defaults were recorded for this case snapshot.',
-            )}
-          </WorkspaceDataCard>
-          <WorkspaceDataCard>
-            <h3>Missing data</h3>
-            {renderChipList(
-              workspace.case.missing_data,
-              'No missing-data flags are recorded for this case snapshot.',
-            )}
-          </WorkspaceDataCard>
-          <WorkspaceDataCard>
-            <h3>Assumptions</h3>
-            {renderChipList(
-              workspace.case.assumptions,
-              'No explicit assumptions were recorded for this case snapshot.',
-            )}
-          </WorkspaceDataCard>
-        </div>
-      </WorkspaceSection>
+      <SummaryRail items={summaryItems} label="Case history summary" />
 
-      <WorkspaceSection
-        description="Use the table to move across stored runs and open direct pairwise comparisons without scanning stacked cards."
-        eyebrow="Timeline"
-        title="Stored evaluation runs"
+      <WorkspaceTabShell
+        activeTab={activeTab}
+        items={tabs}
+        label="Case history tabs"
+        onTabChange={(value) => {
+          if (
+            value === 'timeline' ||
+            value === 'evidence' ||
+            value === 'audit'
+          ) {
+            onTabChange?.(value);
+          }
+        }}
+        summary={
+          presentation?.copy?.detail ??
+          'Timeline, case-level evidence, and audit payloads stay separated so chronology remains readable.'
+        }
+        title={
+          presentation?.copy?.headline ?? `${workspace.case.case_id} history`
+        }
       >
-        {workspace.timeline.length > 0 ? (
-          <DenseTableShell>
-            <Table>
-              <TableHead>
-                <tr>
-                  <TableHeaderCell>Run</TableHeaderCell>
-                  <TableHeaderCell>Delta summary</TableHeaderCell>
-                  <TableHeaderCell>Confidence</TableHeaderCell>
-                  <TableHeaderCell>Created</TableHeaderCell>
-                  <TableHeaderCell>Actions</TableHeaderCell>
-                </tr>
-              </TableHead>
-              <TableBody>
-                {workspace.timeline.map((item) => (
-                  <TableRow key={item.evaluation.evaluation_id}>
-                    <TableCell>
-                      <DenseTableStack wide>
-                        <strong>{item.evaluation.summary}</strong>
-                        <span>
-                          {item.is_latest ? 'Latest run' : 'Historical run'} ·{' '}
-                          {formatToken(item.evaluation.technology_family)} ·{' '}
-                          {formatToken(item.evaluation.primary_objective)}
-                        </span>
-                      </DenseTableStack>
-                    </TableCell>
-                    <TableCell>{item.delta_summary}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={badgeVariantForConfidence(
-                          item.evaluation.confidence_level,
-                        )}
-                      >
-                        {formatToken(item.evaluation.confidence_level)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {formatTimestamp(item.evaluation.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <DenseTableActions>
-                        <Link
-                          className="ghost-button"
-                          href={`/evaluations/${item.evaluation.evaluation_id}`}
-                        >
-                          Open result
-                        </Link>
-                        {item.compare_href ? (
-                          <Link
-                            className="ghost-button"
-                            href={item.compare_href}
+        <TabsContent value="timeline">
+          <WorkspaceSection
+            description="Use the table to move across stored runs and open direct pairwise comparisons without scanning stacked cards."
+            eyebrow="Timeline"
+            title="Stored evaluation runs"
+          >
+            {workspace.timeline.length > 0 ? (
+              <DenseTableShell>
+                <Table>
+                  <TableHead>
+                    <tr>
+                      <TableHeaderCell>Run</TableHeaderCell>
+                      <TableHeaderCell>Delta summary</TableHeaderCell>
+                      <TableHeaderCell>Confidence</TableHeaderCell>
+                      <TableHeaderCell>Created</TableHeaderCell>
+                      <TableHeaderCell>Actions</TableHeaderCell>
+                    </tr>
+                  </TableHead>
+                  <TableBody>
+                    {workspace.timeline.map((item) => (
+                      <TableRow key={item.evaluation.evaluation_id}>
+                        <TableCell>
+                          <DenseTableStack wide>
+                            <strong>{item.evaluation.summary}</strong>
+                            <span>
+                              {item.is_latest ? 'Latest run' : 'Historical run'}{' '}
+                              · {formatToken(item.evaluation.technology_family)}{' '}
+                              · {formatToken(item.evaluation.primary_objective)}
+                            </span>
+                          </DenseTableStack>
+                        </TableCell>
+                        <TableCell>{item.delta_summary}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={badgeVariantForConfidence(
+                              item.evaluation.confidence_level,
+                            )}
                           >
-                            Compare pair
-                          </Link>
-                        ) : null}
-                      </DenseTableActions>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </DenseTableShell>
-        ) : (
-          <WorkspaceEmptyState
-            description="Complete an evaluation first to populate the case timeline."
-            title="No saved runs"
-          />
-        )}
-      </WorkspaceSection>
-
-      <WorkspaceSection
-        description={`Persisted lineage attached to ${workspace.current_evaluation_id ?? 'the latest saved run'} remains visible here so provenance survives outside the detailed evaluation workspace.`}
-        eyebrow="Latest run lineage"
-        title="Persisted provenance and snapshots"
-      >
-        <div className="workspace-detail-grid">
-          <WorkspaceDataCard>
-            <h3>Persisted source usage</h3>
-            {listOrEmpty(
-              workspace.current_evaluation_lineage.source_usages.map((usage) =>
-                formatPersistedUsage(usage),
-              ),
-              'No persisted source usage records were attached to the latest saved run.',
+                            {formatToken(item.evaluation.confidence_level)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {formatTimestamp(item.evaluation.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <DenseTableActions>
+                            <Link
+                              className="ghost-button"
+                              href={`/evaluations/${item.evaluation.evaluation_id}`}
+                            >
+                              Open result
+                            </Link>
+                            {item.compare_href ? (
+                              <Link
+                                className="ghost-button"
+                                href={item.compare_href}
+                              >
+                                Compare pair
+                              </Link>
+                            ) : null}
+                          </DenseTableActions>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </DenseTableShell>
+            ) : (
+              <WorkspaceEmptyState
+                description="Complete an evaluation first to populate the case timeline."
+                title="No saved runs"
+              />
             )}
-          </WorkspaceDataCard>
-          <WorkspaceDataCard>
-            <h3>Persisted claim usage</h3>
-            {listOrEmpty(
-              workspace.current_evaluation_lineage.claim_usages.map((usage) =>
-                formatPersistedUsage(usage),
-              ),
-              'No persisted claim usage records were attached to the latest saved run.',
-            )}
-          </WorkspaceDataCard>
-        </div>
-        <WorkspaceDataCard>
-          <h3>Workspace snapshot inventory</h3>
-          {listOrEmpty(
-            workspace.current_evaluation_lineage.workspace_snapshots.map(
-              (snapshot) =>
-                `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
-            ),
-            'No immutable workspace snapshots were attached to the latest saved run.',
-          )}
-        </WorkspaceDataCard>
-      </WorkspaceSection>
+          </WorkspaceSection>
+        </TabsContent>
 
-      <div className="workspace-split-grid">
-        <WorkspaceSection
-          description="Event payloads are collapsed by default so the chronology stays readable while the raw audit object remains one click away."
-          eyebrow="Audit"
-          title="Audit payload disclosures"
-        >
-          {workspace.audit_events.length > 0 ? (
-            <div className="case-history-audit-list">
-              {visibleAuditEvents.map((event) => (
-                <PayloadDisclosureCard
-                  countBadge={Object.keys(event.payload).length}
-                  description={`Stored event payload for ${event.actor_role}${event.evaluation_id ? ` on ${event.evaluation_id}` : ''}.`}
-                  key={event.event_id}
-                  meta={`${formatTimestamp(event.created_at)} · ${event.actor_role}`}
-                  title={formatToken(event.event_type)}
-                  value={event.payload}
-                />
-              ))}
-              {workspace.audit_events.length > MAX_VISIBLE_AUDIT_EVENTS ? (
-                <div className="detail-table-summary-note">
-                  <span>
-                    Showing {visibleAuditEvents.length} of{' '}
-                    {workspace.audit_events.length} audit event(s).
-                  </span>
-                  <button
-                    className="ghost-button"
-                    onClick={() => setShowAllAuditEvents((value) => !value)}
-                    type="button"
-                  >
-                    {showAllAuditEvents ? 'Show less' : 'Show all audit events'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <WorkspaceEmptyState
-              description="No audit events were stored for this case yet."
-              title="No audit events"
-            />
-          )}
-        </WorkspaceSection>
-
-        <WorkspaceSection
-          description="Evidence remains available as shared context for the whole case, now with structured columns instead of stacked cards."
-          eyebrow="Evidence"
-          title="Attached evidence table"
-        >
-          {workspace.evidence_records.length > 0 ? (
-            <DenseTableShell>
-              <Table>
-                <TableHead>
-                  <tr>
-                    <TableHeaderCell>Evidence</TableHeaderCell>
-                    <TableHeaderCell>Strength</TableHeaderCell>
-                    <TableHeaderCell>Limitations</TableHeaderCell>
-                    <TableHeaderCell>Tags</TableHeaderCell>
-                    <TableHeaderCell>Links</TableHeaderCell>
-                  </tr>
-                </TableHead>
-                <TableBody>
-                  {visibleEvidenceRecords.map((record) => (
-                    <TableRow key={record.evidence_id}>
-                      <TableCell>
-                        <DenseTableStack wide>
-                          <strong>{record.title}</strong>
-                          <span>{record.summary}</span>
-                          <span>{formatToken(record.evidence_type)}</span>
-                        </DenseTableStack>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={badgeVariantForStrength(
-                            record.strength_level,
+        <TabsContent value="evidence">
+          <WorkspaceSection
+            description="Evidence remains available as shared context for the whole case, now with structured columns instead of stacked cards."
+            eyebrow="Evidence"
+            title="Attached evidence table"
+          >
+            {workspace.evidence_records.length > 0 ? (
+              <DenseTableShell>
+                <Table>
+                  <TableHead>
+                    <tr>
+                      <TableHeaderCell>Evidence</TableHeaderCell>
+                      <TableHeaderCell>Strength</TableHeaderCell>
+                      <TableHeaderCell>Limitations</TableHeaderCell>
+                      <TableHeaderCell>Tags</TableHeaderCell>
+                      <TableHeaderCell>Links</TableHeaderCell>
+                    </tr>
+                  </TableHead>
+                  <TableBody>
+                    {visibleEvidenceRecords.map((record) => (
+                      <TableRow key={record.evidence_id}>
+                        <TableCell>
+                          <DenseTableStack wide>
+                            <strong>{record.title}</strong>
+                            <span>{record.summary}</span>
+                            <span>{formatToken(record.evidence_type)}</span>
+                          </DenseTableStack>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={badgeVariantForStrength(
+                              record.strength_level,
+                            )}
+                          >
+                            {formatToken(record.strength_level)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DenseTableStack>
+                            <p>{record.provenance_note}</p>
+                            <span>
+                              {record.limitations.length > 0
+                                ? record.limitations.join(' · ')
+                                : 'No explicit limitations recorded'}
+                            </span>
+                          </DenseTableStack>
+                        </TableCell>
+                        <TableCell>
+                          <DenseChipList
+                            emptyMessage="No tags stored"
+                            values={record.tags}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {catalogEvidenceDetailHref(record.evidence_id) ? (
+                            <Link
+                              className="ghost-button"
+                              href={
+                                catalogEvidenceDetailHref(record.evidence_id) ??
+                                '#'
+                              }
+                            >
+                              Open catalog detail
+                            </Link>
+                          ) : (
+                            <span className="muted">
+                              No catalog detail link available
+                            </span>
                           )}
-                        >
-                          {formatToken(record.strength_level)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DenseTableStack>
-                          <p>{record.provenance_note}</p>
-                          <span>
-                            {record.limitations.length > 0
-                              ? record.limitations.join(' · ')
-                              : 'No explicit limitations recorded'}
-                          </span>
-                        </DenseTableStack>
-                      </TableCell>
-                      <TableCell>
-                        <DenseChipList
-                          emptyMessage="No tags stored"
-                          values={record.tags}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {catalogEvidenceDetailHref(record.evidence_id) ? (
-                          <Link
-                            className="ghost-button"
-                            href={
-                              catalogEvidenceDetailHref(record.evidence_id) ??
-                              '#'
-                            }
-                          >
-                            Open catalog detail
-                          </Link>
-                        ) : (
-                          <span className="muted">
-                            No catalog detail link available
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {workspace.evidence_records.length >
+                MAX_VISIBLE_EVIDENCE_ROWS ? (
+                  <div className="detail-table-summary-note">
+                    <span>
+                      Showing {visibleEvidenceRecords.length} of{' '}
+                      {workspace.evidence_records.length} attached evidence
+                      record(s).
+                    </span>
+                    <button
+                      className="ghost-button"
+                      onClick={() => setShowAllEvidenceRows((value) => !value)}
+                      type="button"
+                    >
+                      {showAllEvidenceRows ? 'Show less' : 'Show all evidence'}
+                    </button>
+                  </div>
+                ) : null}
+              </DenseTableShell>
+            ) : (
+              <WorkspaceEmptyState
+                description="No evidence records are attached to this case yet."
+                title="No attached evidence"
+              />
+            )}
+          </WorkspaceSection>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <div className="workspace-card-list">
+            <WorkspaceSection
+              description="Defaults, missing data, and explicit assumptions remain attached to the whole case, not only to the latest run."
+              eyebrow="Case snapshot"
+              title="Defaults, missing data, and assumptions"
+            >
+              <div className="workspace-detail-grid">
+                <WorkspaceDataCard>
+                  <h3>Defaults used</h3>
+                  {renderChipList(
+                    workspace.case.defaults_used,
+                    'No defaults were recorded for this case snapshot.',
+                  )}
+                </WorkspaceDataCard>
+                <WorkspaceDataCard>
+                  <h3>Missing data</h3>
+                  {renderChipList(
+                    workspace.case.missing_data,
+                    'No missing-data flags are recorded for this case snapshot.',
+                  )}
+                </WorkspaceDataCard>
+                <WorkspaceDataCard>
+                  <h3>Assumptions</h3>
+                  {renderChipList(
+                    workspace.case.assumptions,
+                    'No explicit assumptions were recorded for this case snapshot.',
+                  )}
+                </WorkspaceDataCard>
+              </div>
+            </WorkspaceSection>
+
+            <WorkspaceSection
+              description={`Persisted lineage attached to ${workspace.current_evaluation_id ?? 'the latest saved run'} remains visible here so provenance survives outside the detailed evaluation workspace.`}
+              eyebrow="Latest run lineage"
+              title="Persisted provenance and snapshots"
+            >
+              <div className="workspace-detail-grid">
+                <WorkspaceDataCard>
+                  <h3>Persisted source usage</h3>
+                  {listOrEmpty(
+                    workspace.current_evaluation_lineage.source_usages.map(
+                      (usage) => formatPersistedUsage(usage),
+                    ),
+                    'No persisted source usage records were attached to the latest saved run.',
+                  )}
+                </WorkspaceDataCard>
+                <WorkspaceDataCard>
+                  <h3>Persisted claim usage</h3>
+                  {listOrEmpty(
+                    workspace.current_evaluation_lineage.claim_usages.map(
+                      (usage) => formatPersistedUsage(usage),
+                    ),
+                    'No persisted claim usage records were attached to the latest saved run.',
+                  )}
+                </WorkspaceDataCard>
+              </div>
+              <WorkspaceDataCard>
+                <h3>Workspace snapshot inventory</h3>
+                {listOrEmpty(
+                  workspace.current_evaluation_lineage.workspace_snapshots.map(
+                    (snapshot) =>
+                      `${formatToken(snapshot.snapshot_type)} · ${formatTimestamp(snapshot.created_at)}`,
+                  ),
+                  'No immutable workspace snapshots were attached to the latest saved run.',
+                )}
+              </WorkspaceDataCard>
+            </WorkspaceSection>
+
+            <WorkspaceSection
+              description="Event payloads are collapsed by default so the chronology stays readable while the raw audit object remains one click away."
+              eyebrow="Audit"
+              title="Audit payload disclosures"
+            >
+              {workspace.audit_events.length > 0 ? (
+                <div className="case-history-audit-list">
+                  {visibleAuditEvents.map((event) => (
+                    <PayloadDisclosureCard
+                      countBadge={Object.keys(event.payload).length}
+                      description={`Stored event payload for ${event.actor_role}${event.evaluation_id ? ` on ${event.evaluation_id}` : ''}.`}
+                      key={event.event_id}
+                      meta={`${formatTimestamp(event.created_at)} · ${event.actor_role}`}
+                      title={formatToken(event.event_type)}
+                      value={event.payload}
+                    />
                   ))}
-                </TableBody>
-              </Table>
-              {workspace.evidence_records.length > MAX_VISIBLE_EVIDENCE_ROWS ? (
-                <div className="detail-table-summary-note">
-                  <span>
-                    Showing {visibleEvidenceRecords.length} of{' '}
-                    {workspace.evidence_records.length} attached evidence
-                    record(s).
-                  </span>
-                  <button
-                    className="ghost-button"
-                    onClick={() => setShowAllEvidenceRows((value) => !value)}
-                    type="button"
-                  >
-                    {showAllEvidenceRows ? 'Show less' : 'Show all evidence'}
-                  </button>
+                  {workspace.audit_events.length > MAX_VISIBLE_AUDIT_EVENTS ? (
+                    <div className="detail-table-summary-note">
+                      <span>
+                        Showing {visibleAuditEvents.length} of{' '}
+                        {workspace.audit_events.length} audit event(s).
+                      </span>
+                      <button
+                        className="ghost-button"
+                        onClick={() => setShowAllAuditEvents((value) => !value)}
+                        type="button"
+                      >
+                        {showAllAuditEvents
+                          ? 'Show less'
+                          : 'Show all audit events'}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </DenseTableShell>
-          ) : (
-            <WorkspaceEmptyState
-              description="No evidence records are attached to this case yet."
-              title="No attached evidence"
-            />
-          )}
-        </WorkspaceSection>
-      </div>
+              ) : (
+                <WorkspaceEmptyState
+                  description="No audit events were stored for this case yet."
+                  title="No audit events"
+                />
+              )}
+            </WorkspaceSection>
+          </div>
+        </TabsContent>
+      </WorkspaceTabShell>
     </div>
   );
 }

@@ -4,23 +4,23 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
 
+import { EvaluationActionsTab } from '@/components/evaluation/evaluation-actions-tab';
 import { EvaluationAuditTab } from '@/components/evaluation/evaluation-audit-tab';
 import { EvaluationCompareCandidateSelect } from '@/components/evaluation/evaluation-compare-candidate-select';
+import { EvaluationEvidenceTab } from '@/components/evaluation/evaluation-evidence-tab';
 import { EvaluationModelingTab } from '@/components/evaluation/evaluation-modeling-tab';
 import { EvaluationOverviewTab } from '@/components/evaluation/evaluation-overview-tab';
-import { EvaluationRecommendationsTab } from '@/components/evaluation/evaluation-recommendations-tab';
-import { EvaluationRoadmapSuppliersTab } from '@/components/evaluation/evaluation-roadmap-suppliers-tab';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import {
     WorkspaceEmptyState,
     WorkspacePageHeader,
     WorkspaceSkeleton,
-    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
+import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { apiBaseUrl, fetchEvaluationWorkspace } from '@/lib/api';
 import {
-    evaluationTabValues,
     useEvaluationTab,
     type EvaluationTab,
 } from '@/lib/evaluation-view-query-state';
@@ -48,10 +48,6 @@ function resolveWorkspaceHref(href: string) {
   }
 
   return `${apiBaseUrl}${href}`;
-}
-
-function isEvaluationTab(value: string): value is EvaluationTab {
-  return evaluationTabValues.some((entry) => entry === value);
 }
 
 function attentionHeading(severity: string, block: string) {
@@ -135,7 +131,7 @@ export function EvaluationResultView({
 
 export function EvaluationWorkspaceView({
   workspace,
-  activeTab = 'overview',
+  activeTab = 'summary',
   onTabChange,
 }: {
   workspace: Awaited<ReturnType<typeof fetchEvaluationWorkspace>>;
@@ -144,24 +140,39 @@ export function EvaluationWorkspaceView({
 }) {
   const evaluation = workspace.evaluation;
   const simulation = evaluation.simulation_enrichment;
-  const tabs = [
-    { value: 'overview', label: 'Overview' },
+  const presentation = workspace.presentation;
+  const tabs = presentation?.tabs.map((tab) => ({
+    value: tab.key,
+    label: tab.label,
+    badge:
+      tab.key === 'actions'
+        ? evaluation.decision_output.prioritized_improvement_options.length
+        : tab.key === 'model'
+          ? (simulation?.series.length ?? 0)
+          : tab.key === 'audit'
+            ? evaluation.decision_output.assumptions_and_defaults_audit
+                .defaults_used.length +
+              evaluation.decision_output.assumptions_and_defaults_audit
+                .missing_data.length
+            : tab.key === 'evidence'
+              ? evaluation.audit_record.typed_evidence.length
+              : undefined,
+  })) ?? [
+    { value: 'summary', label: 'Summary' },
     {
-      value: 'recommendations',
-      label: 'Recommendations',
+      value: 'actions',
+      label: 'Actions',
       badge: evaluation.decision_output.prioritized_improvement_options.length,
     },
     {
-      value: 'modeling',
-      label: 'Modeling',
+      value: 'model',
+      label: 'Model',
       badge: simulation?.series.length ?? 0,
     },
     {
-      value: 'roadmap',
-      label: 'Roadmap & Suppliers',
-      badge:
-        evaluation.decision_output.phased_roadmap.length +
-        evaluation.decision_output.supplier_shortlist.length,
+      value: 'evidence',
+      label: 'Evidence',
+      badge: evaluation.audit_record.typed_evidence.length,
     },
     {
       value: 'audit',
@@ -173,9 +184,15 @@ export function EvaluationWorkspaceView({
           .length,
     },
   ];
-  const resolvedTab = isEvaluationTab(activeTab) ? activeTab : 'overview';
   const exportJsonHref = resolveWorkspaceHref(workspace.links.export_json_href);
   const exportCsvHref = resolveWorkspaceHref(workspace.links.export_csv_href);
+  const summaryItems = workspace.overview.hero_cards.map((card) => ({
+    detail: card.detail,
+    key: card.key,
+    label: card.label,
+    tone: toneClass(card.tone),
+    value: card.value,
+  }));
 
   return (
     <div
@@ -214,81 +231,60 @@ export function EvaluationWorkspaceView({
         }
         badge="Evaluation workspace"
         chips={[
-          `${formatToken(
-            evaluation.decision_output.confidence_and_uncertainty_summary
-              .confidence_level,
-          )} confidence`,
-          `Model ${formatToken(simulation?.status ?? 'unavailable')}`,
           `Workspace schema ${workspace.meta.versions.workspace_schema_version}`,
+          ...(presentation?.badges.map((badge) => badge.label) ?? [
+            `${formatToken(
+              evaluation.decision_output.confidence_and_uncertainty_summary
+                .confidence_level,
+            )} confidence`,
+            `Model ${formatToken(simulation?.status ?? 'unavailable')}`,
+          ]),
         ]}
-        description={workspace.overview.subtitle}
-        title={workspace.overview.title}
+        description={presentation?.short_summary ?? workspace.overview.subtitle}
+        title={presentation?.page_title ?? workspace.overview.title}
       />
 
       <EvaluationAttentionStrip items={workspace.overview.attention_items} />
 
-      <section className="workspace-stats-grid">
-        {workspace.overview.hero_cards.map((card) => (
-          <WorkspaceStatCard
-            detail={card.detail}
-            key={card.key}
-            label={card.label}
-            tone={toneClass(card.tone)}
-            value={card.value}
+      <SummaryRail items={summaryItems} label="Evaluation summary" />
+
+      <WorkspaceTabShell
+        activeTab={activeTab}
+        items={tabs}
+        label="Evaluation workspace tabs"
+        onTabChange={(value) => {
+          if (
+            value === 'summary' ||
+            value === 'actions' ||
+            value === 'model' ||
+            value === 'evidence' ||
+            value === 'audit'
+          ) {
+            onTabChange?.(value);
+          }
+        }}
+        summary="Top KPIs render once, while detailed action, evidence, and audit layers stay separated by tab."
+        title="Decision layers"
+      >
+        <TabsContent value="summary">
+          <EvaluationOverviewTab workspace={workspace} />
+        </TabsContent>
+        <TabsContent value="actions">
+          <EvaluationActionsTab evaluation={evaluation} />
+        </TabsContent>
+        <TabsContent value="model">
+          <EvaluationModelingTab evaluation={evaluation} />
+        </TabsContent>
+        <TabsContent value="evidence">
+          <EvaluationEvidenceTab workspace={workspace} />
+        </TabsContent>
+        <TabsContent value="audit">
+          <EvaluationAuditTab
+            evaluationId={evaluation.evaluation_id}
+            workspace={workspace}
           />
-        ))}
-      </section>
-
-      <section className="workspace-detail-grid">
-        {workspace.overview.brief_cards.map((card) => (
-          <article className="workspace-data-card" key={card.key}>
-            <span className="badge subtle">{card.label}</span>
-            <h3>{card.value}</h3>
-            <p>{card.detail}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="workspace-section">
-        <div className="workspace-section__header">
-          <div>
-            <h2>Decision layers</h2>
-            <p>
-              Move through overview, recommendations, modeling, roadmap, and
-              audit without mixing them into one overloaded surface.
-            </p>
-          </div>
-        </div>
-        <Tabs
-          items={tabs}
-          label="Evaluation workspace tabs"
-          onValueChange={(value) => {
-            if (isEvaluationTab(value) && onTabChange) {
-              onTabChange(value);
-            }
-          }}
-          value={resolvedTab}
-        >
-          <TabsContent value="overview">
-            <EvaluationOverviewTab workspace={workspace} />
-          </TabsContent>
-          <TabsContent value="recommendations">
-            <EvaluationRecommendationsTab evaluation={evaluation} />
-          </TabsContent>
-          <TabsContent value="modeling">
-            <EvaluationModelingTab evaluation={evaluation} />
-          </TabsContent>
-          <TabsContent value="roadmap">
-            <EvaluationRoadmapSuppliersTab evaluation={evaluation} />
-          </TabsContent>
-          <TabsContent value="audit">
-            <EvaluationAuditTab
-              evaluationId={evaluation.evaluation_id}
-              workspace={workspace}
-            />
-          </TabsContent>
-        </Tabs>
-      </section>
+        </TabsContent>
+      </WorkspaceTabShell>
     </div>
   );
 }

@@ -829,6 +829,15 @@ describe('api runtime flow', () => {
     });
     expect(dashboardResponse.statusCode).toBe(200);
     expect(dashboardResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'overview',
+        tabs: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'runs',
+            label: 'Runs',
+          }),
+        ]),
+      }),
       summary: expect.objectContaining({
         total_runs: 1,
       }),
@@ -843,6 +852,15 @@ describe('api runtime flow', () => {
     });
     expect(workspaceResponse.statusCode).toBe(200);
     expect(workspaceResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'summary',
+        tabs: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'actions',
+            label: 'Actions',
+          }),
+        ]),
+      }),
       overview: expect.objectContaining({
         hero_cards: expect.arrayContaining([
           expect.objectContaining({
@@ -895,7 +913,7 @@ describe('api runtime flow', () => {
     expect(jsonExportResponse.json()).toMatchObject({
       meta: expect.objectContaining({
         versions: expect.objectContaining({
-          workspace_schema_version: '014.0.0',
+          workspace_schema_version: '015.0.0',
         }),
       }),
     });
@@ -910,7 +928,7 @@ describe('api runtime flow', () => {
     expect(csvExportResponse.statusCode).toBe(200);
     expect(csvExportResponse.headers['content-type']).toContain('text/csv');
     expect(csvExportResponse.headers['x-metrev-workspace-schema-version']).toBe(
-      '014.0.0',
+      '015.0.0',
     );
     expect(csvExportResponse.body).toContain('section,label,primary_value');
 
@@ -967,6 +985,9 @@ describe('api runtime flow', () => {
     });
     expect(historyResponse.statusCode).toBe(200);
     expect(historyResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'timeline',
+      }),
       current_evaluation_id: current.evaluation_id,
       current_evaluation_lineage: expect.objectContaining({
         source_usages: expect.arrayContaining([
@@ -998,6 +1019,9 @@ describe('api runtime flow', () => {
     });
     expect(comparisonResponse.statusCode).toBe(200);
     expect(comparisonResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'summary',
+      }),
       conclusion: expect.objectContaining({
         summary: expect.stringContaining(current.case_id),
       }),
@@ -1014,6 +1038,14 @@ describe('api runtime flow', () => {
     });
     expect(evidenceReviewResponse.statusCode).toBe(200);
     expect(evidenceReviewResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'queue',
+        tabs: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'selected',
+          }),
+        ]),
+      }),
       filters: expect.objectContaining({
         active_status: 'accepted',
         search_query: 'benchmark',
@@ -1032,6 +1064,14 @@ describe('api runtime flow', () => {
     });
     expect(evidenceExplorerResponse.statusCode).toBe(200);
     expect(evidenceExplorerResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'catalog',
+        tabs: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'assistant',
+          }),
+        ]),
+      }),
       filters: {},
       warehouse_snapshot: expect.objectContaining({
         filtered_item_count: 2,
@@ -1083,6 +1123,9 @@ describe('api runtime flow', () => {
     });
     expect(evidenceAssistantResponse.statusCode).toBe(200);
     expect(evidenceAssistantResponse.json()).toMatchObject({
+      presentation: expect.objectContaining({
+        default_tab: 'assistant',
+      }),
       filters: {
         active_status: 'accepted',
         active_source_type: 'crossref',

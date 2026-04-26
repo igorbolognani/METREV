@@ -2425,6 +2425,64 @@ textarea {
     grid-template-columns: 56px minmax(0, 1fr);
   }
 
+  .property-table-shell {
+    overflow-x: auto;
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .property-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 520px;
+  }
+
+  .property-table caption {
+    padding: 12px 16px 0;
+    text-align: left;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .property-table th,
+  .property-table td {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .property-table thead th {
+    border-top: none;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .property-table tbody th {
+    width: 26%;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .disclosure-panel {
+    border-radius: 20px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: var(--shadow-card);
+  }
+
+  .disclosure-panel__content {
+    padding-top: 12px;
+  }
+
   .app-sidebar {
     width: 56px;
   }
@@ -3164,6 +3222,171 @@ textarea {
   display: grid;
   gap: 10px;
   justify-items: start;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workspace-page--flat {
+  gap: var(--space-6);
+}
+
+.summary-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+}
+
+.summary-rail__item,
+.workspace-tab-shell,
+.workspace-band,
+.chart-panel,
+.workspace-action-tile {
+  border: 1px solid var(--surface-border-default);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.summary-rail__item {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.summary-rail__item--success {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.summary-rail__item--warning {
+  border-color: rgba(217, 119, 6, 0.22);
+}
+
+.summary-rail__item--accent {
+  border-color: rgba(15, 155, 150, 0.2);
+}
+
+.summary-rail__label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summary-rail__value {
+  font-size: clamp(1.8rem, 2vw, 2.4rem);
+  letter-spacing: -0.04em;
+}
+
+.summary-rail__detail,
+.workspace-tab-shell__copy p,
+.workspace-band__header p,
+.chart-panel__header p,
+.workspace-action-tile p,
+.summary-callout p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.summary-rail__footer {
+  min-height: 54px;
+}
+
+.workspace-tab-shell {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.workspace-tab-shell__header,
+.workspace-band__header,
+.chart-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.workspace-tab-shell__copy,
+.chart-panel__header > div:first-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.workspace-tab-shell__copy h2,
+.workspace-band__header h3,
+.chart-panel__header h3,
+.summary-callout h3,
+.workspace-action-tile strong {
+  margin: 0;
+  font-size: 1.02rem;
+  letter-spacing: -0.03em;
+}
+
+.workspace-band-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.workspace-band,
+.chart-panel,
+.summary-callout {
+  padding: var(--space-4);
+}
+
+.summary-callout {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.workspace-note-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.workspace-action-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.workspace-action-tile {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-action-tile:hover {
+  border-color: rgba(15, 155, 150, 0.24);
+  transform: translateY(-1px);
+}
+
+.chart-panel__body {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 980px) {
+  .workspace-band-grid,
+  .workspace-action-tile-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .workspace-skeleton {

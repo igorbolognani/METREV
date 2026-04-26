@@ -1,21 +1,33 @@
 'use client';
 
-import { parseAsStringLiteral, useQueryState } from 'nuqs';
+import { useWorkspaceTabState } from '@/lib/workspace-tab-query-state';
 
 export const evaluationTabValues = [
-  'overview',
-  'recommendations',
-  'modeling',
-  'roadmap',
+  'summary',
+  'actions',
+  'model',
+  'evidence',
   'audit',
 ] as const;
 
 export type EvaluationTab = (typeof evaluationTabValues)[number];
 
-const evaluationTabParser = parseAsStringLiteral(evaluationTabValues)
-  .withDefault('overview')
-  .withOptions({ history: 'push' });
+const evaluationTabAliases: Record<string, EvaluationTab> = {
+  actions: 'actions',
+  audit: 'audit',
+  evidence: 'evidence',
+  model: 'model',
+  modeling: 'model',
+  overview: 'summary',
+  recommendations: 'actions',
+  roadmap: 'actions',
+  summary: 'summary',
+};
 
 export function useEvaluationTab() {
-  return useQueryState('tab', evaluationTabParser);
+  return useWorkspaceTabState({
+    aliases: evaluationTabAliases,
+    allowed: evaluationTabValues,
+    defaultTab: 'summary',
+  });
 }

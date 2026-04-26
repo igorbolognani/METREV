@@ -6,21 +6,27 @@ import * as React from 'react';
 
 import { EvidenceBacklogTable } from '@/components/dashboard/evidence-backlog-table';
 import { RecentRunsTable } from '@/components/dashboard/recent-runs-table';
+import { TabsContent } from '@/components/ui/tabs';
 import { Sparkline } from '@/components/workbench/sparkline';
 import {
-    WorkspaceDataCard,
     WorkspaceEmptyState,
     WorkspacePageHeader,
-    WorkspaceSection,
     WorkspaceSkeleton,
-    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
+import { ChartPanel } from '@/components/workspace/chart-panel';
+import { SummaryRail } from '@/components/workspace/summary-rail';
+import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchDashboardWorkspace } from '@/lib/api';
+import {
+    type DashboardTab,
+    useDashboardTab,
+} from '@/lib/dashboard-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
 
 export function DashboardWorkspace() {
+  const [activeTab, setActiveTab] = useDashboardTab();
   const query = useQuery({
     queryKey: ['dashboard-workspace'],
     queryFn: fetchDashboardWorkspace,
@@ -48,63 +54,116 @@ export function DashboardWorkspace() {
     );
   }
 
-  return <DashboardWorkspaceView workspace={workspace} />;
+  return (
+    <DashboardWorkspaceView
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      workspace={workspace}
+    />
+  );
 }
 
 export function DashboardWorkspaceView({
+  activeTab = 'overview',
+  onTabChange,
   workspace,
 }: {
+  activeTab?: DashboardTab;
+  onTabChange?: (nextTab: DashboardTab) => void;
   workspace: Awaited<ReturnType<typeof fetchDashboardWorkspace>>;
 }) {
   const latestRun = workspace.recent_runs[0] ?? null;
-  const hasLatestLinks =
-    Boolean(workspace.quick_actions.latest_evaluation_href) ||
-    Boolean(workspace.quick_actions.latest_case_history_href);
-  const workspaceSurfaces = [
+  const presentation = workspace.presentation;
+  const tabItems = presentation?.tabs.map((tab) => ({
+    value: tab.key,
+    label: tab.label,
+  })) ?? [
+    { value: 'overview', label: 'Overview' },
+    { value: 'runs', label: 'Runs' },
+    { value: 'evidence', label: 'Evidence' },
+    { value: 'research', label: 'Research' },
+  ];
+  const summaryItems = [
     {
-      detail:
-        'Draft a new case with explicit assumptions, evidence selection, and visible submission stages.',
-      href: workspace.quick_actions.new_evaluation_href,
-      label: 'Open input deck',
-      title: 'Input Deck',
-      tone: 'accent' as const,
+      key: 'saved-runs',
+      label: 'Saved runs',
+      value: workspace.summary.total_runs,
+      detail: `${workspace.summary.total_cases} tracked cases remain auditable in the workspace.`,
+      tone: 'default' as const,
+      footer: (
+        <Sparkline
+          label="Saved-run growth"
+          values={workspace.trends.run_growth}
+        />
+      ),
     },
     {
-      detail:
-        'Search saved evaluations, reopen workspaces, and move directly into history or comparison.',
+      key: 'high-confidence',
+      label: 'High-confidence runs',
+      value: workspace.summary.high_confidence_runs,
+      detail: 'Runs currently resolving with high confidence.',
+      tone: 'success' as const,
+      footer: (
+        <Sparkline
+          label="Confidence trend"
+          values={workspace.trends.confidence}
+        />
+      ),
+    },
+    {
+      key: 'modeled-runs',
+      label: 'Completed model artifacts',
+      value: workspace.summary.modeled_runs,
+      detail: 'Saved runs with finished simulation enrichment.',
+      tone: 'accent' as const,
+      footer: (
+        <Sparkline
+          label="Model coverage trend"
+          values={workspace.trends.model_coverage}
+        />
+      ),
+    },
+    {
+      key: 'pending-evidence',
+      label: 'Pending evidence',
+      value: workspace.summary.pending_evidence,
+      detail: `${workspace.summary.accepted_evidence} accepted and ${workspace.summary.rejected_evidence} rejected records stay visible for audit.`,
+      tone: 'warning' as const,
+    },
+  ];
+  const actionTiles = [
+    {
+      description:
+        'Draft a new case with explicit assumptions and compact step guidance.',
+      href: workspace.quick_actions.new_evaluation_href,
+      label: 'Open input deck',
+      title: 'Input deck',
+    },
+    {
+      description:
+        'Search saved evaluations and reopen workspaces without repeating dashboard metrics.',
       href: '/evaluations',
       label: 'Open evaluations',
       title: 'Evaluation registry',
-      tone: 'default' as const,
     },
     {
-      detail:
-        'Review imported evidence before it becomes eligible for deterministic intake.',
+      description:
+        'Review evidence records without showing the same catalog in multiple places.',
       href: workspace.quick_actions.evidence_review_href,
       label: 'Open evidence review',
-      title: 'Evidence Review',
-      tone: 'warning' as const,
+      title: 'Evidence review',
     },
-    latestRun
-      ? {
-          detail:
-            'Jump straight to the latest printable output once a saved run already exists in the workspace.',
-          href: `/evaluations/${latestRun.evaluation_id}/report`,
-          label: 'Open latest report',
-          title: 'Report surface',
-          tone: 'success' as const,
-        }
-      : null,
-  ].filter(Boolean) as Array<{
-    detail: string;
-    href: string;
-    label: string;
-    title: string;
-    tone: 'accent' | 'default' | 'success' | 'warning';
-  }>;
+    {
+      description:
+        'Open the research workspace for review packs and extraction follow-up.',
+      href: '/research/reviews',
+      label: 'Open research reviews',
+      title: 'Research reviews',
+    },
+  ];
 
   return (
-    <div className="workspace-page">
+    <div className="workspace-page workspace-page--flat">
       <WorkspacePageHeader
         actions={
           <>
@@ -122,195 +181,159 @@ export function DashboardWorkspaceView({
             </Link>
           </>
         }
-        badge="Operational dashboard"
+        badge="Dashboard"
         chips={[
           `Workspace schema ${workspace.meta.versions.workspace_schema_version}`,
           `Rules ${workspace.meta.versions.ruleset_version}`,
           `Contracts ${workspace.meta.versions.contract_version}`,
+          ...(presentation?.badges.map((badge) => badge.label) ?? []),
         ]}
-        description={workspace.hero.subtitle}
-        title={workspace.hero.title}
+        description={presentation?.short_summary ?? workspace.hero.subtitle}
+        title={presentation?.page_title ?? workspace.hero.title}
       />
 
-      <section className="workspace-stats-grid" aria-label="Workspace KPIs">
-        <WorkspaceStatCard
-          detail={`${workspace.summary.total_cases} tracked cases in the local-first runtime.`}
-          footer={
-            <Sparkline
-              label="Saved-run growth"
-              values={workspace.trends.run_growth}
-            />
-          }
-          label="Saved runs"
-          value={workspace.summary.total_runs}
-        />
-        <WorkspaceStatCard
-          detail="Runs that currently resolve with high confidence."
-          footer={
-            <Sparkline
-              label="Confidence trend"
-              values={workspace.trends.confidence}
-            />
-          }
-          label="High-confidence runs"
-          tone="success"
-          value={workspace.summary.high_confidence_runs}
-        />
-        <WorkspaceStatCard
-          detail="Runs with a finished simulation enrichment artifact."
-          footer={
-            <Sparkline
-              label="Model coverage trend"
-              values={workspace.trends.model_coverage}
-            />
-          }
-          label="Completed model artifacts"
-          tone="accent"
-          value={workspace.summary.modeled_runs}
-        />
-        <WorkspaceStatCard
-          detail={`${workspace.summary.accepted_evidence} accepted and ${workspace.summary.rejected_evidence} rejected records remain visible for auditability.`}
-          label="Pending evidence"
-          tone="warning"
-          value={workspace.summary.pending_evidence}
-        />
-      </section>
+      <SummaryRail items={summaryItems} label="Dashboard summary" />
 
-      <WorkspaceSection
-        description="Move through the current METREV product surfaces without leaving the analyst workspace language."
-        eyebrow="Workspace surfaces"
-        title="Primary modules"
+      <WorkspaceTabShell
+        activeTab={activeTab}
+        items={tabItems}
+        label="Dashboard tabs"
+        onTabChange={(value) => {
+          if (
+            value === 'overview' ||
+            value === 'runs' ||
+            value === 'evidence' ||
+            value === 'research'
+          ) {
+            onTabChange?.(value);
+          }
+        }}
+        summary="Summary first, details by tab, and no repeated tables in the first fold."
+        title="Workspace focus"
       >
-        <div className="workspace-card-list workspace-card-list--modules">
-          {workspaceSurfaces.map((surface) => (
-            <WorkspaceDataCard key={surface.title} tone={surface.tone}>
-              <span className="badge subtle">{surface.title}</span>
-              <h3>{surface.label}</h3>
-              <p>{surface.detail}</p>
+        <TabsContent value="overview">
+          <div className="workspace-band-grid">
+            <ChartPanel
+              meta={`${workspace.summary.total_runs} saved`}
+              summary="Recent saved-run sequence across the current dashboard slice."
+              title="Run momentum"
+            >
+              <Sparkline
+                label="Saved-run growth"
+                values={workspace.trends.run_growth}
+              />
+            </ChartPanel>
+            <ChartPanel
+              meta={`${workspace.summary.high_confidence_runs} high confidence`}
+              summary="Confidence trend for the current set of saved analyses."
+              title="Confidence posture"
+            >
+              <Sparkline
+                label="Confidence trend"
+                values={workspace.trends.confidence}
+              />
+            </ChartPanel>
+            <article className="workspace-band summary-callout">
+              <span className="badge subtle">Latest run</span>
+              <h3>{workspace.hero.latest_case_id ?? 'No saved run yet'}</h3>
+              <p>
+                {workspace.hero.latest_summary ??
+                  'Run a first deterministic evaluation to populate the workspace.'}
+              </p>
+              {latestRun ? (
+                <ul className="workspace-note-list">
+                  <li>{formatToken(latestRun.confidence_level)} confidence</li>
+                  <li>{formatToken(latestRun.technology_family)}</li>
+                  <li>{formatToken(latestRun.primary_objective)}</li>
+                  <li>{formatTimestamp(latestRun.created_at)}</li>
+                </ul>
+              ) : null}
               <div className="workspace-action-row">
-                <Link className="ghost-button" href={surface.href}>
-                  {surface.label}
-                </Link>
+                {workspace.quick_actions.latest_evaluation_href ? (
+                  <Link
+                    className="button secondary"
+                    href={workspace.quick_actions.latest_evaluation_href}
+                  >
+                    Open latest run
+                  </Link>
+                ) : null}
+                {workspace.quick_actions.latest_case_history_href ? (
+                  <Link
+                    className="button secondary"
+                    href={workspace.quick_actions.latest_case_history_href}
+                  >
+                    Open case history
+                  </Link>
+                ) : null}
               </div>
-            </WorkspaceDataCard>
-          ))}
-        </div>
-      </WorkspaceSection>
-
-      <WorkspaceSection
-        actions={
-          hasLatestLinks ? (
-            <>
-              {workspace.quick_actions.latest_evaluation_href ? (
+            </article>
+            <div className="workspace-action-tile-grid">
+              {actionTiles.map((tile) => (
                 <Link
-                  className="button secondary"
-                  href={workspace.quick_actions.latest_evaluation_href}
+                  className="workspace-action-tile"
+                  href={tile.href}
+                  key={tile.title}
                 >
-                  Open result
+                  <span className="badge subtle">{tile.title}</span>
+                  <strong>{tile.label}</strong>
+                  <p>{tile.description}</p>
                 </Link>
-              ) : null}
-              {workspace.quick_actions.latest_case_history_href ? (
-                <Link
-                  className="button secondary"
-                  href={workspace.quick_actions.latest_case_history_href}
-                >
-                  Open case history
-                </Link>
-              ) : null}
-            </>
-          ) : null
-        }
-        description={
-          workspace.hero.latest_summary ??
-          'Run a first deterministic evaluation to populate history, comparison, and reporting surfaces.'
-        }
-        eyebrow="Latest run"
-        title={workspace.hero.latest_case_id ?? 'No saved run yet'}
-      >
-        {latestRun ? (
-          <div className="workspace-detail-grid">
-            <WorkspaceDataCard>
-              <span className="badge subtle">Run summary</span>
-              <h3>{latestRun.summary}</h3>
-              <p>
-                {formatToken(latestRun.confidence_level)} confidence ·{' '}
-                {formatToken(latestRun.technology_family)} ·{' '}
-                {formatToken(latestRun.primary_objective)}
-              </p>
-            </WorkspaceDataCard>
-            <WorkspaceDataCard>
-              <span className="badge subtle">Simulation</span>
-              <h3>
-                {formatToken(
-                  latestRun.simulation_summary?.status ?? 'unavailable',
-                )}
-              </h3>
-              <p>
-                Created {formatTimestamp(latestRun.created_at)} with narrative{' '}
-                {latestRun.narrative_available ? 'available' : 'disabled'}.
-              </p>
-            </WorkspaceDataCard>
-            {hasLatestLinks ? (
-              <WorkspaceDataCard tone="accent">
-                <span className="badge subtle">Quick links</span>
-                <h3>Latest navigation targets</h3>
-                <p>
-                  Jump directly to the latest evaluation workspace or the case
-                  history endpoint without scanning the tables below.
-                </p>
-                <div className="workspace-action-row">
-                  {workspace.quick_actions.latest_evaluation_href ? (
-                    <Link
-                      className="ghost-button"
-                      href={workspace.quick_actions.latest_evaluation_href}
-                    >
-                      Latest evaluation
-                    </Link>
-                  ) : null}
-                  {workspace.quick_actions.latest_case_history_href ? (
-                    <Link
-                      className="ghost-button"
-                      href={workspace.quick_actions.latest_case_history_href}
-                    >
-                      Latest case history
-                    </Link>
-                  ) : null}
-                </div>
-              </WorkspaceDataCard>
-            ) : null}
+              ))}
+            </div>
           </div>
-        ) : (
-          <WorkspaceEmptyState
-            description="Create the first evaluation to populate the saved-run workspace."
-            primaryHref="/cases/new"
-            primaryLabel="Draft new evaluation"
-            title="No evaluation yet"
-          />
-        )}
-      </WorkspaceSection>
+        </TabsContent>
 
-      <div className="workspace-split-grid">
-        <WorkspaceSection
-          description="Every run keeps confidence, model state, and case history visible from the dashboard."
-          eyebrow="Recent runs"
-          title="Re-open saved analyses"
-        >
-          <RecentRunsTable runs={workspace.recent_runs} />
-        </WorkspaceSection>
+        <TabsContent value="runs">
+          <article className="workspace-band">
+            <div className="workspace-band__header">
+              <div>
+                <h3>Saved analyses</h3>
+                <p>
+                  Reopen runs without repeating the dashboard summary above.
+                </p>
+              </div>
+            </div>
+            <RecentRunsTable runs={workspace.recent_runs} />
+          </article>
+        </TabsContent>
 
-        <WorkspaceSection
-          actions={
-            <Link className="button secondary" href="/evidence/review">
-              Open review queue
-            </Link>
-          }
-          description="Only accepted evidence can enter intake. Pending and rejected items remain explicit and auditable."
-          eyebrow="Evidence backlog"
-          title="Review queue"
-        >
-          <EvidenceBacklogTable items={workspace.evidence_backlog} />
-        </WorkspaceSection>
-      </div>
+        <TabsContent value="evidence">
+          <article className="workspace-band">
+            <div className="workspace-band__header">
+              <div>
+                <h3>Evidence backlog</h3>
+                <p>
+                  Pending, accepted, and rejected records remain visible in one
+                  professional table.
+                </p>
+              </div>
+              <Link className="button secondary" href="/evidence/review">
+                Open review queue
+              </Link>
+            </div>
+            <EvidenceBacklogTable items={workspace.evidence_backlog} />
+          </article>
+        </TabsContent>
+
+        <TabsContent value="research">
+          <article className="workspace-band summary-callout">
+            <span className="badge subtle">Research reviews</span>
+            <h3>
+              Open the research workspace when the decision needs deeper
+              evidence synthesis.
+            </h3>
+            <p>
+              Reviews, extraction, and evidence-pack follow-up now live behind a
+              dedicated research route instead of the dashboard first fold.
+            </p>
+            <div className="workspace-action-row">
+              <Link className="button secondary" href="/research/reviews">
+                Open research reviews
+              </Link>
+            </div>
+          </article>
+        </TabsContent>
+      </WorkspaceTabShell>
     </div>
   );
 }

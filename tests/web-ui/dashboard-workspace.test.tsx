@@ -23,7 +23,7 @@ const workspace = {
       ruleset_version: 'mixed(0.3,0.2)',
       prompt_version: 'not_applicable',
       model_version: 'not_applicable',
-      workspace_schema_version: '014.0.0',
+      workspace_schema_version: '015.0.0',
     },
     traceability: {
       subject_type: 'workspace',
@@ -40,6 +40,34 @@ const workspace = {
       evidence_count: 1,
       case_id: 'CASE-002',
       evaluation_id: 'eval-002',
+    },
+  },
+  presentation: {
+    page_title: 'Decision workspace',
+    short_summary: 'Retrofit run with modeled uplift and higher confidence.',
+    default_tab: 'overview',
+    tabs: [
+      { key: 'overview', label: 'Overview' },
+      { key: 'runs', label: 'Runs' },
+      { key: 'evidence', label: 'Evidence' },
+      { key: 'research', label: 'Research' },
+    ],
+    badges: [
+      { key: 'runs', label: '2 runs', tone: 'muted' },
+      { key: 'high-confidence', label: '1 high confidence', tone: 'success' },
+    ],
+    primary_actions: [
+      { key: 'new-evaluation', label: 'New evaluation', href: '/cases/new' },
+      {
+        key: 'review-evidence',
+        label: 'Review evidence',
+        href: '/evidence/review',
+      },
+    ],
+    copy: {
+      headline: 'Decision workspace',
+      summary: 'Retrofit run with modeled uplift and higher confidence.',
+      detail: 'Latest case CASE-002.',
     },
   },
   summary: {
@@ -116,26 +144,40 @@ const workspace = {
 } satisfies DashboardWorkspaceResponse;
 
 describe('dashboard workspace', () => {
-  it('renders operational KPIs, dense tables, and latest-run quick links from the workspace payload', () => {
-    const html = renderToStaticMarkup(
+  it('renders a summary-first dashboard with tabbed detail areas from the workspace payload', () => {
+    const overviewHtml = renderToStaticMarkup(
       React.createElement(DashboardWorkspaceView, {
+        activeTab: 'overview',
+        workspace,
+      }),
+    );
+    const evidenceHtml = renderToStaticMarkup(
+      React.createElement(DashboardWorkspaceView, {
+        activeTab: 'evidence',
         workspace,
       }),
     );
 
-    expect(html).toContain('Bioelectrochemical decision workspace');
-    expect(html).toContain('Saved runs');
-    expect(html).toContain('High-confidence runs');
-    expect(html).toContain('CASE-002');
-    expect(html).toContain('Open result');
-    expect(html).toContain('Latest evaluation');
-    expect(html).toContain('Latest case history');
-    expect(html).toContain('Primary modules');
-    expect(html).toContain('Open input deck');
-    expect(html).toContain('Open workspace');
-    expect(html).toContain('Review State');
-    expect(html).toContain('Accepted sidestream benchmark');
-    expect(html).not.toContain('Comparison dock');
-    expect(html).not.toContain('History rail');
+    expect(overviewHtml).toContain('Decision workspace');
+    expect(overviewHtml).toContain('Workspace focus');
+    expect(overviewHtml).toContain('Overview');
+    expect(overviewHtml).toContain('Runs');
+    expect(overviewHtml).toContain('Evidence');
+    expect(overviewHtml).toContain('Research');
+    expect(overviewHtml).toContain('Saved runs');
+    expect(overviewHtml).toContain('High-confidence runs');
+    expect(overviewHtml).toContain('CASE-002');
+    expect(overviewHtml).toContain('Open latest run');
+    expect(overviewHtml).toContain('Open case history');
+    expect(overviewHtml).toContain('Open input deck');
+    expect(overviewHtml).toContain('Open research reviews');
+    expect(overviewHtml).toContain('Research reviews');
+    expect(overviewHtml).toContain('Run momentum');
+    expect(overviewHtml).toContain('Confidence posture');
+    expect(overviewHtml).not.toContain('Accepted sidestream benchmark');
+    expect(overviewHtml).not.toContain('Primary modules');
+
+    expect(evidenceHtml).toContain('Evidence backlog');
+    expect(evidenceHtml).toContain('Accepted sidestream benchmark');
   });
 });

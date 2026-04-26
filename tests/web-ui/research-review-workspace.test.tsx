@@ -161,13 +161,15 @@ describe('research review workspace UI', () => {
   it('renders the review list workspace shell', async () => {
     const { ResearchReviewListView } =
       await import('../../apps/web-ui/src/components/research/research-review-list');
-    const html = renderToStaticMarkup(
+    const createHtml = renderToStaticMarkup(
       React.createElement(ResearchReviewListView, {
+        activeTab: 'create',
         createPending: false,
         limit: 25,
         onCreate: vi.fn(),
         onLimitChange: vi.fn(),
         onSearchQueryChange: vi.fn(),
+        onTabChange: vi.fn(),
         onTitleChange: vi.fn(),
         reviews: [
           {
@@ -188,11 +190,41 @@ describe('research review workspace UI', () => {
       }),
     );
 
-    expect(html).toContain('Research intelligence');
-    expect(html).toContain('Create review');
-    expect(html).toContain('MFC fixture review');
-    expect(html).toContain('/research/reviews/review-001');
-    expect(html).toContain('Open table');
+    const reviewsHtml = renderToStaticMarkup(
+      React.createElement(ResearchReviewListView, {
+        activeTab: 'reviews',
+        createPending: false,
+        limit: 25,
+        onCreate: vi.fn(),
+        onLimitChange: vi.fn(),
+        onSearchQueryChange: vi.fn(),
+        onTabChange: vi.fn(),
+        onTitleChange: vi.fn(),
+        reviews: [
+          {
+            review_id: 'review-001',
+            title: 'MFC fixture review',
+            query: 'microbial fuel cell wastewater',
+            status: 'active',
+            version: 1,
+            paper_count: 2,
+            column_count: 18,
+            completed_result_count: 4,
+            created_at: now,
+            updated_at: now,
+          },
+        ],
+        searchQuery: 'microbial fuel cell wastewater',
+        title: '',
+      }),
+    );
+
+    expect(createHtml).toContain('Research intelligence');
+    expect(createHtml).toContain('Research layers');
+    expect(createHtml).toContain('Create review');
+    expect(reviewsHtml).toContain('MFC fixture review');
+    expect(reviewsHtml).toContain('/research/reviews/review-001');
+    expect(reviewsHtml).toContain('Open table');
   });
 
   it('renders the table, add-column panel, detail panel, and evidence pack section', async () => {
@@ -202,23 +234,53 @@ describe('research review workspace UI', () => {
     const review = buildReviewFixture();
     client.setQueryData(['research-review', 'review-001'], review);
 
-    const html = renderWithClient(
+    const tableHtml = renderWithClient(
       React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'table',
         reviewId: 'review-001',
       }),
       client,
     );
+    const columnsClient = createQueryClient();
+    columnsClient.setQueryData(['research-review', 'review-001'], review);
+    const columnsHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'columns',
+        reviewId: 'review-001',
+      }),
+      columnsClient,
+    );
+    const papersClient = createQueryClient();
+    papersClient.setQueryData(['research-review', 'review-001'], review);
+    const papersHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'papers',
+        reviewId: 'review-001',
+      }),
+      papersClient,
+    );
+    const packClient = createQueryClient();
+    packClient.setQueryData(['research-review', 'review-001'], review);
+    const packHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'pack',
+        reviewId: 'review-001',
+      }),
+      packClient,
+    );
 
-    expect(html).toContain('Review table');
-    expect(html).toContain('Paper');
-    expect(html).toContain('Summary');
-    expect(html).toContain('MFC fixture review');
-    expect(html).toContain('Dual chamber microbial fuel cell');
-    expect(html).toContain('A microbial fuel cell fixture reports');
-    expect(html).toContain('Add structured column');
-    expect(html).toContain('Paper details');
-    expect(html).toContain('Evidence pack');
-    expect(html).toContain('No evidence pack selected');
+    expect(tableHtml).toContain('Research detail layers');
+    expect(tableHtml).toContain('Review table');
+    expect(tableHtml).toContain('Paper');
+    expect(tableHtml).toContain('Summary');
+    expect(tableHtml).toContain('MFC fixture review');
+    expect(tableHtml).toContain('Dual chamber microbial fuel cell');
+    expect(tableHtml).toContain('A microbial fuel cell fixture reports');
+    expect(columnsHtml).toContain('Add structured column');
+    expect(columnsHtml).toContain('Visible columns');
+    expect(papersHtml).toContain('Paper details');
+    expect(packHtml).toContain('Evidence pack');
+    expect(packHtml).toContain('No evidence pack selected');
   });
 
   it('renders persisted evidence-pack decision preview data from cached queries', async () => {
@@ -247,6 +309,7 @@ describe('research review workspace UI', () => {
 
     const html = renderWithClient(
       React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'pack',
         reviewId: 'review-001',
       }),
       client,

@@ -41,23 +41,45 @@ describe('case history view', () => {
     try {
       historyWorkspace.evidence_records = [buildAttachedEvidenceRecord()];
 
-      const html = renderToStaticMarkup(
+      const timelineHtml = renderToStaticMarkup(
         React.createElement(CaseHistoryWorkspaceView, {
+          activeTab: 'timeline',
           workspace: historyWorkspace,
         }),
       );
 
-      expect(html).toContain('Case history');
-      expect(html).toContain('Defaults used');
-      expect(html).toContain('Stored evaluation runs');
-      expect(html).toContain('Compare pair');
-      expect(html).toContain('Persisted provenance and snapshots');
-      expect(html).toContain(
-        'Accepted benchmark source imported into the workspace.',
+      expect(timelineHtml).toContain('Case history');
+      expect(timelineHtml).toContain('Timeline');
+      expect(timelineHtml).toContain('Evidence');
+      expect(timelineHtml).toContain('Audit');
+      expect(timelineHtml).toContain('Stored evaluation runs');
+      expect(timelineHtml).toContain('Compare pair');
+
+      const evidenceHtml = renderToStaticMarkup(
+        React.createElement(CaseHistoryWorkspaceView, {
+          activeTab: 'evidence',
+          workspace: historyWorkspace,
+        }),
       );
-      expect(html).toContain('/evidence/review/catalog-item-accepted-001');
-      expect(html).toContain('Audit payload disclosures');
-      expect(html).toContain('Attached evidence table');
+
+      expect(evidenceHtml).toContain('Attached evidence table');
+      expect(evidenceHtml).toContain(
+        'Accepted benchmark record for industrial sidestream treatment.',
+      );
+      expect(evidenceHtml).toContain(
+        '/evidence/review/catalog-item-accepted-001',
+      );
+
+      const auditHtml = renderToStaticMarkup(
+        React.createElement(CaseHistoryWorkspaceView, {
+          activeTab: 'audit',
+          workspace: historyWorkspace,
+        }),
+      );
+
+      expect(auditHtml).toContain('Defaults used');
+      expect(auditHtml).toContain('Persisted provenance and snapshots');
+      expect(auditHtml).toContain('Audit payload disclosures');
     } finally {
       await repository.disconnect();
     }
@@ -78,6 +100,7 @@ describe('case history view', () => {
 
       const html = renderToStaticMarkup(
         React.createElement(CaseHistoryWorkspaceView, {
+          activeTab: 'evidence',
           workspace: historyWorkspace,
         }),
       );

@@ -3,13 +3,13 @@ import type {
   CaseHistoryWorkspaceResponse,
   ConfidenceLevel,
   DashboardWorkspaceResponse,
-  EvidenceExplorerAssistantResponse,
-  EvidenceExplorerWorkspaceResponse,
   EvaluationComparisonResponse,
   EvaluationListResponse,
   EvaluationResponse,
   EvaluationSummary,
   EvaluationWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
   EvidenceRecord,
   EvidenceReviewWorkspaceResponse,
   ExportCsvResponseMetadata,
@@ -22,20 +22,22 @@ import type {
   TraceabilitySummary,
   WorkspaceAttentionItem,
   WorkspaceBriefCard,
+  WorkspaceCopy,
   WorkspaceHeroCard,
   WorkspaceImpactItem,
   WorkspaceLeadAction,
   WorkspaceMetricRecord,
+  WorkspacePresentation,
   WorkspaceRoadmapItem,
   WorkspaceTone,
 } from '@metrev/domain-contracts';
 import {
   caseHistoryWorkspaceResponseSchema,
   dashboardWorkspaceResponseSchema,
-  evidenceExplorerAssistantResponseSchema,
-  evidenceExplorerWorkspaceResponseSchema,
   evaluationComparisonResponseSchema,
   evaluationWorkspaceResponseSchema,
+  evidenceExplorerAssistantResponseSchema,
+  evidenceExplorerWorkspaceResponseSchema,
   evidenceReviewWorkspaceResponseSchema,
   exportCsvResponseMetadataSchema,
   loadContractCompatibilityDefinition,
@@ -49,7 +51,13 @@ import {
   printableEvaluationReportResponseSchema,
 } from '@metrev/domain-contracts';
 
-const WORKSPACE_SCHEMA_VERSION = '014.0.0';
+const WORKSPACE_SCHEMA_VERSION = '015.0.0';
+const SHORT_HEADLINE_LIMIT = 80;
+const SHORT_SUMMARY_LIMIT = 180;
+const SHORT_DETAIL_LIMIT = 320;
+const SHORT_TAB_LABEL_LIMIT = 32;
+const SHORT_BADGE_LABEL_LIMIT = 48;
+const SHORT_ACTION_LABEL_LIMIT = 48;
 
 const coreMetricDefinitions = [
   {
@@ -157,6 +165,24 @@ function formatToken(value: string): string {
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ');
+}
+
+function shortenText(
+  value: string | null | undefined,
+  limit: number,
+  fallback = 'Unavailable',
+): string {
+  const normalized = value?.replace(/\s+/g, ' ').trim() || fallback;
+
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+
+  if (limit <= 3) {
+    return normalized.slice(0, limit);
+  }
+
+  return `${normalized.slice(0, limit - 3).trimEnd()}...`;
 }
 
 function formatTimestamp(value: string): string {
@@ -711,6 +737,55 @@ function createMeta(input: {
   };
 }
 
+function createCopy(input: {
+  headline: string;
+  summary: string;
+  detail?: string | null;
+}): WorkspaceCopy {
+  const detail = input.detail?.trim();
+
+  return {
+    headline: shortenText(input.headline, SHORT_HEADLINE_LIMIT),
+    summary: shortenText(input.summary, SHORT_SUMMARY_LIMIT),
+    ...(detail ? { detail: shortenText(detail, SHORT_DETAIL_LIMIT) } : {}),
+  };
+}
+
+function createPresentation(input: {
+  pageTitle: string;
+  shortSummary: string;
+  defaultTab: string;
+  tabs?: Array<{ key: string; label: string }>;
+  badges?: Array<{ key: string; label: string; tone?: WorkspaceTone }>;
+  primaryActions?: Array<{ key: string; label: string; href: string }>;
+  copy?: {
+    headline: string;
+    summary: string;
+    detail?: string | null;
+  };
+}): WorkspacePresentation {
+  return {
+    page_title: shortenText(input.pageTitle, SHORT_HEADLINE_LIMIT),
+    short_summary: shortenText(input.shortSummary, SHORT_SUMMARY_LIMIT),
+    default_tab: input.defaultTab.trim(),
+    tabs: (input.tabs ?? []).map((tab) => ({
+      key: tab.key,
+      label: shortenText(tab.label, SHORT_TAB_LABEL_LIMIT),
+    })),
+    badges: (input.badges ?? []).map((badge) => ({
+      key: badge.key,
+      label: shortenText(badge.label, SHORT_BADGE_LABEL_LIMIT),
+      tone: badge.tone ?? 'muted',
+    })),
+    primary_actions: (input.primaryActions ?? []).map((action) => ({
+      key: action.key,
+      label: shortenText(action.label, SHORT_ACTION_LABEL_LIMIT),
+      href: action.href,
+    })),
+    ...(input.copy ? { copy: createCopy(input.copy) } : {}),
+  };
+}
+
 function buildDashboardTraceability(
   evaluationList: EvaluationListResponse,
   evidenceCatalog: ExternalEvidenceCatalogListResponse,
@@ -748,6 +823,8 @@ export function buildDashboardWorkspace(input: {
   const modeledRuns = items.filter(
     (item) => item.simulation_summary?.status === 'completed',
   ).length;
+  const latestSummary =
+    latestEvaluation?.summary ?? 'No evaluation has been saved yet.';
 
   return dashboardWorkspaceResponseSchema.parse({
     meta: createMeta({
@@ -756,6 +833,59 @@ export function buildDashboardWorkspace(input: {
         input.evaluationList,
         input.evidenceCatalog,
       ),
+    }),
+    presentation: createPresentation({
+      pageTitle: 'Decision workspace',
+      shortSummary: latestSummary,
+      defaultTab: 'overview',
+      tabs: [
+        { key: 'overview', label: 'Overview' },
+        { key: 'runs', label: 'Runs' },
+        { key: 'evidence', label: 'Evidence' },
+        { key: 'research', label: 'Research' },
+      ],
+      badges: [
+        {
+          key: 'runs',
+          label: `${items.length} run${items.length === 1 ? '' : 's'}`,
+          tone: 'muted',
+        },
+        {
+          key: 'high-confidence',
+          label: `${highConfidenceRuns} high confidence`,
+          tone: highConfidenceRuns > 0 ? 'success' : 'muted',
+        },
+        {
+          key: 'pending-evidence',
+          label: `${input.evidenceCatalog.summary.pending} pending evidence`,
+          tone:
+            input.evidenceCatalog.summary.pending > 0 ? 'warning' : 'success',
+        },
+      ],
+      primaryActions: [
+        { key: 'new-evaluation', label: 'New evaluation', href: '/cases/new' },
+        {
+          key: 'review-evidence',
+          label: 'Review evidence',
+          href: '/evidence/review',
+        },
+        ...(latestEvaluation
+          ? [
+              {
+                key: 'latest-evaluation',
+                label: 'Open latest run',
+                href: `/evaluations/${latestEvaluation.evaluation_id}`,
+              },
+            ]
+          : []),
+      ],
+      copy: {
+        headline: 'Decision workspace',
+        summary: latestSummary,
+        detail: latestEvaluation?.case_id
+          ? `Latest case ${latestEvaluation.case_id}.`
+          : 'No saved run is available yet.',
+      },
     }),
     summary: {
       total_runs: items.length,
@@ -817,6 +947,16 @@ export function buildEvaluationWorkspace(input: {
   );
   const defaultCompareTargetId = compareCandidates[0]?.evaluation_id ?? null;
   const overview = buildEvaluationOverview(input.evaluation);
+  const confidenceLevel =
+    input.evaluation.decision_output.confidence_and_uncertainty_summary
+      .confidence_level;
+  const simulationStatus = latestSimulationStatus(input.evaluation);
+  const confidenceTone: WorkspaceTone =
+    confidenceLevel === 'high'
+      ? 'success'
+      : confidenceLevel === 'medium'
+        ? 'warning'
+        : 'critical';
 
   return evaluationWorkspaceResponseSchema.parse({
     meta: createMeta({
@@ -826,6 +966,65 @@ export function buildEvaluationWorkspace(input: {
         subject_type: 'workspace',
         subject_id: 'evaluation-workspace',
         evaluation_id: input.evaluation.evaluation_id,
+      },
+    }),
+    presentation: createPresentation({
+      pageTitle: overview.title,
+      shortSummary:
+        input.evaluation.decision_output.current_stack_diagnosis.summary,
+      defaultTab: 'summary',
+      tabs: [
+        { key: 'summary', label: 'Summary' },
+        { key: 'actions', label: 'Actions' },
+        { key: 'model', label: 'Model' },
+        { key: 'evidence', label: 'Evidence' },
+        { key: 'audit', label: 'Audit' },
+      ],
+      badges: [
+        {
+          key: 'confidence',
+          label: formatToken(confidenceLevel),
+          tone: confidenceTone,
+        },
+        {
+          key: 'model-status',
+          label: formatToken(simulationStatus),
+          tone: simulationStatus === 'completed' ? 'success' : 'warning',
+        },
+        {
+          key: 'typed-evidence',
+          label: `${input.evaluation.audit_record.typed_evidence.length} typed evidence`,
+          tone: 'muted',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'history',
+          label: 'Open history',
+          href: `/cases/${input.evaluation.case_id}/history`,
+        },
+        ...(defaultCompareTargetId
+          ? [
+              {
+                key: 'compare',
+                label: 'Compare run',
+                href: `/evaluations/${input.evaluation.evaluation_id}/compare/${defaultCompareTargetId}`,
+              },
+            ]
+          : []),
+        {
+          key: 'report',
+          label: 'Open report',
+          href: `/evaluations/${input.evaluation.evaluation_id}/report`,
+        },
+      ],
+      copy: {
+        headline: overview.title,
+        summary:
+          input.evaluation.decision_output.current_stack_diagnosis.summary,
+        detail:
+          input.evaluation.decision_output.confidence_and_uncertainty_summary
+            .summary,
       },
     }),
     evaluation: input.evaluation,
@@ -934,6 +1133,45 @@ export function buildCaseHistoryWorkspace(input: {
         defaults_count: input.history.case.defaults_used.length,
         missing_data_count: input.history.case.missing_data.length,
         evidence_count: input.history.evidence_records.length,
+      },
+    }),
+    presentation: createPresentation({
+      pageTitle: `${input.history.case.case_id} history`,
+      shortSummary: `${evaluations.length} saved run${evaluations.length === 1 ? '' : 's'} for ${input.history.case.case_id}.`,
+      defaultTab: 'timeline',
+      tabs: [
+        { key: 'timeline', label: 'Timeline' },
+        { key: 'evidence', label: 'Evidence' },
+        { key: 'audit', label: 'Audit' },
+      ],
+      badges: [
+        {
+          key: 'runs',
+          label: `${evaluations.length} run${evaluations.length === 1 ? '' : 's'}`,
+          tone: 'muted',
+        },
+        {
+          key: 'defaults',
+          label: `${input.history.case.defaults_used.length} defaults`,
+          tone:
+            input.history.case.defaults_used.length > 0 ? 'warning' : 'success',
+        },
+      ],
+      primaryActions:
+        input.currentEvaluationId !== null &&
+        input.currentEvaluationId !== undefined
+          ? [
+              {
+                key: 'open-current',
+                label: 'Open current run',
+                href: `/evaluations/${input.currentEvaluationId}`,
+              },
+            ]
+          : [],
+      copy: {
+        headline: `${input.history.case.case_id} history`,
+        summary: `${evaluations.length} saved run${evaluations.length === 1 ? '' : 's'} recorded for this case.`,
+        detail: `${input.history.evidence_records.length} linked evidence record${input.history.evidence_records.length === 1 ? '' : 's'} remain visible in the audit trail.`,
       },
     }),
     case: input.history.case,
@@ -1057,6 +1295,46 @@ export function buildEvaluationComparison(input: {
         evaluation_id: input.current.evaluation_id,
       },
     }),
+    presentation: createPresentation({
+      pageTitle: `${input.current.case_id} comparison`,
+      shortSummary: `Comparing ${formatTimestamp(baselineSummary.created_at)} to ${formatTimestamp(currentSummary.created_at)}.`,
+      defaultTab: 'summary',
+      tabs: [
+        { key: 'summary', label: 'Summary' },
+        { key: 'metrics', label: 'Metrics' },
+        { key: 'actions', label: 'Actions' },
+        { key: 'suppliers', label: 'Suppliers' },
+      ],
+      badges: [
+        {
+          key: 'current-confidence',
+          label: `Current ${formatToken(currentSummary.confidence_level)}`,
+          tone: 'muted',
+        },
+        {
+          key: 'baseline-confidence',
+          label: `Baseline ${formatToken(baselineSummary.confidence_level)}`,
+          tone: 'muted',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'open-current',
+          label: 'Open current run',
+          href: `/evaluations/${input.current.evaluation_id}`,
+        },
+        {
+          key: 'open-baseline',
+          label: 'Open baseline run',
+          href: `/evaluations/${input.baseline.evaluation_id}`,
+        },
+      ],
+      copy: {
+        headline: `${input.current.case_id} comparison`,
+        summary: `Comparing ${formatTimestamp(baselineSummary.created_at)} to ${formatTimestamp(currentSummary.created_at)}.`,
+        detail: confidenceChangeLabel(input.current, input.baseline),
+      },
+    }),
     current_evaluation: currentSummary,
     baseline_evaluation: baselineSummary,
     conclusion: {
@@ -1163,6 +1441,43 @@ export function buildEvidenceReviewWorkspace(input: {
         defaults_count: 0,
         missing_data_count: 0,
         evidence_count: input.evidenceCatalog.items.length,
+      },
+    }),
+    presentation: createPresentation({
+      pageTitle: 'Evidence review queue',
+      shortSummary: `${input.evidenceCatalog.summary.pending} pending record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
+      defaultTab: 'queue',
+      tabs: [
+        { key: 'queue', label: 'Queue' },
+        { key: 'selected', label: 'Selected' },
+        { key: 'audit', label: 'Audit' },
+      ],
+      badges: [
+        {
+          key: 'pending',
+          label: `${input.evidenceCatalog.summary.pending} pending`,
+          tone:
+            input.evidenceCatalog.summary.pending > 0 ? 'warning' : 'success',
+        },
+        {
+          key: 'accepted',
+          label: `${input.evidenceCatalog.summary.accepted} accepted`,
+          tone: 'success',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'open-explorer',
+          label: 'Open explorer',
+          href: '/evidence/explorer',
+        },
+      ],
+      copy: {
+        headline: 'Evidence review queue',
+        summary: `${input.evidenceCatalog.summary.pending} pending record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
+        detail: input.filters?.query?.trim()
+          ? `Filtered by \"${input.filters.query.trim()}\".`
+          : undefined,
       },
     }),
     filters: {
@@ -1289,6 +1604,53 @@ export function buildEvidenceExplorerWorkspace(input: {
         defaults_count: 0,
         missing_data_count: 0,
         evidence_count: items.length,
+      },
+    }),
+    presentation: createPresentation({
+      pageTitle: 'Evidence explorer',
+      shortSummary: `${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} matching record${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count === 1 ? '' : 's'} in the current warehouse slice.`,
+      defaultTab: 'catalog',
+      tabs: [
+        { key: 'catalog', label: 'Catalog' },
+        { key: 'facets', label: 'Facets' },
+        { key: 'assistant', label: 'Assistant' },
+        { key: 'exports', label: 'Exports' },
+      ],
+      badges: [
+        {
+          key: 'filtered',
+          label: `${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} filtered`,
+          tone: 'muted',
+        },
+        {
+          key: 'reviewed-claims',
+          label: `${input.evidenceCatalog.warehouse_aggregate.snapshot.reviewed_claim_count} reviewed claims`,
+          tone:
+            input.evidenceCatalog.warehouse_aggregate.snapshot
+              .reviewed_claim_count > 0
+              ? 'success'
+              : 'warning',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'review-queue',
+          label: 'Open review queue',
+          href: '/evidence/review',
+        },
+        {
+          key: 'export-csv',
+          label: 'Export CSV',
+          href: buildEvidenceExplorerCsvHref(input.filters),
+        },
+      ],
+      copy: {
+        headline: 'Evidence explorer',
+        summary: `${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} matching record${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count === 1 ? '' : 's'} in the current warehouse slice.`,
+        detail:
+          input.filters?.query?.trim() || input.filters?.sourceType?.trim()
+            ? 'Filters stay explicit in the workspace state and export links.'
+            : 'Use facets and exports to keep the warehouse slice inspectable.',
       },
     }),
     filters: {
@@ -1422,6 +1784,47 @@ export function buildEvidenceExplorerAssistantResponse(input: {
             .filtered_item_count,
       },
     }),
+    presentation: createPresentation({
+      pageTitle: 'Evidence assistant brief',
+      shortSummary:
+        input.narrative ??
+        'Assistant output summarizes the filtered warehouse without replacing direct evidence review.',
+      defaultTab: 'assistant',
+      tabs: [
+        { key: 'catalog', label: 'Catalog' },
+        { key: 'facets', label: 'Facets' },
+        { key: 'assistant', label: 'Assistant' },
+        { key: 'exports', label: 'Exports' },
+      ],
+      badges: [
+        {
+          key: 'filtered',
+          label: `${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} filtered`,
+          tone: 'muted',
+        },
+        {
+          key: 'mode',
+          label: formatToken(input.narrativeMetadata.mode),
+          tone: 'muted',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'open-explorer',
+          label: 'Open explorer',
+          href: '/evidence/explorer',
+        },
+      ],
+      copy: {
+        headline: 'Evidence assistant brief',
+        summary:
+          input.narrative ??
+          'Assistant output summarizes the filtered warehouse without replacing direct evidence review.',
+        detail: buildEvidenceExplorerAssistantUncertaintySummary({
+          evidenceCatalog: input.evidenceCatalog,
+        }),
+      },
+    }),
     filters: {
       active_status: input.filters?.status as
         | EvidenceExplorerAssistantResponse['filters']['active_status']
@@ -1463,6 +1866,40 @@ export function buildPrintableEvaluationReport(input: {
         subject_type: 'workspace',
         subject_id: 'printable-report',
         evaluation_id: input.evaluation.evaluation_id,
+      },
+    }),
+    presentation: createPresentation({
+      pageTitle: `${input.evaluation.case_id} report`,
+      shortSummary:
+        'Stack diagnosis, prioritized improvements, impact map, roadmap, and audit-visible assumptions.',
+      defaultTab: 'report',
+      tabs: [
+        { key: 'report', label: 'Report' },
+        { key: 'audit', label: 'Audit' },
+      ],
+      badges: [
+        {
+          key: 'confidence',
+          label: formatToken(
+            input.evaluation.decision_output.confidence_and_uncertainty_summary
+              .confidence_level,
+          ),
+          tone: 'muted',
+        },
+      ],
+      primaryActions: [
+        {
+          key: 'open-workspace',
+          label: 'Open workspace',
+          href: `/evaluations/${input.evaluation.evaluation_id}`,
+        },
+      ],
+      copy: {
+        headline: `${input.evaluation.case_id} report`,
+        summary:
+          'Stack diagnosis, prioritized improvements, impact map, roadmap, and audit-visible assumptions.',
+        detail:
+          input.evaluation.decision_output.current_stack_diagnosis.summary,
       },
     }),
     evaluation: buildEvaluationSummary(input.evaluation),

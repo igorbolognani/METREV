@@ -10,6 +10,8 @@ import {
     WorkspaceDataCard,
     WorkspaceEmptyState,
 } from '@/components/workspace-chrome';
+import { ChartPanel } from '@/components/workspace/chart-panel';
+import { DisclosurePanel } from '@/components/workspace/disclosure-panel';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
 void React;
@@ -70,26 +72,22 @@ export function EvaluationModelingTab({
             <strong>{formatToken(simulation.status)}</strong>.
           </p>
           {simulation.failure_detail ? (
-            <pre className="code-block evaluation-raw-pre">
-              {JSON.stringify(simulation.failure_detail, null, 2)}
-            </pre>
+            <DisclosurePanel title="Model payload">
+              <pre className="code-block evaluation-raw-pre">
+                {JSON.stringify(simulation.failure_detail, null, 2)}
+              </pre>
+            </DisclosurePanel>
           ) : null}
         </div>
       ) : null}
 
-      <WorkspaceDataCard tone="accent">
-        <div className="workspace-data-card__header">
-          <div>
-            <span className="badge subtle">Modeling artifact</span>
-            <h3>{formatToken(simulation.status)}</h3>
-          </div>
-          <div className="workspace-chip-list compact">
-            <span className="meta-chip">Model {simulation.model_version}</span>
-            <span className="meta-chip">{simulation.series.length} series</span>
-          </div>
-        </div>
+      <ChartPanel
+        meta={`Model ${simulation.model_version}`}
+        summary={`${simulation.series.length} series available in the current model artifact.`}
+        title={formatToken(simulation.status)}
+      >
         <SimulationMultiLineChart series={simulation.series} />
-      </WorkspaceDataCard>
+      </ChartPanel>
 
       <div className="workspace-detail-grid">
         <WorkspaceDataCard>

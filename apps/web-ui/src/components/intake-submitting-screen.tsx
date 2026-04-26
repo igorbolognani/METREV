@@ -7,8 +7,8 @@ import {
     WorkspaceEmptyState,
     WorkspacePageHeader,
     WorkspaceSection,
-    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
+import { SummaryRail } from '@/components/workspace/summary-rail';
 import { evaluateCase } from '@/lib/api';
 import {
     clearPendingSubmission,
@@ -112,6 +112,40 @@ export function IntakeSubmittingProgressView({
     Math.max(activeStageIndex, 0),
     progressStages.length - 1,
   );
+  const summaryItems = [
+    {
+      detail:
+        'The browser redirects automatically as soon as the evaluation workspace is ready.',
+      key: 'current-stage',
+      label: 'Current stage',
+      tone: 'accent' as const,
+      value: progressStages[safeStageIndex],
+    },
+    {
+      detail:
+        'Normalization, validation, enrichment, rules, validation, and workspace preparation.',
+      key: 'total-stages',
+      label: 'Total stages',
+      value: progressStages.length,
+    },
+    {
+      detail:
+        'Completed stages advance automatically every half-second while the synchronous request is in flight.',
+      key: 'completed-stages',
+      label: 'Completed',
+      tone: 'success' as const,
+      value: `${safeStageIndex + 1}/${progressStages.length}`,
+    },
+    {
+      detail: error
+        ? 'The draft was preserved so the input deck can reopen with context after the redirect.'
+        : 'Draft state remains preserved if the evaluation fails before the workspace opens.',
+      key: 'failure-posture',
+      label: 'Failure posture',
+      tone: error ? ('critical' as const) : ('default' as const),
+      value: error ? 'Draft saved' : 'Protected',
+    },
+  ];
 
   return (
     <div className="workspace-page">
@@ -126,19 +160,7 @@ export function IntakeSubmittingProgressView({
         ]}
       />
 
-      <section className="workspace-stats-grid">
-        <WorkspaceStatCard
-          label="Current stage"
-          value={progressStages[safeStageIndex]}
-          detail="The browser will redirect automatically when the evaluation workspace is ready."
-          tone="accent"
-        />
-        <WorkspaceStatCard
-          label="Total stages"
-          value={progressStages.length}
-          detail="Normalization, validation, enrichment, rules, validation, and workspace preparation."
-        />
-      </section>
+      <SummaryRail items={summaryItems} label="Submission progress summary" />
 
       <WorkspaceSection
         eyebrow="Deterministic progress"

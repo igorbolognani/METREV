@@ -19,18 +19,53 @@ describe('evaluation comparison view', () => {
     const { comparison, repository } = await buildWorkspaceViewFixtures();
 
     try {
-      const html = renderToStaticMarkup(
+      const summaryHtml = renderToStaticMarkup(
         React.createElement(EvaluationComparisonWorkspaceView, {
+          activeTab: 'summary',
           comparison,
         }),
       );
 
-      expect(html).toContain('run comparison');
-      expect(html).toContain('Key metric changes');
-      expect(html).toContain('Priority ordering changes');
-      expect(html).toContain('Supplier / material delta');
-      expect(html).toContain('Current run');
-      expect(html).toContain('Baseline run');
+      expect(summaryHtml).toContain('Comparison');
+      expect(summaryHtml).toContain('CASE-001 comparison');
+      expect(summaryHtml).toContain('Confidence remained Low.');
+      expect(summaryHtml).toContain('Summary');
+      expect(summaryHtml).toContain('Metrics');
+      expect(summaryHtml).toContain('Actions');
+      expect(summaryHtml).toContain('Suppliers');
+      expect(summaryHtml).toContain('Current versus baseline');
+      expect(summaryHtml).toContain(
+        'Confidence, defaults, and missing-data shifts',
+      );
+      expect(summaryHtml).toContain('Current run');
+      expect(summaryHtml).toContain('Baseline run');
+
+      const metricsHtml = renderToStaticMarkup(
+        React.createElement(EvaluationComparisonWorkspaceView, {
+          activeTab: 'metrics',
+          comparison,
+        }),
+      );
+
+      expect(metricsHtml).toContain('Key metric changes');
+
+      const actionsHtml = renderToStaticMarkup(
+        React.createElement(EvaluationComparisonWorkspaceView, {
+          activeTab: 'actions',
+          comparison,
+        }),
+      );
+
+      expect(actionsHtml).toContain('Priority ordering changes');
+
+      const suppliersHtml = renderToStaticMarkup(
+        React.createElement(EvaluationComparisonWorkspaceView, {
+          activeTab: 'suppliers',
+          comparison,
+        }),
+      );
+
+      expect(suppliersHtml).toContain('Supplier / material delta');
     } finally {
       await repository.disconnect();
     }

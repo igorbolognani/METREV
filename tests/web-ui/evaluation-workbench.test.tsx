@@ -15,6 +15,7 @@ import {
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 import { buildSimulationChartRows } from '../../apps/web-ui/src/components/charts/simulation-multi-line-chart';
 import { EvaluationAuditTab } from '../../apps/web-ui/src/components/evaluation/evaluation-audit-tab';
+import { EvaluationEvidenceTab } from '../../apps/web-ui/src/components/evaluation/evaluation-evidence-tab';
 import { EvaluationModelingTab } from '../../apps/web-ui/src/components/evaluation/evaluation-modeling-tab';
 import {
     EvaluationRecommendationsTable,
@@ -78,7 +79,7 @@ describe('workspace presenters', () => {
       expect(comparison.metric_deltas.length).toBeGreaterThan(0);
       expect(comparison.recommendation_deltas.length).toBeGreaterThan(0);
       expect(comparison.conclusion.summary).toContain(current.case_id);
-      expect(comparison.meta.versions.workspace_schema_version).toBe('014.0.0');
+      expect(comparison.meta.versions.workspace_schema_version).toBe('015.0.0');
     } finally {
       await repository.disconnect();
     }
@@ -186,8 +187,53 @@ describe('workspace presenters', () => {
       expect(modelingHtml).toContain(
         'Modeling could not complete successfully',
       );
-      expect(modelingHtml).toContain('Model diverged during iteration 4');
+      expect(modelingHtml).toContain('Model payload');
       expect(modelingHtml).toContain('Simulation provenance');
+
+      const evidenceHtml = renderToStaticMarkup(
+        React.createElement(EvaluationEvidenceTab, {
+          workspace: {
+            ...workspace,
+            evaluation: {
+              ...workspace.evaluation,
+              source_usages: [
+                {
+                  id: 'source-usage-001',
+                  evaluation_id: current.evaluation_id,
+                  source_document_id: 'source-crossref-001',
+                  usage_type: 'attached_input',
+                  note: 'Accepted for analyst intake.',
+                  created_at: current.audit_record.timestamp,
+                },
+              ],
+              claim_usages: [
+                {
+                  id: 'claim-usage-001',
+                  evaluation_id: current.evaluation_id,
+                  claim_id: 'claim-001',
+                  usage_type: 'input_support',
+                  note: 'Used to support deterministic intake selection.',
+                  created_at: current.audit_record.timestamp,
+                },
+              ],
+              workspace_snapshots: [
+                {
+                  id: 'snapshot-001',
+                  evaluation_id: current.evaluation_id,
+                  case_id: current.case_id,
+                  snapshot_type: 'evaluation',
+                  payload: { fixture: true },
+                  created_at: current.audit_record.timestamp,
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      expect(evidenceHtml).toContain('Persisted source usage');
+      expect(evidenceHtml).toContain('Accepted for analyst intake.');
+      expect(evidenceHtml).toContain('Workspace snapshot inventory');
 
       const auditHtml = renderToStaticMarkup(
         React.createElement(
@@ -237,10 +283,7 @@ describe('workspace presenters', () => {
 
       expect(auditHtml).toContain('Assumptions and defaults audit');
       expect(auditHtml).toContain('Confidence and uncertainty summary');
-      expect(auditHtml).toContain('Persisted source usage');
-      expect(auditHtml).toContain('Accepted for analyst intake.');
-      expect(auditHtml).toContain('Workspace snapshot inventory');
-      expect(auditHtml).toContain('View audit record');
+      expect(auditHtml).toContain('Traceability payload');
       expect(auditHtml).toContain('View raw evaluation data');
     } finally {
       await repository.disconnect();
