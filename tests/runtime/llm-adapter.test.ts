@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DecisionOutput } from '@metrev/domain-contracts';
+import type {
+    DecisionOutput,
+    ResearchColumnDefinition,
+    ResearchPaperMetadata,
+} from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
     generateEvidenceAssistantBrief,
     generateNarrative,
     generateReportConversationAnswer,
+    generateStructuredResearchExtraction,
     type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
@@ -149,6 +154,45 @@ function buildReportConversationContext(
       },
     ],
     selectedSection,
+  };
+}
+
+function buildResearchColumn(): ResearchColumnDefinition {
+  return {
+    column_id: 'research_gaps',
+    name: 'Research Gaps',
+    group: 'limitations',
+    type: 'llm_extracted',
+    answer_structure: 'specified',
+    instructions: 'Extract unresolved research gaps explicitly stated.',
+    output_schema_key: 'generic_list',
+    output_schema: {
+      items: ['string'],
+      evidence_span: 'string | null',
+      confidence: 'low | medium | high',
+    },
+    visible: true,
+    position: 12,
+  };
+}
+
+function buildResearchPaper(): ResearchPaperMetadata {
+  return {
+    paper_id: 'paper-001',
+    source_document_id: 'source-001',
+    title: 'Pilot wastewater microbial fuel cell study',
+    authors: [{ name: 'Jane Doe' }],
+    year: 2025,
+    doi: '10.1000/example',
+    journal: 'Journal of MET Studies',
+    publisher: 'METREV Press',
+    source_type: 'openalex',
+    source_url: 'https://example.org/paper-001',
+    pdf_url: null,
+    abstract_text:
+      'The study identifies unresolved scaling questions and conductivity sensitivity.',
+    citation_count: 12,
+    metadata: {},
   };
 }
 
@@ -389,6 +433,142 @@ describe('llm adapter', () => {
         status: 'generated',
         fallback_used: false,
         prompt_version: 'report-conversation-ollama-v1',
+      }),
+    });
+  });
+
+  it('uses the OpenAI-compatible endpoint for case narratives when configured', async () => {
+    process.env.METREV_LLM_MODE = 'openai';
+    process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
+    process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
+    process.env.METREV_LLM_API_KEY = 'test-key';
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: 'Remote OpenAI narrative.',
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rawInput = rawCaseInputSchema.parse(rawFixture);
+    const result = await generateNarrative({
+      normalizedCase: rawInput,
+      decisionOutput: buildDecisionOutput(),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example-openai.test/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          authorization: 'Bearer test-key',
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      narrative: 'Remote OpenAI narrative.',
+      narrativeMetadata: expect.objectContaining({
+        mode: 'openai',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        status: 'generated',
+        fallback_used: false,
+        prompt_version: 'openai-case-v1',
+      }),
+    });
+  });
+
+  it('parses structured research extraction output from the OpenAI-compatible runtime', async () => {
+    process.env.METREV_LLM_MODE = 'openai';
+    process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
+    process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
+    process.env.METREV_LLM_API_KEY = 'test-key';
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: [
+                  '```json',
+                  JSON.stringify(
+                    {
+                      answer: {
+                        items: ['Scale-up durability remains unresolved.'],
+                        evidence_span:
+                          'Scale-up durability remains unresolved.',
+                        confidence: 'medium',
+                      },
+                      confidence: 'medium',
+                      evidence_trace: [
+                        {
+                          source: 'full_text',
+                          source_document_id: 'source-001',
+                          text_span: 'Scale-up durability remains unresolved.',
+                          source_locator: 'body',
+                          page_number: 3,
+                        },
+                      ],
+                      missing_fields: [],
+                    },
+                    null,
+                    2,
+                  ),
+                  '```',
+                ].join('\n'),
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateStructuredResearchExtraction({
+      column: buildResearchColumn(),
+      paper: buildResearchPaper(),
+      sourceText:
+        'Scale-up durability remains unresolved. Conductivity sensitivity is also unresolved.',
+    });
+
+    expect(result).toEqual({
+      answer: expect.objectContaining({
+        items: ['Scale-up durability remains unresolved.'],
+      }),
+      confidence: 'medium',
+      evidenceTrace: [
+        expect.objectContaining({
+          source: 'full_text',
+          source_document_id: 'source-001',
+          page_number: 3,
+        }),
+      ],
+      missingFields: [],
+      metadata: expect.objectContaining({
+        mode: 'openai',
+        provider: 'openai',
+        prompt_version: 'research-extraction-openai-v1',
       }),
     });
   });

@@ -13,7 +13,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - `specs/016-metrev-ui-refactor/` is superseded as active execution and remains historical design-system context only.
 - `specs/017-full-big-data-workspace/` remains the completed big-data, persistence, and cockpit baseline.
 - `specs/018-evidence-intelligence-workspace/` remains an internal/advanced evidence instrument. Its assistant is not the final report conversation feature.
-- `specs/019-research-intelligence-review-table-engine/` remains an internal scientific research-table tool. Full validation must be recorded before treating it as fully closed.
+- `specs/019-research-intelligence-review-table-engine/` remains the detailed research-integration execution pack. Live provider search and staged warehouse import are now part of that slice, while the broader extraction, normalization, and downstream report/dashboard integration work remains open until full validation is recorded.
 
 ## Scope
 
@@ -22,6 +22,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - Public landing page that explains the science, obstacles, ODS/SDG impact, METREV value, and the configure-to-report flow.
 - Signed-in navigation centered on Dashboard, Configure Stack, Evaluations, and Reports.
 - Advanced/Internal grouping for Evidence Explorer, Evidence Review, and Research Tables.
+- Research Tables support live external paper search and staged import into the canonical warehouse before extraction and evidence-pack work begins.
 - Dashboard reframed as a workspace home for active cases, recent evaluations, reports, readiness, and next actions.
 - Stack configuration cockpit-wizard direction anchored to canonical domain and contract vocabulary.
 - Evaluation workspace labels reframed for client clarity: Diagnosis, Recommendations, Modeling, Roadmap & Suppliers, Report, and Audit.
@@ -29,6 +30,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - Printable report remains the main deliverable and includes collapsed traceability.
 - Report-grounded conversation using backend-built context packages and current LLM modes: `disabled`, `stub`, `ollama`.
 - Targeted data/bootstrap hardening for resumability, dedupe, review-state preservation, claim-review consistency, and lineage persistence.
+- Research intelligence remains contract-first and warehouse-first even when the UI queries external providers live.
 
 ### Out
 
@@ -47,6 +49,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 6. Report conversation answers must be grounded in a server-built context package, not direct database access.
 7. Report conversation must refuse or constrain unsupported requests, guarantees, raw database dumping, and speculative recalculation.
 8. Data ingestion/bootstrap work must avoid silently losing analyst review status or breaking citations.
+9. Live research search must stage external results into the canonical METREV warehouse before review-table extraction or downstream evidence-pack use.
 
 ## Acceptance Criteria
 

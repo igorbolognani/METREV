@@ -4,6 +4,7 @@ import {
   confidenceLevelSchema,
   evidenceStrengthSchema,
   evidenceTypeSchema,
+  externalEvidenceAccessStatusSchema,
   externalEvidenceSourceTypeSchema,
   rawEvidenceRecordSchema,
 } from './schemas';
@@ -12,6 +13,12 @@ const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 const nullableStringSchema = z.string().min(1).nullable();
 
 export const researchReviewStatusSchema = z.enum(['active', 'archived']);
+
+export const researchSearchProviderSchema = z.enum([
+  'openalex',
+  'crossref',
+  'europe_pmc',
+]);
 
 export const researchColumnTypeSchema = z.enum([
   'metadata',
@@ -27,15 +34,19 @@ export const researchExtractionJobStatusSchema = z.enum([
   'failed',
 ]);
 
+export const researchBackfillStatusSchema = z.enum([
+  'queued',
+  'running',
+  'completed',
+  'failed',
+]);
+
 export const researchExtractionResultStatusSchema = z.enum([
   'valid',
   'invalid',
 ]);
 
-export const researchEvidencePackStatusSchema = z.enum([
-  'draft',
-  'reviewed',
-]);
+export const researchEvidencePackStatusSchema = z.enum(['draft', 'reviewed']);
 
 export const researchTechnologyClassSchema = z.enum([
   'MFC',
@@ -48,7 +59,14 @@ export const researchTechnologyClassSchema = z.enum([
 ]);
 
 export const researchEvidenceTraceSchema = z.object({
-  source: z.enum(['title', 'abstract', 'claim', 'metadata', 'payload']),
+  source: z.enum([
+    'title',
+    'abstract',
+    'claim',
+    'metadata',
+    'payload',
+    'full_text',
+  ]),
   text_span: z.string().min(1),
   source_document_id: z.string().min(1).optional(),
   claim_id: z.string().min(1).optional(),
@@ -78,9 +96,33 @@ export const researchPaperMetadataSchema = z.object({
   source_type: externalEvidenceSourceTypeSchema,
   source_url: nullableStringSchema,
   pdf_url: nullableStringSchema,
+  xml_url: nullableStringSchema.default(null),
   abstract_text: z.string().nullable(),
   citation_count: z.number().int().nonnegative().nullable(),
   metadata: flexibleObjectSchema.default({}),
+});
+
+export const researchPaperSearchResultSchema = z.object({
+  source_type: researchSearchProviderSchema,
+  source_key: z.string().min(1),
+  title: z.string().min(1),
+  authors: z.array(flexibleObjectSchema).default([]),
+  year: z.number().int().nullable(),
+  doi: nullableStringSchema,
+  journal: nullableStringSchema,
+  publisher: nullableStringSchema,
+  source_url: nullableStringSchema,
+  pdf_url: nullableStringSchema,
+  xml_url: nullableStringSchema,
+  abstract_text: z.string().nullable(),
+  citation_count: z.number().int().nonnegative().nullable(),
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  metadata: flexibleObjectSchema.default({}),
+});
+
+export const researchPaperSearchFailureSchema = z.object({
+  provider: researchSearchProviderSchema,
+  message: z.string().min(1),
 });
 
 export const researchColumnDefinitionSchema = z
@@ -137,9 +179,7 @@ export const researchSystemPerformanceExtractionSchema = z.object({
     .default({}),
   substrate_feedstock: z.array(z.string()).default([]),
   operating_conditions: flexibleObjectSchema.default({}),
-  electrochemical_metrics: z
-    .array(researchMetricMeasurementSchema)
-    .default([]),
+  electrochemical_metrics: z.array(researchMetricMeasurementSchema).default([]),
   treatment_metrics: z.array(researchMetricMeasurementSchema).default([]),
   product_outputs: z.array(researchMetricMeasurementSchema).default([]),
   scale: z.string().nullable().default(null),
@@ -300,6 +340,62 @@ export const createResearchReviewRequestSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
   query: z.string().trim().min(3).max(500),
   limit: z.number().int().min(1).max(100).default(25),
+  source_document_ids: z.array(z.string().min(1)).min(1).max(100).optional(),
+});
+
+export const searchResearchPapersRequestSchema = z.object({
+  query: z.string().trim().min(3).max(500),
+  limit: z.number().int().min(1).max(50).default(15),
+  page: z.number().int().positive().default(1),
+  providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(),
+});
+
+export const searchResearchPapersResponseSchema = z.object({
+  query: z.string().min(1),
+  providers: z.array(researchSearchProviderSchema).default([]),
+  items: z.array(researchPaperSearchResultSchema).default([]),
+  failed_providers: z.array(researchPaperSearchFailureSchema).default([]),
+});
+
+export const stageResearchPapersRequestSchema = z.object({
+  query: z.string().trim().min(3).max(500).optional(),
+  items: z.array(researchPaperSearchResultSchema).min(1).max(100),
+});
+
+export const stageResearchPapersResponseSchema = z.object({
+  query: z.string().nullable().default(null),
+  imported_count: z.number().int().nonnegative(),
+  source_document_ids: z.array(z.string().min(1)).default([]),
+  papers: z.array(researchPaperMetadataSchema).default([]),
+});
+
+export const queueResearchBackfillRequestSchema = z.object({
+  query: z.string().trim().min(3).max(500),
+  providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(),
+  per_provider_limit: z.number().int().min(1).max(100).default(25),
+  max_pages: z.number().int().min(1).max(100).default(1),
+});
+
+export const researchBackfillSummarySchema = z.object({
+  run_id: z.string().min(1),
+  query: z.string().min(1),
+  status: researchBackfillStatusSchema,
+  providers: z.array(researchSearchProviderSchema).default([]),
+  per_provider_limit: z.number().int().positive(),
+  max_pages: z.number().int().positive(),
+  next_page: z.number().int().positive(),
+  pages_completed: z.number().int().nonnegative(),
+  records_fetched: z.number().int().nonnegative(),
+  records_stored: z.number().int().nonnegative(),
+  failed_providers: z.array(researchPaperSearchFailureSchema).default([]),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+  completed_at: z.string().min(1).nullable().default(null),
+  failure_message: z.string().min(1).nullable().default(null),
+});
+
+export const researchBackfillListResponseSchema = z.object({
+  items: z.array(researchBackfillSummarySchema).default([]),
 });
 
 export const addResearchColumnRequestSchema = researchColumnDefinitionSchema
@@ -332,9 +428,15 @@ export const researchReviewListResponseSchema = z.object({
 });
 
 export type ResearchReviewStatus = z.infer<typeof researchReviewStatusSchema>;
+export type ResearchSearchProvider = z.infer<
+  typeof researchSearchProviderSchema
+>;
 export type ResearchColumnType = z.infer<typeof researchColumnTypeSchema>;
 export type ResearchExtractionJobStatus = z.infer<
   typeof researchExtractionJobStatusSchema
+>;
+export type ResearchBackfillStatus = z.infer<
+  typeof researchBackfillStatusSchema
 >;
 export type ResearchExtractionResultStatus = z.infer<
   typeof researchExtractionResultStatusSchema
@@ -347,6 +449,12 @@ export type ResearchMetricMeasurement = z.infer<
   typeof researchMetricMeasurementSchema
 >;
 export type ResearchPaperMetadata = z.infer<typeof researchPaperMetadataSchema>;
+export type ResearchPaperSearchResult = z.infer<
+  typeof researchPaperSearchResultSchema
+>;
+export type ResearchPaperSearchFailure = z.infer<
+  typeof researchPaperSearchFailureSchema
+>;
 export type ResearchColumnDefinition = z.infer<
   typeof researchColumnDefinitionSchema
 >;
@@ -368,6 +476,27 @@ export type ResearchReviewSummary = z.infer<typeof researchReviewSummarySchema>;
 export type ResearchReviewDetail = z.infer<typeof researchReviewDetailSchema>;
 export type CreateResearchReviewRequest = z.infer<
   typeof createResearchReviewRequestSchema
+>;
+export type SearchResearchPapersRequest = z.infer<
+  typeof searchResearchPapersRequestSchema
+>;
+export type SearchResearchPapersResponse = z.infer<
+  typeof searchResearchPapersResponseSchema
+>;
+export type StageResearchPapersRequest = z.infer<
+  typeof stageResearchPapersRequestSchema
+>;
+export type StageResearchPapersResponse = z.infer<
+  typeof stageResearchPapersResponseSchema
+>;
+export type QueueResearchBackfillRequest = z.infer<
+  typeof queueResearchBackfillRequestSchema
+>;
+export type ResearchBackfillSummary = z.infer<
+  typeof researchBackfillSummarySchema
+>;
+export type ResearchBackfillListResponse = z.infer<
+  typeof researchBackfillListResponseSchema
 >;
 export type AddResearchColumnRequest = z.infer<
   typeof addResearchColumnRequestSchema

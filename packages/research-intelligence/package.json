@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@metrev/domain-contracts": "workspace:*",
+    "@metrev/llm-adapter": "workspace:*",
     "@metrev/utils": "workspace:*"
   },
   "devDependencies": {

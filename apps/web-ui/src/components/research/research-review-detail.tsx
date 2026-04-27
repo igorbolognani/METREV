@@ -5,30 +5,30 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    ResearchColumnDefinition,
-    ResearchDecisionIngestionPreview,
-    ResearchEvidencePack,
-    ResearchExtractionResult,
-    ResearchPaperMetadata,
-    ResearchReviewDetail,
+  ResearchColumnDefinition,
+  ResearchDecisionIngestionPreview,
+  ResearchEvidencePack,
+  ResearchExtractionResult,
+  ResearchPaperMetadata,
+  ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-    addResearchColumn,
-    createResearchEvidencePack,
-    fetchResearchEvidencePackDecisionInput,
-    fetchResearchReview,
-    runResearchExtractions,
+  addResearchColumn,
+  createResearchEvidencePack,
+  fetchResearchEvidencePackDecisionInput,
+  fetchResearchReview,
+  runResearchExtractions,
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 
@@ -208,18 +208,28 @@ function EvidencePackViewer({
         <span className="meta-chip">{pack.confidence} confidence</span>
       </div>
       {decisionInput ? (
-        <pre className="payload-preview">
-          {JSON.stringify(
-            {
-              evidence_records: decisionInput.evidence_records.length,
-              measured_metric_candidates:
-                decisionInput.measured_metric_candidates,
-              missing_data: decisionInput.missing_data,
-            },
-            null,
-            2,
-          )}
-        </pre>
+        <>
+          <pre className="payload-preview">
+            {JSON.stringify(
+              {
+                evidence_records: decisionInput.evidence_records.length,
+                measured_metric_candidates:
+                  decisionInput.measured_metric_candidates,
+                missing_data: decisionInput.missing_data,
+              },
+              null,
+              2,
+            )}
+          </pre>
+          <div className="workspace-action-row">
+            <Link
+              className="button secondary"
+              href={`/cases/new?researchPackId=${pack.pack_id}`}
+            >
+              Use in evaluation
+            </Link>
+          </div>
+        </>
       ) : null}
     </WorkspaceDataCard>
   );

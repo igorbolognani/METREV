@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
-import { PublicLandingPage } from '@/components/public-landing';
+import { PublicOverviewHub } from '@/components/public-overview-hub';
 
 export default async function HomePage() {
   const session = await auth();
@@ -11,8 +11,8 @@ export default async function HomePage() {
   }
 
   return (
-    <main>
-      <PublicLandingPage />
+    <main className="landing-main">
+      <PublicOverviewHub />
     </main>
   );
 }

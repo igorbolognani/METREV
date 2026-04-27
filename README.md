@@ -103,6 +103,7 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run validate:local`
 - `pnpm run validate:full`
 - `pnpm run dev:api`
+- `pnpm run dev:research-worker`
 - `pnpm run dev:web`
 - `pnpm run dev`
 - `docker compose up --build`
@@ -149,7 +150,7 @@ On this Linux setup, the quickest path is to use the root workspace scripts that
 - `pnpm install`
 - `pnpm run local:view:start`
 
-That flow starts PostgreSQL, API, Jaeger, and the web app on the stable local-view ports below, then opens the login page in Google Chrome.
+That flow starts PostgreSQL, API, the dedicated research worker, Jaeger, and the web app on the stable local-view ports below, then opens the login page in Google Chrome.
 
 - web: `http://localhost:3012/login`
 - api: `http://localhost:4012/health`
@@ -184,8 +185,9 @@ That means the Next.js app still runs and builds normally, but the custom web ex
 5. Run `pnpm run db:migrate:deploy`.
 6. Run `pnpm run db:seed`.
 7. Start the API with `pnpm run dev:api`.
-8. Start the web app with `pnpm run dev:web`.
-9. Open `http://localhost:3000/login`.
+8. Start the research worker with `pnpm run dev:research-worker`.
+9. Start the web app with `pnpm run dev:web`.
+10. Open `http://localhost:3000/login`.
 
 ## First GitHub publish
 
@@ -204,9 +206,11 @@ This workspace can be published safely after local validation.
 
 - Active product roadmap: `specs/020-metrev-three-phase-product-plan/`.
 - Client-facing surfaces: public educational landing, dashboard, configure stack/new evaluation, evaluation workspace, evaluation registry, case history, comparison, printable report, exports, and report-grounded explanation.
-- Internal/advanced surfaces: evidence explorer, evidence review, research tables, ingestion/bootstrap tooling, raw provenance inspection, and deeper audit/warehouse operations.
+- Internal/advanced surfaces: evidence explorer, evidence review, research tables with live external paper search plus staged warehouse import, ingestion/bootstrap tooling, raw provenance inspection, and deeper audit/warehouse operations.
 - Completed and validated baseline: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, analyst workbench surfaces, PostgreSQL-backed persistence tests, and local Jaeger trace visibility.
-- Still intentionally staged for later platform hardening: production-grade external auth providers, deployment automation beyond the local and repository CI path, deeper relational expansion of materials/benchmarks/extractions that still live partly in structured JSON columns, and production-like big-data intelligence claims until bootstrap validation is rerun and recorded under 020.
+- Current scale-up slice: the research workspace can now search OpenAlex, Crossref, and Europe PMC live from the UI, queue resumable warehouse backfills, stage selected results into the canonical METREV evidence warehouse, and create review tables directly from those staged source records without creating a second paper store.
+- Research-intelligence runtime status: a dedicated `apps/research-worker` process now drains queued backfills and extraction jobs, full-text hydration is attempted from XML/HTML/PDF links during extraction, provider-backed structured LLM extraction is available through the shared adapter runtime, and research evidence packs can flow into case intake plus downstream evaluation provenance.
+- Still staged for later platform hardening: broader seeded corpus distribution beyond the bounded bootstrap snapshot, deeper relational expansion of materials/benchmarks/extractions that still live partly in structured JSON columns, and richer automatic dashboard/report refresh patterns beyond the current case-intake attachment path.
 
 ## Current Validation Snapshot
 

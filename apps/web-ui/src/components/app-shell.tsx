@@ -22,6 +22,8 @@ export function AppShell({ children, signOutAction, user }: AppShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
   const [hasHydrated, setHasHydrated] = React.useState(false);
+  const isPublicLearningPath =
+    pathname === '/' || pathname.startsWith('/learn');
 
   React.useEffect(() => {
     const storedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -43,7 +45,7 @@ export function AppShell({ children, signOutAction, user }: AppShellProps) {
     );
   }, [collapsed, hasHydrated]);
 
-  if (!user) {
+  if (!user || isPublicLearningPath) {
     return <>{children}</>;
   }
 

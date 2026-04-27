@@ -35,7 +35,8 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 - `specs/014-local-first-professional-workspace/` remains local-first workspace background context.
 - `specs/016-metrev-ui-refactor/` is superseded as active execution and should be used only as historical design-system context.
 - `specs/017-full-big-data-workspace/` remains the completed big-data/cockpit baseline.
-- `specs/018-evidence-intelligence-workspace/` and `specs/019-research-intelligence-review-table-engine/` are internal/advanced evidence and research instruments under the 020 product roadmap.
+- `specs/018-evidence-intelligence-workspace/` remains the internal/advanced evidence instrument under the 020 product roadmap.
+- `specs/019-research-intelligence-review-table-engine/` is the active research-integration execution pack under 020 for live literature search, staged warehouse import, review tables, extraction, and evidence-pack follow-on work.
 - `specs/_examples/` remains example-only workflow material; use `specs/_templates/` and maintained numbered packs for live work.
 - `docs/historical-cleanup-notes.md` is the consolidated historical note for earlier cleanup waves. It provides background context only.
 - Historical duplicate copies previously kept under `archive/legacy-root-duplicates/` have been retired where equivalent module-local source copies still exist.

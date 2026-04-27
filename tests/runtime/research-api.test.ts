@@ -70,6 +70,64 @@ describe('research API flow', () => {
 
       expect(forbiddenCreate.statusCode).toBe(403);
 
+      const forbiddenSearch = await app.inject({
+        method: 'POST',
+        url: '/api/research/search',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-viewer-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          limit: 3,
+        },
+      });
+
+      expect(forbiddenSearch.statusCode).toBe(403);
+
+      const searchResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          limit: 3,
+        },
+      });
+
+      expect(searchResponse.statusCode).toBe(200);
+      const searched = searchResponse.json();
+      expect(searched.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source_type: 'openalex',
+          }),
+        ]),
+      );
+
+      const importResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search/import',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          items: searched.items.slice(0, 1),
+        },
+      });
+
+      expect(importResponse.statusCode).toBe(201);
+      const imported = importResponse.json();
+      expect(imported).toMatchObject({
+        imported_count: 1,
+        source_document_ids: expect.any(Array),
+      });
+
       const createResponse = await app.inject({
         method: 'POST',
         url: '/api/research/reviews',
@@ -80,7 +138,8 @@ describe('research API flow', () => {
         payload: {
           title: 'MFC fixture review',
           query: 'microbial fuel cell wastewater carbon felt',
-          limit: 2,
+          limit: 1,
+          source_document_ids: imported.source_document_ids,
         },
       });
 
@@ -88,7 +147,11 @@ describe('research API flow', () => {
       const created = createResponse.json();
       expect(created).toMatchObject({
         title: 'MFC fixture review',
-        paper_count: 2,
+        paper_count: 1,
+      });
+      expect(created.papers[0]).toMatchObject({
+        source_document_id: imported.source_document_ids[0],
+        source_type: 'openalex',
       });
       expect(
         created.columns.map(

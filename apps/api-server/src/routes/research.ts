@@ -4,18 +4,23 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-    addResearchColumnRequestSchema,
-    createResearchEvidencePackRequestSchema,
-    createResearchReviewRequestSchema,
-    runResearchExtractionsRequestSchema,
-    runResearchExtractionsResponseSchema,
+  addResearchColumnRequestSchema,
+  createResearchEvidencePackRequestSchema,
+  createResearchReviewRequestSchema,
+  queueResearchBackfillRequestSchema,
+  runResearchExtractionsRequestSchema,
+  runResearchExtractionsResponseSchema,
+  searchResearchPapersRequestSchema,
+  stageResearchPapersRequestSchema,
 } from '@metrev/domain-contracts';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    getDefaultResearchColumns,
-    runDeterministicResearchExtraction,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  executeResearchExtraction,
+  getDefaultResearchColumns,
+  hydrateResearchPaperText,
+  type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 import { withSpan } from '@metrev/telemetry';
 
@@ -61,6 +66,59 @@ function requireAnalyst(
 export async function registerResearchRoutes(
   app: FastifyInstance,
 ): Promise<void> {
+  app.post('/search', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const parsed = searchResearchPapersRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_input',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const response = await withSpan(
+      'research.search',
+      () => app.researchRepository.searchResearchPapers(parsed.data),
+      {
+        actor_id: actor.userId,
+        query: parsed.data.query,
+      },
+    );
+
+    return reply.send(response);
+  });
+
+  app.post('/search/import', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const parsed = stageResearchPapersRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_input',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const response = await withSpan(
+      'research.search.import',
+      () => app.researchRepository.stageResearchPapers(parsed.data),
+      {
+        actor_id: actor.userId,
+        query: parsed.data.query,
+        item_count: parsed.data.items.length,
+      },
+    );
+
+    return reply.code(201).send(response);
+  });
+
   app.get('/reviews', async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
@@ -74,6 +132,51 @@ export async function registerResearchRoutes(
     );
 
     return reply.send(response);
+  });
+
+  app.get('/backfills', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const response = await withSpan(
+      'research.backfills.list',
+      () => app.researchRepository.listResearchBackfills(),
+      { actor_id: actor.userId },
+    );
+
+    return reply.send(response);
+  });
+
+  app.post('/backfills', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const parsed = queueResearchBackfillRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_input',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const response = await withSpan(
+      'research.backfills.enqueue',
+      () =>
+        app.researchRepository.enqueueResearchBackfill({
+          ...parsed.data,
+          actorId: actor.userId,
+        }),
+      {
+        actor_id: actor.userId,
+        query: parsed.data.query,
+      },
+    );
+
+    return reply.code(201).send(response);
   });
 
   app.post('/reviews', async (request, reply) => {
@@ -216,13 +319,26 @@ export async function registerResearchRoutes(
     const results = [];
     let completed = 0;
     let failed = 0;
+    const paperTextCache = new Map<
+      string,
+      Promise<HydratedResearchPaperText | null>
+    >();
 
     for (const job of jobs) {
-      const result = runDeterministicResearchExtraction({
+      const result = await executeResearchExtraction({
         reviewId,
         paper: job.paper,
         column: job.column,
         claims: job.claims,
+        fetchPaperText: (paper) => {
+          let cached = paperTextCache.get(paper.paper_id);
+          if (!cached) {
+            cached = hydrateResearchPaperText(paper);
+            paperTextCache.set(paper.paper_id, cached);
+          }
+
+          return cached;
+        },
       });
       const saved = await app.researchRepository.saveResearchExtractionResult({
         jobId: job.job.job_id,

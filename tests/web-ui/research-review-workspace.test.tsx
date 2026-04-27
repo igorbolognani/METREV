@@ -6,11 +6,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchExtractionResultSchema,
-    researchPaperMetadataSchema,
-    researchReviewDetailSchema,
+  researchBackfillSummarySchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchExtractionResultSchema,
+  researchPaperMetadataSchema,
+  researchPaperSearchFailureSchema,
+  researchPaperSearchResultSchema,
+  researchReviewDetailSchema,
 } from '@metrev/domain-contracts';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 
@@ -37,9 +40,13 @@ vi.mock('@/lib/api', () => ({
   addResearchColumn: vi.fn(),
   createResearchEvidencePack: vi.fn(),
   createResearchReview: vi.fn(),
+  fetchResearchBackfills: vi.fn(),
   fetchResearchEvidencePackDecisionInput: vi.fn(),
   fetchResearchReview: vi.fn(),
   fetchResearchReviews: vi.fn(),
+  queueResearchBackfill: vi.fn(),
+  searchResearchPapers: vi.fn(),
+  stageResearchPapers: vi.fn(),
   runResearchExtractions: vi.fn(),
 }));
 
@@ -164,13 +171,85 @@ describe('research review workspace UI', () => {
     const createHtml = renderToStaticMarkup(
       React.createElement(ResearchReviewListView, {
         activeTab: 'create',
+        backfillMaxPages: 3,
+        backfillPending: false,
+        backfills: [
+          researchBackfillSummarySchema.parse({
+            run_id: 'run-001',
+            query: 'microbial fuel cell wastewater',
+            status: 'queued',
+            providers: ['openalex', 'crossref', 'europe_pmc'],
+            per_provider_limit: 25,
+            max_pages: 3,
+            next_page: 1,
+            pages_completed: 0,
+            records_fetched: 0,
+            records_stored: 0,
+            failed_providers: [],
+            created_at: now,
+            updated_at: now,
+            completed_at: null,
+            failure_message: null,
+          }),
+        ],
         createPending: false,
+        importPending: false,
+        importedPapers: [
+          researchPaperMetadataSchema.parse({
+            paper_id: 'staged:source-001',
+            source_document_id: 'source-001',
+            title: 'Imported fixture paper',
+            authors: [],
+            year: 2025,
+            doi: '10.1000/imported-fixture',
+            journal: 'Fixture Journal',
+            publisher: 'Fixture Publisher',
+            source_type: 'openalex',
+            source_url: 'https://example.org/imported',
+            pdf_url: null,
+            abstract_text: 'Imported abstract',
+            citation_count: 2,
+            metadata: {},
+          }),
+        ],
         limit: 25,
+        onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
+        onQueueBackfill: vi.fn(),
+        onImportSelected: vi.fn(),
         onLimitChange: vi.fn(),
+        onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
+        onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
+        searchFailures: [
+          researchPaperSearchFailureSchema.parse({
+            provider: 'crossref',
+            message: 'Rate limit warning',
+          }),
+        ],
+        searchPending: false,
+        searchResults: [
+          researchPaperSearchResultSchema.parse({
+            source_type: 'openalex',
+            source_key: 'https://openalex.org/W123',
+            title: 'Live search fixture paper',
+            authors: [{ name: 'Fixture Author' }],
+            year: 2025,
+            doi: '10.1000/live-search-fixture',
+            journal: 'Fixture Journal',
+            publisher: 'Fixture Publisher',
+            source_url: 'https://example.org/live-search-fixture',
+            pdf_url: null,
+            xml_url: null,
+            abstract_text: 'Live search abstract fixture',
+            citation_count: 12,
+            access_status: 'green',
+            metadata: {},
+          }),
+        ],
+        selectedSearchResultKeys: ['openalex:https://openalex.org/W123'],
         reviews: [
           {
             review_id: 'review-001',
@@ -193,13 +272,27 @@ describe('research review workspace UI', () => {
     const reviewsHtml = renderToStaticMarkup(
       React.createElement(ResearchReviewListView, {
         activeTab: 'reviews',
+        backfillMaxPages: 3,
+        backfillPending: false,
+        backfills: [],
         createPending: false,
+        importPending: false,
+        importedPapers: [],
         limit: 25,
+        onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
+        onImportSelected: vi.fn(),
         onLimitChange: vi.fn(),
+        onQueueBackfill: vi.fn(),
+        onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
+        onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
+        searchFailures: [],
+        searchPending: false,
+        searchResults: [],
+        selectedSearchResultKeys: [],
         reviews: [
           {
             review_id: 'review-001',
@@ -222,6 +315,12 @@ describe('research review workspace UI', () => {
     expect(createHtml).toContain('Research intelligence');
     expect(createHtml).toContain('Research layers');
     expect(createHtml).toContain('Create review');
+    expect(createHtml).toContain('Warehouse backfill');
+    expect(createHtml).toContain('Queue warehouse backfill');
+    expect(createHtml).toContain('External paper search');
+    expect(createHtml).toContain('Live search fixture paper');
+    expect(createHtml).toContain('Import selected papers');
+    expect(createHtml).toContain('Create review from imported papers');
     expect(reviewsHtml).toContain('MFC fixture review');
     expect(reviewsHtml).toContain('/research/reviews/review-001');
     expect(reviewsHtml).toContain('Open table');

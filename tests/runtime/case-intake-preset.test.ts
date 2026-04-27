@@ -189,4 +189,63 @@ describe('case intake preset catalog', () => {
       expect.arrayContaining(['reviewed-catalog', 'source:crossref']),
     );
   });
+
+  it('appends research-pack evidence, assumptions, and missing-data flags into the outgoing intake payload', () => {
+    const payload = buildCaseInputFromFormValues(
+      {
+        ...wastewaterGoldenCasePreset.formValues,
+        evidenceTitle: '',
+        evidenceSummary: '',
+      },
+      wastewaterGoldenCasePreset,
+      [],
+      {
+        pack_id: 'pack-001',
+        review_id: 'review-001',
+        evidence_records: [
+          {
+            evidence_id: 'research:review-001:paper-001',
+            evidence_type: 'literature_evidence',
+            title: 'Research pack paper',
+            summary: 'Validated extraction result for wastewater MFC scale-up.',
+            applicability_scope: {
+              review_id: 'review-001',
+              source_document_id: 'source-001',
+            },
+            strength_level: 'moderate',
+            provenance_note: 'Built from a research evidence pack.',
+            quantitative_metrics: {},
+            operating_conditions: {},
+            block_mapping: [],
+            limitations: [],
+            contradiction_notes: [],
+            tags: ['research-review'],
+          },
+        ],
+        measured_metric_candidates: {
+          power_density_w_m2: 0.95,
+        },
+        missing_data: ['pilot_duration'],
+        assumptions: [
+          'Literature-derived values still require site fit review.',
+        ],
+      },
+    );
+
+    expect(payload.evidence_records).toHaveLength(1);
+    expect(payload.evidence_records?.[0]?.evidence_id).toBe(
+      'research:review-001:paper-001',
+    );
+    expect(payload.evidence_records?.[0]?.tags).toEqual(
+      expect.arrayContaining(['research-pack']),
+    );
+    expect(payload.assumptions).toEqual(
+      expect.arrayContaining([
+        'Literature-derived values still require site fit review.',
+      ]),
+    );
+    expect(payload.missing_data).toEqual(
+      expect.arrayContaining(['pilot_duration']),
+    );
+  });
 });

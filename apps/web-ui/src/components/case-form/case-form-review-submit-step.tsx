@@ -2,7 +2,10 @@
 
 import * as React from 'react';
 
-import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
+import type {
+  ExternalEvidenceCatalogItemSummary,
+  ResearchDecisionIngestionPreview,
+} from '@metrev/domain-contracts';
 
 import type { CaseIntakeFormValues, CaseIntakePreset } from '@/lib/case-intake';
 
@@ -41,6 +44,10 @@ export interface CaseFormReviewSubmitStepProps {
   formValues: CaseIntakeFormValues;
   onFieldChange: (field: keyof CaseIntakeFormValues, value: string) => void;
   preferredSupplierCount: number;
+  researchDecisionInput: ResearchDecisionIngestionPreview | null;
+  researchPackError: string | null;
+  researchPackId: string | null;
+  researchPackLoading: boolean;
   selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[];
   stackSummary: Array<{ key: string; label: string; value: string }>;
   warningMessages: string[];
@@ -52,6 +59,10 @@ export function CaseFormReviewSubmitStep({
   formValues,
   onFieldChange,
   preferredSupplierCount,
+  researchDecisionInput,
+  researchPackError,
+  researchPackId,
+  researchPackLoading,
   selectedCatalogEvidence,
   stackSummary,
   warningMessages,
@@ -59,6 +70,8 @@ export function CaseFormReviewSubmitStep({
   const painPoints = splitCommaSeparated(formValues.painPoints);
   const preferredSuppliers = splitCommaSeparated(formValues.preferredSuppliers);
   const currentSuppliers = splitCommaSeparated(formValues.currentSuppliers);
+  const researchEvidenceTitles =
+    researchDecisionInput?.evidence_records.map((entry) => entry.title) ?? [];
 
   return (
     <div className="workspace-form-layout">
@@ -109,6 +122,13 @@ export function CaseFormReviewSubmitStep({
             <p className="muted">
               {selectedCatalogEvidence.length} accepted catalog evidence
               record(s) selected.
+            </p>
+            <p className="muted">
+              {researchPackId
+                ? researchPackLoading
+                  ? 'Research pack evidence is loading.'
+                  : `${researchDecisionInput?.evidence_records.length ?? 0} research-pack evidence record(s) attached.`
+                : 'No research pack attached.'}
             </p>
             <p className="muted">
               Manual typed evidence:{' '}
@@ -183,6 +203,24 @@ export function CaseFormReviewSubmitStep({
             </div>
           ) : (
             <p className="muted">No accepted catalog evidence selected.</p>
+          )}
+        </WorkspaceDataCard>
+        <WorkspaceDataCard>
+          <h3>Research pack attachment</h3>
+          {researchPackError ? (
+            <p className="error">{researchPackError}</p>
+          ) : researchPackLoading ? (
+            <p className="muted">Loading research pack evidence.</p>
+          ) : researchEvidenceTitles.length > 0 ? (
+            <div className="workspace-chip-list compact">
+              {researchEvidenceTitles.map((entry) => (
+                <span className="meta-chip" key={entry}>
+                  {entry}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No research pack attached.</p>
           )}
         </WorkspaceDataCard>
       </div>

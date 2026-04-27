@@ -9,4 +9,7 @@
 - [x] Add API routes and app wiring.
 - [x] Add web routes, navigation, and table/detail components.
 - [x] Add deterministic tests and fixtures.
+- [x] Add queued warehouse backfills plus dedicated research-worker orchestration.
+- [x] Add hydrated full-text and provider-backed structured extraction runtime.
+- [x] Propagate research evidence packs into case intake and evaluation provenance.
 - [ ] Run full validation matrix and record results.

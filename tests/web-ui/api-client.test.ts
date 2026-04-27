@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  evaluateCase,
-  fetchEvidenceExplorerAssistant,
-  fetchEvidenceExplorerCsvExport,
-  fetchEvidenceExplorerWorkspace,
-  fetchEvaluationCsvExport,
-  fetchEvaluationList,
-  addResearchColumn,
-  createResearchEvidencePack,
-  createResearchReview,
-  fetchResearchEvidencePackDecisionInput,
-  fetchResearchReview,
-  fetchResearchReviews,
-  runResearchExtractions,
+    addResearchColumn,
+    createResearchEvidencePack,
+    createResearchReview,
+    evaluateCase,
+    fetchEvaluationCsvExport,
+    fetchEvaluationList,
+    fetchEvidenceExplorerAssistant,
+    fetchEvidenceExplorerCsvExport,
+    fetchEvidenceExplorerWorkspace,
+    fetchResearchEvidencePackDecisionInput,
+    fetchResearchReview,
+    fetchResearchReviews,
+    runResearchExtractions,
 } from '../../apps/web-ui/src/lib/api';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -334,6 +334,109 @@ describe('web API client helpers', () => {
       expect.objectContaining({
         cache: 'no-store',
         credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          query: 'microbial fuel cell',
+          providers: ['openalex', 'crossref', 'europe_pmc'],
+          items: [],
+          failed_providers: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await import('../../apps/web-ui/src/lib/api').then(
+      ({ searchResearchPapers }) =>
+        searchResearchPapers({
+          query: 'microbial fuel cell',
+          limit: 10,
+        }),
+    );
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/search',
+      expect.objectContaining({
+        body: JSON.stringify({
+          query: 'microbial fuel cell',
+          limit: 10,
+        }),
+        method: 'POST',
+      }),
+    );
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          query: 'microbial fuel cell',
+          imported_count: 1,
+          source_document_ids: ['source-001'],
+          papers: [
+            {
+              paper_id: 'staged:source-001',
+              source_document_id: 'source-001',
+              title: 'Imported paper',
+              authors: [],
+              year: 2025,
+              doi: '10.1000/imported-paper',
+              journal: 'Fixture Journal',
+              publisher: 'Fixture Publisher',
+              source_type: 'openalex',
+              source_url: 'https://example.org/paper',
+              pdf_url: null,
+              abstract_text: 'Imported fixture abstract',
+              citation_count: 3,
+              metadata: {},
+            },
+          ],
+        }),
+        {
+          status: 201,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await import('../../apps/web-ui/src/lib/api').then(
+      ({ stageResearchPapers }) =>
+        stageResearchPapers({
+          query: 'microbial fuel cell',
+          items: [
+            {
+              source_type: 'openalex',
+              source_key: 'https://openalex.org/W123',
+              title: 'Imported paper',
+              authors: [],
+              year: 2025,
+              doi: '10.1000/imported-paper',
+              journal: 'Fixture Journal',
+              publisher: 'Fixture Publisher',
+              source_url: 'https://example.org/paper',
+              pdf_url: null,
+              xml_url: null,
+              abstract_text: 'Imported fixture abstract',
+              citation_count: 3,
+              access_status: 'green',
+              metadata: {},
+            },
+          ],
+        }),
+    );
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/research/search/import',
+      expect.objectContaining({
+        method: 'POST',
       }),
     );
 

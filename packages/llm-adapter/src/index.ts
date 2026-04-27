@@ -1,4 +1,5 @@
 import type {
+    ConfidenceLevel,
     DecisionOutput,
     EvidenceExplorerWarehouseSnapshot,
     ExternalEvidenceCatalogItemSummary,
@@ -7,6 +8,9 @@ import type {
     PrintableEvaluationReportResponse,
     ReportConversationCitation,
     ReportConversationGrounding,
+    ResearchColumnDefinition,
+    ResearchEvidenceTrace,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
@@ -27,12 +31,22 @@ export interface ReportConversationAnswerResult extends NarrativeResult {
   refusalReason: string | null;
 }
 
-type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama';
+export interface StructuredResearchExtractionResult {
+  answer: unknown;
+  confidence: ConfidenceLevel;
+  evidenceTrace: ResearchEvidenceTrace[];
+  metadata: NarrativeMetadata;
+  missingFields: string[];
+}
+
+type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama' | 'openai';
+type CompletionProvider = 'ollama' | 'openai';
 
 const supportedNarrativeModes = new Set<SupportedNarrativeMode>([
   'disabled',
   'stub',
   'ollama',
+  'openai',
 ]);
 
 function resolveNarrativeMode() {
@@ -60,6 +74,10 @@ function configuredModelForMode(mode: SupportedNarrativeMode | 'stub') {
     return configuredModel;
   }
 
+  if (mode === 'openai') {
+    return 'gpt-4o-mini';
+  }
+
   if (mode === 'ollama') {
     return 'llama3.1';
   }
@@ -73,6 +91,21 @@ function getOllamaBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
+function getOpenAiCompatibleBaseUrl(): string {
+  return (
+    process.env.METREV_LLM_BASE_URL?.trim() || 'https://api.openai.com/v1'
+  ).replace(/\/+$/, '');
+}
+
+function getOpenAiCompatibleApiKey(): string | null {
+  const configured =
+    process.env.METREV_LLM_API_KEY?.trim() ??
+    process.env.OPENAI_API_KEY?.trim() ??
+    '';
+
+  return configured || null;
+}
+
 function getOllamaTimeoutMs(): number {
   const parsed = Number.parseInt(process.env.METREV_LLM_TIMEOUT_MS ?? '', 10);
 
@@ -81,6 +114,33 @@ function getOllamaTimeoutMs(): number {
   }
 
   return Math.min(20000, Math.max(500, parsed));
+}
+
+function completionProviderForMode(
+  mode: SupportedNarrativeMode,
+): CompletionProvider | null {
+  if (mode === 'ollama' || mode === 'openai') {
+    return mode;
+  }
+
+  return null;
+}
+
+function baseUrlForProvider(provider: CompletionProvider): string {
+  return provider === 'openai'
+    ? getOpenAiCompatibleBaseUrl()
+    : getOllamaBaseUrl();
+}
+
+function defaultPromptVersionForProvider(
+  provider: CompletionProvider,
+  fallback: string,
+): string {
+  if (provider === 'openai') {
+    return fallback.replace(/ollama/gi, 'openai');
+  }
+
+  return fallback;
 }
 
 function buildDisabledNarrativeResult(
@@ -121,7 +181,7 @@ function buildStubNarrativeResult(input: {
   };
 }
 
-function extractOllamaMessageContent(payload: unknown): string | null {
+function extractCompletionMessageContent(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
@@ -137,49 +197,66 @@ function extractOllamaMessageContent(payload: unknown): string | null {
     : null;
 }
 
-async function requestOllamaCompletion(input: {
+async function requestChatCompletion(input: {
+  provider: CompletionProvider;
   promptVersion: string;
   messages: Array<{ role: 'system' | 'user'; content: string }>;
 }): Promise<NarrativeResult> {
-  const model = configuredModelForMode('ollama') ?? 'llama3.1';
+  const model =
+    configuredModelForMode(input.provider) ??
+    (input.provider === 'openai' ? 'gpt-4o-mini' : 'llama3.1');
   const controller = new AbortController();
   const timeoutMs = getOllamaTimeoutMs();
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
+    const apiKey =
+      input.provider === 'openai' ? getOpenAiCompatibleApiKey() : null;
+
+    if (input.provider === 'openai' && !apiKey) {
+      throw new Error(
+        'OpenAI-compatible mode requires METREV_LLM_API_KEY or OPENAI_API_KEY.',
+      );
+    }
+
+    const response = await fetch(
+      `${baseUrlForProvider(input.provider)}/chat/completions`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model,
+          messages: input.messages,
+          temperature: 0,
+        }),
+        signal: controller.signal,
       },
-      body: JSON.stringify({
-        model,
-        messages: input.messages,
-      }),
-      signal: controller.signal,
-    });
+    );
 
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       throw new Error(
-        `Ollama request failed with status ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
+        `${input.provider} request failed with status ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
       );
     }
 
     const payload = (await response.json().catch(() => null)) as unknown;
-    const content = extractOllamaMessageContent(payload);
+    const content = extractCompletionMessageContent(payload);
 
     if (!content) {
       throw new Error(
-        'Ollama response did not include a chat completion message.',
+        `${input.provider} response did not include a chat completion message.`,
       );
     }
 
     return {
       narrative: content,
       narrativeMetadata: {
-        mode: 'ollama',
-        provider: 'ollama',
+        mode: input.provider,
+        provider: input.provider,
         model,
         status: 'generated',
         fallback_used: false,
@@ -189,7 +266,9 @@ async function requestOllamaCompletion(input: {
     };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Ollama request timed out after ${timeoutMs} ms.`);
+      throw new Error(
+        `${input.provider} request timed out after ${timeoutMs} ms.`,
+      );
     }
 
     throw error;
@@ -202,7 +281,10 @@ async function generateNarrativeWithRuntime(input: {
   stubNarrative: string;
   disabledPromptVersion: string;
   stubPromptVersion: string;
-  ollamaPromptVersion: string;
+  providerPromptVersions: {
+    ollama: string;
+    openai?: string;
+  };
   buildOllamaMessages: () => Array<{
     role: 'system' | 'user';
     content: string;
@@ -226,10 +308,19 @@ async function generateNarrativeWithRuntime(input: {
     });
   }
 
-  if (runtimeMode === 'ollama' && !unsupportedMode) {
+  const provider = completionProviderForMode(runtimeMode);
+  if (provider && !unsupportedMode) {
     try {
-      return await requestOllamaCompletion({
-        promptVersion: input.ollamaPromptVersion,
+      return await requestChatCompletion({
+        provider,
+        promptVersion:
+          provider === 'openai'
+            ? (input.providerPromptVersions.openai ??
+              defaultPromptVersionForProvider(
+                provider,
+                input.providerPromptVersions.ollama,
+              ))
+            : input.providerPromptVersions.ollama,
         messages: input.buildOllamaMessages(),
       });
     } catch (error) {
@@ -239,7 +330,7 @@ async function generateNarrativeWithRuntime(input: {
         narrative: input.stubNarrative,
         status: 'fallback',
         promptVersion: input.stubPromptVersion,
-        errorMessage: `METREV_LLM_MODE "ollama" failed while generating this response: ${message}. The deterministic stub summary was used instead.`,
+        errorMessage: `METREV_LLM_MODE "${runtimeMode}" failed while generating this response: ${message}. The deterministic stub summary was used instead.`,
       });
     }
   }
@@ -248,8 +339,139 @@ async function generateNarrativeWithRuntime(input: {
     narrative: input.stubNarrative,
     status: 'fallback',
     promptVersion: input.stubPromptVersion,
-    errorMessage: `Unsupported METREV_LLM_MODE "${unsupportedMode}" requested; this runtime build supports "disabled", "stub", and "ollama", so the deterministic stub narrative was used instead.`,
+    errorMessage: `Unsupported METREV_LLM_MODE "${unsupportedMode}" requested; this runtime build supports "disabled", "stub", "ollama", and "openai", so the deterministic stub narrative was used instead.`,
   });
+}
+
+function truncateForPrompt(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length <= maxLength
+    ? normalized
+    : `${normalized.slice(0, maxLength).trimEnd()}...`;
+}
+
+function stripJsonCodeFence(value: string): string {
+  const trimmed = value.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced?.[1]?.trim() ?? trimmed;
+}
+
+function isResearchEvidenceTrace(
+  value: unknown,
+): value is ResearchEvidenceTrace {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { source?: unknown }).source === 'string' &&
+    typeof (value as { source_document_id?: unknown }).source_document_id ===
+      'string' &&
+    typeof (value as { text_span?: unknown }).text_span === 'string',
+  );
+}
+
+function parseStructuredExtractionPayload(
+  value: string,
+): Omit<StructuredResearchExtractionResult, 'metadata'> {
+  const parsed = JSON.parse(stripJsonCodeFence(value)) as {
+    answer?: unknown;
+    confidence?: unknown;
+    evidence_trace?: unknown;
+    missing_fields?: unknown;
+  };
+  const confidence =
+    parsed.confidence === 'high' ||
+    parsed.confidence === 'medium' ||
+    parsed.confidence === 'low'
+      ? parsed.confidence
+      : ('low' as const);
+
+  return {
+    answer: parsed.answer ?? null,
+    confidence,
+    evidenceTrace: Array.isArray(parsed.evidence_trace)
+      ? parsed.evidence_trace.filter(isResearchEvidenceTrace)
+      : [],
+    missingFields: Array.isArray(parsed.missing_fields)
+      ? parsed.missing_fields.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : [],
+  };
+}
+
+function buildStructuredResearchExtractionMessages(input: {
+  column: ResearchColumnDefinition;
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+}): Array<{ role: 'system' | 'user'; content: string }> {
+  return [
+    {
+      role: 'system',
+      content:
+        'You extract structured literature evidence for METREV. Use only the supplied paper text. Return JSON only with keys answer, confidence, evidence_trace, and missing_fields. evidence_trace must be an array of objects with source, source_document_id, text_span, source_locator, and page_number. text_span must quote or tightly paraphrase only text present in the source.',
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        paper: {
+          paper_id: input.paper.paper_id,
+          source_document_id: input.paper.source_document_id,
+          title: input.paper.title,
+          doi: input.paper.doi,
+          year: input.paper.year,
+          source_type: input.paper.source_type,
+        },
+        column: {
+          column_id: input.column.column_id,
+          name: input.column.name,
+          instructions: input.column.instructions,
+          output_schema_key: input.column.output_schema_key,
+          output_schema: input.column.output_schema,
+        },
+        source_text: truncateForPrompt(input.sourceText, 16000),
+      }),
+    },
+  ];
+}
+
+export async function generateStructuredResearchExtraction(input: {
+  column: ResearchColumnDefinition;
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+}): Promise<StructuredResearchExtractionResult | null> {
+  const { runtimeMode, unsupportedMode } = resolveNarrativeMode();
+  const provider = completionProviderForMode(runtimeMode);
+
+  if (!provider || unsupportedMode) {
+    return null;
+  }
+
+  try {
+    const result = await requestChatCompletion({
+      provider,
+      promptVersion:
+        provider === 'openai'
+          ? 'research-extraction-openai-v1'
+          : 'research-extraction-ollama-v1',
+      messages: buildStructuredResearchExtractionMessages(input),
+    });
+
+    if (!result.narrative) {
+      return null;
+    }
+
+    const parsed = parseStructuredExtractionPayload(result.narrative);
+    if (parsed.evidenceTrace.length === 0 || parsed.answer === null) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      metadata: result.narrativeMetadata,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function buildStubNarrative(input: {
@@ -390,7 +612,10 @@ export async function generateEvidenceAssistantBrief(input: {
     stubNarrative: buildEvidenceAssistantStubNarrative(input),
     disabledPromptVersion: 'evidence-assistant-disabled-v1',
     stubPromptVersion: 'evidence-assistant-stub-v1',
-    ollamaPromptVersion: 'evidence-assistant-ollama-v1',
+    providerPromptVersions: {
+      ollama: 'evidence-assistant-ollama-v1',
+      openai: 'evidence-assistant-openai-v1',
+    },
     buildOllamaMessages: () => buildEvidenceAssistantMessages(input),
   });
 }
@@ -403,7 +628,10 @@ export async function generateNarrative(input: {
     stubNarrative: buildStubNarrative(input),
     disabledPromptVersion: 'deterministic-v1',
     stubPromptVersion: 'stub-v1',
-    ollamaPromptVersion: 'ollama-case-v1',
+    providerPromptVersions: {
+      ollama: 'ollama-case-v1',
+      openai: 'openai-case-v1',
+    },
     buildOllamaMessages: () => buildCaseNarrativeMessages(input),
   });
 }
@@ -516,7 +744,10 @@ export async function generateReportConversationAnswer(input: {
     }),
     disabledPromptVersion: 'report-conversation-disabled-v1',
     stubPromptVersion: 'report-conversation-stub-v1',
-    ollamaPromptVersion: 'report-conversation-ollama-v1',
+    providerPromptVersions: {
+      ollama: 'report-conversation-ollama-v1',
+      openai: 'report-conversation-openai-v1',
+    },
     buildOllamaMessages: () =>
       buildReportConversationMessages({
         context: input.context,

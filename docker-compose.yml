@@ -84,5 +84,28 @@ services:
     ports:
       - '${WEB_PORT:-3000}:3000'
 
+  research-worker:
+    build:
+      context: .
+      dockerfile: apps/research-worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      METREV_STORAGE_MODE: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
+      METREV_OTEL_ENABLED: ${METREV_OTEL_ENABLED:-true}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${DOCKER_OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      METREV_RESEARCH_WORKER_POLL_MS: ${METREV_RESEARCH_WORKER_POLL_MS:-5000}
+      METREV_RESEARCH_WORKER_EXTRACTION_LIMIT: ${METREV_RESEARCH_WORKER_EXTRACTION_LIMIT:-25}
+      METREV_RESEARCH_WORKER_BACKFILL_LIMIT: ${METREV_RESEARCH_WORKER_BACKFILL_LIMIT:-1}
+
 volumes:
   postgres-data:

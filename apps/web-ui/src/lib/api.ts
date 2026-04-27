@@ -1,12 +1,15 @@
 import type {
+  AddResearchColumnRequest,
   CaseHistoryWorkspaceResponse,
+  CreateResearchEvidencePackRequest,
+  CreateResearchReviewRequest,
   DashboardWorkspaceResponse,
-  EvidenceExplorerAssistantResponse,
-  EvidenceExplorerWorkspaceResponse,
   EvaluationComparisonResponse,
   EvaluationListResponse,
   EvaluationResponse,
   EvaluationWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
   EvidenceReviewWorkspaceResponse,
   ExportCsvResponseMetadata,
   ExternalEvidenceBulkReviewRequest,
@@ -16,18 +19,21 @@ import type {
   ExternalEvidenceReviewRequest,
   ExternalEvidenceReviewStatus,
   PrintableEvaluationReportResponse,
+  QueueResearchBackfillRequest,
+  RawCaseInput,
   ReportConversationRequest,
   ReportConversationResponse,
-  RawCaseInput,
-  AddResearchColumnRequest,
-  CreateResearchEvidencePackRequest,
-  CreateResearchReviewRequest,
+  ResearchBackfillListResponse,
   ResearchDecisionIngestionPreview,
   ResearchEvidencePack,
   ResearchReviewDetail,
   ResearchReviewListResponse,
   RunResearchExtractionsRequest,
   RunResearchExtractionsResponse,
+  SearchResearchPapersRequest,
+  SearchResearchPapersResponse,
+  StageResearchPapersRequest,
+  StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
 
 export type ExternalEvidenceSourceTypeFilter =
@@ -507,6 +513,36 @@ export async function fetchResearchReviews(): Promise<ResearchReviewListResponse
   return parseJson<ResearchReviewListResponse>(response);
 }
 
+export async function searchResearchPapers(
+  payload: SearchResearchPapersRequest,
+): Promise<SearchResearchPapersResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/search`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<SearchResearchPapersResponse>(response);
+}
+
+export async function stageResearchPapers(
+  payload: StageResearchPapersRequest,
+): Promise<StageResearchPapersResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/search/import`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<StageResearchPapersResponse>(response);
+}
+
 export async function createResearchReview(
   payload: CreateResearchReviewRequest,
 ): Promise<ResearchReviewDetail> {
@@ -522,13 +558,40 @@ export async function createResearchReview(
   return parseJson<ResearchReviewDetail>(response);
 }
 
-export async function fetchResearchReview(
-  reviewId: string,
-): Promise<ResearchReviewDetail> {
-  const response = await fetch(`${apiBaseUrl}/api/research/reviews/${reviewId}`, {
+export async function fetchResearchBackfills(): Promise<ResearchBackfillListResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/backfills`, {
     cache: 'no-store',
     credentials: 'include',
   });
+
+  return parseJson<ResearchBackfillListResponse>(response);
+}
+
+export async function queueResearchBackfill(
+  payload: QueueResearchBackfillRequest,
+): Promise<ResearchBackfillListResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/backfills`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<ResearchBackfillListResponse>(response);
+}
+
+export async function fetchResearchReview(
+  reviewId: string,
+): Promise<ResearchReviewDetail> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/reviews/${reviewId}`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
 
   return parseJson<ResearchReviewDetail>(response);
 }

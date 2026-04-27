@@ -1,15 +1,15 @@
 import {
-  researchExtractionResultSchema,
-  researchImplementationFactorsExtractionSchema,
-  researchSystemPerformanceExtractionSchema,
-  type ConfidenceLevel,
-  type EvidenceClaim,
-  type ResearchColumnDefinition,
-  type ResearchEvidenceTrace,
-  type ResearchExtractionResult,
-  type ResearchMetricMeasurement,
-  type ResearchPaperMetadata,
-  type ResearchSystemPerformanceExtraction,
+    researchExtractionResultSchema,
+    researchImplementationFactorsExtractionSchema,
+    researchSystemPerformanceExtractionSchema,
+    type ConfidenceLevel,
+    type EvidenceClaim,
+    type ResearchColumnDefinition,
+    type ResearchEvidenceTrace,
+    type ResearchExtractionResult,
+    type ResearchMetricMeasurement,
+    type ResearchPaperMetadata,
+    type ResearchSystemPerformanceExtraction,
 } from '@metrev/domain-contracts';
 
 import { extractMetricMeasurements } from '../normalization/metric-normalization';
@@ -22,6 +22,8 @@ export interface DeterministicExtractionInput {
   column: ResearchColumnDefinition;
   paper: ResearchPaperMetadata;
   reviewId: string;
+  supplementalText?: string[];
+  supplementalTrace?: ResearchEvidenceTrace[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -175,6 +177,7 @@ function fullText(input: DeterministicExtractionInput): string {
   return [
     input.paper.title,
     input.paper.abstract_text ?? '',
+    ...(input.supplementalText ?? []),
     ...input.claims.map((claim) => claim.content),
   ]
     .filter(Boolean)
@@ -184,6 +187,10 @@ function fullText(input: DeterministicExtractionInput): string {
 function baseTrace(
   input: DeterministicExtractionInput,
 ): ResearchEvidenceTrace[] {
+  if ((input.supplementalTrace?.length ?? 0) > 0) {
+    return input.supplementalTrace!.slice(0, 2);
+  }
+
   if (input.paper.abstract_text?.trim()) {
     return [
       {
@@ -332,6 +339,14 @@ function buildSystemPerformance(input: DeterministicExtractionInput): {
         sourceText: input.paper.abstract_text,
       })
     : [];
+  const supplementalMetrics = (input.supplementalText ?? []).flatMap(
+    (sourceText) =>
+      extractMetricMeasurements({
+        source: 'full_text',
+        sourceDocumentId: input.paper.source_document_id,
+        sourceText,
+      }),
+  );
   const claimMetrics = input.claims.flatMap((claim) =>
     extractMetricMeasurements({
       source: 'claim',
@@ -342,7 +357,7 @@ function buildSystemPerformance(input: DeterministicExtractionInput): {
       evidence_trace: claimTrace(claim),
     })),
   );
-  const metrics = [...abstractMetrics, ...claimMetrics];
+  const metrics = [...abstractMetrics, ...supplementalMetrics, ...claimMetrics];
   const anodeMaterial = detectFirst(text, [
     'carbon felt',
     'carbon cloth',

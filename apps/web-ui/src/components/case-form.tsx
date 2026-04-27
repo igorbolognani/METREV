@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
-import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
+import type {
+  ExternalEvidenceCatalogItemSummary,
+  ResearchDecisionIngestionPreview,
+} from '@metrev/domain-contracts';
 
 import { CaseFormContextStep } from '@/components/case-form/case-form-context-step';
 import { CaseFormOperationStep } from '@/components/case-form/case-form-operation-step';
@@ -14,33 +17,34 @@ import { CaseFormStackDetailStep } from '@/components/case-form/case-form-stack-
 import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
 import {
-    WorkspaceDataCard,
-    WorkspacePageHeader,
-    WorkspaceSection,
+  WorkspaceDataCard,
+  WorkspacePageHeader,
+  WorkspaceSection,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import {
-    clearPendingSubmission,
-    clearSubmissionError,
-    loadDraftInput,
-    loadSubmissionError,
-    saveDraftInput,
-    savePendingSubmission,
+  fetchResearchEvidencePackDecisionInput,
+  clearPendingSubmission,
+  clearSubmissionError,
+  loadDraftInput,
+  loadSubmissionError,
+  saveDraftInput,
+  savePendingSubmission,
 } from '@/lib/case-draft';
 import {
-    caseFormSteps,
-    caseFormStepValues,
-    getCaseFormStepIndex,
-    useCaseFormStep,
-    type CaseFormStep,
+  caseFormSteps,
+  caseFormStepValues,
+  getCaseFormStepIndex,
+  useCaseFormStep,
+  type CaseFormStep,
 } from '@/lib/case-form-query-state';
 import {
-    buildCaseInputFromFormValues,
-    caseIntakePresets,
-    defaultCaseIntakeFormValues,
-    findCaseIntakePreset,
-    hydrateCaseIntakeFormValues,
-    type CaseIntakeFormValues,
+  buildCaseInputFromFormValues,
+  caseIntakePresets,
+  defaultCaseIntakeFormValues,
+  findCaseIntakePreset,
+  hydrateCaseIntakeFormValues,
+  type CaseIntakeFormValues,
 } from '@/lib/case-intake';
 import { formatToken } from '@/lib/formatting';
 
@@ -88,6 +92,7 @@ function stepIssue(condition: boolean, message: string): string[] {
 
 export function CaseForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useCaseFormStep();
   const [formValues, setFormValues] = React.useState<CaseIntakeFormValues>(
     defaultCaseIntakeFormValues,
@@ -102,6 +107,12 @@ export function CaseForm() {
   const [hasLoadedDraft, setHasLoadedDraft] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
+  const [researchDecisionInput, setResearchDecisionInput] =
+    React.useState<ResearchDecisionIngestionPreview | null>(null);
+  const [researchPackError, setResearchPackError] = React.useState<
+    string | null
+  >(null);
+  const [researchPackLoading, setResearchPackLoading] = React.useState(false);
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [submissionError, setSubmissionError] = React.useState<string | null>(
     null,
@@ -135,6 +146,54 @@ export function CaseForm() {
     setHasLoadedDraft(true);
   }, []);
 
+  const researchPackId = searchParams?.get('researchPackId')?.trim() ?? null;
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!researchPackId) {
+      setResearchDecisionInput(null);
+      setResearchPackError(null);
+      setResearchPackLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setResearchPackLoading(true);
+    setResearchPackError(null);
+
+    void fetchResearchEvidencePackDecisionInput(researchPackId)
+      .then((decisionInput) => {
+        if (cancelled) {
+          return;
+        }
+
+        setResearchDecisionInput(decisionInput);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        setResearchDecisionInput(null);
+        setResearchPackError(
+          error instanceof Error
+            ? error.message
+            : 'Research pack could not be loaded.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setResearchPackLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [researchPackId]);
+
   React.useEffect(() => {
     if (!hasLoadedDraft) {
       return;
@@ -153,7 +212,12 @@ export function CaseForm() {
     formValues.evidenceTitle.trim() && formValues.evidenceSummary.trim()
       ? 1
       : 0;
-  const evidenceCount = selectedCatalogEvidence.length + manualEvidenceCount;
+  const researchEvidenceCount =
+    researchDecisionInput?.evidence_records.length ?? 0;
+  const evidenceCount =
+    selectedCatalogEvidence.length +
+    manualEvidenceCount +
+    researchEvidenceCount;
   const preferredSupplierCount = countCommaSeparated(
     formValues.preferredSuppliers,
   );
@@ -267,8 +331,9 @@ export function CaseForm() {
       value: `${preferredSupplierCount} preferred`,
     },
     {
-      detail:
-        'Accepted catalog evidence and manual typed support remain explicit in the payload.',
+      detail: researchPackId
+        ? 'Accepted catalog evidence, attached research-pack evidence, and manual typed support remain explicit in the payload.'
+        : 'Accepted catalog evidence and manual typed support remain explicit in the payload.',
       key: 'evidence',
       label: 'Evidence',
       tone: 'warning' as const,
@@ -498,6 +563,7 @@ export function CaseForm() {
       formValues,
       activePreset,
       selectedCatalogEvidence,
+      researchDecisionInput,
     );
     const idempotencyKey = window.crypto?.randomUUID()
       ? window.crypto.randomUUID()
@@ -622,6 +688,10 @@ export function CaseForm() {
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
             preferredSupplierCount={preferredSupplierCount}
+            researchDecisionInput={researchDecisionInput}
+            researchPackError={researchPackError}
+            researchPackId={researchPackId}
+            researchPackLoading={researchPackLoading}
             selectedCatalogEvidence={selectedCatalogEvidence}
             stackSummary={stackSummary}
             warningMessages={cockpitWarnings}

@@ -4,29 +4,47 @@ import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
   evidenceClaimSchema,
+  researchBackfillListResponseSchema,
+  researchBackfillSummarySchema,
   researchDecisionIngestionPreviewSchema,
   researchEvidencePackSchema,
   researchExtractionJobSchema,
   researchExtractionResultSchema,
   researchPaperMetadataSchema,
+  researchPaperSearchFailureSchema,
   researchReviewDetailSchema,
   researchReviewListResponseSchema,
   researchReviewSummarySchema,
+  searchResearchPapersResponseSchema,
+  stageResearchPapersResponseSchema,
   type AddResearchColumnRequest,
   type CreateResearchReviewRequest,
   type EvidenceClaim,
+  type QueueResearchBackfillRequest,
+  type ResearchBackfillListResponse,
+  type ResearchBackfillSummary,
   type ResearchColumnDefinition,
   type ResearchDecisionIngestionPreview,
   type ResearchEvidencePack,
   type ResearchExtractionJob,
   type ResearchExtractionResult,
   type ResearchPaperMetadata,
+  type ResearchPaperSearchFailure,
+  type ResearchPaperSearchResult,
   type ResearchReviewDetail,
   type ResearchReviewListResponse,
+  type SearchResearchPapersRequest,
+  type SearchResearchPapersResponse,
+  type StageResearchPapersRequest,
+  type StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
 import { getPrismaClient } from './prisma-client';
+import {
+  searchResearchPapers as searchResearchPapersFromProviders,
+  stageResearchPapers as stageResearchPapersToWarehouse,
+} from './research-paper-search';
 
 export interface CreateResearchReviewInput extends CreateResearchReviewRequest {
   actorId?: string;
@@ -64,6 +82,25 @@ export interface CreateResearchEvidencePackInput {
   pack: ResearchEvidencePack;
 }
 
+export interface QueueResearchBackfillInput extends QueueResearchBackfillRequest {
+  actorId?: string;
+}
+
+export interface CompleteResearchBackfillPageInput {
+  failedProviders: ResearchPaperSearchFailure[];
+  isComplete: boolean;
+  nextPage: number;
+  pagesCompleted: number;
+  recordsFetchedDelta: number;
+  recordsStoredDelta: number;
+  runId: string;
+}
+
+export interface FailResearchBackfillInput {
+  failureMessage: string;
+  runId: string;
+}
+
 export interface ResearchRepository {
   addResearchReviewColumn(
     input: AddResearchReviewColumnInput,
@@ -78,15 +115,34 @@ export interface ResearchRepository {
     input: CreateResearchReviewInput,
   ): Promise<ResearchReviewDetail>;
   disconnect(): Promise<void>;
+  enqueueResearchBackfill(
+    input: QueueResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary>;
+  failResearchBackfill(
+    input: FailResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary | null>;
   getResearchEvidencePack(packId: string): Promise<ResearchEvidencePack | null>;
   getResearchEvidencePackDecisionInput(
     packId: string,
   ): Promise<ResearchDecisionIngestionPreview | null>;
   getResearchReview(reviewId: string): Promise<ResearchReviewDetail | null>;
+  claimQueuedResearchBackfills(
+    limit: number,
+  ): Promise<ResearchBackfillSummary[]>;
+  completeResearchBackfillPage(
+    input: CompleteResearchBackfillPageInput,
+  ): Promise<ResearchBackfillSummary | null>;
+  listResearchBackfills(): Promise<ResearchBackfillListResponse>;
   listResearchReviews(): Promise<ResearchReviewListResponse>;
+  searchResearchPapers(
+    input: SearchResearchPapersRequest,
+  ): Promise<SearchResearchPapersResponse>;
   saveResearchExtractionResult(
     input: SaveResearchExtractionResultInput,
   ): Promise<ResearchExtractionResult>;
+  stageResearchPapers(
+    input: StageResearchPapersRequest,
+  ): Promise<StageResearchPapersResponse>;
 }
 
 function toPrismaNestedJsonValue(value: unknown): Prisma.InputJsonValue | null {
@@ -238,6 +294,7 @@ function paperMetadataFromSource(input: {
     source_type: sourceTypeToContract(input.sourceRecord.sourceType),
     source_url: input.sourceRecord.sourceUrl,
     pdf_url: input.sourceRecord.pdfUrl,
+    xml_url: normalizeXmlUrlFromPayload(input.sourceRecord.rawPayload),
     abstract_text: input.sourceRecord.abstractText,
     citation_count:
       numberFromPayload(input.sourceRecord.rawPayload, 'cited_by_count') ??
@@ -287,6 +344,21 @@ function paperMetadataFromSnapshot(input: {
     source_document_id: input.sourceRecord.id,
     source_type: fallback.source_type,
   });
+}
+
+function normalizeXmlUrlFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const candidate =
+    (payload as Record<string, unknown>).xml_url ??
+    (payload as Record<string, unknown>).full_text_xml_url ??
+    null;
+
+  return typeof candidate === 'string' && candidate.trim().length > 0
+    ? candidate
+    : null;
 }
 
 function toColumnDefinition(record: {
@@ -538,6 +610,131 @@ function toReviewSummary(record: {
   });
 }
 
+const researchBackfillTriggerMode = 'research_worker_backfill';
+
+function parseBackfillSummaryPayload(
+  value: unknown,
+): Pick<
+  ResearchBackfillSummary,
+  'failed_providers' | 'max_pages' | 'per_provider_limit' | 'providers'
+> {
+  const record =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : {};
+
+  return {
+    providers: Array.isArray(record.providers)
+      ? record.providers.filter(
+          (entry): entry is ResearchBackfillSummary['providers'][number] =>
+            entry === 'openalex' ||
+            entry === 'crossref' ||
+            entry === 'europe_pmc',
+        )
+      : ['openalex', 'crossref', 'europe_pmc'],
+    per_provider_limit:
+      typeof record.per_provider_limit === 'number' &&
+      Number.isFinite(record.per_provider_limit)
+        ? Math.max(1, Math.trunc(record.per_provider_limit))
+        : 25,
+    max_pages:
+      typeof record.max_pages === 'number' && Number.isFinite(record.max_pages)
+        ? Math.max(1, Math.trunc(record.max_pages))
+        : 1,
+    failed_providers: Array.isArray(record.failed_providers)
+      ? record.failed_providers
+          .map((entry) =>
+            entry && typeof entry === 'object'
+              ? researchPaperSearchFailureSchema.parse(entry)
+              : null,
+          )
+          .filter((entry): entry is ResearchPaperSearchFailure =>
+            Boolean(entry),
+          )
+      : [],
+  };
+}
+
+function parseBackfillCheckpoint(
+  value: unknown,
+): Pick<ResearchBackfillSummary, 'next_page' | 'pages_completed' | 'status'> {
+  const record =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : {};
+  const phase =
+    typeof record.phase === 'string' ? record.phase.toLowerCase() : 'queued';
+  const status =
+    phase === 'running'
+      ? 'running'
+      : phase === 'completed'
+        ? 'completed'
+        : phase === 'failed'
+          ? 'failed'
+          : 'queued';
+
+  return {
+    status,
+    next_page:
+      typeof record.next_page === 'number' && Number.isFinite(record.next_page)
+        ? Math.max(1, Math.trunc(record.next_page))
+        : 1,
+    pages_completed:
+      typeof record.pages_completed === 'number' &&
+      Number.isFinite(record.pages_completed)
+        ? Math.max(0, Math.trunc(record.pages_completed))
+        : 0,
+  };
+}
+
+function toBackfillSummary(record: {
+  completedAt: Date | null;
+  createdAt: Date;
+  failureDetail: unknown;
+  id: string;
+  query: string | null;
+  recordsFetched: number;
+  recordsStored: number;
+  checkpoint: unknown;
+  status: 'STARTED' | 'COMPLETED' | 'FAILED';
+  summary: unknown;
+  updatedAt: Date;
+}): ResearchBackfillSummary {
+  const summary = parseBackfillSummaryPayload(record.summary);
+  const checkpoint = parseBackfillCheckpoint(record.checkpoint);
+  const status =
+    record.status === 'FAILED'
+      ? 'failed'
+      : record.status === 'COMPLETED'
+        ? 'completed'
+        : checkpoint.status;
+  const failureMessage =
+    record.failureDetail && typeof record.failureDetail === 'object'
+      ? ((record.failureDetail as Record<string, unknown>).message ?? null)
+      : null;
+
+  return researchBackfillSummarySchema.parse({
+    run_id: record.id,
+    query: record.query ?? 'research backfill',
+    status,
+    providers: summary.providers,
+    per_provider_limit: summary.per_provider_limit,
+    max_pages: summary.max_pages,
+    next_page: checkpoint.next_page,
+    pages_completed: checkpoint.pages_completed,
+    records_fetched: record.recordsFetched,
+    records_stored: record.recordsStored,
+    failed_providers: summary.failed_providers,
+    created_at: record.createdAt.toISOString(),
+    updated_at: record.updatedAt.toISOString(),
+    completed_at: record.completedAt?.toISOString() ?? null,
+    failure_message:
+      typeof failureMessage === 'string' && failureMessage.trim().length > 0
+        ? failureMessage
+        : null,
+  });
+}
+
 function createDefaultMemoryPaper(index: number): ResearchPaperMetadata {
   return researchPaperMetadataSchema.parse({
     paper_id: `memory-paper-${index}`,
@@ -554,6 +751,7 @@ function createDefaultMemoryPaper(index: number): ResearchPaperMetadata {
     source_type: 'manual',
     source_url: null,
     pdf_url: null,
+    xml_url: null,
     abstract_text:
       index === 1
         ? 'A dual chamber microbial fuel cell using carbon felt anodes and an air cathode reached power density of 850 mW/m2 with COD removal of 82% at pH 7 and 30 C. Membrane fouling and scale-up cost remained challenges.'
@@ -564,8 +762,10 @@ function createDefaultMemoryPaper(index: number): ResearchPaperMetadata {
 }
 
 export class MemoryResearchRepository implements ResearchRepository {
+  private readonly backfills = new Map<string, ResearchBackfillSummary>();
   private readonly claims = new Map<string, EvidenceClaim[]>();
   private readonly columns = new Map<string, ResearchColumnDefinition[]>();
+  private readonly stagedPapers = new Map<string, ResearchPaperMetadata>();
   private readonly jobs = new Map<string, ResearchExtractionJob[]>();
   private readonly papers = new Map<string, ResearchPaperMetadata[]>();
   private readonly results = new Map<string, ResearchExtractionResult[]>();
@@ -576,15 +776,90 @@ export class MemoryResearchRepository implements ResearchRepository {
     ResearchDecisionIngestionPreview
   >();
 
+  private buildMemorySearchResults(query: string): ResearchPaperSearchResult[] {
+    const compactQuery = query.trim().toLowerCase();
+
+    return [
+      {
+        source_type: 'openalex',
+        source_key: 'https://openalex.org/Wmemory001',
+        title: `Dual chamber microbial fuel cell search fixture for ${compactQuery}`,
+        authors: [{ name: 'Fixture OpenAlex Author' }],
+        year: 2025,
+        doi: '10.5555/openalex-fixture-001',
+        journal: 'Fixture OpenAlex Journal',
+        publisher: 'Fixture OpenAlex Publisher',
+        source_url: 'https://openalex.org/Wmemory001',
+        pdf_url: 'https://example.org/openalex-fixture-001.pdf',
+        xml_url: null,
+        abstract_text:
+          'A live-search fixture paper describing carbon felt anodes, COD removal, and power density.',
+        citation_count: 14,
+        access_status: 'green',
+        metadata: {
+          fixture: true,
+          provider: 'openalex',
+        },
+      },
+      {
+        source_type: 'crossref',
+        source_key: '10.5555/crossref-fixture-001',
+        title: `Crossref microbial electrochemical fixture for ${compactQuery}`,
+        authors: [{ name: 'Fixture Crossref Author' }],
+        year: 2024,
+        doi: '10.5555/crossref-fixture-001',
+        journal: 'Fixture Crossref Journal',
+        publisher: 'Fixture Crossref Publisher',
+        source_url: 'https://doi.org/10.5555/crossref-fixture-001',
+        pdf_url: null,
+        xml_url: null,
+        abstract_text:
+          'A Crossref search fixture describing microbial electrolysis performance and implementation limits.',
+        citation_count: 9,
+        access_status: 'unknown',
+        metadata: {
+          fixture: true,
+          provider: 'crossref',
+        },
+      },
+      {
+        source_type: 'europe_pmc',
+        source_key: 'MED:12345678',
+        title: `Europe PMC wastewater recovery fixture for ${compactQuery}`,
+        authors: [{ name: 'Fixture Europe PMC Author' }],
+        year: 2023,
+        doi: '10.5555/europepmc-fixture-001',
+        journal: 'Fixture Europe PMC Journal',
+        publisher: 'MED',
+        source_url: 'https://europepmc.org/article/MED/12345678',
+        pdf_url: null,
+        xml_url: 'https://europepmc.org/articles/PMC123456/fulltext.xml',
+        abstract_text:
+          'A Europe PMC fixture covering nutrient recovery and bioelectrochemical wastewater treatment.',
+        citation_count: 5,
+        access_status: 'green',
+        metadata: {
+          fixture: true,
+          provider: 'europe_pmc',
+        },
+      },
+    ];
+  }
+
   async createResearchReview(
     input: CreateResearchReviewInput,
   ): Promise<ResearchReviewDetail> {
     const now = new Date().toISOString();
     const reviewId = randomUUID();
-    const papers = [
-      createDefaultMemoryPaper(1),
-      createDefaultMemoryPaper(2),
-    ].slice(0, input.limit);
+    const papers = input.source_document_ids?.length
+      ? input.source_document_ids
+          .map((sourceDocumentId) => this.stagedPapers.get(sourceDocumentId))
+          .filter((paper): paper is ResearchPaperMetadata => Boolean(paper))
+          .slice(0, input.limit)
+      : [createDefaultMemoryPaper(1), createDefaultMemoryPaper(2)].slice(
+          0,
+          input.limit,
+        );
     const columns = input.columns;
     const jobs = papers.flatMap((paper) =>
       columns.map((column) =>
@@ -652,6 +927,52 @@ export class MemoryResearchRepository implements ResearchRepository {
     return detail;
   }
 
+  async searchResearchPapers(
+    input: SearchResearchPapersRequest,
+  ): Promise<SearchResearchPapersResponse> {
+    return searchResearchPapersResponseSchema.parse({
+      query: input.query,
+      providers: input.providers ?? ['openalex', 'crossref', 'europe_pmc'],
+      items: this.buildMemorySearchResults(input.query).slice(0, input.limit),
+      failed_providers: [],
+    });
+  }
+
+  async stageResearchPapers(
+    input: StageResearchPapersRequest,
+  ): Promise<StageResearchPapersResponse> {
+    const papers = input.items.map((item) => {
+      const sourceDocumentId = `memory-staged-${item.source_type}-${item.source_key.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+      const paper = researchPaperMetadataSchema.parse({
+        paper_id: `staged:${sourceDocumentId}`,
+        source_document_id: sourceDocumentId,
+        title: item.title,
+        authors: item.authors,
+        year: item.year,
+        doi: item.doi,
+        journal: item.journal,
+        publisher: item.publisher,
+        source_type: item.source_type,
+        source_url: item.source_url,
+        pdf_url: item.pdf_url,
+        xml_url: item.xml_url,
+        abstract_text: item.abstract_text,
+        citation_count: item.citation_count,
+        metadata: item.metadata,
+      });
+
+      this.stagedPapers.set(sourceDocumentId, paper);
+      return paper;
+    });
+
+    return stageResearchPapersResponseSchema.parse({
+      query: input.query ?? null,
+      imported_count: papers.length,
+      source_document_ids: papers.map((paper) => paper.source_document_id),
+      papers,
+    });
+  }
+
   async listResearchReviews(): Promise<ResearchReviewListResponse> {
     return researchReviewListResponseSchema.parse({
       items: [...this.reviews.values()].map((review) => ({
@@ -667,6 +988,108 @@ export class MemoryResearchRepository implements ResearchRepository {
         updated_at: review.updated_at,
       })),
     });
+  }
+
+  async enqueueResearchBackfill(
+    input: QueueResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary> {
+    const now = new Date().toISOString();
+    const backfill = researchBackfillSummarySchema.parse({
+      run_id: randomUUID(),
+      query: input.query,
+      status: 'queued',
+      providers: input.providers ?? ['openalex', 'crossref', 'europe_pmc'],
+      per_provider_limit: input.per_provider_limit,
+      max_pages: input.max_pages,
+      next_page: 1,
+      pages_completed: 0,
+      records_fetched: 0,
+      records_stored: 0,
+      failed_providers: [],
+      created_at: now,
+      updated_at: now,
+      completed_at: null,
+      failure_message: null,
+    });
+
+    this.backfills.set(backfill.run_id, backfill);
+    return backfill;
+  }
+
+  async listResearchBackfills(): Promise<ResearchBackfillListResponse> {
+    return researchBackfillListResponseSchema.parse({
+      items: [...this.backfills.values()].sort((left, right) =>
+        right.created_at.localeCompare(left.created_at),
+      ),
+    });
+  }
+
+  async claimQueuedResearchBackfills(
+    limit: number,
+  ): Promise<ResearchBackfillSummary[]> {
+    const claimed = [...this.backfills.values()]
+      .filter((entry) => entry.status === 'queued')
+      .slice(0, limit);
+    const now = new Date().toISOString();
+
+    for (const entry of claimed) {
+      this.backfills.set(entry.run_id, {
+        ...entry,
+        status: 'running',
+        updated_at: now,
+      });
+    }
+
+    return claimed.map((entry) => ({
+      ...entry,
+      status: 'running',
+      updated_at: now,
+    }));
+  }
+
+  async completeResearchBackfillPage(
+    input: CompleteResearchBackfillPageInput,
+  ): Promise<ResearchBackfillSummary | null> {
+    const current = this.backfills.get(input.runId);
+    if (!current) {
+      return null;
+    }
+
+    const updated = researchBackfillSummarySchema.parse({
+      ...current,
+      status: input.isComplete ? 'completed' : 'queued',
+      next_page: input.isComplete ? current.next_page : input.nextPage,
+      pages_completed: input.pagesCompleted,
+      records_fetched: current.records_fetched + input.recordsFetchedDelta,
+      records_stored: current.records_stored + input.recordsStoredDelta,
+      failed_providers: input.failedProviders,
+      updated_at: new Date().toISOString(),
+      completed_at: input.isComplete ? new Date().toISOString() : null,
+      failure_message: null,
+    });
+
+    this.backfills.set(updated.run_id, updated);
+    return updated;
+  }
+
+  async failResearchBackfill(
+    input: FailResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary | null> {
+    const current = this.backfills.get(input.runId);
+    if (!current) {
+      return null;
+    }
+
+    const updated = researchBackfillSummarySchema.parse({
+      ...current,
+      status: 'failed',
+      updated_at: new Date().toISOString(),
+      failure_message: input.failureMessage,
+      completed_at: null,
+    });
+
+    this.backfills.set(updated.run_id, updated);
+    return updated;
   }
 
   async getResearchReview(
@@ -933,27 +1356,48 @@ export class PrismaResearchRepository implements ResearchRepository {
     input: CreateResearchReviewInput,
   ): Promise<ResearchReviewDetail> {
     return withSpan('database.research_review.create', async () => {
-      const searchQuery = input.query.trim();
-      const searchTokens = this.tokenizeSearchQuery(searchQuery);
-      const candidateSources = await this.findCandidateSources(
-        searchTokens,
-        input.limit,
-      );
-      const sources = candidateSources
-        .map((source) => ({
-          score: this.sourceMatchScore(source, searchTokens),
-          source,
-        }))
-        .filter((entry) => entry.score > 0)
-        .sort(
-          (left, right) =>
-            right.score - left.score ||
-            Number(right.source.publishedAt ?? new Date(0)) -
-              Number(left.source.publishedAt ?? new Date(0)) ||
-            Number(right.source.updatedAt) - Number(left.source.updatedAt),
-        )
-        .slice(0, input.limit)
-        .map((entry) => entry.source);
+      const sources = input.source_document_ids?.length
+        ? (
+            await this.prisma.externalSourceRecord.findMany({
+              where: {
+                id: {
+                  in: input.source_document_ids,
+                },
+              },
+            })
+          )
+            .sort(
+              (left, right) =>
+                input.source_document_ids!.indexOf(left.id) -
+                input.source_document_ids!.indexOf(right.id),
+            )
+            .slice(0, input.limit)
+        : (() => {
+            const searchQuery = input.query.trim();
+            const searchTokens = this.tokenizeSearchQuery(searchQuery);
+
+            return this.findCandidateSources(searchTokens, input.limit).then(
+              (candidateSources) =>
+                candidateSources
+                  .map((source) => ({
+                    score: this.sourceMatchScore(source, searchTokens),
+                    source,
+                  }))
+                  .filter((entry) => entry.score > 0)
+                  .sort(
+                    (left, right) =>
+                      right.score - left.score ||
+                      Number(right.source.publishedAt ?? new Date(0)) -
+                        Number(left.source.publishedAt ?? new Date(0)) ||
+                      Number(right.source.updatedAt) -
+                        Number(left.source.updatedAt),
+                  )
+                  .slice(0, input.limit)
+                  .map((entry) => entry.source),
+            );
+          })();
+
+      const resolvedSources = Array.isArray(sources) ? sources : await sources;
 
       const review = await this.prisma.$transaction(async (tx) => {
         const created = await tx.researchReview.create({
@@ -966,7 +1410,7 @@ export class PrismaResearchRepository implements ResearchRepository {
         const paperRecords: Array<{ id: string }> = [];
         const columnRecords: Array<{ id: string }> = [];
 
-        for (const [index, source] of sources.entries()) {
+        for (const [index, source] of resolvedSources.entries()) {
           const paper = await tx.researchReviewPaper.create({
             data: {
               reviewId: created.id,
@@ -1049,6 +1493,176 @@ export class PrismaResearchRepository implements ResearchRepository {
       return researchReviewListResponseSchema.parse({
         items: records.map((record) => toReviewSummary(record)),
       });
+    });
+  }
+
+  async enqueueResearchBackfill(
+    input: QueueResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary> {
+    return withSpan('database.research_backfill.enqueue', async () => {
+      const created = await this.prisma.ingestionRun.create({
+        data: {
+          sourceType: 'MANUAL',
+          triggerMode: researchBackfillTriggerMode,
+          query: input.query,
+          status: 'STARTED',
+          recordsFetched: 0,
+          recordsStored: 0,
+          checkpoint: {
+            phase: 'queued',
+            next_page: 1,
+            pages_completed: 0,
+          },
+          summary: {
+            providers: input.providers ?? [
+              'openalex',
+              'crossref',
+              'europe_pmc',
+            ],
+            per_provider_limit: input.per_provider_limit,
+            max_pages: input.max_pages,
+            failed_providers: [],
+          },
+          failureDetail: Prisma.JsonNull,
+          startedAt: new Date(),
+        },
+      });
+
+      return toBackfillSummary(created);
+    });
+  }
+
+  async listResearchBackfills(): Promise<ResearchBackfillListResponse> {
+    return withSpan('database.research_backfill.list', async () => {
+      const records = await this.prisma.ingestionRun.findMany({
+        where: { triggerMode: researchBackfillTriggerMode },
+        orderBy: [{ createdAt: 'desc' }],
+      });
+
+      return researchBackfillListResponseSchema.parse({
+        items: records.map((record) => toBackfillSummary(record)),
+      });
+    });
+  }
+
+  async claimQueuedResearchBackfills(
+    limit: number,
+  ): Promise<ResearchBackfillSummary[]> {
+    return withSpan('database.research_backfill.claim', async () => {
+      const records = await this.prisma.ingestionRun.findMany({
+        where: {
+          triggerMode: researchBackfillTriggerMode,
+          status: 'STARTED',
+        },
+        orderBy: [{ createdAt: 'asc' }],
+      });
+      const queued = records
+        .map((record) => ({
+          record,
+          checkpoint: parseBackfillCheckpoint(record.checkpoint),
+        }))
+        .filter(({ checkpoint }) => checkpoint.status === 'queued')
+        .slice(0, limit);
+      const claimed: ResearchBackfillSummary[] = [];
+
+      for (const { record, checkpoint } of queued) {
+        const updated = await this.prisma.ingestionRun.updateMany({
+          where: {
+            id: record.id,
+            updatedAt: record.updatedAt,
+            status: 'STARTED',
+          },
+          data: {
+            checkpoint: toPrismaJsonObject({
+              phase: 'running',
+              next_page: checkpoint.next_page,
+              pages_completed: checkpoint.pages_completed,
+            }),
+          },
+        });
+
+        if (updated.count === 0) {
+          continue;
+        }
+
+        const refreshed = await this.prisma.ingestionRun.findUnique({
+          where: { id: record.id },
+        });
+
+        if (refreshed) {
+          claimed.push(toBackfillSummary(refreshed));
+        }
+      }
+
+      return claimed;
+    });
+  }
+
+  async completeResearchBackfillPage(
+    input: CompleteResearchBackfillPageInput,
+  ): Promise<ResearchBackfillSummary | null> {
+    return withSpan('database.research_backfill.complete_page', async () => {
+      const current = await this.prisma.ingestionRun.findUnique({
+        where: { id: input.runId },
+      });
+
+      if (!current || current.triggerMode !== researchBackfillTriggerMode) {
+        return null;
+      }
+
+      const summary = parseBackfillSummaryPayload(current.summary);
+      const updated = await this.prisma.ingestionRun.update({
+        where: { id: input.runId },
+        data: {
+          status: input.isComplete ? 'COMPLETED' : 'STARTED',
+          recordsFetched: current.recordsFetched + input.recordsFetchedDelta,
+          recordsStored: current.recordsStored + input.recordsStoredDelta,
+          checkpoint: toPrismaJsonObject({
+            phase: input.isComplete ? 'completed' : 'queued',
+            next_page: input.isComplete ? input.nextPage - 1 : input.nextPage,
+            pages_completed: input.pagesCompleted,
+          }),
+          summary: toPrismaJsonObject({
+            providers: summary.providers,
+            per_provider_limit: summary.per_provider_limit,
+            max_pages: summary.max_pages,
+            failed_providers: input.failedProviders,
+          }),
+          completedAt: input.isComplete ? new Date() : null,
+          failureDetail: Prisma.JsonNull,
+        },
+      });
+
+      return toBackfillSummary(updated);
+    });
+  }
+
+  async failResearchBackfill(
+    input: FailResearchBackfillInput,
+  ): Promise<ResearchBackfillSummary | null> {
+    return withSpan('database.research_backfill.fail', async () => {
+      const current = await this.prisma.ingestionRun.findUnique({
+        where: { id: input.runId },
+      });
+
+      if (!current || current.triggerMode !== researchBackfillTriggerMode) {
+        return null;
+      }
+
+      const updated = await this.prisma.ingestionRun.update({
+        where: { id: input.runId },
+        data: {
+          status: 'FAILED',
+          failureDetail: toPrismaJsonObject({ message: input.failureMessage }),
+          checkpoint: toPrismaJsonObject({
+            ...parseBackfillCheckpoint(current.checkpoint),
+            phase: 'failed',
+          }),
+          completedAt: null,
+        },
+      });
+
+      return toBackfillSummary(updated);
     });
   }
 
@@ -1323,6 +1937,29 @@ export class PrismaResearchRepository implements ResearchRepository {
 
   async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
+  }
+
+  async searchResearchPapers(
+    input: SearchResearchPapersRequest,
+  ): Promise<SearchResearchPapersResponse> {
+    return withSpan('database.research.search_external', () =>
+      searchResearchPapersFromProviders(input),
+    );
+  }
+
+  async stageResearchPapers(
+    input: StageResearchPapersRequest,
+  ): Promise<StageResearchPapersResponse> {
+    return withSpan('database.research.stage_external', async () => {
+      const staged = await stageResearchPapersToWarehouse(this.prisma, input);
+
+      return stageResearchPapersResponseSchema.parse({
+        query: input.query ?? null,
+        imported_count: staged.papers.length,
+        source_document_ids: staged.sourceDocumentIds,
+        papers: staged.papers,
+      });
+    });
   }
 }
 

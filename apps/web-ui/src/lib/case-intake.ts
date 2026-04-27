@@ -1,6 +1,7 @@
 import type {
-    ExternalEvidenceCatalogItemSummary,
-    RawCaseInput,
+  ExternalEvidenceCatalogItemSummary,
+  RawCaseInput,
+  ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
 
 type EvidenceRecordInput = NonNullable<
@@ -383,6 +384,7 @@ function buildEvidenceRecords(
   values: CaseIntakeFormValues,
   preset?: CaseIntakePreset,
   selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[] = [],
+  researchDecisionInput?: ResearchDecisionIngestionPreview | null,
 ): RawCaseInput['evidence_records'] {
   const catalogEvidence = selectedCatalogEvidence.map((item) => ({
     evidence_id: `catalog:${item.id}`,
@@ -404,9 +406,16 @@ function buildEvidenceRecords(
       `source:${item.source_type}`,
     ]),
   }));
+  const researchEvidence = (researchDecisionInput?.evidence_records ?? []).map(
+    (record) => ({
+      ...record,
+      tags: dedupeStrings([...(record.tags ?? []), 'research-pack']),
+    }),
+  );
 
   if (!values.evidenceTitle.trim() || !values.evidenceSummary.trim()) {
-    return catalogEvidence.length > 0 ? catalogEvidence : undefined;
+    const attachedEvidence = [...researchEvidence, ...catalogEvidence];
+    return attachedEvidence.length > 0 ? attachedEvidence : undefined;
   }
 
   const presetEvidence = preset?.payload.evidence_records?.[0];
@@ -433,6 +442,7 @@ function buildEvidenceRecords(
       benchmark_context: presetEvidence?.benchmark_context,
       tags: dedupeStrings([...(presetEvidence?.tags ?? []), 'runtime-intake']),
     },
+    ...researchEvidence,
     ...catalogEvidence,
   ];
 }
@@ -441,10 +451,16 @@ export function buildCaseInputFromFormValues(
   values: CaseIntakeFormValues,
   preset?: CaseIntakePreset,
   selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[] = [],
+  researchDecisionInput?: ResearchDecisionIngestionPreview | null,
 ): RawCaseInput {
   const assumptions = dedupeStrings([
     ...(preset?.payload.assumptions ?? []),
     ...splitCommaSeparated(values.assumptionsNote),
+    ...(researchDecisionInput?.assumptions ?? []),
+  ]);
+  const missingData = dedupeStrings([
+    ...(preset?.payload.missing_data ?? []),
+    ...(researchDecisionInput?.missing_data ?? []),
   ]);
   const currentSuppliers = splitCommaSeparated(values.currentSuppliers);
   const preferredSuppliers = splitCommaSeparated(values.preferredSuppliers);
@@ -697,8 +713,10 @@ export function buildCaseInputFromFormValues(
       values,
       preset,
       selectedCatalogEvidence,
+      researchDecisionInput,
     ),
     assumptions: assumptions.length > 0 ? assumptions : undefined,
+    missing_data: missingData.length > 0 ? missingData : undefined,
   };
 }
 

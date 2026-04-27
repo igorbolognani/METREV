@@ -20,11 +20,13 @@ The runtime adopts a dual-path big-data posture.
 
 - repository-versioned snapshot assets provide reproducible local bootstrap for analyst and validation workflows
 - resumable backfill commands remain available to widen or refresh the local evidence base without requiring a full reseed
+- live provider search with staged warehouse import is also supported, as long as imported results converge into the same canonical source, catalog, claim, and audit model used by snapshot and backfill flows
 
 The committed repository snapshot posture is intentionally narrow.
 
 - default in-repo assets must be normalized metadata, structured claims, provenance records, manifest or index files, and only explicitly redistributable artifacts
 - non-redistributable or license-uncertain full text must remain out of the committed snapshot by default
+- the bounded committed snapshot is a reproducible bootstrap artifact, not the ceiling for the runtime evidence base or research-intelligence search surface
 
 The initial big-data corpus is intentionally broad.
 
@@ -49,12 +51,14 @@ At the time this ADR is accepted, the validated closeout baseline is:
 - PASS `pnpm run test:e2e`
 - PASS bounded dry-run bootstrap via `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
 - PASS full bootstrap via `pnpm run db:bootstrap:bigdata` with 31 executed runs and persisted inventory of 686 source records, 698 catalog items, 2,128 claims, 5 supplier documents, 14 suppliers, 5 products, and 64 recorded runs
+- PASS focused research runtime and UI validation for live search, staged warehouse import, and review creation from staged source records
 
 ## Consequences
 
 ### Positive
 
 - Local environments can be bootstrapped reproducibly while still supporting corpus growth.
+- The product can query supported literature providers live without creating a second warehouse or bypassing provenance controls.
 - Large-data UI work can consolidate around product areas and dense-data primitives without re-opening domain semantics.
 - The corpus scope is explicit enough to include supplier and market intelligence without pretending those sources are validated fact.
 

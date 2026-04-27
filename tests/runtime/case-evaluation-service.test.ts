@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    evaluationResponseSchema,
-    rawCaseInputSchema,
+  evaluationResponseSchema,
+  rawCaseInputSchema,
 } from '@metrev/domain-contracts';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 
@@ -118,7 +118,7 @@ describe('case evaluation service', () => {
     ).toBe('skipped');
   });
 
-  it('falls back to the deterministic stub narrative when an unsupported LLM mode is requested', async () => {
+  it('falls back to the deterministic stub narrative when openai mode is requested without credentials', async () => {
     process.env.METREV_LLM_MODE = 'openai';
 
     const logger = {
@@ -142,7 +142,7 @@ describe('case evaluation service', () => {
       fallback_used: true,
     });
     expect(evaluation.narrative_metadata.error_message).toContain(
-      'Unsupported METREV_LLM_MODE "openai" requested',
+      'OpenAI-compatible mode requires METREV_LLM_API_KEY or OPENAI_API_KEY',
     );
   });
 });

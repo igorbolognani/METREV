@@ -2,12 +2,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-    AppRouterContext,
-    type AppRouterInstance,
+  AppRouterContext,
+  type AppRouterInstance,
 } from '../../apps/web-ui/node_modules/next/dist/shared/lib/app-router-context.shared-runtime.js';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 const push = vi.fn();
+
+vi.mock('next/navigation', async () => {
+  const actual =
+    await vi.importActual<typeof import('next/navigation')>('next/navigation');
+
+  return {
+    ...actual,
+    useRouter: () => ({ push }),
+    useSearchParams: () => new URLSearchParams(),
+  };
+});
 
 vi.mock('@/lib/case-form-query-state', async () => {
   const actual = await vi.importActual<
@@ -32,6 +43,7 @@ vi.mock('next/link', () => ({
 vi.mock('@/lib/api', () => ({
   evaluateCase: vi.fn(),
   fetchExternalEvidenceCatalog: vi.fn(),
+  fetchResearchEvidencePackDecisionInput: vi.fn(),
 }));
 
 afterEach(() => {

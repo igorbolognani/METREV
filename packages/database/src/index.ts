@@ -3,43 +3,43 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    caseHistoryResponseSchema,
-    evaluationClaimUsageSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evaluationSourceUsageSchema,
-    evidenceClaimSchema,
-    evidenceClaimTypeSchema,
-    evidenceExtractionMethodSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    externalEvidenceAccessStatusSchema,
-    externalEvidenceBulkReviewResponseSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    ontologyMappingSourceSchema,
-    reportConversationTurnSchema,
-    simulationEnrichmentSchema,
-    sourceDocumentRecordSchema,
-    supplierDocumentSchema,
-    supplierDocumentTypeSchema,
-    workspaceSnapshotRecordSchema,
-    type CaseHistoryResponse,
-    type ConfidenceLevel,
-    type EvaluationListResponse,
-    type EvaluationResponse,
-    type EvidenceClaim,
-    type ExternalEvidenceBulkReviewResponse,
-    type ExternalEvidenceCatalogItemDetail,
-    type ExternalEvidenceCatalogItemSummary,
-    type ExternalEvidenceCatalogListResponse,
-    type ExternalEvidenceReviewAction,
-    type ExternalEvidenceReviewStatus,
-    type ExternalEvidenceSourceType,
-    type NarrativeMetadata,
-    type ReportConversationCitation,
-    type ReportConversationGrounding,
-    type ReportConversationTurn,
+  caseHistoryResponseSchema,
+  evaluationClaimUsageSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationSourceUsageSchema,
+  evidenceClaimSchema,
+  evidenceClaimTypeSchema,
+  evidenceExtractionMethodSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  ontologyMappingSourceSchema,
+  reportConversationTurnSchema,
+  simulationEnrichmentSchema,
+  sourceDocumentRecordSchema,
+  supplierDocumentSchema,
+  supplierDocumentTypeSchema,
+  workspaceSnapshotRecordSchema,
+  type CaseHistoryResponse,
+  type ConfidenceLevel,
+  type EvaluationListResponse,
+  type EvaluationResponse,
+  type EvidenceClaim,
+  type ExternalEvidenceBulkReviewResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type ExternalEvidenceCatalogItemSummary,
+  type ExternalEvidenceCatalogListResponse,
+  type ExternalEvidenceReviewAction,
+  type ExternalEvidenceReviewStatus,
+  type ExternalEvidenceSourceType,
+  type NarrativeMetadata,
+  type ReportConversationCitation,
+  type ReportConversationGrounding,
+  type ReportConversationTurn,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -53,16 +53,16 @@ const PRISMA_TRANSACTION_OPTIONS = {
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-    createResearchRepository,
-    MemoryResearchRepository,
-    PrismaResearchRepository,
-    type AddResearchReviewColumnInput,
-    type ClaimResearchExtractionJobsInput,
-    type CreateResearchEvidencePackInput,
-    type CreateResearchReviewInput,
-    type ResearchExtractionWorkItem,
-    type ResearchRepository,
-    type SaveResearchExtractionResultInput
+  createResearchRepository,
+  MemoryResearchRepository,
+  PrismaResearchRepository,
+  type AddResearchReviewColumnInput,
+  type ClaimResearchExtractionJobsInput,
+  type CreateResearchEvidencePackInput,
+  type CreateResearchReviewInput,
+  type ResearchExtractionWorkItem,
+  type ResearchRepository,
+  type SaveResearchExtractionResultInput,
 } from './research-repository';
 
 export interface EvaluationRepository {
@@ -650,8 +650,11 @@ function buildEvaluationListResponse(
 }
 
 const catalogEvidenceIdPrefix = 'catalog:';
+const researchEvidenceIdPrefix = 'research:';
 const acceptedCatalogEvidenceUsageNote =
   'Accepted catalog evidence attached during intake selection.';
+const attachedResearchEvidenceUsageNote =
+  'Research evidence pack attached during intake selection.';
 
 function extractCatalogEvidenceIdsFromEvaluation(
   evaluation: EvaluationResponse,
@@ -673,6 +676,37 @@ function extractCatalogEvidenceIdsFromEvaluation(
         .filter((catalogItemId) => catalogItemId.length > 0),
     ),
   ];
+}
+
+function extractResearchEvidenceReferencesFromEvaluation(
+  evaluation: EvaluationResponse,
+): Array<{ evidenceType: string; sourceDocumentId: string }> {
+  return Array.from(
+    new Map(
+      evaluation.audit_record.typed_evidence
+        .filter((record) =>
+          (record.evidence_id ?? '').startsWith(researchEvidenceIdPrefix),
+        )
+        .flatMap((record) => {
+          const sourceDocumentId =
+            typeof record.applicability_scope?.source_document_id === 'string'
+              ? record.applicability_scope.source_document_id
+              : null;
+
+          return sourceDocumentId
+            ? [
+                [
+                  sourceDocumentId,
+                  {
+                    sourceDocumentId,
+                    evidenceType: record.evidence_type,
+                  },
+                ],
+              ]
+            : [];
+        }),
+    ).values(),
+  );
 }
 
 function toEvaluationSourceUsageType(input: {
@@ -714,6 +748,10 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
   payload: Record<string, unknown>;
 }> {
   const catalogItemIds = extractCatalogEvidenceIdsFromEvaluation(evaluation);
+  const researchSourceDocumentIds =
+    extractResearchEvidenceReferencesFromEvaluation(evaluation).map(
+      (entry) => entry.sourceDocumentId,
+    );
   const basePayload = {
     evaluation_id: evaluation.evaluation_id,
     case_id: evaluation.case_id,
@@ -722,6 +760,7 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
       evaluation.decision_output.confidence_and_uncertainty_summary
         .confidence_level,
     attached_catalog_item_ids: catalogItemIds,
+    attached_research_source_document_ids: researchSourceDocumentIds,
   };
 
   return [
@@ -1728,6 +1767,90 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 if (claimUsageRows.length > 0) {
                   await database.evaluationClaimUsage.createMany({
                     data: claimUsageRows,
+                    skipDuplicates: true,
+                  });
+                }
+              }
+            }
+
+            const researchEvidenceReferences =
+              extractResearchEvidenceReferencesFromEvaluation(evaluation);
+
+            if (researchEvidenceReferences.length > 0) {
+              const sourceRecords =
+                await database.externalSourceRecord.findMany({
+                  where: {
+                    id: {
+                      in: researchEvidenceReferences.map(
+                        (entry) => entry.sourceDocumentId,
+                      ),
+                    },
+                  },
+                  select: {
+                    id: true,
+                    sourceType: true,
+                  },
+                });
+
+              if (sourceRecords.length > 0) {
+                const evidenceTypeBySourceId = new Map(
+                  researchEvidenceReferences.map((entry) => [
+                    entry.sourceDocumentId,
+                    entry.evidenceType,
+                  ]),
+                );
+
+                await database.evaluationSourceUsage.createMany({
+                  data: sourceRecords.map((sourceRecord) => ({
+                    evaluationId: evaluation.evaluation_id,
+                    sourceRecordId: sourceRecord.id,
+                    usageType: toEvaluationSourceUsageType({
+                      sourceType: sourceRecord.sourceType,
+                      evidenceType:
+                        evidenceTypeBySourceId.get(sourceRecord.id) ??
+                        'literature_evidence',
+                    }),
+                    note: attachedResearchEvidenceUsageNote,
+                  })),
+                  skipDuplicates: true,
+                });
+
+                const claims = await database.evidenceClaim.findMany({
+                  where: {
+                    sourceRecordId: {
+                      in: sourceRecords.map((sourceRecord) => sourceRecord.id),
+                    },
+                  },
+                  select: {
+                    id: true,
+                    sourceRecordId: true,
+                  },
+                });
+
+                if (claims.length > 0) {
+                  const sourceTypeById = new Map(
+                    sourceRecords.map((sourceRecord) => [
+                      sourceRecord.id,
+                      sourceRecord.sourceType,
+                    ]),
+                  );
+                  await database.evaluationClaimUsage.createMany({
+                    data: claims.map((claim) => {
+                      const sourceUsageType = toEvaluationSourceUsageType({
+                        sourceType:
+                          sourceTypeById.get(claim.sourceRecordId) ?? 'MANUAL',
+                        evidenceType:
+                          evidenceTypeBySourceId.get(claim.sourceRecordId) ??
+                          'literature_evidence',
+                      });
+
+                      return {
+                        evaluationId: evaluation.evaluation_id,
+                        claimId: claim.id,
+                        usageType: toEvaluationClaimUsageType(sourceUsageType),
+                        note: attachedResearchEvidenceUsageNote,
+                      };
+                    }),
                     skipDuplicates: true,
                   });
                 }

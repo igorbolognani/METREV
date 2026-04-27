@@ -7,6 +7,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "dev:api": "pnpm --filter @metrev/api-server dev",
+    "dev:research-worker": "pnpm --filter @metrev/research-worker dev",
     "dev:web": "pnpm --filter @metrev/web-ui dev",
     "lint": "turbo run lint",
     "postinstall": "pnpm prisma:generate",
