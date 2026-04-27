@@ -1,7 +1,4 @@
-import {
-  type ResearchBackfillSummary,
-  researchExtractionResultSchema,
-} from '@metrev/domain-contracts';
+import { researchExtractionResultSchema } from '@metrev/domain-contracts';
 import { type ResearchRepository } from '@metrev/database';
 import {
   RESEARCH_RUNTIME_EXTRACTOR_VERSION,

@@ -23,7 +23,6 @@ import {
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import {
-  fetchResearchEvidencePackDecisionInput,
   clearPendingSubmission,
   clearSubmissionError,
   loadDraftInput,
@@ -31,6 +30,7 @@ import {
   saveDraftInput,
   savePendingSubmission,
 } from '@/lib/case-draft';
+import { fetchResearchEvidencePackDecisionInput } from '@/lib/api';
 import {
   caseFormSteps,
   caseFormStepValues,

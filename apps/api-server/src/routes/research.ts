@@ -111,8 +111,8 @@ export async function registerResearchRoutes(
       () => app.researchRepository.stageResearchPapers(parsed.data),
       {
         actor_id: actor.userId,
-        query: parsed.data.query,
         item_count: parsed.data.items.length,
+        ...(parsed.data.query ? { query: parsed.data.query } : {}),
       },
     );
 

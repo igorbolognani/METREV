@@ -494,6 +494,7 @@ export function ResearchReviewListWorkspace() {
       searchResearchPapers({
         query: searchQuery,
         limit: Math.min(limit, 15),
+        page: 1,
       }),
     onSuccess: (response) => {
       setSearchResults(response.items);

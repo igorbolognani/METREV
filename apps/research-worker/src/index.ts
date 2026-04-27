@@ -29,9 +29,10 @@ async function main() {
     process.env.METREV_RESEARCH_WORKER_BACKFILL_LIMIT,
     1,
   );
+  let keepRunning = true;
 
   try {
-    do {
+    while (keepRunning) {
       const result = await runResearchWorkerCycle({
         repository,
         extractionLimit,
@@ -40,7 +41,8 @@ async function main() {
       console.log(`[research-worker] ${summarizeWorkerCycle(result)}`);
 
       if (once) {
-        break;
+        keepRunning = false;
+        continue;
       }
 
       if (
@@ -49,7 +51,7 @@ async function main() {
       ) {
         await delay(pollMs);
       }
-    } while (true);
+    }
   } finally {
     await repository.disconnect();
   }

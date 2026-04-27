@@ -22,7 +22,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - Public landing page that explains the science, obstacles, ODS/SDG impact, METREV value, and the configure-to-report flow.
 - Signed-in navigation centered on Dashboard, Configure Stack, Evaluations, and Reports.
 - Advanced/Internal grouping for Evidence Explorer, Evidence Review, and Research Tables.
-- Research Tables support live external paper search and staged import into the canonical warehouse before extraction and evidence-pack work begins.
+- Research Tables support live external paper search, staged import into the canonical warehouse, structured extraction, and evidence-pack generation for downstream case intake and evaluation lineage.
 - Dashboard reframed as a workspace home for active cases, recent evaluations, reports, readiness, and next actions.
 - Stack configuration cockpit-wizard direction anchored to canonical domain and contract vocabulary.
 - Evaluation workspace labels reframed for client clarity: Diagnosis, Recommendations, Modeling, Roadmap & Suppliers, Report, and Audit.
