@@ -12,22 +12,32 @@ import type {
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
-import { askReportConversation, fetchPrintableEvaluationReport } from '@/lib/api';
+import {
+  askReportConversation,
+  fetchPrintableEvaluationReport,
+} from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 import {
-    usePrintableReportTab,
-    type PrintableReportTab,
+  usePrintableReportTab,
+  type PrintableReportTab,
 } from '@/lib/printable-report-view-query-state';
 
 void React;
+
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  response?: ReportConversationResponse;
+};
 
 function listOrEmpty(items: string[], emptyMessage: string) {
   if (items.length === 0) {
@@ -54,6 +64,104 @@ function formatPersistedUsage(
   return `${formatToken(value.usage_type)} · ${targetId}${
     value.note ? ` · ${value.note}` : ''
   }`;
+}
+
+export function groupReportConversationCitations(
+  citations: ReportConversationResponse['citations'],
+) {
+  const groups = {
+    claim: [] as ReportConversationResponse['citations'],
+    report: [] as ReportConversationResponse['citations'],
+    source: [] as ReportConversationResponse['citations'],
+  };
+
+  for (const citation of citations) {
+    if (
+      citation.source_document_id ||
+      citation.citation_id.startsWith('source:')
+    ) {
+      groups.source.push(citation);
+      continue;
+    }
+
+    if (citation.claim_id || citation.citation_id.startsWith('claim:')) {
+      groups.claim.push(citation);
+      continue;
+    }
+
+    groups.report.push(citation);
+  }
+
+  return [
+    { key: 'source', label: 'Source links', citations: groups.source },
+    { key: 'claim', label: 'Claim links', citations: groups.claim },
+    { key: 'report', label: 'Report anchors', citations: groups.report },
+  ].filter((group) => group.citations.length > 0);
+}
+
+export function ReportConversationTrace({
+  response,
+}: {
+  response: ReportConversationResponse;
+}) {
+  const selectedSectionLabel = response.grounding_summary.selected_section
+    ? formatToken(response.grounding_summary.selected_section)
+    : 'Whole report';
+  const refusalStateLabel = response.refusal_reason
+    ? 'Refusal applied'
+    : 'Grounded answer';
+  const citationGroups = groupReportConversationCitations(response.citations);
+
+  return (
+    <div className="report-conversation-trace">
+      <div className="workspace-chip-list compact">
+        <span className="meta-chip">Section {selectedSectionLabel}</span>
+        <span
+          className={`meta-chip ${response.refusal_reason ? 'meta-chip--warning' : 'meta-chip--success'}`}
+        >
+          {refusalStateLabel}
+        </span>
+        <span className="meta-chip">
+          Sources {response.grounding_summary.source_usage_count}
+        </span>
+        <span className="meta-chip">
+          Claims {response.grounding_summary.claim_usage_count}
+        </span>
+        <span className="meta-chip">
+          Snapshots {response.grounding_summary.snapshot_count}
+        </span>
+      </div>
+      <div className="report-conversation-trace__group">
+        <span className="badge subtle">Uncertainty note</span>
+        <p>{response.uncertainty_summary}</p>
+      </div>
+      {response.refusal_reason ? (
+        <div className="report-conversation-trace__group">
+          <span className="badge subtle">Refusal state</span>
+          <p>{response.refusal_reason}</p>
+        </div>
+      ) : null}
+      <div className="report-conversation-trace__group">
+        <span className="badge subtle">Recommended next checks</span>
+        {listOrEmpty(
+          response.recommended_next_checks.slice(0, 4),
+          'No follow-up checks were attached to this answer.',
+        )}
+      </div>
+      {citationGroups.map((group) => (
+        <div className="report-conversation-trace__group" key={group.key}>
+          <span className="badge subtle">{group.label}</span>
+          <div className="workspace-chip-list compact">
+            {group.citations.map((citation) => (
+              <span className="meta-chip" key={citation.citation_id}>
+                {citation.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function PrintableReportView({
@@ -114,14 +222,7 @@ export function PrintableReportWorkspaceView({
     null,
   );
   const [question, setQuestion] = React.useState('');
-  const [chatMessages, setChatMessages] = React.useState<
-    Array<{
-      id: string;
-      role: 'user' | 'assistant';
-      text: string;
-      response?: ReportConversationResponse;
-    }>
-  >([]);
+  const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
   const [chatError, setChatError] = React.useState<string | null>(null);
   const [isAsking, setIsAsking] = React.useState(false);
   const presentation = report.presentation;
@@ -468,9 +569,8 @@ export function PrintableReportWorkspaceView({
           <div className="report-conversation-drawer__messages">
             {chatMessages.length === 0 ? (
               <p className="muted">
-                Ask for clarification on diagnosis, recommendations,
-                confidence, missing measurements, suppliers, or executive
-                wording.
+                Ask for clarification on diagnosis, recommendations, confidence,
+                missing measurements, suppliers, or executive wording.
               </p>
             ) : null}
             {chatMessages.map((message) => (
@@ -481,16 +581,7 @@ export function PrintableReportWorkspaceView({
                 <strong>{message.role === 'user' ? 'You' : 'METREV'}</strong>
                 <p>{message.text}</p>
                 {message.response ? (
-                  <div className="report-conversation-trace">
-                    <span>{message.response.uncertainty_summary}</span>
-                    <div className="workspace-chip-list compact">
-                      {message.response.citations.slice(0, 4).map((citation) => (
-                        <span className="meta-chip" key={citation.citation_id}>
-                          {citation.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <ReportConversationTrace response={message.response} />
                 ) : null}
               </article>
             ))}

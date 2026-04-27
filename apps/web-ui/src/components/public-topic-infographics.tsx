@@ -1,11 +1,22 @@
+'use client';
+
+import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    PublicCenterKind,
-    PublicMiniVisualKind,
-    PublicTone,
-    PublicTopicConfig,
+  PublicDialogContent,
+  PublicCenterKind,
+  PublicMiniVisualKind,
+  PublicTone,
+  PublicTopicConfig,
 } from '@/components/public-topic-content';
+import {
+  PUBLIC_TOPIC_PAGES,
+  getPublicPanelDialog,
+  getPublicTopicHref,
+  getPublicTopicLandingDialog,
+} from '@/components/public-topic-content';
+import { Dialog } from '@/components/ui/dialog';
 
 void React;
 
@@ -349,7 +360,7 @@ function MiniVisual({
   );
 }
 
-function CenterGraphic({ kind }: { kind: PublicCenterKind }) {
+function _CenterGraphic({ kind }: { kind: PublicCenterKind }) {
   return (
     <svg
       aria-hidden="true"
@@ -515,127 +526,200 @@ function CenterGraphic({ kind }: { kind: PublicCenterKind }) {
   );
 }
 
+interface PublicInteractiveBoardItem {
+  dialog: PublicDialogContent;
+  eyebrow: string;
+  href?: string;
+  indexLabel: string;
+  points: string[];
+  subtitle: string;
+  testId?: string;
+  title: string;
+  tone: PublicTone;
+  visualKind: PublicMiniVisualKind;
+}
+
+function PublicDialogBody({ dialog }: { dialog: PublicDialogContent }) {
+  return (
+    <div className="public-board-dialog">
+      <p className="public-board-dialog__lead">{dialog.lead}</p>
+      <div className="public-board-dialog__sections">
+        {dialog.sections.map((section) => (
+          <article className="public-board-dialog__section" key={section.label}>
+            <span>{section.label}</span>
+            <p>{section.body}</p>
+          </article>
+        ))}
+      </div>
+      <article className="public-board-dialog__takeaway">
+        <span>METREV takeaway</span>
+        <p>{dialog.takeaway}</p>
+      </article>
+    </div>
+  );
+}
+
+function PublicInteractiveBoard({
+  compact = false,
+  item,
+}: {
+  compact?: boolean;
+  item: PublicInteractiveBoardItem;
+}) {
+  return (
+    <Dialog
+      contentClassName="public-board-dialog-shell"
+      description={item.dialog.eyebrow}
+      footer={
+        item.href ? (
+          <Link className="button secondary" href={item.href}>
+            Open full page
+          </Link>
+        ) : null
+      }
+      title={item.dialog.title}
+      trigger={
+        <button
+          className={
+            compact
+              ? 'public-linear-board public-linear-board--compact'
+              : 'public-linear-board'
+          }
+          data-compact={compact ? 'true' : 'false'}
+          data-testid={item.testId}
+          data-tone={item.tone}
+          type="button"
+        >
+          <div className="public-linear-board__head">
+            <span className="public-linear-board__index" data-tone={item.tone}>
+              {item.indexLabel}
+            </span>
+            <div className="public-linear-board__copy">
+              <p className="public-linear-board__eyebrow">{item.eyebrow}</p>
+              <h4>{item.title}</h4>
+              <p className="public-linear-board__subtitle">{item.subtitle}</p>
+            </div>
+          </div>
+
+          <div className="public-linear-board__visual">
+            <MiniVisual kind={item.visualKind} tone={item.tone} />
+          </div>
+
+          <div className="public-linear-board__points">
+            {item.points.map((point) => (
+              <span className="public-linear-board__point" key={point}>
+                {point}
+              </span>
+            ))}
+          </div>
+        </button>
+      }
+    >
+      <PublicDialogBody dialog={item.dialog} />
+    </Dialog>
+  );
+}
+
+export function PublicLandingInfographic() {
+  return (
+    <div
+      className="public-infographic public-infographic--landing"
+      data-testid="public-landing-infographic"
+    >
+      <div className="public-infographic__summary">
+        <div className="public-infographic__summary-copy">
+          <p className="public-infographic__summary-kicker">
+            Six public explanation routes
+          </p>
+          <h3>Follow the METREV story in one linear sequence.</h3>
+          <p>
+            Each board opens a fuller explanation of one public lens. Use the
+            fixed header to jump into the dedicated page for that topic when you
+            want the smaller six-point breakdown.
+          </p>
+        </div>
+      </div>
+
+      <div className="public-infographic__rail public-infographic__rail--landing">
+        {PUBLIC_TOPIC_PAGES.map((topic, index) => (
+          <PublicInteractiveBoard
+            item={{
+              dialog: getPublicTopicLandingDialog(topic),
+              eyebrow: topic.navLabel,
+              href: getPublicTopicHref(topic.slug),
+              indexLabel: String(index + 1).padStart(2, '0'),
+              points: [...topic.previewPoints],
+              subtitle: topic.routeMarker,
+              testId: `public-landing-board-${topic.slug}`,
+              title: topic.cardTitle,
+              tone: topic.accentTone,
+              visualKind: topic.panels[0].visualKind,
+            }}
+            key={topic.slug}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PublicTopicInfographic({
   topic,
 }: {
   topic: PublicTopicConfig;
 }) {
-  const leftPanels = topic.panels.slice(0, 3);
-  const rightPanels = topic.panels.slice(3);
-
   return (
     <div
-      className="public-infographic"
+      className="public-infographic public-infographic--topic"
       data-testid="public-topic-infographic"
       data-topic={topic.slug}
     >
-      <div className="public-infographic__grid">
-        <div className="public-infographic__column">
-          {leftPanels.map((panel) => (
+      <div className="public-infographic__summary">
+        <div className="public-infographic__summary-copy">
+          <p className="public-infographic__summary-kicker">
+            {topic.legendTitle}
+          </p>
+          <h3>{topic.centerTitle}</h3>
+          <p>{topic.legendLead}</p>
+        </div>
+
+        <div className="public-infographic__legend public-infographic__legend--linear">
+          {topic.legend.map((item) => (
             <article
-              className="public-infographic__panel"
-              data-tone={panel.tone}
-              key={`${topic.slug}-${panel.number}`}
+              className="public-infographic__legend-item"
+              key={item.label}
             >
-              <div className="public-infographic__panel-head">
-                <span
-                  className="public-infographic__number"
-                  data-tone={panel.tone}
-                >
-                  {panel.number}
-                </span>
-                <div>
-                  <p className="public-infographic__panel-kicker">
-                    {panel.subtitle}
-                  </p>
-                  <h4>{panel.title}</h4>
-                </div>
+              <span
+                className="public-infographic__legend-swatch"
+                data-tone={item.tone}
+              />
+              <div>
+                <strong>{item.label}</strong>
+                <p>{item.detail}</p>
               </div>
-              <div className="public-infographic__mini">
-                <MiniVisual kind={panel.visualKind} tone={panel.tone} />
-              </div>
-              <ul className="public-infographic__bullets">
-                <li>{panel.bullets[0]}</li>
-                <li>{panel.bullets[1]}</li>
-              </ul>
             </article>
           ))}
         </div>
+      </div>
 
-        <div className="public-infographic__center" data-topic={topic.slug}>
-          <div className="public-infographic__center-ring" />
-          {topic.orbitLabels.map((label) => (
-            <span
-              className="public-infographic__orbit-label"
-              data-position={label.position}
-              data-tone={label.tone}
-              key={`${topic.slug}-${label.position}-${label.label}`}
-            >
-              {label.label}
-            </span>
-          ))}
-          <CenterGraphic kind={topic.centerKind} />
-          <div className="public-infographic__center-copy">
-            <span>{topic.navLabel}</span>
-            <h3>{topic.centerTitle}</h3>
-            <p>{topic.centerSummary}</p>
-          </div>
-
-          <article className="public-infographic__story">
-            <span>{topic.legendTitle}</span>
-            <p>{topic.legendLead}</p>
-          </article>
-
-          <div className="public-infographic__legend">
-            {topic.legend.map((item) => (
-              <article
-                className="public-infographic__legend-item"
-                key={item.label}
-              >
-                <span
-                  className="public-infographic__legend-swatch"
-                  data-tone={item.tone}
-                />
-                <div>
-                  <strong>{item.label}</strong>
-                  <p>{item.detail}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="public-infographic__column">
-          {rightPanels.map((panel) => (
-            <article
-              className="public-infographic__panel"
-              data-tone={panel.tone}
-              key={`${topic.slug}-${panel.number}`}
-            >
-              <div className="public-infographic__panel-head">
-                <span
-                  className="public-infographic__number"
-                  data-tone={panel.tone}
-                >
-                  {panel.number}
-                </span>
-                <div>
-                  <p className="public-infographic__panel-kicker">
-                    {panel.subtitle}
-                  </p>
-                  <h4>{panel.title}</h4>
-                </div>
-              </div>
-              <div className="public-infographic__mini">
-                <MiniVisual kind={panel.visualKind} tone={panel.tone} />
-              </div>
-              <ul className="public-infographic__bullets">
-                <li>{panel.bullets[0]}</li>
-                <li>{panel.bullets[1]}</li>
-              </ul>
-            </article>
-          ))}
-        </div>
+      <div className="public-infographic__rail public-infographic__rail--topic">
+        {topic.panels.map((panel) => (
+          <PublicInteractiveBoard
+            compact
+            item={{
+              dialog: getPublicPanelDialog(topic, panel),
+              eyebrow: panel.subtitle,
+              indexLabel: String(panel.number).padStart(2, '0'),
+              points: [...panel.bullets],
+              subtitle: topic.navLabel,
+              testId: `public-topic-board-${topic.slug}-${panel.number}`,
+              title: panel.title,
+              tone: panel.tone,
+              visualKind: panel.visualKind,
+            }}
+            key={`${topic.slug}-${panel.number}`}
+          />
+        ))}
       </div>
 
       <p className="public-infographic__note">{topic.infographicNote}</p>

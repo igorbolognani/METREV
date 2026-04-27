@@ -42,6 +42,7 @@ import { withSpan } from '@metrev/telemetry';
 
 import { getPrismaClient } from './prisma-client';
 import {
+  dedupeResearchPaperItems,
   searchResearchPapers as searchResearchPapersFromProviders,
   stageResearchPapers as stageResearchPapersToWarehouse,
 } from './research-paper-search';
@@ -941,7 +942,7 @@ export class MemoryResearchRepository implements ResearchRepository {
   async stageResearchPapers(
     input: StageResearchPapersRequest,
   ): Promise<StageResearchPapersResponse> {
-    const papers = input.items.map((item) => {
+    const papers = dedupeResearchPaperItems(input.items).map((item) => {
       const sourceDocumentId = `memory-staged-${item.source_type}-${item.source_key.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
       const paper = researchPaperMetadataSchema.parse({
         paper_id: `staged:${sourceDocumentId}`,

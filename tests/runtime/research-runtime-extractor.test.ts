@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
 import {
-    executeResearchExtraction,
-    findDefaultResearchColumn,
+  executeResearchExtraction,
+  findDefaultResearchColumn,
 } from '@metrev/research-intelligence';
 
 import incompletePaperFixture from '../fixtures/research/incomplete-paper.json';
@@ -103,50 +103,13 @@ describe('research runtime extractor', () => {
     ).toBeCloseTo(0.95, 6);
   });
 
-  it('uses provider-backed structured extraction for llm_extracted research columns', async () => {
+  it('falls back to deterministic extraction for llm_extracted research columns when openai mode is requested', async () => {
     process.env.METREV_LLM_MODE = 'openai';
     process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  answer: {
-                    gaps: ['Long-duration fouling evidence remains limited.'],
-                    evidence_span:
-                      'Long-duration fouling evidence remains limited.',
-                    confidence: 'medium',
-                  },
-                  confidence: 'medium',
-                  evidence_trace: [
-                    {
-                      source: 'full_text',
-                      source_document_id: 'fixture-paper-incomplete-001',
-                      text_span:
-                        'Long-duration fouling evidence remains limited.',
-                      source_locator: 'html:https://example.org/full-text',
-                      page_number: null,
-                    },
-                  ],
-                  missing_fields: [],
-                }),
-              },
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/json',
-          },
-        },
-      ),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const column = findDefaultResearchColumn('research_gaps');
@@ -179,18 +142,24 @@ describe('research runtime extractor', () => {
     });
 
     expect(result.status).toBe('valid');
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(result.answer).toEqual(
       expect.objectContaining({
-        gaps: ['Long-duration fouling evidence remains limited.'],
+        gaps: expect.arrayContaining([
+          'Scale-up durability remains unresolved.',
+        ]),
+        confidence: 'low',
       }),
     );
     expect(result.normalized_payload).toEqual(
       expect.objectContaining({
-        llm_runtime: expect.objectContaining({
-          mode: 'openai',
-          provider: 'openai',
+        full_text: expect.objectContaining({
+          source: 'html',
         }),
       }),
     );
+    expect(
+      (result.normalized_payload as { llm_runtime?: unknown }).llm_runtime,
+    ).toBeUndefined();
   });
 });

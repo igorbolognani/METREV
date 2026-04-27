@@ -3,18 +3,22 @@
 ## Workstream 1 - Artifacts and design
 
 - [x] T1 Create the 021 feature pack for the public-route infographic redesign.
-- [x] T2 Define the public-route IA, topic config, and infographic-board structure.
+- [x] T2 Define the initial public-route IA, topic config, and infographic-board structure.
+- [x] T3 Redefine the 021 scope for the fixed-nav, linear-infographic, modal-detail redesign.
 
 ## Workstream 2 - Implementation
 
-- [x] T3 Replace `/` with an overview hub and add `/learn/[topic]` public routes.
-- [x] T4 Implement code-built infographic boards and shared public navigation.
-- [x] T5 Keep `/learn/*` outside the signed-in app shell.
+- [x] T4 Extend the shared public topic content model for landing and topic-page dialog content.
+- [x] T5 Replace the current radial/orbit infographic primitives with reusable linear board primitives.
+- [x] T6 Rework the fixed public navigation and shared public-route spacing.
+- [x] T7 Redesign `/` into a higher-contrast overview hub with six modal-opening landing boards.
+- [x] T8 Redesign the six topic pages into descriptive intros plus smaller modal-opening linear infographics.
+- [x] T9 Keep `/learn/*` outside the signed-in app shell.
 
 ## Workstream 3 - Validation and follow-through
 
-- [x] T6 Update focused web UI tests for the new public-route structure.
-- [x] T7 Record verification and route behavior in quickstart.
+- [x] T10 Update focused web UI and Playwright coverage for the new interaction model.
+- [x] T11 Record verification and route behavior in quickstart.
 
 ## Dependencies
 
@@ -23,8 +27,8 @@
 
 ## Parallelizable
 
-- [x] P1 Infographic-board styling and SVG/icon primitives.
-- [x] P2 Topic-copy refinement for the six route pages.
+- [x] P1 Fixed header styling and responsive spacing.
+- [x] P2 Topic-copy refinement for landing dialogs and per-page detail panels.
 
 ## Validation gates
 

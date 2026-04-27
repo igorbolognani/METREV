@@ -2,17 +2,22 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvaluationRepository } from '@metrev/database';
 import {
-    reportConversationResponseSchema,
-    type EvaluationResponse,
-    type PrintableEvaluationReportResponse,
-    type ReportConversationCitation,
-    type ReportConversationGrounding,
-    type ReportConversationResponse,
+  reportConversationResponseSchema,
+  type EvaluationResponse,
+  type PrintableEvaluationReportResponse,
+  type ReportConversationCitation,
+  type ReportConversationGrounding,
+  type ReportConversationResponse,
+  type ReportConversationTurn,
 } from '@metrev/domain-contracts';
 import {
-    generateReportConversationAnswer,
-    type ReportConversationAnswerResult,
+  generateReportConversationAnswer,
+  type ReportConversationAnswerResult,
+  type ReportConversationBoundedContextSummary,
+  type ReportConversationRecentTurnContext,
 } from '@metrev/llm-adapter';
+
+const REPORT_CONVERSATION_HISTORY_LIMIT = 12;
 
 export interface CreatePersistedReportConversationInput {
   actorId: string;
@@ -116,15 +121,140 @@ function buildPersistedAssistantMessage(
   return 'Report conversation answer unavailable.';
 }
 
+function truncateContextValue(value: string, limit = 180): string {
+  const normalized = value.trim();
+
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, limit - 3).trimEnd()}...`;
+}
+
+function resolveSelectedSection(input: {
+  selectedSection?: string | null;
+  recentTurns: ReportConversationTurn[];
+}): string | null {
+  const selectedSection = input.selectedSection?.trim();
+
+  if (selectedSection) {
+    return selectedSection;
+  }
+
+  for (let index = input.recentTurns.length - 1; index >= 0; index -= 1) {
+    const recentSection = input.recentTurns[index].selected_section?.trim();
+
+    if (recentSection) {
+      return recentSection;
+    }
+  }
+
+  return null;
+}
+
+function toRecentTurnContext(
+  turns: ReportConversationTurn[],
+): ReportConversationRecentTurnContext[] {
+  return turns.map((turn) => ({
+    actor: turn.actor,
+    message: truncateContextValue(turn.message, 200),
+    selectedSection: turn.selected_section,
+  }));
+}
+
+function buildReportConversationBoundedSummary(input: {
+  evaluation: EvaluationResponse;
+  grounding: ReportConversationGrounding;
+  report: PrintableEvaluationReportResponse;
+}): ReportConversationBoundedContextSummary {
+  const simulation = input.evaluation.simulation_enrichment;
+
+  return {
+    normalizedCase: {
+      caseId: input.evaluation.normalized_case.case_id,
+      technologyFamily: input.evaluation.normalized_case.technology_family,
+      architectureFamily: input.evaluation.normalized_case.architecture_family,
+      primaryObjective: input.evaluation.normalized_case.primary_objective,
+      evidenceRefs: input.evaluation.normalized_case.evidence_refs.slice(0, 6),
+    },
+    decisionOutput: {
+      stackDiagnosis: truncateContextValue(
+        input.evaluation.decision_output.current_stack_diagnosis.summary,
+      ),
+      topRecommendations: input.report.sections.prioritized_improvements
+        .slice(0, 3)
+        .map((entry) =>
+          truncateContextValue(
+            `${entry.recommendation_id}: ${entry.expected_benefit}`,
+          ),
+        ),
+      confidenceLevel:
+        input.evaluation.decision_output.confidence_and_uncertainty_summary
+          .confidence_level,
+    },
+    defaultsAndMissingData: {
+      defaultsUsed:
+        input.report.sections.assumptions_and_defaults_audit.defaults_used.slice(
+          0,
+          6,
+        ),
+      missingData:
+        input.report.sections.assumptions_and_defaults_audit.missing_data.slice(
+          0,
+          6,
+        ),
+      assumptions:
+        input.report.sections.assumptions_and_defaults_audit.assumptions.slice(
+          0,
+          6,
+        ),
+      nextTests:
+        input.report.sections.confidence_and_uncertainty_summary.next_tests.slice(
+          0,
+          4,
+        ),
+    },
+    simulation: {
+      status: simulation?.status ?? 'not_available',
+      modelVersion: simulation?.model_version ?? null,
+      confidenceLevel: simulation?.confidence.level ?? null,
+      derivedObservationCount: simulation?.derived_observations.length ?? 0,
+      assumptionCount: simulation?.assumptions.length ?? 0,
+    },
+    suppliers: input.report.sections.supplier_shortlist
+      .slice(0, 4)
+      .map((entry) =>
+        truncateContextValue(
+          `${entry.category}: ${entry.candidate_path} - ${entry.fit_note}`,
+        ),
+      ),
+    lineageCounts: {
+      sourceUsageCount: input.grounding.source_usage_count,
+      claimUsageCount: input.grounding.claim_usage_count,
+      snapshotCount: input.grounding.snapshot_count,
+    },
+  };
+}
+
 export async function createPersistedReportConversation(
   input: CreatePersistedReportConversationInput,
 ): Promise<ReportConversationResponse> {
   const conversationId =
     input.conversationId?.trim() || `report-conv-${randomUUID()}`;
+  const priorTurns =
+    await input.evaluationRepository.listRecentReportConversationTurns({
+      conversationId,
+      evaluationId: input.evaluation.evaluation_id,
+      limit: REPORT_CONVERSATION_HISTORY_LIMIT,
+    });
+  const resolvedSelectedSection = resolveSelectedSection({
+    selectedSection: input.selectedSection ?? null,
+    recentTurns: priorTurns,
+  });
   const citations = buildReportConversationCitations(input.report);
   const grounding = buildReportConversationGrounding({
     report: input.report,
-    selectedSection: input.selectedSection ?? null,
+    selectedSection: resolvedSelectedSection,
   });
 
   await input.evaluationRepository.saveReportConversationTurn({
@@ -133,8 +263,15 @@ export async function createPersistedReportConversation(
     actor: 'user',
     actorId: input.actorId,
     message: input.message,
-    selectedSection: input.selectedSection ?? null,
+    selectedSection: resolvedSelectedSection,
   });
+
+  const recentTurns =
+    await input.evaluationRepository.listRecentReportConversationTurns({
+      conversationId,
+      evaluationId: input.evaluation.evaluation_id,
+      limit: REPORT_CONVERSATION_HISTORY_LIMIT,
+    });
 
   const answerResult = await generateReportConversationAnswer({
     message: input.message,
@@ -144,7 +281,13 @@ export async function createPersistedReportConversation(
       decisionOutput: input.evaluation.decision_output,
       grounding,
       citations,
-      selectedSection: input.selectedSection ?? null,
+      selectedSection: resolvedSelectedSection,
+      recentTurns: toRecentTurnContext(recentTurns),
+      boundedSummary: buildReportConversationBoundedSummary({
+        evaluation: input.evaluation,
+        grounding,
+        report: input.report,
+      }),
     },
   });
 
@@ -154,7 +297,7 @@ export async function createPersistedReportConversation(
     actor: 'assistant',
     actorId: input.actorId,
     message: buildPersistedAssistantMessage(answerResult),
-    selectedSection: input.selectedSection ?? null,
+    selectedSection: resolvedSelectedSection,
     narrativeMetadata: answerResult.narrativeMetadata,
     citations,
     grounding,
@@ -173,8 +316,8 @@ export async function createPersistedReportConversation(
     narrative_metadata: answerResult.narrativeMetadata,
     metadata: {
       conversation_id: conversationId,
-      mode: 'client',
-      context_version: 'report-context-v1',
+      mode: 'server',
+      context_version: 'report-context-v2',
       persisted: true,
       created_at: new Date().toISOString(),
     },

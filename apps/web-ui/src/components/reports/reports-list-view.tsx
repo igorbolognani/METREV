@@ -6,22 +6,22 @@ import * as React from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    DenseTableActions,
-    DenseTableShell,
-    DenseTableStack,
+  DenseTableActions,
+  DenseTableShell,
+  DenseTableStack,
 } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import {
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSkeleton,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { fetchEvaluationList } from '@/lib/api';
@@ -84,11 +84,14 @@ export function ReportsListView() {
       <WorkspacePageHeader
         actions={
           <Link className="button" href="/cases/new">
-            New evaluation
+            Configure stack
           </Link>
         }
         badge="Reports"
-        chips={[`${list.summary.total} evaluations`, `${highConfidence} high confidence`]}
+        chips={[
+          `${list.summary.total} evaluations`,
+          `${highConfidence} high confidence`,
+        ]}
         description="Report-ready outputs generated from saved evaluations, with diagnosis, recommendations, suppliers, roadmap, and audit available through each report."
         title="Reports"
       />
@@ -99,7 +102,8 @@ export function ReportsListView() {
             key: 'available',
             label: 'Available reports',
             value: list.summary.total,
-            detail: 'Every saved evaluation can be opened as a printable report.',
+            detail:
+              'Every saved evaluation can be opened as a printable report.',
             tone: 'default',
           },
           {
@@ -115,7 +119,8 @@ export function ReportsListView() {
             value: list.items.filter(
               (item) => item.simulation_summary?.status === 'completed',
             ).length,
-            detail: 'Reports whose evaluation includes completed modeling enrichment.',
+            detail:
+              'Reports whose evaluation includes completed modeling enrichment.',
             tone: 'accent',
           },
         ]}
@@ -188,4 +193,3 @@ export function ReportsListView() {
     </div>
   );
 }
-

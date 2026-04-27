@@ -56,6 +56,7 @@ export async function runCrossrefIngestion(overrides = {}) {
     process.env.CROSSREF_MAILTO?.trim() ?? null,
   );
   const dryRun = optionFlag(options, 'dryRun', false);
+  const triggerMode = optionValue(options, 'triggerMode', 'manual_script');
 
   if (!query) {
     throw new Error(
@@ -140,7 +141,7 @@ export async function runCrossrefIngestion(overrides = {}) {
   const run = await prisma.ingestionRun.create({
     data: {
       sourceType: 'CROSSREF',
-      triggerMode: 'manual_script',
+      triggerMode,
       query,
       status: 'STARTED',
       recordsFetched: 0,

@@ -8,17 +8,17 @@ import { RecentRunsTable } from '@/components/dashboard/recent-runs-table';
 import { TabsContent } from '@/components/ui/tabs';
 import { Sparkline } from '@/components/workbench/sparkline';
 import {
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSkeleton,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { ChartPanel } from '@/components/workspace/chart-panel';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchDashboardWorkspace } from '@/lib/api';
 import {
-    type DashboardTab,
-    useDashboardTab,
+  type DashboardTab,
+  useDashboardTab,
 } from '@/lib/dashboard-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
@@ -71,7 +71,7 @@ export function DashboardWorkspaceView({
   onTabChange?: (nextTab: DashboardTab) => void;
   workspace: Awaited<ReturnType<typeof fetchDashboardWorkspace>>;
 }) {
-  const latestRun = workspace.recent_runs[0] ?? null;
+  const latestRun = workspace.recent_evaluations[0] ?? null;
   const presentation = workspace.presentation;
   const tabItems = [
     { value: 'overview', label: 'Overview' },
@@ -122,7 +122,8 @@ export function DashboardWorkspaceView({
       key: 'tracked-cases',
       label: 'Tracked cases',
       value: workspace.summary.total_cases,
-      detail: 'Distinct configured cases available for continuation and history review.',
+      detail:
+        'Distinct configured cases available for continuation and history review.',
       tone: 'default' as const,
     },
   ];
@@ -132,7 +133,7 @@ export function DashboardWorkspaceView({
         'Configure a system stack with validation, defaults, and deterministic submission.',
       href: workspace.quick_actions.new_evaluation_href,
       label: 'Configure stack',
-      title: 'New evaluation',
+      title: 'Configure stack',
     },
     {
       description:
@@ -181,11 +182,7 @@ export function DashboardWorkspaceView({
         items={tabItems}
         label="Dashboard tabs"
         onTabChange={(value) => {
-          if (
-            value === 'overview' ||
-            value === 'runs' ||
-            value === 'reports'
-          ) {
+          if (value === 'overview' || value === 'runs' || value === 'reports') {
             onTabChange?.(value);
           }
         }}
@@ -274,7 +271,7 @@ export function DashboardWorkspaceView({
                 </p>
               </div>
             </div>
-            <RecentRunsTable runs={workspace.recent_runs} />
+            <RecentRunsTable runs={workspace.recent_evaluations} />
           </article>
         </TabsContent>
 
@@ -293,10 +290,10 @@ export function DashboardWorkspaceView({
               </Link>
             </div>
             <div className="workspace-card-list">
-              {workspace.recent_runs.map((run) => (
+              {workspace.recent_reports.map((run) => (
                 <Link
                   className="workspace-inline-card"
-                  href={`/evaluations/${run.evaluation_id}/report`}
+                  href={run.report_href}
                   key={run.evaluation_id}
                 >
                   <strong>{run.case_id} report</strong>

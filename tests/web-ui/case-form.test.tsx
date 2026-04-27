@@ -50,7 +50,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function renderCaseForm() {
+async function renderCaseForm(
+  actorRole: 'VIEWER' | 'ANALYST' | 'ADMIN' = 'VIEWER',
+) {
   const { CaseForm } =
     await import('../../apps/web-ui/src/components/case-form');
   const queryClient = new QueryClient({
@@ -76,7 +78,7 @@ async function renderCaseForm() {
       React.createElement(
         QueryClientProvider,
         { client: queryClient },
-        React.createElement(CaseForm),
+        React.createElement(CaseForm, { actorRole }),
       ),
     ),
   );
@@ -100,7 +102,9 @@ describe('case form', () => {
     expect(html).toContain('Deployment context');
     expect(html).toContain('Configure the current METREV stack block by block');
     expect(html).toContain('Validated presets');
-    expect(html).toContain('Review evidence queue');
+    expect(html).toContain('Configure stack');
+    expect(html).toContain('saved reports and evaluation history');
+    expect(html).not.toContain('Review evidence queue');
     expect(html).toContain('Next: Reactor Architecture');
     expect(html).toContain('Next step');
   });

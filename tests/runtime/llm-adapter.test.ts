@@ -1,24 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-    DecisionOutput,
-    ResearchColumnDefinition,
-    ResearchPaperMetadata,
+  DecisionOutput,
+  ResearchColumnDefinition,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-    generateEvidenceAssistantBrief,
-    generateNarrative,
-    generateReportConversationAnswer,
-    generateStructuredResearchExtraction,
-    type ReportConversationContextPackage,
+  generateEvidenceAssistantBrief,
+  generateNarrative,
+  generateReportConversationAnswer,
+  generateStructuredResearchExtraction,
+  type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
 
 const originalMode = process.env.METREV_LLM_MODE;
 const originalModel = process.env.METREV_LLM_MODEL;
 const originalBaseUrl = process.env.METREV_LLM_BASE_URL;
+const originalApiKey = process.env.METREV_LLM_API_KEY;
 const originalTimeout = process.env.METREV_LLM_TIMEOUT_MS;
 
 function buildDecisionOutput(): DecisionOutput {
@@ -154,6 +155,51 @@ function buildReportConversationContext(
       },
     ],
     selectedSection,
+    recentTurns: [
+      {
+        actor: 'user',
+        message: 'Explain the lead recommendation and confidence posture.',
+        selectedSection,
+      },
+    ],
+    boundedSummary: {
+      normalizedCase: {
+        caseId: 'CASE-001',
+        technologyFamily: 'microbial_fuel_cell',
+        architectureFamily: 'single_chamber',
+        primaryObjective: 'wastewater_treatment',
+        evidenceRefs: ['source-doc-1'],
+      },
+      decisionOutput: {
+        stackDiagnosis: 'Baseline summary',
+        topRecommendations: ['rec-1: Better operating range clarity.'],
+        confidenceLevel: 'medium',
+      },
+      defaultsAndMissingData: {
+        defaultsUsed: ['Separator porosity estimated from a similar pilot.'],
+        missingData: ['Current-density sweep is missing.'],
+        assumptions: [
+          'Influent conductivity remains within the observed band.',
+        ],
+        nextTests: [
+          'Run a current-density sweep',
+          'Inspect separator fouling after one operating cycle',
+        ],
+      },
+      simulation: {
+        status: 'not_available',
+        modelVersion: null,
+        confidenceLevel: null,
+        derivedObservationCount: 0,
+        assumptionCount: 0,
+      },
+      suppliers: [],
+      lineageCounts: {
+        sourceUsageCount: 1,
+        claimUsageCount: 1,
+        snapshotCount: 1,
+      },
+    },
   };
 }
 
@@ -215,6 +261,12 @@ afterEach(() => {
     delete process.env.METREV_LLM_BASE_URL;
   } else {
     process.env.METREV_LLM_BASE_URL = originalBaseUrl;
+  }
+
+  if (originalApiKey === undefined) {
+    delete process.env.METREV_LLM_API_KEY;
+  } else {
+    process.env.METREV_LLM_API_KEY = originalApiKey;
   }
 
   if (originalTimeout === undefined) {
@@ -437,31 +489,13 @@ describe('llm adapter', () => {
     });
   });
 
-  it('uses the OpenAI-compatible endpoint for case narratives when configured', async () => {
+  it('falls back to the deterministic stub narrative when openai mode is requested', async () => {
     process.env.METREV_LLM_MODE = 'openai';
     process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: 'Remote OpenAI narrative.',
-              },
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/json',
-          },
-        },
-      ),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const rawInput = rawCaseInputSchema.parse(rawFixture);
@@ -470,79 +504,30 @@ describe('llm adapter', () => {
       decisionOutput: buildDecisionOutput(),
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://example-openai.test/v1/chat/completions',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          authorization: 'Bearer test-key',
-        }),
-      }),
-    );
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(result).toEqual({
-      narrative: 'Remote OpenAI narrative.',
+      narrative: expect.stringContaining('Case CASE-001'),
       narrativeMetadata: expect.objectContaining({
-        mode: 'openai',
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        status: 'generated',
-        fallback_used: false,
-        prompt_version: 'openai-case-v1',
+        mode: 'stub',
+        provider: 'internal',
+        model: 'deterministic-summary',
+        status: 'fallback',
+        fallback_used: true,
+        prompt_version: 'stub-v1',
       }),
     });
+    expect(result.narrativeMetadata.error_message).toContain(
+      'Unsupported METREV_LLM_MODE "openai" requested',
+    );
   });
 
-  it('parses structured research extraction output from the OpenAI-compatible runtime', async () => {
+  it('does not call a remote provider for structured extraction when openai mode is requested', async () => {
     process.env.METREV_LLM_MODE = 'openai';
     process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: [
-                  '```json',
-                  JSON.stringify(
-                    {
-                      answer: {
-                        items: ['Scale-up durability remains unresolved.'],
-                        evidence_span:
-                          'Scale-up durability remains unresolved.',
-                        confidence: 'medium',
-                      },
-                      confidence: 'medium',
-                      evidence_trace: [
-                        {
-                          source: 'full_text',
-                          source_document_id: 'source-001',
-                          text_span: 'Scale-up durability remains unresolved.',
-                          source_locator: 'body',
-                          page_number: 3,
-                        },
-                      ],
-                      missing_fields: [],
-                    },
-                    null,
-                    2,
-                  ),
-                  '```',
-                ].join('\n'),
-              },
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/json',
-          },
-        },
-      ),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await generateStructuredResearchExtraction({
@@ -552,24 +537,7 @@ describe('llm adapter', () => {
         'Scale-up durability remains unresolved. Conductivity sensitivity is also unresolved.',
     });
 
-    expect(result).toEqual({
-      answer: expect.objectContaining({
-        items: ['Scale-up durability remains unresolved.'],
-      }),
-      confidence: 'medium',
-      evidenceTrace: [
-        expect.objectContaining({
-          source: 'full_text',
-          source_document_id: 'source-001',
-          page_number: 3,
-        }),
-      ],
-      missingFields: [],
-      metadata: expect.objectContaining({
-        mode: 'openai',
-        provider: 'openai',
-        prompt_version: 'research-extraction-openai-v1',
-      }),
-    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toBeNull();
   });
 });

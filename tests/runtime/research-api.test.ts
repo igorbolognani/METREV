@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import {
-    MemoryEvaluationRepository,
-    MemoryResearchRepository,
+  MemoryEvaluationRepository,
+  MemoryResearchRepository,
 } from '@metrev/database';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -312,6 +312,65 @@ describe('research API flow', () => {
         measured_metric_candidates: expect.objectContaining({
           power_density_w_m2: expect.any(Number),
         }),
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('deduplicates staged search imports by DOI before provider-specific keys', async () => {
+    const app = await buildApp({
+      repository: evaluationRepository,
+      researchRepository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const searchResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          limit: 3,
+        },
+      });
+
+      expect(searchResponse.statusCode).toBe(200);
+      const searched = searchResponse.json();
+      const primaryItem = searched.items[0];
+
+      const importResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search/import',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          items: [
+            primaryItem,
+            {
+              ...primaryItem,
+              source_type: 'crossref',
+              source_key: `${primaryItem.source_key}-crossref-duplicate`,
+              metadata: {
+                ...primaryItem.metadata,
+                provider: 'crossref',
+              },
+            },
+          ],
+        },
+      });
+
+      expect(importResponse.statusCode).toBe(201);
+      expect(importResponse.json()).toMatchObject({
+        imported_count: 1,
+        source_document_ids: [expect.any(String)],
       });
     } finally {
       await app.close();

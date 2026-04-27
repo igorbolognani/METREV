@@ -1,21 +1,61 @@
 import type {
-    ConfidenceLevel,
-    DecisionOutput,
-    EvidenceExplorerWarehouseSnapshot,
-    ExternalEvidenceCatalogItemSummary,
-    NarrativeMetadata,
-    NormalizedCaseInput,
-    PrintableEvaluationReportResponse,
-    ReportConversationCitation,
-    ReportConversationGrounding,
-    ResearchColumnDefinition,
-    ResearchEvidenceTrace,
-    ResearchPaperMetadata,
+  ConfidenceLevel,
+  DecisionOutput,
+  EvidenceExplorerWarehouseSnapshot,
+  ExternalEvidenceCatalogItemSummary,
+  NarrativeMetadata,
+  NormalizedCaseInput,
+  PrintableEvaluationReportResponse,
+  ReportConversationCitation,
+  ReportConversationGrounding,
+  ResearchColumnDefinition,
+  ResearchEvidenceTrace,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
   narrative: string | null;
   narrativeMetadata: NarrativeMetadata;
+}
+
+export interface ReportConversationRecentTurnContext {
+  actor: 'user' | 'assistant' | 'system';
+  message: string;
+  selectedSection?: string | null;
+}
+
+export interface ReportConversationBoundedContextSummary {
+  normalizedCase: {
+    caseId: string;
+    technologyFamily: string;
+    architectureFamily: string;
+    primaryObjective: string;
+    evidenceRefs: string[];
+  };
+  decisionOutput: {
+    stackDiagnosis: string;
+    topRecommendations: string[];
+    confidenceLevel: ConfidenceLevel;
+  };
+  defaultsAndMissingData: {
+    defaultsUsed: string[];
+    missingData: string[];
+    assumptions: string[];
+    nextTests: string[];
+  };
+  simulation: {
+    status: string;
+    modelVersion: string | null;
+    confidenceLevel: ConfidenceLevel | null;
+    derivedObservationCount: number;
+    assumptionCount: number;
+  };
+  suppliers: string[];
+  lineageCounts: {
+    sourceUsageCount: number;
+    claimUsageCount: number;
+    snapshotCount: number;
+  };
 }
 
 export interface ReportConversationContextPackage {
@@ -25,6 +65,8 @@ export interface ReportConversationContextPackage {
   grounding: ReportConversationGrounding;
   citations: ReportConversationCitation[];
   selectedSection?: string | null;
+  recentTurns: ReportConversationRecentTurnContext[];
+  boundedSummary: ReportConversationBoundedContextSummary;
 }
 
 export interface ReportConversationAnswerResult extends NarrativeResult {
@@ -39,14 +81,13 @@ export interface StructuredResearchExtractionResult {
   missingFields: string[];
 }
 
-type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama' | 'openai';
-type CompletionProvider = 'ollama' | 'openai';
+type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama';
+type CompletionProvider = 'ollama';
 
 const supportedNarrativeModes = new Set<SupportedNarrativeMode>([
   'disabled',
   'stub',
   'ollama',
-  'openai',
 ]);
 
 function resolveNarrativeMode() {
@@ -74,10 +115,6 @@ function configuredModelForMode(mode: SupportedNarrativeMode | 'stub') {
     return configuredModel;
   }
 
-  if (mode === 'openai') {
-    return 'gpt-4o-mini';
-  }
-
   if (mode === 'ollama') {
     return 'llama3.1';
   }
@@ -89,21 +126,6 @@ function getOllamaBaseUrl(): string {
   return (
     process.env.METREV_LLM_BASE_URL?.trim() || 'http://127.0.0.1:11434/v1'
   ).replace(/\/+$/, '');
-}
-
-function getOpenAiCompatibleBaseUrl(): string {
-  return (
-    process.env.METREV_LLM_BASE_URL?.trim() || 'https://api.openai.com/v1'
-  ).replace(/\/+$/, '');
-}
-
-function getOpenAiCompatibleApiKey(): string | null {
-  const configured =
-    process.env.METREV_LLM_API_KEY?.trim() ??
-    process.env.OPENAI_API_KEY?.trim() ??
-    '';
-
-  return configured || null;
 }
 
 function getOllamaTimeoutMs(): number {
@@ -119,7 +141,7 @@ function getOllamaTimeoutMs(): number {
 function completionProviderForMode(
   mode: SupportedNarrativeMode,
 ): CompletionProvider | null {
-  if (mode === 'ollama' || mode === 'openai') {
+  if (mode === 'ollama') {
     return mode;
   }
 
@@ -127,20 +149,7 @@ function completionProviderForMode(
 }
 
 function baseUrlForProvider(provider: CompletionProvider): string {
-  return provider === 'openai'
-    ? getOpenAiCompatibleBaseUrl()
-    : getOllamaBaseUrl();
-}
-
-function defaultPromptVersionForProvider(
-  provider: CompletionProvider,
-  fallback: string,
-): string {
-  if (provider === 'openai') {
-    return fallback.replace(/ollama/gi, 'openai');
-  }
-
-  return fallback;
+  return getOllamaBaseUrl();
 }
 
 function buildDisabledNarrativeResult(
@@ -202,30 +211,18 @@ async function requestChatCompletion(input: {
   promptVersion: string;
   messages: Array<{ role: 'system' | 'user'; content: string }>;
 }): Promise<NarrativeResult> {
-  const model =
-    configuredModelForMode(input.provider) ??
-    (input.provider === 'openai' ? 'gpt-4o-mini' : 'llama3.1');
+  const model = configuredModelForMode(input.provider) ?? 'llama3.1';
   const controller = new AbortController();
   const timeoutMs = getOllamaTimeoutMs();
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const apiKey =
-      input.provider === 'openai' ? getOpenAiCompatibleApiKey() : null;
-
-    if (input.provider === 'openai' && !apiKey) {
-      throw new Error(
-        'OpenAI-compatible mode requires METREV_LLM_API_KEY or OPENAI_API_KEY.',
-      );
-    }
-
     const response = await fetch(
       `${baseUrlForProvider(input.provider)}/chat/completions`,
       {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify({
           model,
@@ -283,7 +280,6 @@ async function generateNarrativeWithRuntime(input: {
   stubPromptVersion: string;
   providerPromptVersions: {
     ollama: string;
-    openai?: string;
   };
   buildOllamaMessages: () => Array<{
     role: 'system' | 'user';
@@ -313,14 +309,7 @@ async function generateNarrativeWithRuntime(input: {
     try {
       return await requestChatCompletion({
         provider,
-        promptVersion:
-          provider === 'openai'
-            ? (input.providerPromptVersions.openai ??
-              defaultPromptVersionForProvider(
-                provider,
-                input.providerPromptVersions.ollama,
-              ))
-            : input.providerPromptVersions.ollama,
+        promptVersion: input.providerPromptVersions.ollama,
         messages: input.buildOllamaMessages(),
       });
     } catch (error) {
@@ -339,7 +328,7 @@ async function generateNarrativeWithRuntime(input: {
     narrative: input.stubNarrative,
     status: 'fallback',
     promptVersion: input.stubPromptVersion,
-    errorMessage: `Unsupported METREV_LLM_MODE "${unsupportedMode}" requested; this runtime build supports "disabled", "stub", "ollama", and "openai", so the deterministic stub narrative was used instead.`,
+    errorMessage: `Unsupported METREV_LLM_MODE "${unsupportedMode}" requested; this runtime build supports "disabled", "stub", and "ollama", so the deterministic stub narrative was used instead.`,
   });
 }
 
@@ -449,10 +438,7 @@ export async function generateStructuredResearchExtraction(input: {
   try {
     const result = await requestChatCompletion({
       provider,
-      promptVersion:
-        provider === 'openai'
-          ? 'research-extraction-openai-v1'
-          : 'research-extraction-ollama-v1',
+      promptVersion: 'research-extraction-ollama-v1',
       messages: buildStructuredResearchExtractionMessages(input),
     });
 
@@ -614,7 +600,6 @@ export async function generateEvidenceAssistantBrief(input: {
     stubPromptVersion: 'evidence-assistant-stub-v1',
     providerPromptVersions: {
       ollama: 'evidence-assistant-ollama-v1',
-      openai: 'evidence-assistant-openai-v1',
     },
     buildOllamaMessages: () => buildEvidenceAssistantMessages(input),
   });
@@ -630,7 +615,6 @@ export async function generateNarrative(input: {
     stubPromptVersion: 'stub-v1',
     providerPromptVersions: {
       ollama: 'ollama-case-v1',
-      openai: 'openai-case-v1',
     },
     buildOllamaMessages: () => buildCaseNarrativeMessages(input),
   });
@@ -674,6 +658,10 @@ function buildReportConversationStubAnswer(input: {
   const confidence = report.sections.confidence_and_uncertainty_summary;
   const topRecommendation = report.sections.prioritized_improvements[0];
   const selectedSection = input.context.selectedSection?.trim();
+  const priorUserTurn = input.context.recentTurns
+    .slice(0, -1)
+    .reverse()
+    .find((turn) => turn.actor === 'user');
 
   if (input.refusalReason) {
     return `${input.refusalReason} For this report, the safest next step is to review the confidence summary and the recommended next checks: ${
@@ -682,7 +670,11 @@ function buildReportConversationStubAnswer(input: {
   }
 
   if (selectedSection) {
-    return `For the ${selectedSection} section of ${report.title}, the report should be read with ${confidence.confidence_level} confidence. ${confidence.summary}`;
+    const continuation = priorUserTurn
+      ? ` This continues the earlier thread about "${priorUserTurn.message}".`
+      : '';
+
+    return `For the ${selectedSection} section of ${report.title}, the report should be read with ${confidence.confidence_level} confidence. ${confidence.summary}${continuation}`;
   }
 
   if (topRecommendation) {
@@ -711,6 +703,8 @@ function buildReportConversationMessages(input: {
         selected_section: input.context.selectedSection ?? null,
         grounding: input.context.grounding,
         citations: input.context.citations,
+        recent_turns: input.context.recentTurns,
+        bounded_context: input.context.boundedSummary,
         report: {
           title: input.context.report.title,
           subtitle: input.context.report.subtitle,
@@ -746,7 +740,6 @@ export async function generateReportConversationAnswer(input: {
     stubPromptVersion: 'report-conversation-stub-v1',
     providerPromptVersions: {
       ollama: 'report-conversation-ollama-v1',
-      openai: 'report-conversation-openai-v1',
     },
     buildOllamaMessages: () =>
       buildReportConversationMessages({

@@ -1,54 +1,54 @@
 import type {
-    CaseHistoryResponse,
-    CaseHistoryWorkspaceResponse,
-    ConfidenceLevel,
-    DashboardWorkspaceResponse,
-    EvaluationComparisonResponse,
-    EvaluationListResponse,
-    EvaluationResponse,
-    EvaluationSummary,
-    EvaluationWorkspaceResponse,
-    EvidenceExplorerAssistantResponse,
-    EvidenceExplorerWorkspaceResponse,
-    EvidenceRecord,
-    EvidenceReviewWorkspaceResponse,
-    ExportCsvResponseMetadata,
-    ExternalEvidenceCatalogListResponse,
-    NarrativeMetadata,
-    PrintableEvaluationReportResponse,
-    RuntimeVersion,
-    SignalSourceKind,
-    SimulationEnrichment,
-    TraceabilitySummary,
-    WorkspaceAttentionItem,
-    WorkspaceBriefCard,
-    WorkspaceCopy,
-    WorkspaceHeroCard,
-    WorkspaceImpactItem,
-    WorkspaceLeadAction,
-    WorkspaceMetricRecord,
-    WorkspacePresentation,
-    WorkspaceRoadmapItem,
-    WorkspaceTone,
+  CaseHistoryResponse,
+  CaseHistoryWorkspaceResponse,
+  ConfidenceLevel,
+  DashboardWorkspaceResponse,
+  EvaluationComparisonResponse,
+  EvaluationListResponse,
+  EvaluationResponse,
+  EvaluationSummary,
+  EvaluationWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
+  EvidenceRecord,
+  EvidenceReviewWorkspaceResponse,
+  ExportCsvResponseMetadata,
+  ExternalEvidenceCatalogListResponse,
+  NarrativeMetadata,
+  PrintableEvaluationReportResponse,
+  RuntimeVersion,
+  SignalSourceKind,
+  SimulationEnrichment,
+  TraceabilitySummary,
+  WorkspaceAttentionItem,
+  WorkspaceBriefCard,
+  WorkspaceCopy,
+  WorkspaceHeroCard,
+  WorkspaceImpactItem,
+  WorkspaceLeadAction,
+  WorkspaceMetricRecord,
+  WorkspacePresentation,
+  WorkspaceRoadmapItem,
+  WorkspaceTone,
 } from '@metrev/domain-contracts';
 import {
-    caseHistoryWorkspaceResponseSchema,
-    dashboardWorkspaceResponseSchema,
-    evaluationComparisonResponseSchema,
-    evaluationWorkspaceResponseSchema,
-    evidenceExplorerAssistantResponseSchema,
-    evidenceExplorerWorkspaceResponseSchema,
-    evidenceReviewWorkspaceResponseSchema,
-    exportCsvResponseMetadataSchema,
-    loadContractCompatibilityDefinition,
-    loadContractDefaultsPolicy,
-    loadContractDiagnosticsDefinition,
-    loadContractImprovementsDefinition,
-    loadContractOutputDefinition,
-    loadContractScoringModel,
-    loadContractSensitivityPolicy,
-    loadContractStackOntology,
-    printableEvaluationReportResponseSchema,
+  caseHistoryWorkspaceResponseSchema,
+  dashboardWorkspaceResponseSchema,
+  evaluationComparisonResponseSchema,
+  evaluationWorkspaceResponseSchema,
+  evidenceExplorerAssistantResponseSchema,
+  evidenceExplorerWorkspaceResponseSchema,
+  evidenceReviewWorkspaceResponseSchema,
+  exportCsvResponseMetadataSchema,
+  loadContractCompatibilityDefinition,
+  loadContractDefaultsPolicy,
+  loadContractDiagnosticsDefinition,
+  loadContractImprovementsDefinition,
+  loadContractOutputDefinition,
+  loadContractScoringModel,
+  loadContractSensitivityPolicy,
+  loadContractStackOntology,
+  printableEvaluationReportResponseSchema,
 } from '@metrev/domain-contracts';
 
 const WORKSPACE_SCHEMA_VERSION = '015.0.0';
@@ -788,22 +788,17 @@ function createPresentation(input: {
 
 function buildDashboardTraceability(
   evaluationList: EvaluationListResponse,
-  evidenceCatalog: ExternalEvidenceCatalogListResponse,
 ): TraceabilitySummary {
   return {
     subject_type: 'workspace',
     subject_id: 'dashboard',
     entrypoint: 'api',
-    transformation_stages: [
-      'evaluation_list',
-      'evidence_backlog',
-      'dashboard_workspace_presenter',
-    ],
+    transformation_stages: ['evaluation_list', 'dashboard_workspace_presenter'],
     rule_refs: [],
-    evidence_refs: evidenceCatalog.items.map((item) => item.id),
+    evidence_refs: [],
     defaults_count: 0,
     missing_data_count: 0,
-    evidence_count: evidenceCatalog.items.length,
+    evidence_count: 0,
     case_id: evaluationList.items[0]?.case_id,
     evaluation_id: evaluationList.items[0]?.evaluation_id,
   };
@@ -811,7 +806,6 @@ function buildDashboardTraceability(
 
 export function buildDashboardWorkspace(input: {
   evaluationList: EvaluationListResponse;
-  evidenceCatalog: ExternalEvidenceCatalogListResponse;
   versions: RuntimeVersion;
 }): DashboardWorkspaceResponse {
   const items = input.evaluationList.items;
@@ -829,10 +823,7 @@ export function buildDashboardWorkspace(input: {
   return dashboardWorkspaceResponseSchema.parse({
     meta: createMeta({
       versions: input.versions,
-      traceability: buildDashboardTraceability(
-        input.evaluationList,
-        input.evidenceCatalog,
-      ),
+      traceability: buildDashboardTraceability(input.evaluationList),
     }),
     presentation: createPresentation({
       pageTitle: 'Decision workspace',
@@ -881,9 +872,6 @@ export function buildDashboardWorkspace(input: {
       total_cases: totalCases,
       high_confidence_runs: highConfidenceRuns,
       modeled_runs: modeledRuns,
-      pending_evidence: input.evidenceCatalog.summary.pending,
-      accepted_evidence: input.evidenceCatalog.summary.accepted,
-      rejected_evidence: input.evidenceCatalog.summary.rejected,
     },
     hero: {
       title: 'Bioelectrochemical decision workspace',
@@ -908,7 +896,6 @@ export function buildDashboardWorkspace(input: {
     },
     quick_actions: {
       new_evaluation_href: '/cases/new',
-      evidence_review_href: '/evidence/review',
       latest_evaluation_href: latestEvaluation
         ? `/evaluations/${latestEvaluation.evaluation_id}`
         : null,
@@ -916,8 +903,11 @@ export function buildDashboardWorkspace(input: {
         ? `/cases/${latestEvaluation.case_id}/history`
         : null,
     },
-    recent_runs: items.slice(0, 6),
-    evidence_backlog: input.evidenceCatalog.items.slice(0, 6),
+    recent_evaluations: items.slice(0, 6),
+    recent_reports: items.slice(0, 6).map((item) => ({
+      ...item,
+      report_href: `/evaluations/${item.evaluation_id}/report`,
+    })),
   });
 }
 

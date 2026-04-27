@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import type { Role } from '@metrev/auth';
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
 import type { CaseIntakeFormValues } from '@/lib/case-intake';
@@ -39,6 +40,7 @@ const evidenceStrengthOptions = [
 ] as const;
 
 export interface CaseFormSuppliersEvidenceStepProps {
+  actorRole: Role;
   formValues: CaseIntakeFormValues;
   onFieldChange: (field: keyof CaseIntakeFormValues, value: string) => void;
   onSelectionChange: (items: ExternalEvidenceCatalogItemSummary[]) => void;
@@ -46,6 +48,7 @@ export interface CaseFormSuppliersEvidenceStepProps {
 }
 
 export function CaseFormSuppliersEvidenceStep({
+  actorRole,
   formValues,
   onFieldChange,
   onSelectionChange,
@@ -107,6 +110,7 @@ export function CaseFormSuppliersEvidenceStep({
       </WorkspaceDataCard>
 
       <AcceptedEvidenceSelector
+        actorRole={actorRole}
         selectedEvidence={selectedCatalogEvidence}
         onSelectionChange={onSelectionChange}
       />

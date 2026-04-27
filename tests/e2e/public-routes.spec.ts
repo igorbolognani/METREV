@@ -4,6 +4,7 @@ interface PublicTopicRouteExpectation {
   slug: string;
   path: string;
   heading: string;
+  firstDialogTitle: string;
   nextLinkText: string;
 }
 
@@ -13,12 +14,14 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/problem',
     heading:
       'See the full operating pressure around a bioelectrochemical decision.',
+    firstDialogTitle: 'Influent chemistry',
     nextLinkText: 'Next: Technology',
   },
   {
     slug: 'technology',
     path: '/learn/technology',
     heading: 'Understand the BES families before comparing designs.',
+    firstDialogTitle: 'MFC',
     nextLinkText: 'Next: Stack',
   },
   {
@@ -26,6 +29,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/stack',
     heading:
       'See the system the way METREV evaluates it: one explicit stack at a time.',
+    firstDialogTitle: 'Reactor',
     nextLinkText: 'Next: Comparison',
   },
   {
@@ -33,6 +37,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/comparison',
     heading:
       'Make route comparison directional, readable, and honest about tradeoffs.',
+    firstDialogTitle: 'Conventional treatment',
     nextLinkText: 'Next: ODS',
   },
   {
@@ -40,6 +45,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/impact',
     heading:
       'Show impact as a result of disciplined engineering, not as a slogan.',
+    firstDialogTitle: 'Water quality',
     nextLinkText: 'Next: METREV',
   },
   {
@@ -47,6 +53,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/metrev',
     heading:
       'Understand how METREV moves from stack description to report-ready output.',
+    firstDialogTitle: 'Configure stack',
     nextLinkText: 'Open dashboard',
   },
 ];
@@ -73,6 +80,7 @@ test.describe('public routes - desktop structure', () => {
     await page.goto('/');
 
     await expect(page.getByTestId('public-overview-hub')).toBeVisible();
+    await expect(page.getByTestId('public-landing-infographic')).toBeVisible();
     await expect(
       page.getByRole('heading', {
         level: 1,
@@ -80,14 +88,23 @@ test.describe('public routes - desktop structure', () => {
       }),
     ).toBeVisible();
     await expect(
-      page.locator('[data-testid^="public-route-card-"]'),
+      page.locator('[data-testid^="public-landing-board-"]'),
     ).toHaveCount(6);
-    await expect(page.getByTestId('public-route-card-problem')).toContainText(
-      'Pressure map',
-    );
-    await expect(page.getByTestId('public-route-card-metrev')).toContainText(
+    await expect(
+      page.getByTestId('public-landing-board-problem'),
+    ).toContainText('Pressure map');
+    await expect(page.getByTestId('public-landing-board-metrev')).toContainText(
       'Workflow instrument',
     );
+
+    await page.getByTestId('public-landing-board-problem').click();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Map the real BES pressure before choosing a stack.',
+      }),
+    ).toBeVisible();
+    await expect(page.getByText('METREV takeaway')).toBeVisible();
+    await page.getByRole('button', { name: 'Close' }).click();
   });
 
   for (const route of publicTopicRoutes) {
@@ -104,11 +121,16 @@ test.describe('public routes - desktop structure', () => {
       ).toBeVisible();
       await expect(page.getByTestId('public-topic-infographic')).toBeVisible();
       await expect(
-        page.locator('.public-infographic__orbit-label'),
-      ).toHaveCount(4);
+        page.locator(`[data-testid^="public-topic-board-${route.slug}-"]`),
+      ).toHaveCount(6);
+
+      await page.getByTestId(`public-topic-board-${route.slug}-1`).click();
       await expect(
-        page.locator('.public-infographic__legend-item'),
-      ).toHaveCount(3);
+        page.getByRole('heading', { name: route.firstDialogTitle }),
+      ).toBeVisible();
+      await expect(page.getByText('METREV takeaway')).toBeVisible();
+      await page.getByRole('button', { name: 'Close' }).click();
+
       await expect(
         page.getByRole('link', { name: route.nextLinkText }),
       ).toBeVisible();

@@ -58,6 +58,7 @@ export async function runEuropePmcIngestion(overrides = {}) {
       null,
   );
   const dryRun = optionFlag(options, 'dryRun', false);
+  const triggerMode = optionValue(options, 'triggerMode', 'manual_script');
 
   if (!query) {
     throw new Error(
@@ -145,7 +146,7 @@ export async function runEuropePmcIngestion(overrides = {}) {
   const run = await prisma.ingestionRun.create({
     data: {
       sourceType: 'EUROPE_PMC',
-      triggerMode: 'manual_script',
+      triggerMode,
       query,
       status: 'STARTED',
       recordsFetched: 0,

@@ -85,6 +85,9 @@ export interface EvaluationRepository {
   reviewExternalEvidenceCatalogItems(
     input: ReviewExternalEvidenceCatalogItemsInput,
   ): Promise<ExternalEvidenceBulkReviewResponse>;
+  listRecentReportConversationTurns(
+    input: ListRecentReportConversationTurnsInput,
+  ): Promise<ReportConversationTurn[]>;
   saveReportConversationTurn(
     input: SaveReportConversationTurnInput,
   ): Promise<ReportConversationTurn>;
@@ -136,6 +139,12 @@ export interface SaveReportConversationTurnInput {
   citations?: ReportConversationCitation[] | null;
   grounding?: ReportConversationGrounding | null;
   refusalReason?: string | null;
+}
+
+export interface ListRecentReportConversationTurnsInput {
+  conversationId: string;
+  evaluationId: string;
+  limit?: number;
 }
 
 export interface MemoryEvaluationRepositoryOptions {
@@ -1335,6 +1344,7 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     string,
     ExternalEvidenceCatalogItemDetail
   >();
+  private readonly reportConversationSessions = new Map<string, string>();
   private readonly reportConversationTurns: ReportConversationTurn[] = [];
 
   constructor(options: MemoryEvaluationRepositoryOptions = {}) {
@@ -1567,9 +1577,30 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       created_at: createdAt.toISOString(),
     });
 
+    this.reportConversationSessions.set(
+      input.conversationId,
+      input.evaluationId,
+    );
     this.reportConversationTurns.push(turn);
 
     return turn;
+  }
+
+  async listRecentReportConversationTurns(
+    input: ListRecentReportConversationTurnsInput,
+  ): Promise<ReportConversationTurn[]> {
+    const limit = Math.max(1, Math.min(input.limit ?? 12, 12));
+    const evaluationId = this.reportConversationSessions.get(
+      input.conversationId,
+    );
+
+    if (evaluationId !== input.evaluationId) {
+      return [];
+    }
+
+    return this.reportConversationTurns
+      .filter((turn) => turn.conversation_id === input.conversationId)
+      .slice(-limit);
   }
 
   async disconnect(): Promise<void> {
@@ -2691,6 +2722,37 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         evaluation_id: input.evaluationId,
         conversation_id: input.conversationId,
         actor: input.actor,
+      },
+    );
+  }
+
+  async listRecentReportConversationTurns(
+    input: ListRecentReportConversationTurnsInput,
+  ): Promise<ReportConversationTurn[]> {
+    return withSpan(
+      'database.report_conversation.turn.list_recent',
+      async () => {
+        const limit = Math.max(1, Math.min(input.limit ?? 12, 12));
+        const records = await this.prisma.reportConversationTurn.findMany({
+          where: {
+            conversationId: input.conversationId,
+            conversation: {
+              evaluationId: input.evaluationId,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: limit,
+        });
+
+        return records
+          .map((record) => createReportConversationTurn(record))
+          .reverse();
+      },
+      {
+        evaluation_id: input.evaluationId,
+        conversation_id: input.conversationId,
       },
     );
   }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
+import type { Role } from '@metrev/auth';
 import type {
   ExternalEvidenceCatalogItemSummary,
   ResearchDecisionIngestionPreview,
@@ -75,6 +76,10 @@ function countCommaSeparated(value: string): number {
     .filter(Boolean).length;
 }
 
+function canOpenInternalEvidence(role: Role): boolean {
+  return role === 'ANALYST' || role === 'ADMIN';
+}
+
 function formatAutosaveTimestamp(value: string | null): string {
   if (!value) {
     return 'Autosave ready';
@@ -90,7 +95,7 @@ function stepIssue(condition: boolean, message: string): string[] {
   return condition ? [message] : [];
 }
 
-export function CaseForm() {
+export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useCaseFormStep();
@@ -674,6 +679,7 @@ export function CaseForm() {
       case 'suppliers-constraints':
         return (
           <CaseFormSuppliersEvidenceStep
+            actorRole={actorRole}
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
             onSelectionChange={setSelectedCatalogEvidence}
@@ -712,9 +718,7 @@ export function CaseForm() {
         ]}
         description="Configure the current METREV stack block by block before handing the case into the deterministic workspace."
         title={
-          formValues.caseId.trim() ||
-          activePreset?.label ||
-          'Draft a new evaluation'
+          formValues.caseId.trim() || activePreset?.label || 'Configure stack'
         }
       />
 
@@ -726,17 +730,22 @@ export function CaseForm() {
             <button className="secondary" onClick={resetForm} type="button">
               Reset draft
             </button>
-            <Link className="button secondary" href="/evidence/review">
-              Review evidence queue
-            </Link>
+            {canOpenInternalEvidence(actorRole) ? (
+              <Link className="button secondary" href="/evidence/review">
+                Review evidence queue
+              </Link>
+            ) : (
+              <p className="muted">
+                Evidence review stays internal. Trace accepted records later
+                through saved reports and evaluation history.
+              </p>
+            )}
           </>
         }
         description="Walk the current stack through architecture, materials, instrumentation, biology, operating conditions, supplier posture, and explicit evidence before the deterministic handoff."
         eyebrow="Stack cockpit"
         title={
-          formValues.caseId.trim() ||
-          activePreset?.label ||
-          'Draft a new evaluation'
+          formValues.caseId.trim() || activePreset?.label || 'Configure stack'
         }
       >
         <div className="case-form-wizard-shell">

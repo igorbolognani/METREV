@@ -152,12 +152,7 @@ export const externalEvidenceSourceStateSchema = z.enum([
   'reviewed',
 ]);
 
-export const narrativeModeSchema = z.enum([
-  'disabled',
-  'stub',
-  'openai',
-  'ollama',
-]);
+export const narrativeModeSchema = z.enum(['disabled', 'stub', 'ollama']);
 
 export const narrativeStatusSchema = z.enum([
   'disabled',
@@ -659,6 +654,10 @@ export const evaluationSummarySchema = z.object({
   simulation_summary: simulationSummarySchema.optional(),
 });
 
+export const dashboardReportSummarySchema = evaluationSummarySchema.extend({
+  report_href: z.string().min(1),
+});
+
 export const evaluationListSummarySchema = z.object({
   total: z.number().int().nonnegative(),
   filtered_total: z.number().int().nonnegative(),
@@ -841,9 +840,6 @@ export const dashboardWorkspaceResponseSchema = z.object({
     total_cases: z.number().int().nonnegative(),
     high_confidence_runs: z.number().int().nonnegative(),
     modeled_runs: z.number().int().nonnegative(),
-    pending_evidence: z.number().int().nonnegative(),
-    accepted_evidence: z.number().int().nonnegative(),
-    rejected_evidence: z.number().int().nonnegative(),
   }),
   hero: z.object({
     title: z.string().min(1),
@@ -858,12 +854,11 @@ export const dashboardWorkspaceResponseSchema = z.object({
   }),
   quick_actions: z.object({
     new_evaluation_href: z.string().min(1),
-    evidence_review_href: z.string().min(1),
     latest_evaluation_href: z.string().nullable(),
     latest_case_history_href: z.string().nullable(),
   }),
-  recent_runs: z.array(evaluationSummarySchema),
-  evidence_backlog: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  recent_evaluations: z.array(evaluationSummarySchema),
+  recent_reports: z.array(dashboardReportSummarySchema),
 });
 
 export const evaluationWorkspaceResponseSchema = z.object({
@@ -1090,7 +1085,7 @@ export const reportConversationGroundingSchema = z.object({
 
 export const reportConversationMetadataSchema = z.object({
   conversation_id: z.string().min(1),
-  mode: z.enum(['client', 'internal']).default('client'),
+  mode: z.enum(['server', 'internal']).default('server'),
   context_version: z.string().min(1),
   persisted: z.boolean(),
   created_at: z.string().min(1),
@@ -1101,7 +1096,6 @@ export const reportConversationRequestSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   selected_section: z.string().trim().min(1).max(120).optional(),
   conversation_id: z.string().trim().min(1).optional(),
-  turn_history: z.array(reportConversationTurnSchema).max(12).optional(),
 });
 
 export const reportConversationResponseSchema = z.object({

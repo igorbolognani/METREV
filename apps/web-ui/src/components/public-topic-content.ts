@@ -42,6 +42,19 @@ export interface PublicTopicOrbitLabel {
   position: PublicOrbitPosition;
 }
 
+export interface PublicDialogSection {
+  label: string;
+  body: string;
+}
+
+export interface PublicDialogContent {
+  eyebrow: string;
+  title: string;
+  lead: string;
+  sections: [PublicDialogSection, PublicDialogSection, PublicDialogSection];
+  takeaway: string;
+}
+
 export interface PublicInfographicPanel {
   number: number;
   title: string;
@@ -96,6 +109,69 @@ export interface PublicTopicConfig {
     PublicTopicHighlight,
   ];
   footerNote: string;
+}
+
+interface PublicPanelDialogOverride {
+  lead?: string;
+  sectionBodies?: [string, string, string];
+  sectionLabels?: [string, string, string];
+  takeaway?: string;
+}
+
+const defaultPanelSectionLabels = [
+  'What it shows',
+  'Why it matters',
+  'What to verify next',
+] as const;
+
+const publicPanelDialogOverrides: Partial<
+  Record<PublicTopicSlug, Partial<Record<number, PublicPanelDialogOverride>>>
+> = {
+  problem: {
+    6: {
+      lead: 'Evidence confidence is part of the engineering surface because unsupported certainty distorts every later recommendation.',
+      sectionBodies: [
+        'Literature fragments, supplier claims, and missing operating measurements should not be treated as equivalent sources of trust.',
+        'When the evidence base is thin, teams often overcommit to a route before the wastewater context has actually been bounded.',
+        'Use this board to ask which missing measurements, pilots, or benchmark records would most sharply reduce uncertainty.',
+      ],
+      takeaway:
+        'In METREV, weak evidence should narrow the recommendation and strengthen the next-test plan at the same time.',
+    },
+  },
+  comparison: {
+    4: {
+      lead: 'Recovery upside explains why a BES route is interesting, but it should never erase chemistry fit or operational burden from the decision.',
+      sectionBodies: [
+        'A route can be attractive because it might recover value, improve control, or open a new process configuration.',
+        'That upside only matters if the candidate can survive the actual stream and hold its performance outside a narrow lab window.',
+        'Check what evidence exists for recovery under comparable influent chemistry, maintenance cadence, and scale assumptions.',
+      ],
+    },
+  },
+  metrev: {
+    5: {
+      lead: 'The report is the external decision surface of the workflow, so it has to carry traceability, uncertainty, and next actions without collapsing into dashboard fragments.',
+      sectionBodies: [
+        'A usable report links diagnosis, recommendations, suppliers, roadmap, and audit signals into one shareable deliverable.',
+        'This is the point where the product has to be defendable to someone who was not present during the original configuration or review session.',
+        'Confirm that the recommendation, evidence trail, defaults, and next tests stay readable when the report leaves the workspace context.',
+      ],
+    },
+  },
+};
+
+function buildDialogSections(input: {
+  labels?: [string, string, string];
+  bodies: [string, string, string];
+}): [PublicDialogSection, PublicDialogSection, PublicDialogSection] {
+  const labels = input.labels ?? defaultPanelSectionLabels;
+
+  return [
+    { label: labels[0], body: input.bodies[0] },
+    { label: labels[1], body: input.bodies[1] },
+    { label: labels[2], body: input.bodies[2] },
+  ];
 }
 
 export function getPublicTopicHref(slug: PublicTopicSlug): string {
@@ -946,4 +1022,51 @@ export function getPublicTopicConfig(topic: string): PublicTopicConfig | null {
   }
 
   return null;
+}
+
+export function getPublicTopicLandingDialog(
+  topic: PublicTopicConfig,
+): PublicDialogContent {
+  return {
+    eyebrow: `${topic.navLabel} overview`,
+    title: topic.cardTitle,
+    lead: topic.cardSummary,
+    sections: [
+      {
+        label: topic.highlights[0].title,
+        body: topic.highlights[0].body,
+      },
+      {
+        label: topic.highlights[1].title,
+        body: topic.highlights[1].body,
+      },
+      {
+        label: topic.highlights[2].title,
+        body: topic.highlights[2].body,
+      },
+    ],
+    takeaway: topic.footerNote,
+  };
+}
+
+export function getPublicPanelDialog(
+  topic: PublicTopicConfig,
+  panel: PublicInfographicPanel,
+): PublicDialogContent {
+  const override = publicPanelDialogOverrides[topic.slug]?.[panel.number];
+
+  return {
+    eyebrow: `${topic.navLabel} board ${String(panel.number).padStart(2, '0')}`,
+    title: panel.title,
+    lead: override?.lead ?? `${panel.subtitle}. ${panel.bullets[0]}`,
+    sections: buildDialogSections({
+      labels: override?.sectionLabels,
+      bodies: override?.sectionBodies ?? [
+        panel.bullets[0],
+        panel.bullets[1],
+        topic.questionLead,
+      ],
+    }),
+    takeaway: override?.takeaway ?? topic.footerNote,
+  };
 }

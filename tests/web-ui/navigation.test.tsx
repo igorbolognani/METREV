@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    NAV_ITEMS,
-    buildBreadcrumbs,
+  NAV_ITEMS,
+  buildBreadcrumbs,
+  getNavItemsForRole,
 } from '../../apps/web-ui/src/lib/navigation';
 
 describe('navigation registry', () => {
@@ -20,6 +21,13 @@ describe('navigation registry', () => {
     expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe(
       undefined,
     );
+
+    expect(getNavItemsForRole('VIEWER').map((item) => item.id)).toEqual([
+      'dashboard',
+      'input-deck',
+      'evaluations',
+      'reports',
+    ]);
   });
 
   it('builds breadcrumbs for all required route patterns', () => {

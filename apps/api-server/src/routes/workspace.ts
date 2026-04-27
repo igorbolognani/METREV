@@ -6,15 +6,15 @@ import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-    buildCaseHistoryWorkspace,
-    buildDashboardWorkspace,
-    buildEvaluationComparison,
-    buildEvaluationWorkspace,
-    buildEvidenceExplorerAssistantResponse,
-    buildEvidenceExplorerWorkspace,
-    buildEvidenceReviewWorkspace,
-    buildPrintableEvaluationReport,
-    buildRuntimeVersions,
+  buildCaseHistoryWorkspace,
+  buildDashboardWorkspace,
+  buildEvaluationComparison,
+  buildEvaluationWorkspace,
+  buildEvidenceExplorerAssistantResponse,
+  buildEvidenceExplorerWorkspace,
+  buildEvidenceReviewWorkspace,
+  buildPrintableEvaluationReport,
+  buildRuntimeVersions,
 } from '../presenters/workspace-presenters';
 import { createPersistedReportConversation } from '../services/report-conversation';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
@@ -93,13 +93,9 @@ export async function registerWorkspaceRoutes(
       return reply;
     }
 
-    const [evaluationList, evidenceCatalog] = await withSpan(
+    const evaluationList = await withSpan(
       'workspace.dashboard',
-      () =>
-        Promise.all([
-          app.evaluationRepository.listEvaluations(),
-          app.evaluationRepository.listExternalEvidenceCatalog(),
-        ]),
+      () => app.evaluationRepository.listEvaluations(),
       {
         actor_id: actor.userId,
       },
@@ -108,7 +104,6 @@ export async function registerWorkspaceRoutes(
     return reply.send(
       buildDashboardWorkspace({
         evaluationList,
-        evidenceCatalog,
         versions: buildVersionsFromEvaluation(),
       }),
     );

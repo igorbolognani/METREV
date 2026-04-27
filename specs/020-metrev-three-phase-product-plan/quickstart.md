@@ -2,14 +2,14 @@
 
 ## Local Smoke Path
 
-1. Start the API and web app with `pnpm run dev`.
+1. Start the validated local-view stack with `pnpm run local:view:start` or `pnpm run local:view:up`.
 2. Open the public root page and confirm it explains the science/value story before login.
 3. Sign in at `/login`.
 4. Confirm the primary navigation shows Dashboard, Configure Stack, Evaluations, and Reports before Advanced/Internal links.
 5. Open Dashboard and confirm it focuses on active/recent work, next action, and readiness rather than evidence backlog.
 6. Create a new evaluation through Configure Stack.
 7. Open the evaluation workspace and inspect Diagnosis, Recommendations, Modeling, Roadmap & Suppliers, Report, and Audit.
-8. Open the printable report and use Ask this report.
+8. Open the printable report, use Ask this report, and confirm a follow-up question keeps the report section grounding through the persisted conversation ID.
 9. Confirm chat UI is absent from browser print output.
 
 ## Report Conversation Modes
@@ -18,7 +18,7 @@
 - `METREV_LLM_MODE=stub`: the API returns deterministic, report-grounded text.
 - `METREV_LLM_MODE=ollama`: the API calls the local Ollama-compatible endpoint and falls back to stub if the request fails.
 
-Do not configure OpenAI runtime mode for this phase.
+Unsupported runtime modes fall back deterministically. The supported local-first modes for this phase are `disabled`, `stub`, and `ollama`.
 
 ## Focused Validation Completed
 
@@ -50,18 +50,18 @@ Dry-run smoke:
 pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2
 ```
 
+Checkpointed resume uses the latest source/query checkpoint recorded under the `bigdata_bootstrap` trigger mode, so repeated bounded runs can continue from the last stored provider cursor instead of restarting from page one.
+
 ## Validation Log
 
-Update this table whenever the full implementation is validated.
+Update this list whenever the full implementation is validated.
 
-| Command                                                                                         | Status | Notes                                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| `pnpm run test:python`                                                                          | PASS   | Contract checks passed in the current 020 validation run.                                        |
-| `pnpm run test:js`                                                                              | PASS   | Covered inside `validate:fast`; 36 files and 118 tests passed.                                   |
-| `pnpm run test:db`                                                                              | PASS   | Postgres persistence suite passed against both Supabase-backed and isolated local runtime flows. |
-| `pnpm run build`                                                                                | PASS   | Covered inside `validate:fast`; turbo build completed successfully.                              |
-| `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2` | PASS   | Dry-run smoke completed during the 020 follow-through.                                           |
-| `pnpm run db:bootstrap:bigdata`                                                                 | PASS   | Full bounded bootstrap completed with 31 runs, 758 stored records, and inventory summary output. |
-| `pnpm run test:e2e`                                                                             | PASS   | Playwright E2E entrypoint passed after disabling the unstable Next dev segment explorer path.    |
-| `pnpm run validate:fast`                                                                        | PASS   | Lint, JS tests, Python contract checks, and build all passed end to end.                         |
-| `pnpm run validate:local`                                                                       | PASS   | Passed against an isolated Docker local-view stack after pinning local runtime and database env; this is now the second CI gate after `validate:fast`. |
+- PASS `pnpm run test:python`: Contract checks passed in the current 020 validation run.
+- PASS `pnpm run test:js`: Covered inside `validate:fast`; 36 files and 118 tests passed.
+- PASS `pnpm run test:db`: Postgres persistence suite passed against both Supabase-backed and isolated local runtime flows.
+- PASS `pnpm run build`: Covered inside `validate:fast`; turbo build completed successfully.
+- PASS `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`: Dry-run smoke completed during the 020 follow-through.
+- PASS `pnpm run db:bootstrap:bigdata`: Full bounded bootstrap completed with 31 runs, 758 stored records, and inventory summary output.
+- PASS `pnpm run test:e2e`: Playwright E2E entrypoint passed after disabling the unstable Next dev segment explorer path.
+- PASS `pnpm run validate:fast`: Lint, JS tests, Python contract checks, and build all passed end to end.
+- PASS `pnpm run validate:local`: Passed against an isolated Docker local-view stack after pinning local runtime and database env; this is now the second CI gate after `validate:fast`.

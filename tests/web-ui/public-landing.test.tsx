@@ -31,6 +31,9 @@ describe('public landing page', () => {
     expect(html).toContain(
       'Explore the scientific instrument one engineering lens at a time.',
     );
+    expect(html).toContain('public-landing-infographic');
+    expect(html).toContain('public-landing-board-problem');
+    expect(html).toContain('public-landing-board-metrev');
     expect(html).toContain('/learn/problem');
     expect(html).toContain('/learn/technology');
     expect(html).toContain('/learn/stack');
@@ -41,6 +44,7 @@ describe('public landing page', () => {
       'The public front door now separates the BES story into six focused pages',
     );
     expect(html).toContain('Six separate public lenses');
+    expect(html).toContain('Open each board for the fuller explanation');
     expect(html).toContain(
       'Map the real BES pressure before choosing a stack.',
     );

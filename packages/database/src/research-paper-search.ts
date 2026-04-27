@@ -8,7 +8,7 @@ import {
   type StageResearchPapersRequest,
 } from '@metrev/domain-contracts';
 
-import type { PrismaClient } from '../generated/prisma/client';
+import type { Prisma, PrismaClient } from '../generated/prisma/client';
 
 const defaultSearchProviders: ResearchSearchProvider[] = [
   'openalex',
@@ -57,6 +57,23 @@ function toAccessStatus(
 function normalizeDoi(value: string | null | undefined): string | null {
   const normalized = normalizeWhitespace(value);
   return normalized ? normalized.replace(/^https?:\/\/doi\.org\//i, '') : null;
+}
+
+function normalizeSourceUrl(value: string | null | undefined): string | null {
+  const normalized = normalizeWhitespace(value);
+  return normalized ? normalized.replace(/\/+$/, '') : null;
+}
+
+function normalizeResearchTitle(
+  value: string | null | undefined,
+): string | null {
+  const normalized = normalizeWhitespace(value);
+  return normalized
+    ? normalized
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim()
+    : null;
 }
 
 function toYear(value: string | number | null | undefined): number | null {
@@ -121,6 +138,10 @@ function isPresent<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function mapProviderToDatabaseSourceType(
   provider: ResearchSearchProvider,
 ): 'OPENALEX' | 'CROSSREF' | 'EUROPE_PMC' {
@@ -153,21 +174,64 @@ function mapAccessStatusToDatabase(
   }
 }
 
+function buildResearchIdentityAliases(
+  item: Pick<
+    ResearchPaperSearchResult,
+    'doi' | 'source_key' | 'source_type' | 'source_url' | 'title' | 'year'
+  >,
+): string[] {
+  const aliases = [] as string[];
+  const normalizedDoi = normalizeDoi(item.doi);
+  const normalizedSourceUrl = normalizeSourceUrl(item.source_url);
+  const normalizedTitle = normalizeResearchTitle(item.title);
+
+  if (normalizedDoi) {
+    aliases.push(`doi:${normalizedDoi.toLowerCase()}`);
+  }
+
+  if (normalizedSourceUrl) {
+    aliases.push(`url:${normalizedSourceUrl.toLowerCase()}`);
+  }
+
+  aliases.push(`provider:${item.source_type}:${item.source_key}`);
+
+  if (normalizedTitle && item.year) {
+    aliases.push(`title-year:${normalizedTitle}:${item.year}`);
+  } else if (normalizedTitle) {
+    aliases.push(`title:${normalizedTitle}`);
+  }
+
+  return aliases;
+}
+
+export function dedupeResearchPaperItems(
+  items: ResearchPaperSearchResult[],
+): ResearchPaperSearchResult[] {
+  const aliases = new Map<string, ResearchPaperSearchResult>();
+  const unique: ResearchPaperSearchResult[] = [];
+
+  for (const item of items) {
+    const identityAliases = buildResearchIdentityAliases(item);
+
+    if (identityAliases.some((alias) => aliases.has(alias))) {
+      continue;
+    }
+
+    unique.push(item);
+
+    for (const alias of identityAliases) {
+      aliases.set(alias, item);
+    }
+  }
+
+  return unique;
+}
+
 function dedupeAndSortResults(
   items: ResearchPaperSearchResult[],
   limit: number,
 ): ResearchPaperSearchResult[] {
-  const unique = new Map<string, ResearchPaperSearchResult>();
-
-  for (const item of items) {
-    const key =
-      item.doi?.toLowerCase() ?? `${item.source_type}:${item.source_key}`;
-    if (!unique.has(key)) {
-      unique.set(key, item);
-    }
-  }
-
-  return [...unique.values()]
+  return dedupeResearchPaperItems(items)
     .sort(
       (left, right) =>
         (right.citation_count ?? -1) - (left.citation_count ?? -1) ||
@@ -559,57 +623,133 @@ function resolveCatalogSourceState(
   return existingState === 'REVIEWED' ? 'REVIEWED' : 'NORMALIZED';
 }
 
+function toSourcePayload(
+  item: ResearchPaperSearchResult,
+  existingPayload: unknown,
+) {
+  const basePayload: Record<string, unknown> & { identity_aliases?: unknown } =
+    isRecord(existingPayload) ? { ...existingPayload } : {};
+  const existingAliases = Array.isArray(basePayload.identity_aliases)
+    ? basePayload.identity_aliases.filter(
+        (value): value is string => typeof value === 'string',
+      )
+    : [];
+
+  return {
+    ...basePayload,
+    ...item.metadata,
+    identity_aliases: [
+      ...new Set([...existingAliases, ...buildResearchIdentityAliases(item)]),
+    ],
+  };
+}
+
+async function findExistingSourceRecord(
+  prisma: Prisma.TransactionClient,
+  item: ResearchPaperSearchResult,
+) {
+  const normalizedDoi = normalizeDoi(item.doi);
+  if (normalizedDoi) {
+    const byDoi = await prisma.externalSourceRecord.findFirst({
+      where: {
+        doi: {
+          equals: normalizedDoi,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+      select: {
+        id: true,
+        rawPayload: true,
+        sourceKey: true,
+        sourceType: true,
+      },
+    });
+
+    if (byDoi) {
+      return byDoi;
+    }
+  }
+
+  const normalizedUrl = normalizeSourceUrl(item.source_url);
+  if (normalizedUrl) {
+    const byUrl = await prisma.externalSourceRecord.findFirst({
+      where: {
+        sourceUrl: {
+          equals: normalizedUrl,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+      select: {
+        id: true,
+        rawPayload: true,
+        sourceKey: true,
+        sourceType: true,
+      },
+    });
+
+    if (byUrl) {
+      return byUrl;
+    }
+  }
+
+  return prisma.externalSourceRecord.findUnique({
+    where: {
+      sourceType_sourceKey: {
+        sourceType: mapProviderToDatabaseSourceType(item.source_type),
+        sourceKey: item.source_key,
+      },
+    },
+    select: {
+      id: true,
+      rawPayload: true,
+      sourceKey: true,
+      sourceType: true,
+    },
+  });
+}
+
 export async function stageResearchPapers(
   prisma: PrismaClient,
   input: StageResearchPapersRequest,
 ): Promise<{ papers: ResearchPaperMetadata[]; sourceDocumentIds: string[] }> {
   const papers: ResearchPaperMetadata[] = [];
   const sourceDocumentIds: string[] = [];
+  const uniqueItems = dedupeResearchPaperItems(input.items);
 
-  for (const item of input.items) {
+  for (const item of uniqueItems) {
     const sourceRecord = await prisma.$transaction(async (transaction) => {
-      const record = await transaction.externalSourceRecord.upsert({
-        where: {
-          sourceType_sourceKey: {
-            sourceType: mapProviderToDatabaseSourceType(item.source_type),
-            sourceKey: item.source_key,
-          },
-        },
-        update: {
-          sourceUrl: item.source_url,
-          title: item.title,
-          sourceCategory: 'scholarly_work',
-          doi: item.doi,
-          publisher: item.publisher,
-          journal: item.journal,
-          authors: item.authors,
-          accessStatus: mapAccessStatusToDatabase(item.access_status),
-          pdfUrl: item.pdf_url,
-          xmlUrl: item.xml_url,
-          abstractText: item.abstract_text,
-          rawPayload: item.metadata,
-          publishedAt: item.year ? new Date(Date.UTC(item.year, 0, 1)) : null,
-          asOf: new Date(),
-        },
-        create: {
-          sourceType: mapProviderToDatabaseSourceType(item.source_type),
-          sourceKey: item.source_key,
-          sourceUrl: item.source_url,
-          title: item.title,
-          sourceCategory: 'scholarly_work',
-          doi: item.doi,
-          publisher: item.publisher,
-          journal: item.journal,
-          authors: item.authors,
-          accessStatus: mapAccessStatusToDatabase(item.access_status),
-          pdfUrl: item.pdf_url,
-          xmlUrl: item.xml_url,
-          abstractText: item.abstract_text,
-          rawPayload: item.metadata,
-          publishedAt: item.year ? new Date(Date.UTC(item.year, 0, 1)) : null,
-          asOf: new Date(),
-        },
-      });
+      const existing = await findExistingSourceRecord(transaction, item);
+      const data = {
+        sourceUrl: normalizeSourceUrl(item.source_url),
+        title: item.title,
+        sourceCategory: 'scholarly_work' as const,
+        doi: normalizeDoi(item.doi),
+        publisher: item.publisher,
+        journal: item.journal,
+        authors: item.authors,
+        accessStatus: mapAccessStatusToDatabase(item.access_status),
+        pdfUrl: item.pdf_url,
+        xmlUrl: item.xml_url,
+        abstractText: item.abstract_text,
+        rawPayload: toSourcePayload(item, existing?.rawPayload),
+        publishedAt: item.year ? new Date(Date.UTC(item.year, 0, 1)) : null,
+        asOf: new Date(),
+      };
+
+      const record = existing
+        ? await transaction.externalSourceRecord.update({
+            where: { id: existing.id },
+            data,
+          })
+        : await transaction.externalSourceRecord.create({
+            data: {
+              ...data,
+              sourceType: mapProviderToDatabaseSourceType(item.source_type),
+              sourceKey: item.source_key,
+            },
+          });
 
       const catalogKey = {
         sourceRecordId_evidenceType_title: {

@@ -7,17 +7,17 @@ import type { DashboardWorkspaceResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    DenseTableActions,
-    DenseTableShell,
-    DenseTableStack,
+  DenseTableActions,
+  DenseTableShell,
+  DenseTableStack,
 } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
@@ -52,7 +52,7 @@ function badgeVariantForSimulationStatus(value?: string | null) {
 }
 
 export interface RecentRunsTableProps {
-  runs: DashboardWorkspaceResponse['recent_runs'];
+  runs: DashboardWorkspaceResponse['recent_evaluations'];
 }
 
 export function RecentRunsTable({ runs }: RecentRunsTableProps) {

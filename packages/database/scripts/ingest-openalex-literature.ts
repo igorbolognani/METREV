@@ -63,6 +63,7 @@ export async function runOpenAlexIngestion(overrides = {}) {
     process.env.INGEST_CURSOR?.trim() ?? '*',
   );
   const dryRun = optionFlag(options, 'dryRun', false);
+  const triggerMode = optionValue(options, 'triggerMode', 'manual_script');
 
   if (!query) {
     throw new Error(
@@ -147,7 +148,7 @@ export async function runOpenAlexIngestion(overrides = {}) {
   const run = await prisma.ingestionRun.create({
     data: {
       sourceType: 'OPENALEX',
-      triggerMode: 'manual_script',
+      triggerMode,
       query,
       status: 'STARTED',
       recordsFetched: 0,

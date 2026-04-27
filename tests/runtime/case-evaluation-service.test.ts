@@ -118,7 +118,7 @@ describe('case evaluation service', () => {
     ).toBe('skipped');
   });
 
-  it('falls back to the deterministic stub narrative when openai mode is requested without credentials', async () => {
+  it('falls back to the deterministic stub narrative when openai mode is requested', async () => {
     process.env.METREV_LLM_MODE = 'openai';
 
     const logger = {
@@ -142,7 +142,7 @@ describe('case evaluation service', () => {
       fallback_used: true,
     });
     expect(evaluation.narrative_metadata.error_message).toContain(
-      'OpenAI-compatible mode requires METREV_LLM_API_KEY or OPENAI_API_KEY',
+      'Unsupported METREV_LLM_MODE "openai" requested',
     );
   });
 });

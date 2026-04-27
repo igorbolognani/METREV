@@ -41,8 +41,8 @@ describe('public topic page', () => {
     );
     expect(html).toContain('Wastewater BES decision');
     expect(html).toContain('Read the pressure map from stream to deployment.');
-    expect(html).toContain('influent reality');
-    expect(html).toContain('biofilm response');
+    expect(html).toContain('public-topic-board-problem-1');
+    expect(html).toContain('public-topic-board-problem-6');
     expect(html).toContain('Influent chemistry');
     expect(html).toContain('Biofilm stability');
     expect(html).toContain('Scale-up economics');

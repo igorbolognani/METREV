@@ -7,6 +7,7 @@ This repository packages three distinct layers that should not be treated as com
 Use `docs/repository-authority-map.md` as the maintained index for deciding which surfaces are active, which remain reference-only, and which stay local-optional.
 
 The umbrella cleanup work now lives in `specs/015-repository-authority-and-structure-consolidation/`.
+The current product roadmap lives in `specs/020-metrev-three-phase-product-plan/`, with `specs/021-public-infographic-pages/` as the active public-route execution slice under that roadmap.
 
 ## Canonical intent
 
@@ -205,6 +206,7 @@ This workspace can be published safely after local validation.
 ## Current MVP status
 
 - Active product roadmap: `specs/020-metrev-three-phase-product-plan/`.
+- Active public-route execution slice: `specs/021-public-infographic-pages/`.
 - Client-facing surfaces: public educational landing, dashboard, configure stack/new evaluation, evaluation workspace, evaluation registry, case history, comparison, printable report, exports, and report-grounded explanation.
 - Internal/advanced surfaces: evidence explorer, evidence review, research tables with live external paper search plus staged warehouse import, ingestion/bootstrap tooling, raw provenance inspection, and deeper audit/warehouse operations.
 - Completed and validated baseline: server-side session auth with Auth.js credentials, browser-enforced sign-in and sign-out flow, route guards, deterministic normalization plus contract-first rule execution, optional simulation enrichment persisted alongside evaluations, explicit external-evidence review gates, analyst workbench surfaces, PostgreSQL-backed persistence tests, and local Jaeger trace visibility.

@@ -1,28 +1,30 @@
+import { randomUUID } from 'node:crypto';
+
 import fixture from '../fixtures/raw-case-input.json';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import {
-    PrismaResearchRepository,
-    disconnectPrismaClient,
-    getPrismaClient,
+  PrismaResearchRepository,
+  disconnectPrismaClient,
+  getPrismaClient,
 } from '@metrev/database';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    getDefaultResearchColumns,
-    runDeterministicResearchExtraction,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  getDefaultResearchColumns,
+  runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
 import {
-    normalizeOpenAlexWork,
-    persistNormalizedEntries,
+  normalizeOpenAlexWork,
+  persistNormalizedEntries,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 const caseId = 'CASE-POSTGRES-SUITE';
@@ -589,10 +591,22 @@ describe('postgres-backed persistence flow', () => {
         }),
         metadata: expect.objectContaining({
           persisted: true,
-          context_version: 'report-context-v1',
+          context_version: 'report-context-v2',
         }),
         refusal_reason: null,
       });
+
+      const recentTurns =
+        await app.evaluationRepository.listRecentReportConversationTurns({
+          conversationId,
+          evaluationId: created.evaluation_id,
+        });
+
+      expect(recentTurns).toHaveLength(2);
+      expect(recentTurns.map((turn) => turn.actor)).toEqual([
+        'user',
+        'assistant',
+      ]);
 
       const prisma = getPrismaClient();
       const session = await prisma.reportConversationSession.findUnique({
@@ -797,6 +811,114 @@ describe('postgres-backed persistence flow', () => {
         }),
       }),
     );
+  });
+
+  it('deduplicates staged research imports by DOI before provider-specific keys in Prisma storage', async () => {
+    const prisma = getPrismaClient();
+    const repository = new PrismaResearchRepository(prisma);
+
+    const firstStage = await repository.stageResearchPapers({
+      query: 'postgres staging dedupe regression',
+      items: [
+        {
+          source_type: 'openalex',
+          source_key: 'https://openalex.org/W-postgres-dedupe-regression',
+          title: 'Postgres staging dedupe regression',
+          authors: [{ name: 'Regression Author' }],
+          year: 2026,
+          doi: '10.5555/postgres-staging-dedupe',
+          journal: 'Integration Regression Journal',
+          publisher: 'METREV Regression Harness',
+          source_url: 'https://openalex.org/W-postgres-dedupe-regression',
+          pdf_url: null,
+          xml_url: null,
+          abstract_text:
+            'Initial staging import for provider identity regression.',
+          citation_count: 4,
+          access_status: 'green',
+          metadata: {
+            provider: 'openalex',
+          },
+        },
+      ],
+    });
+
+    expect(firstStage.source_document_ids).toHaveLength(1);
+
+    const initialCatalogItem =
+      await prisma.externalEvidenceCatalogItem.findFirstOrThrow({
+        where: {
+          sourceRecordId: firstStage.source_document_ids[0],
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    await prisma.externalEvidenceCatalogItem.update({
+      where: { id: initialCatalogItem.id },
+      data: {
+        reviewStatus: 'ACCEPTED',
+        sourceState: 'REVIEWED',
+      },
+    });
+
+    const secondStage = await repository.stageResearchPapers({
+      query: 'postgres staging dedupe regression',
+      items: [
+        {
+          source_type: 'crossref',
+          source_key: '10.5555/postgres-staging-dedupe-crossref',
+          title: 'Postgres staging dedupe regression',
+          authors: [{ name: 'Regression Author' }],
+          year: 2026,
+          doi: 'https://doi.org/10.5555/postgres-staging-dedupe',
+          journal: 'Integration Regression Journal',
+          publisher: 'METREV Regression Harness',
+          source_url: 'https://doi.org/10.5555/postgres-staging-dedupe',
+          pdf_url: null,
+          xml_url: null,
+          abstract_text:
+            'Crossref restaging import for provider identity regression.',
+          citation_count: 7,
+          access_status: 'green',
+          metadata: {
+            provider: 'crossref',
+          },
+        },
+      ],
+    });
+
+    expect(secondStage.source_document_ids).toEqual(
+      firstStage.source_document_ids,
+    );
+
+    const storedRecords = await prisma.externalSourceRecord.findMany({
+      where: {
+        doi: '10.5555/postgres-staging-dedupe',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    expect(storedRecords).toHaveLength(1);
+
+    const persistedCatalogItem =
+      await prisma.externalEvidenceCatalogItem.findFirstOrThrow({
+        where: {
+          sourceRecordId: firstStage.source_document_ids[0],
+        },
+        select: {
+          reviewStatus: true,
+          sourceState: true,
+        },
+      });
+
+    expect(persistedCatalogItem).toMatchObject({
+      reviewStatus: 'ACCEPTED',
+      sourceState: 'REVIEWED',
+    });
   });
 
   it('normalizes legacy external evidence types in workspace responses', async () => {
@@ -1066,6 +1188,195 @@ describe('postgres-backed persistence flow', () => {
           analystRole: actor.role,
         }),
       ]),
+    );
+  }, 60_000);
+
+  it('detaches reviewed stale claims instead of deleting them during re-ingestion', async () => {
+    const prisma = getPrismaClient();
+    const staleRunSuffix = randomUUID();
+    const initialStaleRunId = `${initialIngestionRunId}-stale-${staleRunSuffix}`;
+    const reingestionStaleRunId = `${reingestionRunId}-stale-${staleRunSuffix}`;
+
+    await prisma.ingestionRun.createMany({
+      data: [
+        {
+          id: initialStaleRunId,
+          sourceType: 'OPENALEX',
+          triggerMode: 'test',
+          query: 'postgres stale reviewed claim regression',
+          status: 'STARTED',
+          summary: {},
+          startedAt: new Date('2026-04-24T00:00:00.000Z'),
+        },
+        {
+          id: reingestionStaleRunId,
+          sourceType: 'OPENALEX',
+          triggerMode: 'test',
+          query: 'postgres stale reviewed claim regression',
+          status: 'STARTED',
+          summary: {},
+          startedAt: new Date('2026-04-25T00:00:00.000Z'),
+        },
+      ],
+    });
+
+    const initialEntry = normalizeOpenAlexWork(
+      {
+        id: `${ingestionCatalogSourceKey}-stale-reviewed`,
+        display_name: 'Postgres stale reviewed claim regression',
+        doi: '10.5555/postgres-stale-reviewed-claim',
+        publication_date: '2026-02-14',
+        abstract_inverted_index: {
+          Stable: [0],
+          current: [1],
+          density: [2],
+          reached: [3],
+          '1.9': [4],
+          'A/m2': [5],
+          under: [6],
+          neutral: [7],
+          pH: [8],
+          Membrane: [9],
+          fouling: [10],
+          remained: [11],
+          the: [12],
+          main: [13],
+          limitation: [14],
+        },
+        open_access: {
+          is_oa: true,
+          oa_status: 'green',
+        },
+        primary_location: {
+          landing_page_url: 'https://example.org/postgres-stale-reviewed-claim',
+          source: {
+            display_name: 'Integration Regression Journal',
+          },
+        },
+        type: 'article',
+      },
+      'postgres stale reviewed claim regression',
+      '2026-04-24T00:00:00.000Z',
+    );
+
+    expect(initialEntry).not.toBeNull();
+
+    await persistNormalizedEntries(prisma, [initialEntry], {
+      runId: initialStaleRunId,
+    });
+
+    const initialCatalogItem =
+      await prisma.externalEvidenceCatalogItem.findFirstOrThrow({
+        where: {
+          title: 'Postgres stale reviewed claim regression',
+          sourceRecord: {
+            sourceType: 'OPENALEX',
+            sourceKey: `${ingestionCatalogSourceKey}-stale-reviewed`,
+          },
+        },
+        include: {
+          claims: {
+            include: {
+              reviews: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      });
+
+    const staleReviewedClaim = initialCatalogItem.claims.find((claim) =>
+      claim.content.includes('Membrane fouling'),
+    );
+
+    expect(staleReviewedClaim).toBeDefined();
+
+    await prisma.evidenceClaimReview.create({
+      data: {
+        claimId: staleReviewedClaim!.id,
+        status: 'REJECTED',
+        analystId: actor.userId,
+        analystRole: actor.role,
+        analystNote:
+          'Rejected but retained for stale-claim regression coverage.',
+        reviewedAt: new Date('2026-04-24T00:00:00.000Z'),
+      },
+    });
+
+    const reingestedEntry = normalizeOpenAlexWork(
+      {
+        id: `${ingestionCatalogSourceKey}-stale-reviewed`,
+        display_name: 'Postgres stale reviewed claim regression',
+        doi: '10.5555/postgres-stale-reviewed-claim',
+        publication_date: '2026-02-14',
+        abstract_inverted_index: {
+          Stable: [0],
+          current: [1],
+          density: [2],
+          reached: [3],
+          '1.9': [4],
+          'A/m2': [5],
+          under: [6],
+          neutral: [7],
+          pH: [8],
+          Instrumentation: [9],
+          coverage: [10],
+          improved: [11],
+          after: [12],
+          recalibration: [13],
+        },
+        open_access: {
+          is_oa: true,
+          oa_status: 'green',
+        },
+        primary_location: {
+          landing_page_url:
+            'https://example.org/postgres-stale-reviewed-claim-v2',
+          source: {
+            display_name: 'Integration Regression Journal',
+          },
+        },
+        type: 'article',
+      },
+      'postgres stale reviewed claim regression',
+      '2026-04-25T00:00:00.000Z',
+    );
+
+    expect(reingestedEntry).not.toBeNull();
+
+    reingestedEntry.claims = reingestedEntry.claims.filter(
+      (claim) => claim.content !== staleReviewedClaim!.content,
+    );
+
+    await persistNormalizedEntries(prisma, [reingestedEntry], {
+      runId: reingestionStaleRunId,
+    });
+
+    const detachedClaim = await prisma.evidenceClaim.findUniqueOrThrow({
+      where: { id: staleReviewedClaim!.id },
+      include: {
+        reviews: true,
+      },
+    });
+
+    expect(detachedClaim.catalogItemId).toBeNull();
+    expect(detachedClaim.reviews).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: 'REJECTED',
+          analystId: actor.userId,
+          analystRole: actor.role,
+        }),
+      ]),
+    );
+    expect(detachedClaim.metadata).toEqual(
+      expect.objectContaining({
+        detached_catalog_item_id: initialCatalogItem.id,
+        detached_reason: 'claim_not_present_in_latest_ingestion',
+        ingestion_status: 'superseded',
+        superseded_by_run_id: reingestionStaleRunId,
+      }),
     );
   }, 60_000);
 });

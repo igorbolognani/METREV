@@ -23,6 +23,7 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 | Optional local Serena project config | `.serena/project.yml`                                                                                                                                                 | Repo-local helper config for contributors who install Serena locally. It is not a mandatory runtime dependency.                                         |
 | Repository-wide cleanup umbrella     | `specs/015-repository-authority-and-structure-consolidation/`                                                                                                         | Use this feature pack to coordinate the remaining consolidation work across docs, workflow, reference assets, and structure.                            |
 | Active product roadmap               | `specs/020-metrev-three-phase-product-plan/`                                                                                                                          | Current owner for public landing, scientific instrument workspace, internal intelligence grouping, and report-grounded conversation.                    |
+| Active public-route execution slice  | `specs/021-public-infographic-pages/`                                                                                                                                 | Current public infographic-route execution pack under 020 for the code-built overview hub and topic pages.                                              |
 
 ## Reference-only or future-facing surfaces
 
@@ -37,6 +38,7 @@ Use it before editing governance, workflow, tooling, domain, contract, or large 
 - `specs/017-full-big-data-workspace/` remains the completed big-data/cockpit baseline.
 - `specs/018-evidence-intelligence-workspace/` remains the internal/advanced evidence instrument under the 020 product roadmap.
 - `specs/019-research-intelligence-review-table-engine/` is the active research-integration execution pack under 020 for live literature search, staged warehouse import, review tables, queued/runtime extraction, and evidence-pack propagation into case intake and evaluation lineage.
+- `specs/021-public-infographic-pages/` is the active public-route execution pack under 020 for the infographic overview hub and public topic pages.
 - `specs/_examples/` remains example-only workflow material; use `specs/_templates/` and maintained numbered packs for live work.
 - `docs/historical-cleanup-notes.md` is the consolidated historical note for earlier cleanup waves. It provides background context only.
 - Historical duplicate copies previously kept under `archive/legacy-root-duplicates/` have been retired where equivalent module-local source copies still exist.

@@ -68,10 +68,10 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
     let actor;
 
     try {
-      actor = requireRole(request.actor, 'ANALYST');
+      actor = requireRole(request.actor, 'VIEWER');
     } catch (error) {
       if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'ANALYST');
+        return replyForAuthorizationError(request, reply, error, 'VIEWER');
       }
 
       throw error;

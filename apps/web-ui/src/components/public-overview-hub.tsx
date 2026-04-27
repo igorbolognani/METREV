@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import * as React from 'react';
 
-import {
-    PUBLIC_TOPIC_PAGES,
-    getPublicTopicHref,
-} from '@/components/public-topic-content';
+import { PublicLandingInfographic } from '@/components/public-topic-infographics';
 import { PublicTopicNav } from '@/components/public-topic-nav';
 import { Badge } from '@/components/ui/badge';
 
@@ -56,7 +53,7 @@ export function PublicOverviewHub() {
             <Link className="button" href="/login">
               Start evaluation
             </Link>
-            <Link className="button secondary" href="#public-topic-grid">
+            <Link className="button secondary" href="#public-topic-rail">
               Browse the 6 lenses
             </Link>
           </div>
@@ -72,31 +69,22 @@ export function PublicOverviewHub() {
         </div>
       </section>
 
-      <section className="public-route-hub__grid" id="public-topic-grid">
-        {PUBLIC_TOPIC_PAGES.map((topic, index) => (
-          <Link
-            className="public-route-card"
-            data-testid={`public-route-card-${topic.slug}`}
-            data-tone={topic.accentTone}
-            href={getPublicTopicHref(topic.slug)}
-            key={topic.slug}
-          >
-            <span className="public-route-card__index">
-              {String(index + 1).padStart(2, '0')}
-            </span>
-            <p className="public-route-card__eyebrow">{topic.navLabel}</p>
-            <p className="public-route-card__marker">{topic.routeMarker}</p>
-            <h2>{topic.cardTitle}</h2>
-            <p>{topic.cardSummary}</p>
-            <div className="public-route-card__points">
-              {topic.previewPoints.map((point) => (
-                <span className="public-route-chip" key={point}>
-                  {point}
-                </span>
-              ))}
-            </div>
-          </Link>
-        ))}
+      <section className="public-route-hub__topics" id="public-topic-rail">
+        <div className="public-route-hub__topics-copy">
+          <Badge variant="muted">Linear public infographic</Badge>
+          <h2>
+            Open each board for the fuller explanation, then use the header to
+            jump into the dedicated page.
+          </h2>
+          <p>
+            The landing page now keeps the public story in one readable
+            sequence. Each board opens a floating explanation, while the fixed
+            route bar stays available for direct navigation into the six
+            dedicated topic pages.
+          </p>
+        </div>
+
+        <PublicLandingInfographic />
       </section>
 
       <section className="public-route-hub__footer">

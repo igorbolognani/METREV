@@ -27,18 +27,19 @@ describe('accepted evidence selector', () => {
       isLoading: false,
     });
 
-    const { AcceptedEvidenceSelector } = await import(
-      '../../apps/web-ui/src/components/accepted-evidence-selector'
-    );
+    const { AcceptedEvidenceSelector } =
+      await import('../../apps/web-ui/src/components/accepted-evidence-selector');
     const html = renderToStaticMarkup(
       React.createElement(AcceptedEvidenceSelector, {
+        actorRole: 'VIEWER',
         onSelectionChange: vi.fn(),
         selectedEvidence: [],
       }),
     );
 
     expect(html).toContain('No accepted catalog evidence');
-    expect(html).toContain('Open evidence review queue');
-    expect(html).toContain('/evidence/review');
+    expect(html).toContain('saved reports and evaluation history');
+    expect(html).not.toContain('Open evidence review queue');
+    expect(html).not.toContain('/evidence/review');
   });
 });

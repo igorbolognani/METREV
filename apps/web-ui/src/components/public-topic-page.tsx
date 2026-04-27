@@ -3,8 +3,8 @@ import * as React from 'react';
 
 import type { PublicTopicConfig } from '@/components/public-topic-content';
 import {
-    PUBLIC_TOPIC_PAGES,
-    getPublicTopicHref,
+  PUBLIC_TOPIC_PAGES,
+  getPublicTopicHref,
 } from '@/components/public-topic-content';
 import { PublicTopicInfographic } from '@/components/public-topic-infographics';
 import { PublicTopicNav } from '@/components/public-topic-nav';
@@ -36,7 +36,7 @@ export function PublicTopicPage({ topic }: { topic: PublicTopicConfig }) {
       <PublicTopicNav />
 
       <section className="public-route-topic__hero">
-        <div className="public-route-topic__copy">
+        <div className="public-route-topic__copy public-route-topic__copy--stacked">
           <Badge variant="info">{topic.heroEyebrow}</Badge>
           <p className="public-route-kicker">{topic.navLabel} page</p>
           <h1>{topic.heroTitle}</h1>
@@ -58,30 +58,30 @@ export function PublicTopicPage({ topic }: { topic: PublicTopicConfig }) {
               Back to overview
             </Link>
           </div>
-        </div>
 
-        <div className="public-route-topic__board">
-          <PublicTopicInfographic topic={topic} />
+          <div className="public-route-topic__support-grid">
+            {topic.highlights.map((highlight) => (
+              <article
+                className="public-route-topic__support-card"
+                key={highlight.title}
+              >
+                <h3>{highlight.title}</h3>
+                <p>{highlight.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="public-route-topic__support">
+      <section className="public-route-topic__support public-route-topic__support--infographic">
         <div className="public-route-topic__intro">
           <Badge variant="muted">How to read this lens</Badge>
           <h2>{topic.questionTitle}</h2>
           <p>{topic.questionLead}</p>
         </div>
 
-        <div className="public-route-topic__support-grid">
-          {topic.highlights.map((highlight) => (
-            <article
-              className="public-route-topic__support-card"
-              key={highlight.title}
-            >
-              <h3>{highlight.title}</h3>
-              <p>{highlight.body}</p>
-            </article>
-          ))}
+        <div className="public-route-topic__board">
+          <PublicTopicInfographic topic={topic} />
         </div>
       </section>
 

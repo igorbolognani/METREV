@@ -1396,13 +1396,48 @@ async function syncClaimReview(prisma, claimId, review) {
   });
 }
 
-async function syncClaims(prisma, sourceRecordId, catalogItemId, claims) {
+function toClaimMetadata(value) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...value }
+    : {};
+}
+
+function buildActiveClaimMetadata(existingMetadata, incomingMetadata) {
+  return {
+    ...toClaimMetadata(existingMetadata),
+    ...toClaimMetadata(incomingMetadata),
+    detached_catalog_item_id: null,
+    detached_reason: null,
+    ingestion_status: 'active',
+    superseded_at: null,
+    superseded_by_run_id: null,
+  };
+}
+
+async function syncClaims(
+  prisma,
+  sourceRecordId,
+  catalogItemId,
+  claims,
+  runId,
+) {
   const existingClaims = await prisma.evidenceClaim.findMany({
-    where: { sourceRecordId, catalogItemId },
+    where: {
+      sourceRecordId,
+      OR: [{ catalogItemId }, { catalogItemId: null }],
+    },
     select: {
       id: true,
+      catalogItemId: true,
       content: true,
+      metadata: true,
       sourceLocator: true,
+      reviews: {
+        select: {
+          reviewedAt: true,
+          status: true,
+        },
+      },
     },
   });
   const existingByKey = new Map(
@@ -1441,10 +1476,7 @@ async function syncClaims(prisma, sourceRecordId, catalogItemId, claims) {
         Number.isFinite(claim.pageNumber)
           ? claim.pageNumber
           : null,
-      metadata:
-        claim.metadata && typeof claim.metadata === 'object'
-          ? claim.metadata
-          : {},
+      metadata: buildActiveClaimMetadata(existing?.metadata, claim.metadata),
     };
 
     const persistedClaim = existing
@@ -1466,17 +1498,40 @@ async function syncClaims(prisma, sourceRecordId, catalogItemId, claims) {
     await syncClaimReview(prisma, persistedClaim.id, claim.review);
   }
 
-  const staleIds = existingClaims
-    .filter(
-      (claim) =>
-        !seenKeys.has(`${claim.sourceLocator ?? ''}::${claim.content}`),
-    )
+  const staleIds = existingClaims.filter(
+    (claim) => !seenKeys.has(`${claim.sourceLocator ?? ''}::${claim.content}`),
+  );
+
+  const detachableClaims = staleIds.filter((claim) =>
+    claim.reviews.some(
+      (review) => review.status !== 'PENDING' || review.reviewedAt !== null,
+    ),
+  );
+  const deletableIds = staleIds
+    .filter((claim) => !detachableClaims.includes(claim))
     .map((claim) => claim.id);
 
-  if (staleIds.length > 0) {
+  for (const claim of detachableClaims) {
+    await prisma.evidenceClaim.update({
+      where: { id: claim.id },
+      data: {
+        catalogItemId: null,
+        metadata: {
+          ...toClaimMetadata(claim.metadata),
+          detached_catalog_item_id: claim.catalogItemId ?? catalogItemId,
+          detached_reason: 'claim_not_present_in_latest_ingestion',
+          ingestion_status: 'superseded',
+          superseded_at: new Date().toISOString(),
+          superseded_by_run_id: runId ?? null,
+        },
+      },
+    });
+  }
+
+  if (deletableIds.length > 0) {
     await prisma.evidenceClaim.deleteMany({
       where: {
-        id: { in: staleIds },
+        id: { in: deletableIds },
       },
     });
   }
@@ -1715,6 +1770,7 @@ export async function persistNormalizedEntries(
           sourceRecord.id,
           catalogItem.id,
           entry.claims,
+          runId,
         );
         const supplierDocumentCount = await syncSupplierDocuments(
           transaction,

@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    type EvaluationResponse,
-    type ExternalEvidenceCatalogItemDetail,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  type EvaluationResponse,
+  type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -361,7 +361,7 @@ describe('api runtime flow', () => {
     await app.close();
   });
 
-  it('rejects evaluation when the caller does not have analyst privileges', async () => {
+  it('allows viewer sessions to submit evaluations', async () => {
     const app = await buildApp({
       repository: new MemoryEvaluationRepository(),
       sessionResolver: testSessionResolver,
@@ -373,12 +373,14 @@ describe('api runtime flow', () => {
       headers: {
         'content-type': 'application/json',
         cookie: sessionCookie('viewer-session'),
-        'x-metrev-role': 'ADMIN',
       },
       payload: fixture,
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      case_id: 'CASE-001',
+    });
 
     await app.close();
   });
@@ -861,7 +863,25 @@ describe('api runtime flow', () => {
       summary: expect.objectContaining({
         total_runs: 1,
       }),
+      recent_reports: [
+        expect.objectContaining({
+          report_href: `/evaluations/${created.evaluation_id}/report`,
+        }),
+      ],
     });
+    expect(dashboardResponse.json()).not.toHaveProperty('evidence_backlog');
+    expect(dashboardResponse.json().summary).not.toHaveProperty(
+      'pending_evidence',
+    );
+    expect(dashboardResponse.json().summary).not.toHaveProperty(
+      'accepted_evidence',
+    );
+    expect(dashboardResponse.json().summary).not.toHaveProperty(
+      'rejected_evidence',
+    );
+    expect(dashboardResponse.json().quick_actions).not.toHaveProperty(
+      'evidence_review_href',
+    );
 
     const workspaceResponse = await app.inject({
       method: 'GET',
@@ -1021,11 +1041,38 @@ describe('api runtime flow', () => {
         }),
         metadata: expect.objectContaining({
           conversation_id: expect.any(String),
-          mode: 'client',
-          context_version: 'report-context-v1',
+          mode: 'server',
+          context_version: 'report-context-v2',
           persisted: true,
         }),
         refusal_reason: null,
+      });
+
+      const followUpResponse = await app.inject({
+        method: 'POST',
+        url: `/api/workspace/evaluations/${created.evaluation_id}/report/conversation`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('viewer-session'),
+        },
+        payload: {
+          evaluation_id: created.evaluation_id,
+          conversation_id: conversationBody.conversation_id,
+          message: 'And what about that?',
+        },
+      });
+
+      expect(followUpResponse.statusCode).toBe(200);
+      expect(followUpResponse.json()).toMatchObject({
+        conversation_id: conversationBody.conversation_id,
+        answer: expect.stringContaining('For the stack_diagnosis section'),
+        grounding_summary: expect.objectContaining({
+          selected_section: 'stack_diagnosis',
+        }),
+        metadata: expect.objectContaining({
+          mode: 'server',
+          context_version: 'report-context-v2',
+        }),
       });
 
       const refusalResponse = await app.inject({
@@ -1120,8 +1167,8 @@ describe('api runtime flow', () => {
           fallback_used: false,
         }),
         metadata: expect.objectContaining({
-          mode: 'client',
-          context_version: 'report-context-v1',
+          mode: 'server',
+          context_version: 'report-context-v2',
           persisted: true,
         }),
       });

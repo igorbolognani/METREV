@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
 
+import type { Role } from '@metrev/auth';
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
@@ -13,9 +14,11 @@ import { formatToken } from '@/lib/formatting';
 void React;
 
 export function AcceptedEvidenceSelector({
+  actorRole = 'VIEWER',
   selectedEvidence,
   onSelectionChange,
 }: {
+  actorRole?: Role;
   selectedEvidence: ExternalEvidenceCatalogItemSummary[];
   onSelectionChange: (items: ExternalEvidenceCatalogItemSummary[]) => void;
 }) {
@@ -25,6 +28,8 @@ export function AcceptedEvidenceSelector({
   });
 
   const selectedIds = new Set(selectedEvidence.map((item) => item.id));
+  const canOpenInternalEvidence =
+    actorRole === 'ANALYST' || actorRole === 'ADMIN';
 
   function toggleItem(item: ExternalEvidenceCatalogItemSummary) {
     if (selectedIds.has(item.id)) {
@@ -58,9 +63,15 @@ export function AcceptedEvidenceSelector({
         <p className="error">{query.error.message}</p>
       ) : !query.data || query.data.items.length === 0 ? (
         <WorkspaceEmptyState
-          description="No accepted external-evidence records are available yet. Review the queue first before attaching catalog evidence to a case."
-          primaryHref="/evidence/review"
-          primaryLabel="Open evidence review queue"
+          description={
+            canOpenInternalEvidence
+              ? 'No accepted external-evidence records are available yet. Review the queue first before attaching catalog evidence to a case.'
+              : 'No accepted external-evidence records are available yet. Internal evidence review stays with analyst workflows; use saved reports and evaluation history to trace accepted evidence after a run.'
+          }
+          primaryHref={canOpenInternalEvidence ? '/evidence/review' : undefined}
+          primaryLabel={
+            canOpenInternalEvidence ? 'Open evidence review queue' : undefined
+          }
           title="No accepted catalog evidence"
         />
       ) : (
@@ -108,12 +119,19 @@ export function AcceptedEvidenceSelector({
                   >
                     {isSelected ? 'Included in intake' : 'Include evidence'}
                   </button>
-                  <Link
-                    className="button secondary"
-                    href={`/evidence/review/${item.id}`}
-                  >
-                    Inspect record
-                  </Link>
+                  {canOpenInternalEvidence ? (
+                    <Link
+                      className="button secondary"
+                      href={`/evidence/review/${item.id}`}
+                    >
+                      Inspect record
+                    </Link>
+                  ) : (
+                    <span className="muted">
+                      Trace this evidence later through saved reports and audit
+                      history.
+                    </span>
+                  )}
                 </div>
               </article>
             );
