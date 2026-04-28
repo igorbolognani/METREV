@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('public topic page', () => {
-  it('renders the problem topic with an active nav state and infographic callout panels', () => {
+  it('renders the problem topic with an active nav state and infographic-first topic layout', () => {
     currentPathname = '/learn/problem';
 
     const topic = getPublicTopicConfig('problem');
@@ -39,15 +39,24 @@ describe('public topic page', () => {
     expect(html).toContain(
       'See the full operating pressure around a bioelectrochemical decision.',
     );
-    expect(html).toContain('Wastewater BES decision');
-    expect(html).toContain('Read the pressure map from stream to deployment.');
+    expect(html).toContain(
+      'wastewater chemistry, conductivity, pH, temperature, hydraulic regime, biofilm maturity, transport losses, maintenance burden, and observability',
+    );
+    expect(html).toContain('Problem · Pressure map');
     expect(html).toContain('public-topic-board-problem-1');
     expect(html).toContain('public-topic-board-problem-6');
     expect(html).toContain('Influent chemistry');
     expect(html).toContain('Biofilm stability');
+    expect(html).toContain('Evidence gaps');
     expect(html).toContain('Scale-up economics');
+    expect(html).toContain('influent chemistry');
+    expect(html).toContain('Why this page matters');
+    expect(html).toContain('Frame the wastewater boundary first.');
+    expect(html).toContain(
+      'missing measurements, fouling exposure, startup uncertainty, and monitoring burden',
+    );
     expect(html).toContain('Within METREV');
     expect(html).toContain('/learn/technology');
-    expect(html).toContain('/login');
+    expect(html).toContain('Back to overview');
   });
 });

@@ -16,6 +16,7 @@ export interface DialogProps {
   defaultOpen?: boolean;
   description?: string;
   footer?: React.ReactNode;
+  headerAccessory?: React.ReactNode;
   hideClose?: boolean;
   onOpenChange?: (open: boolean) => void;
   open?: boolean;
@@ -30,6 +31,7 @@ export function Dialog({
   defaultOpen,
   description,
   footer,
+  headerAccessory,
   hideClose = false,
   onOpenChange,
   open,
@@ -69,10 +71,22 @@ export function Dialog({
                 </DialogPrimitive.Description>
               ) : null}
             </div>
-            {!hideClose ? (
-              <DialogPrimitive.Close className="ui-dialog__close" type="button">
-                Close
-              </DialogPrimitive.Close>
+            {headerAccessory || !hideClose ? (
+              <div className="ui-dialog__actions">
+                {headerAccessory ? (
+                  <div className="ui-dialog__header-accessory">
+                    {headerAccessory}
+                  </div>
+                ) : null}
+                {!hideClose ? (
+                  <DialogPrimitive.Close
+                    className="ui-dialog__close"
+                    type="button"
+                  >
+                    Close
+                  </DialogPrimitive.Close>
+                ) : null}
+              </div>
             ) : null}
           </div>
           <div className="ui-dialog__body">{children}</div>

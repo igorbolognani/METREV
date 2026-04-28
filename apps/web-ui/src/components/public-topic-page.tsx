@@ -8,7 +8,6 @@ import {
 } from '@/components/public-topic-content';
 import { PublicTopicInfographic } from '@/components/public-topic-infographics';
 import { PublicTopicNav } from '@/components/public-topic-nav';
-import { Badge } from '@/components/ui/badge';
 
 void React;
 
@@ -35,62 +34,25 @@ export function PublicTopicPage({ topic }: { topic: PublicTopicConfig }) {
     >
       <PublicTopicNav />
 
-      <section className="public-route-topic__hero">
-        <div className="public-route-topic__copy public-route-topic__copy--stacked">
-          <Badge variant="info">{topic.heroEyebrow}</Badge>
-          <p className="public-route-kicker">{topic.navLabel} page</p>
-          <h1>{topic.heroTitle}</h1>
-          <p className="public-route-topic__lead">{topic.heroLead}</p>
-
-          <div className="public-route-topic__points">
-            {topic.previewPoints.map((point) => (
-              <span className="public-route-point" key={point}>
-                {point}
-              </span>
-            ))}
-          </div>
-
-          <div className="landing-actions landing-actions--prominent">
-            <Link className="button" href="/login">
-              Start evaluation
-            </Link>
-            <Link className="button secondary" href="/">
-              Back to overview
-            </Link>
-          </div>
-
-          <div className="public-route-topic__support-grid">
-            {topic.highlights.map((highlight) => (
-              <article
-                className="public-route-topic__support-card"
-                key={highlight.title}
-              >
-                <h3>{highlight.title}</h3>
-                <p>{highlight.body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
+      <section className="public-route-topic__canvas">
+        <PublicTopicInfographic topic={topic} />
       </section>
 
-      <section className="public-route-topic__support public-route-topic__support--infographic">
-        <div className="public-route-topic__intro">
-          <Badge variant="muted">How to read this lens</Badge>
+      <section className="public-route-topic__details">
+        <article className="public-route-topic__detail">
+          <span>Why this page matters</span>
           <h2>{topic.questionTitle}</h2>
+          <p>{topic.heroLead}</p>
           <p>{topic.questionLead}</p>
-        </div>
+        </article>
 
-        <div className="public-route-topic__board">
-          <PublicTopicInfographic topic={topic} />
-        </div>
-      </section>
-
-      <section className="public-route-topic__footer">
-        <article className="public-route-topic__footer-note">
+        <article className="public-route-topic__detail">
           <span>Within METREV</span>
           <p>{topic.footerNote}</p>
         </article>
+      </section>
 
+      <section className="public-route-topic__footer">
         <div className="public-route-topic__pager">
           {previousTopic ? (
             <Link

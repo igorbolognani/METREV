@@ -28,6 +28,7 @@ describe('public landing page', () => {
     expect(html).toContain('Public topic routes');
     expect(html).toContain('Overview');
     expect(html).toContain('METREV');
+    expect(html).toContain('METREV BIOELETROCHEMICAL DECISION SUPPORT');
     expect(html).toContain(
       'Explore the scientific instrument one engineering lens at a time.',
     );
@@ -40,11 +41,10 @@ describe('public landing page', () => {
     expect(html).toContain('/learn/comparison');
     expect(html).toContain('/learn/impact');
     expect(html).toContain('/learn/metrev');
+    expect(html).toContain('Linear Public Infographic');
     expect(html).toContain(
-      'The public front door now separates the BES story into six focused pages',
+      'Follow the same decision path METREV uses in practice:',
     );
-    expect(html).toContain('Six separate public lenses');
-    expect(html).toContain('Open each board for the fuller explanation');
     expect(html).toContain(
       'Map the real BES pressure before choosing a stack.',
     );
@@ -53,10 +53,16 @@ describe('public landing page', () => {
     expect(html).toContain(
       'See the full METREV workflow as one scientific instrument.',
     );
-    expect(html).toContain(
+    expect(html).toContain('/login');
+    expect(html).not.toContain('Public educational layer');
+    expect(html).not.toContain('Browse the 6 lenses');
+    expect(html).not.toContain('Go to dashboard');
+    expect(html).not.toContain(
+      'The public front door now separates the BES story into six focused pages',
+    );
+    expect(html).not.toContain(
       'The public layer teaches the system. The workspace evaluates it.',
     );
-    expect(html).toContain('/login?callbackUrl=%2Fdashboard');
     expect(html).not.toContain('Client path after login');
     expect(html).not.toContain('AI-first');
     expect(html).not.toContain('generic chat-first copilot');
