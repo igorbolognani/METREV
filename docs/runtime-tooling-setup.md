@@ -74,9 +74,10 @@ For the broader active-versus-reference classification across the repository, us
 ## Validation rule
 
 - A tool is not considered integrated until its repo config, setup steps, and success criteria are all documented.
-- `pnpm run validate:fast` is the promoted fast repository matrix and the current CI contract.
-- `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed and resolve the active published Postgres port before running.
-- `pnpm run validate:full` combines the promoted fast and local matrices.
+- `pnpm run validate:fast` is the promoted fast repository matrix and the first CI gate.
+- `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed and resolve the active published Postgres port before running. It remains a separate post-fast CI job so Docker/runtime failures stay isolated.
+- `pnpm run validate:advanced` is the promoted deterministic advanced big-data and research matrix. It runs focused advanced tests plus a curated-manifest-only `bootstrap:bigdata` dry-run without relying on live provider APIs, and it remains a separate post-fast CI job alongside `validate:local` so deterministic research regressions stay isolated from local runtime acceptance failures.
+- `pnpm run validate:full` combines the promoted fast, advanced, and local matrices.
 
 ## VS Code verification
 

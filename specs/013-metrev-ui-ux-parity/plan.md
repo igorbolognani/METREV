@@ -1,6 +1,6 @@
 # Implementation Plan — Analytical Workspace Refactor
 
-Execution note: 013 remains the historical UI refactor pack. The active local-first execution plan moved to [014-local-first-professional-workspace](../014-local-first-professional-workspace/plan.md) and later follow-through UI slices.
+Execution note: 013 remains the historical UI refactor pack. 014 is the antecedent local-first successor pack, while the active execution path now lives in [020-metrev-three-phase-product-plan](../020-metrev-three-phase-product-plan/plan.md) with [021-public-infographic-pages](../021-public-infographic-pages/plan.md) as the current public-route execution slice.
 
 ## Summary
 

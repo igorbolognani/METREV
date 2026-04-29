@@ -1,5 +1,11 @@
 # METREV Full Stack, Runtime Architecture, Routes, and Repository Map
 
+> Historical note
+>
+> This document is retained as extended reference context, not as the maintained METREV runbook.
+> Use `README.md` for the canonical bootstrap and validation commands and `docs/repository-authority-map.md` for the maintained active-versus-reference map.
+> The active roadmap now lives in `specs/020-metrev-three-phase-product-plan/`, with `specs/021-public-infographic-pages/` as the current public-route execution slice. `specs/014-local-first-professional-workspace/` remains antecedent local-first background context.
+
 This document is a detailed setup and architecture guide for the current METREV repository.
 
 It explains:
@@ -42,7 +48,7 @@ Before reading the stack as a normal web app, it is important to understand the 
 - `stack.md` is legacy background context, not the active runtime authority
 - `copilot_project_starter_detailed/` is reusable scaffolding, not the live METREV runtime source
 - `archive/legacy-root-duplicates/` contains historical duplicates and references, not active runtime owners
-- `specs/013-metrev-ui-ux-parity/` is antecedent UI context, while `specs/014-local-first-professional-workspace/` is the active execution pack for the current local-first product phase
+- `specs/013-metrev-ui-ux-parity/` is antecedent UI context, `specs/014-local-first-professional-workspace/` is antecedent local-first workspace background context, and the active execution path now lives under `specs/020-metrev-three-phase-product-plan/` plus `specs/021-public-infographic-pages/`
 
 ### Why this split exists
 
@@ -162,7 +168,9 @@ Contains the maintained internal feature workflow packs.
 
 Notable packs for the current runtime/UI architecture:
 
-- `specs/014-local-first-professional-workspace/`: active execution pack for the current local-first product phase.
+- `specs/020-metrev-three-phase-product-plan/`: active product roadmap for the current client-facing and internal runtime direction.
+- `specs/021-public-infographic-pages/`: active public-route execution slice under the 020 roadmap.
+- `specs/014-local-first-professional-workspace/`: antecedent local-first workspace baseline retained as background context.
 - `specs/016-metrev-ui-refactor/`: concrete staged UI refactor pack.
 - `specs/011-analyst-ux-system/`: reusable analyst UX language.
 - `specs/009-external-evidence-review-and-intake-gate/`: evidence review and intake gating.
@@ -671,17 +679,21 @@ From the root:
 
 1. Copy `.env.example` to `.env`
 2. Run `pnpm install`
-3. Run `pnpm prisma:generate`
-4. Run `pnpm run db:migrate:deploy`
-5. Run `pnpm run db:seed`
-6. Run `pnpm run dev:api`
-7. Run `pnpm run dev:web`
+3. Run `pnpm run db:bootstrap`
+4. Run `pnpm run dev:api`
+5. Run `pnpm run dev:research-worker`
+6. Run `pnpm run dev:web`
+
+If Prisma files changed or the `postinstall` hook was skipped, run `pnpm prisma:generate` before `db:bootstrap`.
 
 ### Main root scripts
 
 - `pnpm run dev`
 - `pnpm run dev:api`
+- `pnpm run dev:research-worker`
 - `pnpm run dev:web`
+- `pnpm run validate:fast`
+- `pnpm run validate:local`
 - `pnpm run build`
 - `pnpm run lint`
 - `pnpm run test`
@@ -716,9 +728,10 @@ Defined in `docker-compose.yml`:
 - `postgres`
 - `api`
 - `web`
+- `research-worker`
 - `jaeger`
 
-The web container depends on API, Jaeger, and Postgres. The API depends on Jaeger and Postgres. This gives a complete local-first stack for runtime validation.
+The web and research-worker containers depend on API, Jaeger, and Postgres. The API depends on Jaeger and Postgres. This gives a complete local-first stack for runtime validation plus background research processing.
 
 ## 19. Important Archives and Reference Materials
 

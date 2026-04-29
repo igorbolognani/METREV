@@ -1,6 +1,6 @@
 # Quickstart — Analytical Workspace Refactor
 
-Execution note: use [014-local-first-professional-workspace](../014-local-first-professional-workspace/quickstart.md) for the active local-first validation flow.
+Execution note: use [020-metrev-three-phase-product-plan](../020-metrev-three-phase-product-plan/quickstart.md) for the active product validation flow. Treat [014-local-first-professional-workspace](../014-local-first-professional-workspace/quickstart.md) as antecedent local-first background context only.
 
 ## Goals
 

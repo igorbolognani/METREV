@@ -2,6 +2,8 @@
 
 > 020 reconciliation note: this feature is an Advanced/Internal evidence instrument. The evidence explorer and evidence assistant remain useful warehouse-facing tools, but they are not the final client-facing report conversation feature. Report-grounded conversation is owned by `specs/020-metrev-three-phase-product-plan/`.
 
+> Status note: 018 remains the maintained internal/advanced evidence slice under `specs/020-metrev-three-phase-product-plan/`. Treat this pack as the durable record for the evidence-explorer and assistant wave, not as the repository-wide active execution owner.
+
 ## Objective
 
 Implement the next METREV evidence-intelligence wave as a durable workspace feature pack, now expanded to include a dedicated explorer backend contract, warehouse-scoped filtered facets and metrics, explorer CSV export, a local-first evidence assistant with explicit fallback semantics, and conservative historical-doc cleanup alongside the navigable explorer and tabbed evidence-detail workbench.
@@ -23,7 +25,7 @@ The repository already stores and presents external evidence, but the active web
 - UI: add a dedicated explorer route and improve evidence-detail navigation with tabbed sections
 - UI: surface warehouse-scoped filtered facets, grouped tables, current-slice export actions, and an explicit evidence assistant without hiding review posture or provenance
 - infrastructure: keep local-first warehouse workflows intact while enabling an honest Ollama-backed assistant path with deterministic fallback
-- docs and workflow: maintain the 018 feature pack as the execution umbrella for this wave and consolidate historical cleanup notes into a maintained docs surface
+- docs and workflow: maintain the 018 feature pack as the durable internal evidence record for this wave under 020 and consolidate historical cleanup notes into a maintained docs surface
 
 ## Scope
 

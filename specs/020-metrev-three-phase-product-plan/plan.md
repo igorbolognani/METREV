@@ -25,6 +25,10 @@ Ship the product in three connected layers:
 - Mark 016 as historical and superseded.
 - Clarify 018 as an internal/advanced evidence workspace, not final report chat.
 - Record 019 validation status honestly.
+- Close the remaining 019/020 status drift on active authority surfaces so
+  antecedent packs remain explicitly historical.
+- Promote `validate:advanced` as a separate deterministic post-fast CI gate
+  and keep it parallel to `validate:local`.
 - Update `docs/repository-authority-map.md` and README so 020 becomes the active product roadmap.
 
 ## Phase 1 - Public Landing Page
@@ -71,7 +75,8 @@ Ship the product in three connected layers:
 6. `pnpm run db:bootstrap:bigdata`
 7. `pnpm run test:e2e`
 8. `pnpm run validate:fast`
-9. `pnpm run validate:local` when Docker/local-view acceptance is required
+9. `pnpm run validate:advanced`
+10. `pnpm run validate:local` when Docker/local-view acceptance is required
 
 ## Risk Controls
 
@@ -80,4 +85,3 @@ Ship the product in three connected layers:
 - Use existing local/stub/Ollama LLM posture.
 - Do not expose raw warehouse internals to client chat.
 - Record any validation command that cannot be run.
-

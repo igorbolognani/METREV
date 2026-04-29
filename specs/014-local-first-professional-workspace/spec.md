@@ -1,5 +1,10 @@
 # Feature Specification — Local-First Professional Workspace
 
+> Status note
+>
+> `specs/014-local-first-professional-workspace/` is retained as antecedent local-first workspace context.
+> The active repository roadmap now lives in `specs/020-metrev-three-phase-product-plan/`, with `specs/021-public-infographic-pages/` as the current public-route execution slice.
+
 ## Objective
 
 Implement the next METREV product phase as a local-first, professional workspace with backend-owned workspace view models, dedicated product routes, synchronous but stage-visible evaluation submission, browser-native exports, and explicit audit-grade traceability across the full analyst flow.
@@ -20,7 +25,7 @@ The current runtime already has deterministic evaluation, evidence review, and p
 - runtime adapters: build backend presenters, exports, traceability metadata, and idempotent evaluation persistence in `apps/api-server` and `packages/*`
 - UI: migrate dashboard, input deck, submitting, evaluation, history, comparison, evidence review, and printable report surfaces to backend-owned workspace payloads
 - infrastructure: keep the product local-first with no new production cloud dependency or external async job runner
-- docs and workflow: make `specs/014-local-first-professional-workspace/` the canonical execution pack while keeping 013 as the antecedent UI reference
+- docs and workflow: preserve 014 as the antecedent local-first workspace baseline while the active repository roadmap now lives in 020/021
 
 ## Scope
 
@@ -58,7 +63,7 @@ The current runtime already has deterministic evaluation, evidence review, and p
 
 ## Clarifications and open questions
 
-- 013 remains the antecedent UI/parity pack, but 014 is now the canonical execution pack for this local-first product phase.
+- 013 remains the antecedent UI/parity pack, and 014 remains the antecedent local-first workspace baseline. The active roadmap now lives in 020, with 021 as the public-route execution slice.
 - English is the official UI language for this phase.
 - Recharts remains an allowed incremental enhancement, but only if chart quality clearly improves without pulling domain heuristics back into the client.
 - Playwright-backed local E2E is now part of the validated posture for this phase.

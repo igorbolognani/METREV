@@ -21,6 +21,7 @@
       "@metrev/rule-engine": ["./packages/rule-engine/src/index.ts"],
       "@metrev/audit": ["./packages/audit/src/index.ts"],
       "@metrev/telemetry": ["./packages/telemetry/src/index.ts"],
+      "@metrev/telemetry/node": ["./packages/telemetry/src/node-sdk.ts"],
       "@metrev/llm-adapter": ["./packages/llm-adapter/src/index.ts"],
       "@metrev/research-intelligence": [
         "./packages/research-intelligence/src/index.ts"

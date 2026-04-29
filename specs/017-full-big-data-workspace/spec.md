@@ -1,5 +1,9 @@
 # 017 Full Big Data Workspace
 
+> Status note
+>
+> 017 remains the completed big-data and cockpit baseline for the METREV runtime. Active product execution now lives in `specs/020-metrev-three-phase-product-plan/`, with `specs/019-research-intelligence-review-table-engine/` owning the active research-integration slice and `specs/021-public-infographic-pages/` owning the current public-route slice.
+
 ## Objective
 
 Implement the full METREV analytical workspace as a big-data-ready local-first product by expanding the current runtime into a document-and-claim-centric evidence platform with backend-owned workspace payloads, large seeded datasets, resumable external acquisition, explicit review gates, and audit-grade provenance.

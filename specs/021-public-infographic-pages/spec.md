@@ -71,7 +71,7 @@ The overview hub now follows the intended linear-board direction, but the `/lear
 - [x] landing-board and topic-board dialogs use the same larger floating shell on desktop
 - [x] public dialogs use a shared four-card technical brief structure with stronger engineering and uncertainty framing
 - [x] public overview copy, topic-detail panels, landing dialogs, and topic dialogs now use richer BES-specific language tied to operating variables, evidence posture, and uncertainty framing
-- [ ] the fixed public header remains readable on desktop and mobile without overlapping page content
+- [x] the fixed public header remains readable on desktop and mobile without overlapping page content
 - [x] the overview hero keeps the explanatory paragraph under the subtitle while the CTA remains large, centered, and visually distinct on the right at desktop widths
 - [x] landing boards and topic routes follow the requested red, light red, yellow, light yellow, blue, and light blue palette families with readable contrast
 - [x] focused public-route tests cover the overview hub and at least one topic page

@@ -5,7 +5,9 @@
 - [x] Create `spec.md`, `plan.md`, `tasks.md`, `quickstart.md`, `research.md`, and `contracts/report-conversation-boundary.md`.
 - [x] Mark 016 as superseded by 017/018/019/020.
 - [x] Reconcile 018 wording so evidence explorer/assistant are internal/advanced, not final report chat.
-- [x] Record 019 as implemented but awaiting full validation matrix.
+- [x] Record 019 as implemented and validated through the deterministic advanced matrix.
+- [x] Close the remaining 019/020 status drift across active authority surfaces and antecedent reference packs.
+- [x] Promote `validate:advanced` as a separate deterministic post-fast CI gate and align the repository-owned full matrix around fast, advanced, and local validation.
 - [x] Update repository authority map.
 - [x] Update README current MVP status.
 
@@ -55,6 +57,7 @@
 - [x] `pnpm run build`
 - [x] `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
 - [x] `pnpm run db:bootstrap:bigdata`
+- [x] `pnpm run validate:advanced`
 - [x] `pnpm run test:e2e`
 - [x] `pnpm run validate:fast`
 - [x] `pnpm run validate:local`

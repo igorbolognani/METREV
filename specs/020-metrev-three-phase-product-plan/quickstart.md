@@ -22,14 +22,13 @@ Unsupported runtime modes fall back deterministically. The supported local-first
 
 ## Focused Validation Completed
 
-The following focused checks are already passing for the implemented 020 slices, even though the full matrix below is still pending.
+The following focused checks and the deterministic advanced matrix are already passing for the implemented 020 slices.
 
-| Command                                                                                                                                                                                                                                                                | Status | Notes                                                                                                                                                  |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm exec vitest run tests/runtime/api.test.ts`                                                                                                                                                                                                                       | PASS   | Covers workspace report conversation stub, speculative refusal reuse, disabled no-answer posture, and Advanced/Internal route/API access expectations. |
-| `pnpm exec vitest run tests/runtime/llm-adapter.test.ts`                                                                                                                                                                                                               | PASS   | Covers report-conversation stub, disabled, and ollama modes, plus the `uncertainty` versus `certain` refusal regression.                               |
-| `pnpm exec vitest run --config vitest.postgres.config.ts tests/postgres/persistence.test.ts -t "persists report conversation sessions and turns through Prisma"`                                                                                                       | PASS   | Confirms report-conversation sessions and turns persist through Prisma with grounding, citations, and actor metadata.                                  |
-| `pnpm exec vitest run tests/web-ui/public-landing.test.tsx tests/web-ui/navigation.test.tsx tests/web-ui/dashboard-workspace.test.tsx tests/web-ui/evaluation-cockpit.test.tsx tests/web-ui/evaluation-workbench.test.tsx tests/web-ui/printable-report-view.test.tsx` | PASS   | Confirms the current landing, navigation, dashboard, evaluation, modeling, and print-safe report IA for the client-primary path.                       |
+- PASS `pnpm exec vitest run tests/runtime/api.test.ts`: Covers workspace report conversation stub, speculative refusal reuse, disabled no-answer posture, and Advanced/Internal route/API access expectations.
+- PASS `pnpm exec vitest run tests/runtime/llm-adapter.test.ts`: Covers report-conversation stub, disabled, and ollama modes, plus the `uncertainty` versus `certain` refusal regression.
+- PASS `pnpm exec vitest run --config vitest.postgres.config.ts tests/postgres/persistence.test.ts -t "persists report conversation sessions and turns through Prisma"`: Confirms report-conversation sessions and turns persist through Prisma with grounding, citations, and actor metadata.
+- PASS `pnpm exec vitest run tests/web-ui/public-landing.test.tsx tests/web-ui/navigation.test.tsx tests/web-ui/dashboard-workspace.test.tsx tests/web-ui/evaluation-cockpit.test.tsx tests/web-ui/evaluation-workbench.test.tsx tests/web-ui/printable-report-view.test.tsx`: Confirms the current landing, navigation, dashboard, evaluation, modeling, and print-safe report IA for the client-primary path.
+- PASS `pnpm run validate:advanced`: Runs the deterministic advanced research and big-data matrix, including focused worker/API/UI coverage plus the curated-manifest-only bootstrap dry-run.
 
 When schema-backed persistence changes land, regenerate the Prisma client and apply committed migrations before relying on Postgres-backed report-conversation validation:
 
@@ -54,7 +53,9 @@ Checkpointed resume uses the latest source/query checkpoint recorded under the `
 
 ## Validation Log
 
-Update this list whenever the full implementation is validated.
+Update this list whenever the validation baseline changes.
+
+Current repository-owned CI promotion decision: keep `validate:advanced` as a separate deterministic post-fast gate in parallel with `validate:local`, and use `pnpm run validate:full` when a local operator wants the full promoted matrix in one command.
 
 - PASS `pnpm run test:python`: Contract checks passed in the current 020 validation run.
 - PASS `pnpm run test:js`: Covered inside `validate:fast`; 36 files and 118 tests passed.
@@ -62,6 +63,7 @@ Update this list whenever the full implementation is validated.
 - PASS `pnpm run build`: Covered inside `validate:fast`; turbo build completed successfully.
 - PASS `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`: Dry-run smoke completed during the 020 follow-through.
 - PASS `pnpm run db:bootstrap:bigdata`: Full bounded bootstrap completed with 31 runs, 758 stored records, and inventory summary output.
+- PASS `pnpm run validate:advanced`: Deterministic advanced matrix passed with focused research/big-data tests plus the curated-manifest-only bootstrap dry-run.
 - PASS `pnpm run test:e2e`: Playwright E2E entrypoint passed after disabling the unstable Next dev segment explorer path.
 - PASS `pnpm run validate:fast`: Lint, JS tests, Python contract checks, and build all passed end to end.
 - PASS `pnpm run validate:local`: Passed against an isolated Docker local-view stack after pinning local runtime and database env; this is now the second CI gate after `validate:fast`.

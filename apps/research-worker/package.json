@@ -12,7 +12,8 @@
   "dependencies": {
     "@metrev/database": "workspace:*",
     "@metrev/domain-contracts": "workspace:*",
-    "@metrev/research-intelligence": "workspace:*"
+    "@metrev/research-intelligence": "workspace:*",
+    "@metrev/telemetry": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.3",

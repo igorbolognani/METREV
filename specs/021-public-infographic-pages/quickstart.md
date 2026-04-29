@@ -72,4 +72,4 @@
 - `pnpm run local:view:up` completed successfully and exposed the full local runtime on `http://127.0.0.1:3012` for Playwright validation.
 - `PLAYWRIGHT_BASE_URL='http://127.0.0.1:3012' pnpm exec playwright test tests/e2e/public-routes.spec.ts --grep 'desktop structure'` passed against the clean local-view runtime.
 - `PLAYWRIGHT_BASE_URL='http://127.0.0.1:3012' pnpm exec playwright test tests/e2e/public-routes.spec.ts --update-snapshots` refreshed the mobile public-route baselines to match the redesigned infographic-first pages.
-- `PLAYWRIGHT_BASE_URL='http://127.0.0.1:3012' pnpm exec playwright test tests/e2e/public-routes.spec.ts` passed after the snapshot refresh, leaving the full public-route E2E suite green.
+- `PLAYWRIGHT_BASE_URL='http://127.0.0.1:3012' pnpm exec playwright test tests/e2e/public-routes.spec.ts` passed after the snapshot refresh, leaving the full public-route E2E suite green and confirming the fixed public header stayed readable on desktop and mobile without page overlap.

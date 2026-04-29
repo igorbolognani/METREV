@@ -2,7 +2,7 @@
 
 ## Summary
 
-Use 014 as the canonical execution pack for the current METREV local-first product phase. The repository now contains the main contract, presenter, route, workspace, export, idempotency, focused regression, and Playwright local E2E slices. This plan records that shipped posture, keeps the backend-owned workspace architecture explicit, and limits remaining follow-through to optional manual browser print or export checks or future polish outside this pack.
+Use 014 as the antecedent local-first workspace reference for the shipped METREV baseline. The repository now contains the main contract, presenter, route, workspace, export, idempotency, focused regression, and Playwright local E2E slices, but the active execution path has moved to `specs/020-metrev-three-phase-product-plan/` plus `specs/021-public-infographic-pages/`. This plan records that earlier shipped posture, keeps the backend-owned workspace architecture explicit, and limits remaining follow-through to optional manual browser print or export checks or future polish outside this historical pack.
 
 ## Source-of-truth files
 

@@ -2,7 +2,7 @@
 
 ## Workstream 1 — Canonical artifacts and route model
 
-- [x] T1 Create `specs/014-local-first-professional-workspace/` as the canonical execution pack and keep 013 as the antecedent UI reference.
+- [x] T1 Create `specs/014-local-first-professional-workspace/` as the antecedent local-first workspace pack and keep 013 as the antecedent UI reference.
 - [x] T2 Document the official route topology, local-first assumptions, and report-template alignment for this phase.
 
 ## Workstream 2 — Contracts and backend authority

@@ -1,5 +1,9 @@
 # Quickstart — Local-First Professional Workspace
 
+> Status note
+>
+> This quickstart is retained as antecedent local-first workspace context. The active repository roadmap now lives in `specs/020-metrev-three-phase-product-plan/`, with `specs/021-public-infographic-pages/` as the current public-route execution slice.
+
 ## Goals
 
 - validate the dedicated local-first route flow from dashboard to report/export without relying on production services

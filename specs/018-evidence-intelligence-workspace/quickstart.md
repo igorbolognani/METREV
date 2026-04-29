@@ -1,5 +1,7 @@
 # Quickstart — Evidence Intelligence Workspace
 
+> Status note: this quickstart remains the maintained internal/advanced evidence workflow for the 018 slice under `specs/020-metrev-three-phase-product-plan/`. Use the 020 pack for repository-wide validation ownership and roadmap status.
+
 ## Goals
 
 - validate the current evidence-intelligence slice through the explorer route, warehouse-scoped aggregate cards, assistant brief, and tabbed detail workbench

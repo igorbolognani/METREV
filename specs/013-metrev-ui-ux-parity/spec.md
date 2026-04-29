@@ -1,6 +1,6 @@
 # Feature Specification — Analytical Workspace Refactor
 
-Execution note: 013 remains the UI antecedent for this workstream. Active execution planning moved to [014-local-first-professional-workspace](../014-local-first-professional-workspace/spec.md) and later follow-through UI slices.
+Execution note: 013 remains the UI antecedent for this workstream. 014 is the antecedent local-first successor pack, while the active roadmap now lives in [020-metrev-three-phase-product-plan](../020-metrev-three-phase-product-plan/spec.md) with [021-public-infographic-pages](../021-public-infographic-pages/spec.md) as the current public-route execution slice.
 
 ## Objective
 

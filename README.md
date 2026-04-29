@@ -91,15 +91,20 @@ The staged/manual path remains available through the clarify, start-feature, and
 
 - copy `.env.example` to `.env` before running the local runtime
 - `pnpm install`
-- `pnpm prisma:generate`
+- `pnpm run db:bootstrap`
+- `pnpm run db:bootstrap:bigdata:curated`
+- `pnpm prisma:generate` after Prisma schema changes or when `postinstall` was skipped
 - `pnpm run db:migrate:deploy`
 - `pnpm run db:seed`
 - `pnpm run lint`
 - `pnpm run test`
+- `pnpm run test:advanced`
 - `pnpm run test:fast`
 - `pnpm run test:db`
 - `pnpm run test:e2e`
+- `pnpm run test:e2e:install`
 - `pnpm run build`
+- `pnpm run validate:advanced`
 - `pnpm run validate:fast`
 - `pnpm run validate:local`
 - `pnpm run validate:full`
@@ -107,14 +112,18 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run dev:research-worker`
 - `pnpm run dev:web`
 - `pnpm run dev`
+- `pnpm run local:view:start`
 - `docker compose up --build`
 
 ## Validation matrices
 
 - `pnpm run test` is the backward-compatible alias for `pnpm run test:fast` and only covers the fast contract plus JS matrix.
+- `pnpm run test:advanced` runs the focused big-data and research workspace checks without depending on live provider availability.
+- `pnpm run validate:advanced` is the promoted deterministic advanced matrix. It runs the focused big-data and research tests, then executes a curated-manifest-only `bootstrap:bigdata` dry-run with `--sources=` so the repository-versioned snapshot is exercised without live OpenAlex, Crossref, or Europe PMC calls. It stays a separate post-fast CI job alongside `validate-local` so research/big-data regressions remain isolated from Docker-backed local acceptance failures.
 - `pnpm run validate:fast` is the promoted fast repository matrix. It runs lint, `test:fast`, and build, and it is the first CI gate.
-- `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack. It now runs as the second CI gate after the fast matrix passes.
-- `pnpm run validate:full` combines the promoted fast matrix and the promoted local acceptance matrix.
+- `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack. It stays a separate post-fast CI job alongside `validate:advanced` because Docker and browser/runtime failures are a different risk surface from deterministic research validation.
+- `pnpm run validate:full` combines all promoted repository matrices in sequence: fast, advanced, and local.
+- `pnpm run db:bootstrap:bigdata:curated` persists only the committed curated snapshot into PostgreSQL. Use `pnpm run db:bootstrap:bigdata` when you explicitly want the broader bounded live-provider bootstrap.
 - `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
 
 ## Supabase-hosted Postgres
@@ -135,13 +144,12 @@ The committed `db:migrate:*` scripts automatically prefer `DIRECT_URL` when it i
 The checked-in `.env.example` keeps local Postgres defaults so fresh clones still boot without Supabase.
 The current repository keeps a Prisma 7 posture by centralizing datasource URL configuration in `packages/database/prisma.config.ts`, leaving `packages/database/prisma/schema.prisma` with a provider-only datasource block plus the repository-owned `prisma-client` generator configuration, generating the TypeScript client under `packages/database/generated/prisma/`, and routing migration commands through `packages/database/scripts/run-prisma-with-direct-url.mjs` so runtime and migration access remain explicit.
 
-If you want browser-only env values available to Next.js, create `apps/web-ui/.env.local` with:
+If you need web-app-local overrides in `apps/web-ui/.env.local`, keep them limited to the values the current Next.js runtime actually uses during dev or build:
 
 - `NEXT_PUBLIC_API_BASE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `AUTH_URL`
-- `AUTH_SECRET`
+
+Keep `AUTH_SECRET` in the root `.env` so both the Next.js app and the Fastify API validate the same server-side session cookies.
 
 ## Fast Local Open
 
@@ -168,7 +176,7 @@ Local runtime uses committed Prisma migrations plus deterministic local auth see
 Auth.js credentials issue encrypted session cookies that are validated server-side by both the Next.js web runtime and the Fastify API through the shared `AUTH_SECRET`.
 If you expose the web app on a non-default host or port, set `AUTH_URL` to that public origin so Auth.js redirects stay aligned with the browser entrypoint.
 Runtime startup requires PostgreSQL; in-memory storage remains available only through explicit unit-test injection paths.
-Containerized local runtime also exposes Jaeger at `http://localhost:16686` for OpenTelemetry trace inspection.
+The promoted `local:view:*` wrapper publishes Jaeger at `http://localhost:16689`. Raw `docker compose up --build` without the wrapper keeps the compose default `http://localhost:16686`.
 
 For Supabase-hosted development, prefer the `pnpm` workflow over `docker compose up --build`.
 The compose stack still starts a local PostgreSQL service for the fully local path, even when you override the database URLs.
@@ -179,12 +187,12 @@ That means the Next.js app still runs and builds normally, but the custom web ex
 
 ## Recommended local sequence
 
-1. Copy `.env.example` to `.env` and replace `DATABASE_URL` plus `DIRECT_URL` with your Supabase values.
-2. Create `apps/web-ui/.env.local` if you need browser-exposed `NEXT_PUBLIC_*` values.
-3. Run `pnpm install`.
-4. Run `pnpm prisma:generate`.
-5. Run `pnpm run db:migrate:deploy`.
-6. Run `pnpm run db:seed`.
+1. Copy `.env.example` to `.env`.
+2. If you are targeting Supabase-hosted PostgreSQL, replace `DATABASE_URL` plus `DIRECT_URL` with your Supabase values. Otherwise keep the local defaults.
+3. Create `apps/web-ui/.env.local` only if you need to override `NEXT_PUBLIC_API_BASE_URL` or `AUTH_URL` for the web app.
+4. Run `pnpm install`.
+5. On a fresh machine, run `pnpm run test:e2e:install` before Playwright-based checks.
+6. Run `pnpm run db:bootstrap`.
 7. Start the API with `pnpm run dev:api`.
 8. Start the research worker with `pnpm run dev:research-worker`.
 9. Start the web app with `pnpm run dev:web`.

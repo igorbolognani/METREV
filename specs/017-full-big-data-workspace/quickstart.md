@@ -1,5 +1,9 @@
 # 017 Full Big Data Workspace Quickstart
 
+> Status note
+>
+> This quickstart is retained as completed big-data baseline context. For active product validation and current execution ownership, use `specs/020-metrev-three-phase-product-plan/quickstart.md` and the active roadmap notes in `docs/repository-authority-map.md`.
+
 ## Purpose
 
 Use this workflow to build, seed, validate, and operate the full METREV big-data workspace while preserving the repository's domain and contract authority split.
@@ -52,16 +56,19 @@ Use this workflow to build, seed, validate, and operate the full METREV big-data
 
 1. Run the promoted fast repository matrix.
    `pnpm run validate:fast`
-2. Run the promoted local Docker-backed acceptance matrix.
+2. Run the promoted deterministic advanced matrix.
+   `pnpm run validate:advanced`
+3. Run the promoted local Docker-backed acceptance matrix.
    `pnpm run validate:local`
-3. Run the bounded full bootstrap without persisting.
+4. Run the bounded full bootstrap without persisting.
    `pnpm --filter @metrev/database bootstrap:bigdata -- --dryRun --queryLimit=1 --perQueryLimit=2`
-4. Run the full bootstrap.
+5. Run the full bootstrap.
    `pnpm run db:bootstrap:bigdata`
 
 ## Current Validated Outcomes
 
 - PASS `pnpm run validate:fast`
+- PASS `pnpm run validate:advanced`
 - PASS `pnpm run validate:local`
 - PASS `pnpm run test:python`
 - PASS `pnpm run test:js`

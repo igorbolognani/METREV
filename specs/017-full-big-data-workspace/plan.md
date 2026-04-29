@@ -1,5 +1,9 @@
 # 017 Full Big Data Workspace Plan
 
+> Status note
+>
+> 017 remains the completed big-data and cockpit baseline. Keep this plan as background context for the landed storage, bootstrap, presenter, and workspace reorganization work rather than as the active execution umbrella.
+
 ## Objective
 
 Extend the existing METREV runtime spine into a full big-data-ready workspace by first making evidence and supplier data first-class in storage and contracts, then delivering reproducible large dataset bootstrap, then scaling API presenters and the UI around backend-owned payloads.

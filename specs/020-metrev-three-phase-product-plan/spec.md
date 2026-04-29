@@ -13,7 +13,7 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - `specs/016-metrev-ui-refactor/` is superseded as active execution and remains historical design-system context only.
 - `specs/017-full-big-data-workspace/` remains the completed big-data, persistence, and cockpit baseline.
 - `specs/018-evidence-intelligence-workspace/` remains an internal/advanced evidence instrument. Its assistant is not the final report conversation feature.
-- `specs/019-research-intelligence-review-table-engine/` remains the detailed research-integration execution pack. Live provider search and staged warehouse import are now part of that slice, while the broader extraction, normalization, and downstream report/dashboard integration work remains open until full validation is recorded.
+- `specs/019-research-intelligence-review-table-engine/` remains the detailed research-integration execution pack. Live provider search, staged warehouse import, extraction, and downstream evidence-pack propagation are now implemented there, and the pack now carries the recorded deterministic advanced validation matrix. Live-provider and provider-backed LLM smoke checks remain optional follow-through outside the deterministic CI baseline.
 
 ## Scope
 
@@ -57,11 +57,13 @@ METREV is an auditable decision-support platform for bioelectrochemical systems.
 - [x] Repository authority docs identify 020 as the active product roadmap.
 - [x] README distinguishes client-facing surfaces from internal/advanced surfaces.
 - [x] 016/018/019 specs are reconciled so future agents do not treat stale wording as active direction.
+- [x] Active authority surfaces and antecedent packs describe 019/020 execution ownership and validation status consistently enough that future agents do not reopen stale status drift.
 - [x] Public landing tests cover science/value sections and absence of prototype route-map copy.
 - [x] Navigation and dashboard tests reflect client-first IA and Advanced/Internal grouping.
 - [x] Evaluation/report tests cover new tab labels, heatmap rendering, print-safe report, and report conversation UI.
 - [x] Runtime/API tests cover report conversation contracts, stub mode, fallback behavior, and persistence.
 - [x] Bootstrap/data tests cover dry-run, dedupe, review-state preservation, claim-review counts, and lineage persistence.
+- [x] `validate:advanced` remains a promoted deterministic post-fast CI gate, separate from `validate:local`, and the repository-owned `validate:full` target includes all promoted matrices.
 - [x] Validation results are recorded in `quickstart.md`.
 
 ## Guardrails

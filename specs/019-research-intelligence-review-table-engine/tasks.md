@@ -12,4 +12,4 @@
 - [x] Add queued warehouse backfills plus dedicated research-worker orchestration.
 - [x] Add hydrated full-text and provider-backed structured extraction runtime.
 - [x] Propagate research evidence packs into case intake and evaluation provenance.
-- [ ] Run full validation matrix and record results.
+- [x] Run the deterministic advanced validation matrix and record results.

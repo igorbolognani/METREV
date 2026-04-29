@@ -1,5 +1,7 @@
 # 016 Metrev UI Refactor Tasks
 
+> Historical reference only. The unchecked stage tasks below are retained as staged UI backlog context and are not active repository execution work.
+
 ## Stage 0
 
 - [x] Step 0-A install dependencies and run `pnpm install`

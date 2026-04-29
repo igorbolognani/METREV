@@ -79,7 +79,7 @@ That command family uses the validated alternate ports from the earlier local sm
 - For Supabase-hosted PostgreSQL, use `DATABASE_URL` for pooled runtime traffic and `DIRECT_URL` for Prisma migrations.
 - The committed `db:migrate:*` scripts automatically prefer `DIRECT_URL` when it is defined.
 - Keep `.env.example` local-safe and put live Supabase values in the ignored `.env` file.
-- Create `apps/web-ui/.env.local` when the Next.js app needs `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` at build and dev time.
+- Create `apps/web-ui/.env.local` when the Next.js app needs `NEXT_PUBLIC_API_BASE_URL` or `AUTH_URL` overrides at build and dev time.
 - If you change `POSTGRES_PORT`, update `DATABASE_URL` to match the host port.
 - If you change `WEB_PORT` or expose the web app through another origin, update `AUTH_URL` to that same browser-facing origin.
 - `METREV_STORAGE_MODE=postgres` is the only supported runtime mode outside explicit unit-test paths.

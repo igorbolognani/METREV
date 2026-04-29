@@ -2,9 +2,11 @@
 
 > 020 reconciliation note: treat this plan as internal/advanced evidence tooling. Warehouse facets and the local-first evidence assistant are not the client-primary report chat. The report conversation boundary lives in `specs/020-metrev-three-phase-product-plan/contracts/report-conversation-boundary.md`.
 
+> Status note: 018 remains the maintained internal/advanced evidence slice under `specs/020-metrev-three-phase-product-plan/`. Keep this plan as the durable record for the explorer, assistant, and evidence-detail workbench wave rather than as the repository-wide active execution owner.
+
 ## Summary
 
-Use 018 as the durable execution pack for the evidence-intelligence wave. The shipped slice now includes dedicated explorer routes and navigation, a tabbed evidence-detail workbench, a dedicated runtime explorer workspace contract and CSV export, page-scoped facets and grouped tables in the explorer UI, and conservative cleanup that consolidates historical notes into maintained docs.
+Use 018 as the durable internal evidence pack for the evidence-intelligence wave under 020. The shipped slice now includes dedicated explorer routes and navigation, a tabbed evidence-detail workbench, a dedicated runtime explorer workspace contract and CSV export, page-scoped facets and grouped tables in the explorer UI, and conservative cleanup that consolidates historical notes into maintained docs.
 
 ## Source-of-truth files
 

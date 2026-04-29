@@ -1,5 +1,7 @@
 # 016 Metrev UI Refactor Quickstart
 
+> Historical reference only. Use this file as staged UI background context, not as the active METREV execution runbook. The active roadmap now lives under `specs/020-metrev-three-phase-product-plan/` and `specs/021-public-infographic-pages/`.
+
 ## Purpose
 
 Use this workflow to validate each refactor stage in the METREV runtime workspace while preserving the repository's domain and contract authority split.

@@ -2,7 +2,7 @@
 
 ## Workstream 1 — Artifacts and design
 
-- [x] T1 Create `specs/018-evidence-intelligence-workspace/` as the durable execution pack for the evidence-intelligence wave.
+- [x] T1 Create `specs/018-evidence-intelligence-workspace/` as the durable internal evidence pack for the evidence-intelligence wave under 020.
 - [x] T2 Record that the first slice reuses the existing evidence workspace payload and defers schema-heavy warehouse expansion, cleanup, and local-first LLM augmentation.
 
 ## Workstream 2 — Implementation
