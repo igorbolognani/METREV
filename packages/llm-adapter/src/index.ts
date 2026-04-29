@@ -148,7 +148,7 @@ function completionProviderForMode(
   return null;
 }
 
-function baseUrlForProvider(provider: CompletionProvider): string {
+function baseUrlForProvider(_provider: CompletionProvider): string {
   return getOllamaBaseUrl();
 }
 
