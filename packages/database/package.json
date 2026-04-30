@@ -18,7 +18,6 @@
     "ingest:literature:europepmc": "tsx scripts/ingest-europe-pmc-literature.ts",
     "ingest:manifest:curated": "tsx scripts/ingest-curated-manifest.ts",
     "ingest:local-pdf": "tsx scripts/ingest-local-pdf.ts",
-    "ingest:trampoline-seed": "tsx scripts/ingest-trampoline-seed.ts",
     "bootstrap:bigdata": "tsx scripts/bootstrap-bigdata.ts"
   },
   "dependencies": {

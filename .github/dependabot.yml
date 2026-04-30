@@ -1,0 +1,74 @@
+version: 2
+
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '04:00'
+      timezone: 'UTC'
+    open-pull-requests-limit: 2
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    commit-message:
+      prefix: 'ci'
+
+  - package-ecosystem: 'npm'
+    directories:
+      - '/'
+      - '/apps/*'
+      - '/packages/*'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '04:15'
+      timezone: 'UTC'
+    open-pull-requests-limit: 5
+    versioning-strategy: 'increase-if-necessary'
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+        patterns:
+          - '*'
+        group-by: 'dependency-name'
+      development-dependencies:
+        dependency-type: 'development'
+        patterns:
+          - '*'
+        group-by: 'dependency-name'
+    labels:
+      - 'dependencies'
+      - 'javascript'
+    commit-message:
+      prefix: 'deps'
+      prefix-development: 'deps-dev'
+      include: 'scope'
+
+  - package-ecosystem: 'pip'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '04:30'
+      timezone: 'UTC'
+    open-pull-requests-limit: 2
+    groups:
+      python-validation:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+    labels:
+      - 'dependencies'
+      - 'python'
+    commit-message:
+      prefix: 'deps'
+      include: 'scope'

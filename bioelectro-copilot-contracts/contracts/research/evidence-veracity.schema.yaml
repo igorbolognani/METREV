@@ -33,6 +33,6 @@ components:
     scale: [0, 1]
 
 rules:
-  - Project/ecosystem pages can score high for context but low for validated performance evidence.
+  - Context or methodology references can score high for metadata/data readiness context but low for validated performance evidence.
   - Pending review state caps downstream confidence.
   - Unsupported unit normalization and weak locators must be visible confidence penalties.

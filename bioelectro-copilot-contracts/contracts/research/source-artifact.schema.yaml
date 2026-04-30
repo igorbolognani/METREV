@@ -41,3 +41,4 @@ rules:
   - Source artifacts are linked to ExternalSourceRecord and do not replace it.
   - File hash is the primary local-artifact dedupe key.
   - Text chunks must include source locators suitable for evidence traces.
+  - Metadata-rich context references may inform readiness and methodology review, but they do not replace reviewed performance evidence.

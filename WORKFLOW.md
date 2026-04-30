@@ -78,6 +78,7 @@ tasks move from request to verified change.
 ## Validation Gates
 
 - Workflow asset checks: `pnpm run test:workflow-assets`
+- Workflow semantic lint: `pnpm run lint:workflow-semantics`
 - Fast repo matrix: `pnpm run validate:fast`
 - Workflow formatting gate: `pnpm run format:workflow-assets`
 - Local acceptance when needed: `pnpm run validate:local`

@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -7,19 +7,19 @@ import { promisify } from 'node:util';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  externalEvidenceAccessStatusSchema,
-  localSourceImportResponseSchema,
-  metadataQualityProfileSchema,
-  evidenceVeracityScoreSchema,
-  researchPaperMetadataSchema,
-  sourceArtifactSchema,
-  type ExternalEvidenceAccessStatus,
-  type LocalSourceImportRequest,
-  type LocalSourceImportResponse,
-  type MetadataQualityProfile,
-  type EvidenceVeracityScore,
-  type ResearchPaperMetadata,
-  type SourceArtifact,
+    evidenceVeracityScoreSchema,
+    externalEvidenceAccessStatusSchema,
+    localSourceImportResponseSchema,
+    metadataQualityProfileSchema,
+    researchPaperMetadataSchema,
+    sourceArtifactSchema,
+    type EvidenceVeracityScore,
+    type ExternalEvidenceAccessStatus,
+    type LocalSourceImportRequest,
+    type LocalSourceImportResponse,
+    type MetadataQualityProfile,
+    type ResearchPaperMetadata,
+    type SourceArtifact,
 } from '@metrev/domain-contracts';
 
 const execFileAsync = promisify(execFile);
@@ -131,6 +131,7 @@ function metadataQualityFromFields(input: {
   fileHash: string;
   license: string | null;
   pageCount: number | null;
+  reviewStatus: 'pending' | 'accepted';
   title: string | null;
 }): MetadataQualityProfile {
   const fieldChecks = {
@@ -142,6 +143,7 @@ function metadataQualityFromFields(input: {
     access_status: input.accessStatus !== 'unknown',
     extraction_method: Boolean(input.extractionMethod),
     source_locator: Boolean(input.pageCount),
+    review_status: Boolean(input.reviewStatus),
   };
   const presentFields = Object.entries(fieldChecks)
     .filter(([, present]) => present)
@@ -163,10 +165,18 @@ function metadataQualityFromFields(input: {
       data_lineage: {
         file_hash: Boolean(input.fileHash),
         extraction_method: input.extractionMethod,
+        extractor_version: LOCAL_PDF_EXTRACTOR_VERSION,
       },
       access_and_licensing: {
         access_status: input.accessStatus,
         license_present: Boolean(input.license),
+      },
+      review_state: {
+        review_status: input.reviewStatus,
+        downstream_usage:
+          input.reviewStatus === 'accepted'
+            ? 'decision_candidate'
+            : 'review_required',
       },
     },
     notes:
@@ -174,6 +184,16 @@ function metadataQualityFromFields(input: {
         ? ['Missing metadata lowers downstream confidence until reviewed.']
         : [],
   });
+}
+
+function isContextReferenceSourceCategory(sourceCategory?: string | null) {
+  const normalized = sourceCategory?.toLowerCase() ?? '';
+  return (
+    normalized.includes('metadata_reference') ||
+    normalized.includes('context_reference') ||
+    normalized.includes('methodology_reference') ||
+    normalized.includes('project_scope')
+  );
 }
 
 export function buildEvidenceVeracityScore(input: {
@@ -184,9 +204,9 @@ export function buildEvidenceVeracityScore(input: {
   sourceCategory?: string | null;
   traceCount?: number;
 }): EvidenceVeracityScore {
-  const isProjectContext =
-    input.sourceCategory?.includes('trampoline') ||
-    input.sourceCategory?.includes('project_scope');
+  const isContextReference = isContextReferenceSourceCategory(
+    input.sourceCategory,
+  );
   const reviewComponent =
     input.reviewStatus === 'accepted'
       ? 0.95
@@ -202,9 +222,9 @@ export function buildEvidenceVeracityScore(input: {
   const normalizationSupport =
     (input.normalizedMetricCount ?? 0) > 0 ? 0.78 : 0.45;
   const components = {
-    source_rigor: isProjectContext ? 0.55 : 0.7,
+    source_rigor: isContextReference ? 0.55 : 0.7,
     metadata_completeness: input.metadataQuality.score,
-    measurement_quality: isProjectContext ? 0.35 : 0.55,
+    measurement_quality: isContextReference ? 0.35 : 0.55,
     extraction_method: extractionComponent,
     trace_quality: traceQuality,
     normalization_support: normalizationSupport,
@@ -219,7 +239,9 @@ export function buildEvidenceVeracityScore(input: {
   const confidencePenalties = [
     input.metadataQuality.level === 'low' ? 'low_metadata_quality' : null,
     input.reviewStatus !== 'accepted' ? 'pending_or_unaccepted_review' : null,
-    isProjectContext ? 'ecosystem_context_not_performance_evidence' : null,
+    isContextReference
+      ? 'context_reference_not_validated_performance_evidence'
+      : null,
     (input.normalizedMetricCount ?? 0) === 0
       ? 'no_supported_normalized_metrics'
       : null,
@@ -342,7 +364,11 @@ function inferClaimType(sentence: string) {
   if (/(fouling|challenge|limitation|barrier|risk|missing|gap)/.test(lower)) {
     return 'LIMITATION' as const;
   }
-  if (/(sensor|calibration|validation|quality|pH|temperature|conductivity)/.test(lower)) {
+  if (
+    /(sensor|calibration|validation|quality|pH|temperature|conductivity)/.test(
+      lower,
+    )
+  ) {
     return 'CONDITION' as const;
   }
   if (/(anode|cathode|electrode|membrane|reactor|stack)/.test(lower)) {
@@ -357,12 +383,10 @@ function inferClaimType(sentence: string) {
 function extractClaimCandidates(chunks: ReturnType<typeof chunkPages>) {
   const seen = new Set<string>();
   const sentences = chunks.flatMap((chunk) =>
-    chunk.text
-      .split(/(?<=[.!?])\s+/)
-      .map((sentence) => ({
-        chunk,
-        sentence: normalizeWhitespace(sentence),
-      })),
+    chunk.text.split(/(?<=[.!?])\s+/).map((sentence) => ({
+      chunk,
+      sentence: normalizeWhitespace(sentence),
+    })),
   );
 
   return sentences
@@ -475,7 +499,8 @@ async function importOneLocalPdf(
   const license = file.license ?? defaults.license ?? null;
   const reviewStatus = file.reviewStatus ?? defaults.reviewStatus;
   const pageCount =
-    pdfInfo.pageCount ?? (extracted.pages.length > 0 ? extracted.pages.length : null);
+    pdfInfo.pageCount ??
+    (extracted.pages.length > 0 ? extracted.pages.length : null);
   const metadataQuality = metadataQualityFromFields({
     accessStatus,
     doi: pdfInfo.doi,
@@ -483,6 +508,7 @@ async function importOneLocalPdf(
     fileHash,
     license,
     pageCount,
+    reviewStatus,
     title,
   });
   const veracityScore = buildEvidenceVeracityScore({
@@ -626,7 +652,9 @@ async function importOneLocalPdf(
         },
       },
       update: {
-        summary: abstractText || `Local PDF source imported from ${basename(filePath)}.`,
+        summary:
+          abstractText ||
+          `Local PDF source imported from ${basename(filePath)}.`,
         strengthLevel: reviewStatus === 'accepted' ? 'moderate' : 'weak',
         provenanceNote:
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
@@ -653,7 +681,9 @@ async function importOneLocalPdf(
         sourceRecordId: sourceRecord.id,
         evidenceType: 'literature_evidence',
         title,
-        summary: abstractText || `Local PDF source imported from ${basename(filePath)}.`,
+        summary:
+          abstractText ||
+          `Local PDF source imported from ${basename(filePath)}.`,
         strengthLevel: reviewStatus === 'accepted' ? 'moderate' : 'weak',
         provenanceNote:
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
@@ -735,7 +765,10 @@ async function importOneLocalPdf(
   });
 
   const artifact =
-    (await getSourceArtifactForSourceDocument(prisma, result.sourceRecord.id)) ??
+    (await getSourceArtifactForSourceDocument(
+      prisma,
+      result.sourceRecord.id,
+    )) ??
     sourceArtifactSchema.parse({
       artifact_id: result.artifact.id,
       source_document_id: result.sourceRecord.id,
@@ -940,7 +973,8 @@ function manifestFileOptions(entry: unknown): Partial<LocalPdfImportFile> {
     candidate.access_status ?? candidate.accessStatus,
   );
   const reviewStatus =
-    candidate.review_status === 'accepted' || candidate.reviewStatus === 'accepted'
+    candidate.review_status === 'accepted' ||
+    candidate.reviewStatus === 'accepted'
       ? 'accepted'
       : candidate.review_status === 'pending' ||
           candidate.reviewStatus === 'pending'
@@ -973,7 +1007,9 @@ async function loadManifestFiles(
       : [];
 
   if (!Array.isArray(entries)) {
-    throw new Error('Local PDF manifest must be an array or contain a files array.');
+    throw new Error(
+      'Local PDF manifest must be an array or contain a files array.',
+    );
   }
 
   return entries.flatMap((entry) => {

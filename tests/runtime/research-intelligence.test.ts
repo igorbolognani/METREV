@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
     evidenceClaimSchema,
     researchColumnDefinitionSchema,
+    researchDataMetadataReadinessExtractionSchema,
     researchDecisionIngestionPreviewSchema,
     researchEvidencePackSchema,
     researchExtractionResultSchema,
@@ -85,6 +86,74 @@ describe('research intelligence runtime contracts', () => {
     ).toEqual(
       expect.objectContaining({ visible: false, type: 'llm_extracted' }),
     );
+    expect(
+      columns.find((column) => column.column_id === 'data_metadata_readiness'),
+    ).toEqual(
+      expect.objectContaining({
+        visible: true,
+        type: 'deterministic',
+        group: 'data_readiness',
+      }),
+    );
+  });
+
+  it('extracts data and metadata readiness with explicit gaps and traces', () => {
+    const paper = researchPaperMetadataSchema.parse({
+      ...incompletePaperFixture,
+      paper_id: 'fixture-paper-readiness-001',
+      source_document_id: 'fixture-source-readiness-001',
+      title: 'Wastewater sensor metadata and analytics readiness',
+      abstract_text:
+        'Metadata describing signal generation, calibration, validation, timestamps, temporal resolution, rain events, toxic discharge, and data pipelines improves trustworthy analytics and decision support.',
+      doi: '10.1000/readiness-fixture',
+      source_type: 'manual',
+      source_url: 'https://example.org/readiness',
+      pdf_url: 'https://example.org/readiness.pdf',
+    });
+    const column = findDefaultResearchColumn('data_metadata_readiness');
+    if (!column) {
+      throw new Error('data_metadata_readiness default column not registered');
+    }
+
+    const result = runDeterministicResearchExtraction({
+      reviewId: 'review-fixture-001',
+      paper,
+      column,
+      claims: [
+        fixtureClaim({
+          claim_type: 'condition',
+          content:
+            'Calibration curves, validation results, cleaning history, and rain-event annotations are required before analytics or automation reuse.',
+          source_document_id: paper.source_document_id,
+        }),
+      ],
+    });
+    const answer = researchDataMetadataReadinessExtractionSchema.parse(
+      result.answer,
+    );
+
+    expect(result.status).toBe('valid');
+    expect(result.evidence_trace.length).toBeGreaterThan(0);
+    expect(answer.metadata_categories.signal_generation).toEqual(
+      expect.arrayContaining(['timestamp_origin', 'temporal_resolution']),
+    );
+    expect(answer.metadata_categories.signal_quality).toEqual(
+      expect.arrayContaining(['calibration_context', 'validation_context']),
+    );
+    expect(answer.metadata_categories.contextual_annotations).toEqual(
+      expect.arrayContaining(['rain_events', 'toxic_discharge']),
+    );
+    expect(answer.metadata_categories.data_lineage).toEqual(
+      expect.arrayContaining(['data_pipeline']),
+    );
+    expect(answer.training_and_extraction_applicability).toEqual(
+      expect.arrayContaining([
+        'quality_assessment_ready',
+        'traceable_extraction_ready',
+      ]),
+    );
+    expect(answer.decision_use_readiness).toBe('ready_with_review');
+    expect(answer.missing_fields).toEqual([]);
   });
 
   it('normalizes metric units while preserving source traces', () => {
@@ -289,7 +358,15 @@ describe('research intelligence runtime contracts', () => {
     const summaryColumn = findDefaultResearchColumn('summary');
     const performanceColumn = findDefaultResearchColumn('performance_metrics');
     const limitationsColumn = findDefaultResearchColumn('limitations');
-    if (!summaryColumn || !performanceColumn || !limitationsColumn) {
+    const readinessColumn = findDefaultResearchColumn(
+      'data_metadata_readiness',
+    );
+    if (
+      !summaryColumn ||
+      !performanceColumn ||
+      !limitationsColumn ||
+      !readinessColumn
+    ) {
       throw new Error('required default columns not registered');
     }
 
@@ -312,6 +389,18 @@ describe('research intelligence runtime contracts', () => {
         column: limitationsColumn,
         claims: [fixtureClaim()],
       }),
+      runDeterministicResearchExtraction({
+        reviewId: 'review-fixture-001',
+        paper,
+        column: readinessColumn,
+        claims: [
+          fixtureClaim({
+            claim_type: 'condition',
+            content:
+              'Calibration context, timestamps, and operating events support data quality assessment and reviewed decision use.',
+          }),
+        ],
+      }),
     ];
     const pack = buildResearchEvidencePack({
       packId: 'pack-fixture-001',
@@ -322,10 +411,15 @@ describe('research intelligence runtime contracts', () => {
         status: 'active',
         version: 1,
         paper_count: 1,
-        column_count: 3,
+        column_count: 4,
         completed_result_count: extractionResults.length,
         papers: [paper],
-        columns: [summaryColumn, performanceColumn, limitationsColumn],
+        columns: [
+          summaryColumn,
+          performanceColumn,
+          limitationsColumn,
+          readinessColumn,
+        ],
         extraction_jobs: [],
         extraction_results: extractionResults,
         evidence_packs: [],
@@ -357,6 +451,7 @@ describe('research intelligence runtime contracts', () => {
         review_status: 'pending',
         source_artifact_id: 'source-artifact-fixture-001',
         source_locator_refs: expect.arrayContaining(['abstract']),
+        tags: expect.arrayContaining(['data-metadata-readiness']),
         veracity_score: expect.objectContaining({ level: 'medium' }),
       }),
     );
@@ -372,6 +467,75 @@ describe('research intelligence runtime contracts', () => {
       expect.objectContaining({
         power_density_w_m2: expect.any(Number),
       }),
+    );
+    expect(decisionInput.assumptions).toEqual(
+      expect.arrayContaining([expect.stringContaining('literature-derived')]),
+    );
+  });
+
+  it('adds explicit assumptions for missing readiness gaps and context-oriented penalties', () => {
+    const preview = buildDecisionIngestionPreview(
+      researchEvidencePackSchema.parse({
+        pack_id: 'pack-fixture-assumptions-001',
+        review_id: 'review-fixture-001',
+        title: 'Assumption fixture',
+        status: 'draft',
+        source_result_ids: [],
+        evidence_items: [
+          {
+            evidence_id: 'research:fixture:context-ref',
+            evidence_type: 'literature_evidence',
+            title: 'Context reference fixture',
+            summary: 'Context-heavy metadata methodology source.',
+            applicability_scope: {},
+            strength_level: 'moderate',
+            provenance_note: 'Fixture provenance.',
+            quantitative_metrics: {},
+            operating_conditions: {},
+            block_mapping: [],
+            limitations: [],
+            contradiction_notes: [],
+            review_status: 'pending',
+            tags: ['data-metadata-readiness'],
+            veracity_score: {
+              score: 0.58,
+              level: 'medium',
+              components: {
+                source_rigor: 0.55,
+                metadata_completeness: 0.7,
+                measurement_quality: 0.35,
+                extraction_method: 0.72,
+                trace_quality: 0.82,
+                normalization_support: 0.45,
+                review_status: 0.45,
+                relevance: 0.72,
+                recency_context_fit: 0.68,
+                corroboration_conflict: 0.5,
+              },
+              confidence_penalties: [
+                'context_reference_not_validated_performance_evidence',
+              ],
+            },
+          },
+        ],
+        metrics: [],
+        missing_fields: ['data_lineage_metadata', 'signal_quality_metadata'],
+        confidence: 'low',
+        payload: {},
+        created_at: now,
+        updated_at: now,
+      }),
+    );
+
+    expect(preview.assumptions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'Metadata and data readiness gaps remain visible',
+        ),
+        expect.stringContaining(
+          'Context-oriented references can guide metadata and methodology review',
+        ),
+      ]),
     );
   });
 

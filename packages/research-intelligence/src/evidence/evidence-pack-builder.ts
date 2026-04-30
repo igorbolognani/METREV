@@ -294,6 +294,11 @@ function buildEvidenceRecord(input: {
       'research-review',
       `review:${input.reviewId}`,
       input.paper.source_type,
+      input.results.some(
+        (result) => result.column_id === 'data_metadata_readiness',
+      )
+        ? 'data-metadata-readiness'
+        : null,
       metadataQuality ? `metadata-quality:${metadataQuality.level}` : null,
       veracityScore ? `veracity:${veracityScore.level}` : null,
       sourceArtifactId ? 'local-source-artifact' : null,

@@ -46,6 +46,18 @@ categories:
       - review_status
       - analyst_note
       - downstream_usage
+  training_and_extraction_applicability:
+    fields:
+      - label_quality
+      - missingness_profile
+      - normalization_support
+      - known_failure_modes
+  decision_use_readiness:
+    fields:
+      - applicability_boundary
+      - context_sufficiency
+      - downstream_caution_flags
+      - review_status
 
 rules:
   - Score range is 0 to 1.

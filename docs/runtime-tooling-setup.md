@@ -13,6 +13,8 @@ This document separates repository-managed integration from local-machine setup 
 - root `.github/prompts/`
 - root `.github/agents/`
 - root `.github/skills/`
+- root `.github/workflows/`
+- root `.github/dependabot.yml`
 - root `.vscode/extensions.json`
 - root `.vscode/mcp.json` and `.vscode/mcp.template.jsonc`
 
@@ -75,10 +77,12 @@ For the broader active-versus-reference classification across the repository, us
 ## Validation rule
 
 - A tool is not considered integrated until its repo config, setup steps, and success criteria are all documented.
+- `pnpm run lint:workflow-semantics` is the promoted semantic gate for GitHub Actions workflows. It runs the official `actionlint` container through Docker so workflow syntax, expressions, action inputs, runner labels, and cron semantics are checked before the broader repo matrix.
 - `pnpm run format:workflow-assets` is the focused formatting gate for the promoted root workflow and CI surface. The broader repo-wide `pnpm run format` remains available, but it is not yet a safe promoted CI gate because the repository still carries unrelated formatting debt.
 - `pnpm run test:e2e:install` installs Chromium with system dependencies and should be the local-first mirror of the Playwright browser install used in CI.
 - `pnpm run validate:fast` is the promoted fast repository matrix and the first CI gate.
-- `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed and resolve the active published Postgres port before running. It remains a separate post-fast CI job so Docker/runtime failures stay isolated.
+- `pnpm run validate:local:smoke` is the focused Docker-backed smoke probe for the local-view runtime. It ensures the published login route, public landing route, API `/health`, and a minimal Playwright browser path are reachable before the full acceptance matrix.
+- `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed, resolve the active published Postgres port, run the explicit smoke phase first, apply runtime migrations against the resolved local database, and then continue into seed, database, and full-browser validation. In CI, the smoke step runs as its own named step and the follow-on acceptance step skips the duplicated smoke phase with `METREV_SKIP_LOCAL_SMOKE=1` so failures stay easier to localize.
 - `pnpm run validate:advanced` is the promoted deterministic advanced big-data and research matrix. It runs focused advanced tests plus a curated-manifest-only `bootstrap:bigdata` dry-run without relying on live provider APIs, and it remains a separate post-fast CI job alongside `validate:local` so deterministic research regressions stay isolated from local runtime acceptance failures.
 - CI uploads `playwright-report/` and `test-results/` artifacts from the local validation job so full-stack failures stay inspectable after the run.
 - `pnpm run validate:full` combines the promoted fast, advanced, and local matrices.

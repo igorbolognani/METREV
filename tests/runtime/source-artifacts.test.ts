@@ -4,7 +4,7 @@ import { buildEvidenceVeracityScore } from '@metrev/database';
 import { metadataQualityProfileSchema } from '@metrev/domain-contracts';
 
 describe('source artifact metadata and veracity scoring', () => {
-  it('keeps metadata completeness separate from evidence veracity penalties', () => {
+  it('keeps metadata completeness separate from generic context-reference penalties', () => {
     const metadataQuality = metadataQualityProfileSchema.parse({
       score: 0.5,
       level: 'medium',
@@ -23,7 +23,7 @@ describe('source artifact metadata and veracity scoring', () => {
       metadataQuality,
       normalizedMetricCount: 0,
       reviewStatus: 'pending',
-      sourceCategory: 'trampoline_project_scope',
+      sourceCategory: 'metadata_reference_pdf',
       traceCount: 2,
     });
 
@@ -32,7 +32,7 @@ describe('source artifact metadata and veracity scoring', () => {
     expect(score.confidence_penalties).toEqual(
       expect.arrayContaining([
         'pending_or_unaccepted_review',
-        'ecosystem_context_not_performance_evidence',
+        'context_reference_not_validated_performance_evidence',
         'no_supported_normalized_metrics',
       ]),
     );

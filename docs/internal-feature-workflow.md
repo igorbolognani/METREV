@@ -119,7 +119,7 @@ Agents:
 
 Use parallel agents only when they can stay read-only or hold separate file
 ownership. Prefer convergence at a validation gate such as
-`pnpm run test:workflow-assets`, `pnpm run validate:fast`,
+`pnpm run test:workflow-assets`, `pnpm run lint:workflow-semantics`, `pnpm run validate:fast`,
 `pnpm run validate:local`, or `pnpm run validate:advanced` instead of merging
 conflicting edit branches by hand.
 

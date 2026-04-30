@@ -21,6 +21,12 @@ metadata_categories:
   review_state:
     description: Analyst review status, accepted/rejected rationale, evidence type, confidence impact, and downstream usage boundary.
     priority_levels: [basic, advanced, future_proof]
+  training_and_extraction_applicability:
+    description: Fitness of the data and metadata for analytics, deterministic extraction, normalization, or model training, including label quality, missingness, and known failure modes.
+    priority_levels: [basic, advanced, future_proof]
+  decision_use_readiness:
+    description: Whether the source can support auditable decision-support use, including review status, applicability boundary, context sufficiency, and downstream caution flags.
+    priority_levels: [basic, advanced, future_proof]
 
 quality_profile:
   required_fields:
@@ -35,11 +41,19 @@ quality_profile:
     - publication_date
     - page_count
     - measurement_units
+    - timestamp_origin
+    - temporal_resolution
+    - sensor_location
     - calibration_or_validation_context
+    - quality_flags
     - operating_context
+    - event_annotations
+    - training_applicability
+    - decision_use_readiness
   scoring_principle: Missing metadata lowers confidence but must remain visible instead of blocking review.
 
 rules:
   - Metadata quality is scored separately from claim correctness.
   - Supplier claims must not be upgraded because their metadata is complete.
   - Full extracted text from copyrighted sources stays in local persistence unless redistribution rights are explicit.
+  - Context-rich methodology references may improve metadata and data readiness understanding while staying distinct from validated performance evidence.

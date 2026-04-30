@@ -1,4 +1,5 @@
 import {
+    researchDataMetadataReadinessExtractionSchema,
     researchExtractionResultSchema,
     researchImplementationFactorsExtractionSchema,
     researchSystemPerformanceExtractionSchema,
@@ -240,6 +241,15 @@ function tracesFromClaims(
 function includesAny(text: string, tokens: string[]): boolean {
   const normalized = text.toLowerCase();
   return tokens.some((token) => normalized.includes(token.toLowerCase()));
+}
+
+function matchedLabels(
+  text: string,
+  candidates: Array<{ label: string; tokens: string[] }>,
+): string[] {
+  return candidates.flatMap((candidate) =>
+    includesAny(text, candidate.tokens) ? [candidate.label] : [],
+  );
 }
 
 function detectTechnologyClasses(text: string) {
@@ -633,6 +643,193 @@ function buildImplementationFactors(input: DeterministicExtractionInput): {
   return { answer, trace: limitationSentences.length > 0 ? traces : [] };
 }
 
+function buildDataMetadataReadiness(input: DeterministicExtractionInput): {
+  answer: unknown;
+  trace: ResearchEvidenceTrace[];
+} {
+  const text = fullText(input);
+  const traces = tracesFromClaims(input, [
+    'condition',
+    'applicability',
+    'limitation',
+    'metric',
+  ]);
+  const signalGeneration = matchedLabels(text, [
+    {
+      label: 'timestamp_origin',
+      tokens: ['timestamp origin', 'timestamp', 'time interval'],
+    },
+    {
+      label: 'temporal_resolution',
+      tokens: ['temporal resolution', 'sampling interval', 'resolution'],
+    },
+    {
+      label: 'sensor_location',
+      tokens: ['sensor location', 'location', 'installed'],
+    },
+    {
+      label: 'device_specification',
+      tokens: ['datasheet', 'manual', 'equipment', 'sensor', 'device'],
+    },
+    {
+      label: 'signal_modification_history',
+      tokens: ['data augmentation', 'data fusion', 'imputed'],
+    },
+  ]);
+  const signalQuality = matchedLabels(text, [
+    {
+      label: 'calibration_context',
+      tokens: ['calibration', 'calibrated', 'calibration curve'],
+    },
+    {
+      label: 'validation_context',
+      tokens: ['validation', 'validated', 'validation results'],
+    },
+    {
+      label: 'quality_flags',
+      tokens: ['quality flag', 'suspect quality', 'fault'],
+    },
+    {
+      label: 'drift_and_bias',
+      tokens: ['drift', 'bias', 'trueness', 'precision'],
+    },
+    {
+      label: 'response_characteristics',
+      tokens: ['response time', 'measurement range'],
+    },
+  ]);
+  const contextualAnnotations = matchedLabels(text, [
+    {
+      label: 'rain_events',
+      tokens: ['rain event', 'rainfall'],
+    },
+    {
+      label: 'toxic_discharge',
+      tokens: ['toxic discharge', 'toxicity'],
+    },
+    {
+      label: 'maintenance_and_cleaning',
+      tokens: ['maintenance', 'cleaning date', 'cleaning'],
+    },
+    {
+      label: 'operating_upsets',
+      tokens: ['operating upset', 'process upset', 'startup'],
+    },
+    {
+      label: 'environmental_context',
+      tokens: ['operating context', 'climatic', 'context'],
+    },
+  ]);
+  const dataLineage = matchedLabels(text, [
+    {
+      label: 'data_pipeline',
+      tokens: ['data pipeline', 'data acquisition', 'data-generating'],
+    },
+    {
+      label: 'provenance_and_traceability',
+      tokens: ['lineage', 'traceability', 'provenance', 'review lifecycle'],
+    },
+    {
+      label: 'transformation_history',
+      tokens: ['transformation', 'signal modification', 'history'],
+    },
+    {
+      label: 'quality_control_records',
+      tokens: ['quality assurance', 'quality control', 'historical'],
+    },
+  ]);
+  const accessAndLicensing = [
+    input.paper.doi ? 'doi_available' : null,
+    input.paper.pdf_url ? 'pdf_link_available' : null,
+    input.paper.source_url ? 'source_url_available' : null,
+  ].filter((value): value is string => Boolean(value));
+  const reviewState = [
+    'analyst_review_required',
+    input.paper.source_type === 'manual'
+      ? 'manual_source_review_path'
+      : 'provider_source_review_path',
+  ];
+  const trainingAndExtractionApplicability = [
+    signalQuality.length > 0 ? 'quality_assessment_ready' : null,
+    dataLineage.length > 0 ? 'traceable_extraction_ready' : null,
+    contextualAnnotations.length > 0 ? 'context_aware_analysis_ready' : null,
+    includesAny(text, [
+      'model',
+      'machine learning',
+      'analytics',
+      'automation',
+      'algorithm',
+      'training',
+    ])
+      ? 'model_training_candidate_with_quality_controls'
+      : null,
+  ].filter((value): value is string => Boolean(value));
+  const categoryCount = [
+    signalGeneration,
+    signalQuality,
+    contextualAnnotations,
+    dataLineage,
+  ].filter((entries) => entries.length > 0).length;
+  const blockingGaps = [
+    signalGeneration.length === 0 ? 'signal_generation_metadata' : null,
+    signalQuality.length === 0 ? 'signal_quality_metadata' : null,
+    contextualAnnotations.length === 0 ? 'contextual_annotations' : null,
+    dataLineage.length === 0 ? 'data_lineage_metadata' : null,
+  ].filter((value): value is string => Boolean(value));
+  const decisionUseReadiness =
+    categoryCount >= 3 && trainingAndExtractionApplicability.length > 0
+      ? 'ready_with_review'
+      : categoryCount >= 2
+        ? 'context_only'
+        : 'insufficient';
+  const recommendedUses = [
+    signalGeneration.length > 0
+      ? 'sensor_and_acquisition_interpretation'
+      : null,
+    signalQuality.length > 0 ? 'data_quality_assessment' : null,
+    contextualAnnotations.length > 0 ? 'context_aware_analysis' : null,
+    dataLineage.length > 0 ? 'traceable_extraction_and_audit' : null,
+    decisionUseReadiness === 'ready_with_review'
+      ? 'reviewed_decision_support_intake'
+      : null,
+  ].filter((value): value is string => Boolean(value));
+  const summary =
+    categoryCount > 0
+      ? `Metadata/data readiness captures ${[
+          signalGeneration.length > 0 ? 'signal generation' : null,
+          signalQuality.length > 0 ? 'signal quality' : null,
+          contextualAnnotations.length > 0 ? 'contextual annotations' : null,
+          dataLineage.length > 0 ? 'data lineage' : null,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(', ')} and is ${decisionUseReadiness.replace(/_/g, ' ')}.`
+      : null;
+  const answer = researchDataMetadataReadinessExtractionSchema.parse({
+    summary,
+    metadata_categories: {
+      signal_generation: signalGeneration,
+      signal_quality: signalQuality,
+      contextual_annotations: contextualAnnotations,
+      data_lineage: dataLineage,
+      access_and_licensing: accessAndLicensing,
+      review_state: reviewState,
+    },
+    training_and_extraction_applicability: trainingAndExtractionApplicability,
+    decision_use_readiness: decisionUseReadiness,
+    blocking_gaps: blockingGaps,
+    recommended_uses: recommendedUses,
+    missing_fields: blockingGaps,
+    evidence_trace: traces,
+    confidence:
+      categoryCount >= 3 ? 'medium' : categoryCount >= 1 ? 'low' : 'low',
+  });
+
+  return {
+    answer,
+    trace: traces,
+  };
+}
+
 function buildGenericList(input: DeterministicExtractionInput): {
   answer: unknown;
   confidence: ConfidenceLevel;
@@ -772,6 +969,20 @@ function buildAnswer(input: DeterministicExtractionInput): {
     };
   }
 
+  if (input.column.output_schema_key === 'data_metadata_readiness') {
+    const built = buildDataMetadataReadiness(input);
+    const parsed = researchDataMetadataReadinessExtractionSchema.parse(
+      built.answer,
+    );
+    return {
+      answer: parsed,
+      confidence: parsed.confidence,
+      missingFields: parsed.missing_fields,
+      normalizedPayload: {},
+      trace: built.trace,
+    };
+  }
+
   const generic = buildGenericList(input);
   return {
     answer: generic.answer,
@@ -813,6 +1024,17 @@ function validateColumnAnswer(input: {
 
   if (input.outputSchemaKey === 'implementation_factors') {
     const parsed = researchImplementationFactorsExtractionSchema.safeParse(
+      input.answer,
+    );
+    return parsed.success
+      ? []
+      : parsed.error.issues.map((issue) =>
+          issue.path.length > 0 ? issue.path.join('.') : issue.message,
+        );
+  }
+
+  if (input.outputSchemaKey === 'data_metadata_readiness') {
+    const parsed = researchDataMetadataReadinessExtractionSchema.safeParse(
       input.answer,
     );
     return parsed.success

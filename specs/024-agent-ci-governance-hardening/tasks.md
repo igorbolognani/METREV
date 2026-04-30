@@ -20,11 +20,12 @@
 ## Workstream 4 — Validation and follow-through
 
 - [x] T9 Run `pnpm run test:workflow-assets`.
-- [ ] T10 Run `pnpm run format:workflow-assets`, `pnpm run validate:fast`, `docker compose config`, and `pnpm run test:e2e:install`.
+- [x] T10 Run `pnpm run format:workflow-assets`, `pnpm run validate:fast`, `docker compose config`, and `pnpm run test:e2e:install`.
       Current status: `test:workflow-assets`, `format:workflow-assets`,
-      `validate:fast`, `validate:advanced`, and `docker compose config` passed.
-      `pnpm run test:e2e:install` is still pending on this Linux workstation
-      because Playwright requested `sudo` to install system dependencies.
+      `validate:fast`, `validate:advanced`, `docker compose config`, and
+      `pnpm run test:e2e:install` passed. On this Linux workstation, the
+      Playwright helper required a local `sudo` prompt to install system browser
+      dependencies before the final install command could complete.
 
 ## Dependencies
 

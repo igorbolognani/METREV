@@ -136,6 +136,19 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     position: 9,
   },
   {
+    column_id: 'data_metadata_readiness',
+    name: 'Data & Metadata Readiness',
+    group: 'data_readiness',
+    type: 'deterministic',
+    answer_structure: 'specified',
+    instructions:
+      'Extract signal-generation metadata, signal-quality metadata, contextual annotations, lineage, and whether the source is ready for traceable extraction, analytics, and reviewed decision support.',
+    output_schema_key: 'data_metadata_readiness',
+    output_schema: {},
+    visible: true,
+    position: 10,
+  },
+  {
     column_id: 'objectives',
     name: 'Objectives',
     group: 'scientific_structure',
@@ -145,7 +158,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 10,
+    position: 11,
   },
   {
     column_id: 'findings',
@@ -157,7 +170,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 11,
+    position: 12,
   },
   {
     column_id: 'research_gaps',
@@ -174,7 +187,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
       confidence: 'low | medium | high',
     },
     visible: false,
-    position: 12,
+    position: 13,
   },
   {
     column_id: 'future_research',
@@ -186,7 +199,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 13,
+    position: 14,
   },
   {
     column_id: 'dependent_variables',
@@ -199,7 +212,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 14,
+    position: 15,
   },
   {
     column_id: 'independent_variables',
@@ -212,7 +225,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 15,
+    position: 16,
   },
   {
     column_id: 'dataset',
@@ -225,7 +238,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 16,
+    position: 17,
   },
   {
     column_id: 'population_sample',
@@ -238,7 +251,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     output_schema_key: 'generic_list',
     output_schema: { items: ['string'], evidence_span: 'string | null' },
     visible: false,
-    position: 17,
+    position: 18,
   },
 ];
 

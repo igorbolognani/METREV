@@ -6,32 +6,32 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 import type {
-  ResearchBackfillSummary,
-  ResearchPaperMetadata,
-  ResearchPaperSearchFailure,
-  ResearchPaperSearchResult,
-  ResearchReviewSummary,
-  SourceArtifact,
+    ResearchBackfillSummary,
+    ResearchPaperMetadata,
+    ResearchPaperSearchFailure,
+    ResearchPaperSearchResult,
+    ResearchReviewSummary,
+    SourceArtifact,
 } from '@metrev/domain-contracts';
 
 import { TabsContent } from '@/components/ui/tabs';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-  createResearchReview,
-  fetchResearchBackfills,
-  fetchResearchReviews,
-  importLocalSources,
-  queueResearchBackfill,
-  searchResearchPapers,
-  stageResearchPapers,
+    createResearchReview,
+    fetchResearchBackfills,
+    fetchResearchReviews,
+    importLocalSources,
+    queueResearchBackfill,
+    searchResearchPapers,
+    stageResearchPapers,
 } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
@@ -255,17 +255,17 @@ export function ResearchReviewListView({
                 </div>
               </div>
               <p>
-                Import local MFC, MEC, MET, TRAMPOLINe, and metadata sources as
+                Import local MFC, MEC, MET, BES, and metadata sources as
                 analyst-gated evidence with file hashes, extraction traces, page
-                locators, and veracity penalties.
+                locators, and confidence penalties.
               </p>
               <label>
-                <span>PDF paths or manifest</span>
+                <span>PDF paths</span>
                 <textarea
                   onChange={(event) =>
                     onLocalPdfPathsChange(event.target.value)
                   }
-                  placeholder="/home/igor/Downloads/9781789063400.pdf"
+                  placeholder="/absolute/path/to/local-source.pdf"
                   rows={4}
                   value={localPdfPaths}
                 />
@@ -273,8 +273,7 @@ export function ResearchReviewListView({
               <div className="workspace-action-row">
                 <button
                   disabled={
-                    localPdfImportPending ||
-                    localPdfPaths.trim().length === 0
+                    localPdfImportPending || localPdfPaths.trim().length === 0
                   }
                   onClick={onImportLocalPdfs}
                   type="button"
@@ -557,13 +556,7 @@ export function ResearchReviewListWorkspace() {
   const [importedPapers, setImportedPapers] = React.useState<
     ResearchPaperMetadata[]
   >([]);
-  const [localPdfPaths, setLocalPdfPaths] = React.useState(
-    [
-      '/home/igor/Downloads/9781789063400.pdf',
-      '/home/igor/Downloads/El valor de los metadatos para las estaciones de recuperaci n de recursos del agua.pdf',
-      '/home/igor/Downloads/9781789061154_0031.pdf',
-    ].join('\n'),
-  );
+  const [localPdfPaths, setLocalPdfPaths] = React.useState('');
   const [localPdfArtifacts, setLocalPdfArtifacts] = React.useState<
     SourceArtifact[]
   >([]);

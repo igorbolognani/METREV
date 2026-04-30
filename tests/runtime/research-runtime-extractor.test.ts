@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
 import {
-  executeResearchExtraction,
-  findDefaultResearchColumn,
+    executeResearchExtraction,
+    findDefaultResearchColumn,
 } from '@metrev/research-intelligence';
 
 import incompletePaperFixture from '../fixtures/research/incomplete-paper.json';
@@ -161,5 +161,58 @@ describe('research runtime extractor', () => {
     expect(
       (result.normalized_payload as { llm_runtime?: unknown }).llm_runtime,
     ).toBeUndefined();
+  });
+
+  it('uses hydrated full text to improve data and metadata readiness extraction when abstracts are incomplete', async () => {
+    const column = findDefaultResearchColumn('data_metadata_readiness');
+    if (!column) {
+      throw new Error('data_metadata_readiness default column not registered');
+    }
+
+    const paper = researchPaperMetadataSchema.parse(incompletePaperFixture);
+    const result = await executeResearchExtraction({
+      reviewId: 'review-runtime-001',
+      paper,
+      column,
+      claims: [],
+      fetchPaperText: async () => ({
+        contentType: 'text/html',
+        fetchedFrom: 'https://example.org/readiness-full-text',
+        source: 'html',
+        text: 'The installation documented timestamp origin, temporal resolution, calibration curves, validation results, rain events, and a data pipeline used for analytics and automation review.',
+        trace: [
+          {
+            source: 'full_text',
+            source_document_id: paper.source_document_id,
+            text_span:
+              'The installation documented timestamp origin, temporal resolution, calibration curves, validation results, rain events, and a data pipeline used for analytics and automation review.',
+            source_locator: 'html:https://example.org/readiness-full-text',
+            page_number: null,
+          },
+        ],
+      }),
+    });
+
+    expect(result.status).toBe('valid');
+    expect(result.missing_fields).not.toEqual(
+      expect.arrayContaining(['signal_generation_metadata']),
+    );
+    expect(result.answer).toEqual(
+      expect.objectContaining({
+        decision_use_readiness: 'ready_with_review',
+        metadata_categories: expect.objectContaining({
+          signal_generation: expect.arrayContaining(['timestamp_origin']),
+          signal_quality: expect.arrayContaining(['calibration_context']),
+          data_lineage: expect.arrayContaining(['data_pipeline']),
+        }),
+      }),
+    );
+    expect(result.normalized_payload).toEqual(
+      expect.objectContaining({
+        full_text: expect.objectContaining({
+          source: 'html',
+        }),
+      }),
+    );
   });
 });

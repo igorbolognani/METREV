@@ -80,6 +80,11 @@ async function assertLocalRuntimeReachable(url: string): Promise<void> {
 
 export default async function globalSetup(_: FullConfig): Promise<void> {
   await assertLocalRuntimeReachable(playwrightBaseUrl);
+
+  if (process.env.PLAYWRIGHT_SKIP_BOOTSTRAP?.trim() === '1') {
+    return;
+  }
+
   const localDatabaseUrl = resolvePlaywrightDatabaseUrl();
 
   execFileSync('pnpm', ['run', 'db:bootstrap:e2e'], {

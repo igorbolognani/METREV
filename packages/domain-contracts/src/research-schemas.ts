@@ -243,6 +243,31 @@ export const researchImplementationFactorsExtractionSchema = z.object({
   confidence: confidenceLevelSchema,
 });
 
+export const researchDataMetadataReadinessExtractionSchema = z.object({
+  summary: z.string().nullable().default(null),
+  metadata_categories: z
+    .object({
+      signal_generation: z.array(z.string()).default([]),
+      signal_quality: z.array(z.string()).default([]),
+      contextual_annotations: z.array(z.string()).default([]),
+      data_lineage: z.array(z.string()).default([]),
+      access_and_licensing: z.array(z.string()).default([]),
+      review_state: z.array(z.string()).default([]),
+    })
+    .default({}),
+  training_and_extraction_applicability: z.array(z.string()).default([]),
+  decision_use_readiness: z.enum([
+    'ready_with_review',
+    'context_only',
+    'insufficient',
+  ]),
+  blocking_gaps: z.array(z.string()).default([]),
+  recommended_uses: z.array(z.string()).default([]),
+  missing_fields: z.array(z.string()).default([]),
+  evidence_trace: z.array(researchEvidenceTraceSchema).default([]),
+  confidence: confidenceLevelSchema,
+});
+
 function hasSubstantiveAnswer(value: unknown): boolean {
   if (value === null || value === undefined) {
     return false;

@@ -37,6 +37,13 @@ function localViewRuntimeUrl() {
   );
 }
 
+function localApiBaseUrl() {
+  return (
+    process.env.PLAYWRIGHT_API_BASE_URL?.trim() ||
+    localViewComposeEnv().NEXT_PUBLIC_API_BASE_URL
+  );
+}
+
 function execPnpm(args, envOverrides = {}) {
   execFileSync('pnpm', args, {
     cwd: process.cwd(),
@@ -114,6 +121,24 @@ async function waitForLocalRuntime(url, timeoutMs = 120_000) {
   );
 }
 
+async function assertLocalApiHealth(apiBaseUrl) {
+  const response = await fetch(`${apiBaseUrl}/health`);
+
+  if (!response.ok) {
+    throw new Error(
+      `Local API health check failed at ${apiBaseUrl}/health with status ${response.status}.`,
+    );
+  }
+
+  const payload = await response.json().catch(() => null);
+
+  if (payload?.status !== 'ok') {
+    throw new Error(
+      `Local API health check at ${apiBaseUrl}/health returned unexpected payload ${JSON.stringify(payload)}.`,
+    );
+  }
+}
+
 async function ensureLocalViewStack(url) {
   if (await localRuntimeReachable(url)) {
     console.log(`Local-view runtime already reachable at ${url}.`);
@@ -126,22 +151,59 @@ async function ensureLocalViewStack(url) {
   return true;
 }
 
+async function runLocalSmokeValidation({
+  runtimeUrl,
+  apiBaseUrl,
+  validationEnv,
+}) {
+  console.log(
+    `Running local-view smoke validation against ${runtimeUrl} and ${apiBaseUrl}...`,
+  );
+
+  await assertLocalApiHealth(apiBaseUrl);
+  execPnpm(['run', 'test:e2e:smoke'], {
+    ...validationEnv,
+    PLAYWRIGHT_SKIP_BOOTSTRAP: '1',
+  });
+}
+
 async function main() {
+  const smokeOnly = process.argv.includes('--smoke-only');
+  const skipSmoke = process.env.METREV_SKIP_LOCAL_SMOKE?.trim() === '1';
   const runtimeUrl = localViewRuntimeUrl();
   const startedLocalView = await ensureLocalViewStack(runtimeUrl);
   const localDatabaseUrl = resolveLocalDatabaseUrl();
   const localComposeEnv = localViewComposeEnv();
+  const apiBaseUrl = localApiBaseUrl();
   const validationEnv = {
     DATABASE_URL: localDatabaseUrl,
     DIRECT_URL: localDatabaseUrl,
     PLAYWRIGHT_DATABASE_URL: localDatabaseUrl,
     PLAYWRIGHT_BASE_URL: runtimeUrl,
     PLAYWRIGHT_API_BASE_URL:
-      process.env.PLAYWRIGHT_API_BASE_URL?.trim() ||
-      localComposeEnv.NEXT_PUBLIC_API_BASE_URL,
+      process.env.PLAYWRIGHT_API_BASE_URL?.trim() || apiBaseUrl,
   };
 
+  if (smokeOnly || !skipSmoke) {
+    await runLocalSmokeValidation({
+      runtimeUrl,
+      apiBaseUrl,
+      validationEnv,
+    });
+  }
+
+  if (smokeOnly) {
+    if (startedLocalView) {
+      console.log(
+        'Local-view runtime was started for smoke validation and remains running.',
+      );
+    }
+
+    return;
+  }
+
   console.log(`Using local validation database ${localDatabaseUrl}.`);
+  execPnpm(['run', 'db:migrate:deploy'], validationEnv);
   execPnpm(['run', 'db:seed'], validationEnv);
   execPnpm(['run', 'test:db'], validationEnv);
   execPnpm(['run', 'test:e2e'], validationEnv);

@@ -32,6 +32,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Run workflow semantic lint
+        run: pnpm run lint:workflow-semantics
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -85,8 +88,13 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run local validation matrix
+      - name: Run local-view smoke validation
+        run: pnpm run validate:local:smoke
+
+      - name: Run local acceptance matrix
         run: pnpm run validate:local
+        env:
+          METREV_SKIP_LOCAL_SMOKE: '1'
 
       - name: Upload Playwright report
         if: always()
