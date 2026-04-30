@@ -7,6 +7,7 @@ import {
   addResearchColumnRequestSchema,
   createResearchEvidencePackRequestSchema,
   createResearchReviewRequestSchema,
+  localSourceImportRequestSchema,
   queueResearchBackfillRequestSchema,
   runResearchExtractionsRequestSchema,
   runResearchExtractionsResponseSchema,
@@ -117,6 +118,59 @@ export async function registerResearchRoutes(
     );
 
     return reply.code(201).send(response);
+  });
+
+  app.post('/source-artifacts/import', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const parsed = localSourceImportRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_input',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const response = await withSpan(
+      'research.source_artifacts.import',
+      () => app.researchRepository.importLocalSources(parsed.data),
+      {
+        actor_id: actor.userId,
+        file_count: parsed.data.files.length,
+        manifest_path: parsed.data.manifest_path ?? '',
+      },
+    );
+
+    return reply.code(201).send(response);
+  });
+
+  app.get('/source-artifacts/:sourceDocumentId', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const { sourceDocumentId } = request.params as { sourceDocumentId: string };
+    const artifact = await withSpan(
+      'research.source_artifacts.get',
+      () => app.researchRepository.getSourceArtifact(sourceDocumentId),
+      {
+        actor_id: actor.userId,
+        source_document_id: sourceDocumentId,
+      },
+    );
+
+    if (!artifact) {
+      return reply.code(404).send({
+        error: 'not_found',
+        message: `Source artifact for ${sourceDocumentId} was not found.`,
+      });
+    }
+
+    return reply.send(artifact);
   });
 
   app.get('/reviews', async (request, reply) => {

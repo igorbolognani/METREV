@@ -55,15 +55,68 @@ function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
 }
 
+function resolveCatalogSourceDocumentId(
+  item: ExternalEvidenceCatalogItemDetail,
+): string | undefined {
+  return (
+    item.source_document?.id ??
+    item.source_artifacts.find((artifact) => artifact.source_document_id)
+      ?.source_document_id ??
+    item.claims.find((claim) => claim.source_document_id)?.source_document_id
+  );
+}
+
+function hasAcceptedClaimReview(
+  claim: ExternalEvidenceCatalogItemDetail['claims'][number],
+): boolean {
+  return claim.reviews.some((review) => review.status === 'accepted');
+}
+
+function collectReviewedClaimIds(
+  item: ExternalEvidenceCatalogItemDetail,
+): string[] {
+  return item.claims
+    .filter((claim) => hasAcceptedClaimReview(claim))
+    .map((claim) => claim.id);
+}
+
+function collectReviewedClaimLocatorRefs(
+  item: ExternalEvidenceCatalogItemDetail,
+): string[] {
+  return dedupeStrings(
+    item.claims.flatMap((claim) =>
+      hasAcceptedClaimReview(claim) && claim.source_locator
+        ? [claim.source_locator]
+        : [],
+    ),
+  );
+}
+
+function collectSourceArtifactIds(
+  item: ExternalEvidenceCatalogItemDetail,
+): string[] {
+  return dedupeStrings(
+    item.source_artifacts.map((artifact) => artifact.artifact_id),
+  );
+}
+
 function toCatalogEvidenceRecord(
   item: ExternalEvidenceCatalogItemDetail,
 ): RawEvidenceRecord {
+  const sourceDocumentId = resolveCatalogSourceDocumentId(item);
+  const sourceArtifactIds = collectSourceArtifactIds(item);
+  const reviewedClaimIds = collectReviewedClaimIds(item);
+  const reviewedClaimLocatorRefs = collectReviewedClaimLocatorRefs(item);
+
   return {
     evidence_id: `${catalogEvidenceIdPrefix}${item.id}`,
     evidence_type: item.evidence_type,
     title: item.title,
     summary: item.summary,
-    applicability_scope: item.applicability_scope,
+    applicability_scope: {
+      ...item.applicability_scope,
+      ...(sourceDocumentId ? { source_document_id: sourceDocumentId } : {}),
+    },
     strength_level: item.strength_level,
     provenance_note: `${item.provenance_note} ${reviewedCatalogEvidenceNote}`,
     quantitative_metrics: {},
@@ -77,6 +130,24 @@ function toCatalogEvidenceRecord(
       'reviewed-catalog',
       `source:${item.source_type}`,
     ]),
+    catalog_item_id: item.id,
+    review_status: item.review_status,
+    source_state: item.source_state,
+    source_type: item.source_type,
+    source_category: item.source_category,
+    source_url: item.source_url,
+    doi: item.doi,
+    publisher: item.publisher,
+    published_at: item.published_at,
+    claim_count: item.claim_count,
+    reviewed_claim_count: item.reviewed_claim_count,
+    metadata_quality: item.metadata_quality,
+    veracity_score: item.veracity_score,
+    source_document_id: sourceDocumentId,
+    source_artifact_count: sourceArtifactIds.length,
+    source_artifact_ids: sourceArtifactIds,
+    reviewed_claim_ids: reviewedClaimIds,
+    reviewed_claim_locator_refs: reviewedClaimLocatorRefs,
   };
 }
 
@@ -164,9 +235,10 @@ export async function createPersistedCaseEvaluation(
   const idempotencyKey = input.idempotencyKey?.trim();
 
   if (idempotencyKey) {
-    const existing = await input.evaluationRepository.getEvaluationByIdempotencyKey(
-      idempotencyKey,
-    );
+    const existing =
+      await input.evaluationRepository.getEvaluationByIdempotencyKey(
+        idempotencyKey,
+      );
 
     if (existing) {
       return existing;

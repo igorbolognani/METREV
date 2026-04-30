@@ -130,6 +130,8 @@ describe('external evidence explorer', () => {
 
       expect(facetsHtml).toContain('Filtered warehouse snapshot');
       expect(facetsHtml).toContain('Source types');
+      expect(facetsHtml).toContain('Metadata quality');
+      expect(facetsHtml).toContain('Veracity levels');
       expect(assistantHtml).toContain('Warehouse-aware evidence briefing');
       expect(assistantHtml).toContain('Generate assistant brief');
       expect(exportHtml).toContain('Export current slice CSV');

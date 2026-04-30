@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  type EvaluationResponse,
-  type ExternalEvidenceCatalogItemDetail,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    type EvaluationResponse,
+    type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -74,7 +74,41 @@ function withPersistedLineage(
         evaluation_id: evaluation.evaluation_id,
         case_id: evaluation.case_id,
         snapshot_type: 'report',
-        payload: { generated_from: 'runtime-api-test' },
+        payload: {
+          generated_from: 'runtime-api-test',
+          evidence_quality_summary: {
+            typed_evidence_count: 1,
+            trace_limited_count: 1,
+            metadata_quality_levels: { medium: 1 },
+            veracity_levels: { medium: 1 },
+            confidence_penalties: ['single source trace'],
+            source_document_ids: ['source-doc-runtime-001'],
+            source_artifact_ids: ['source-artifact-runtime-001'],
+            source_locator_refs: ['page:3'],
+            reviewed_claim_ids: ['claim-runtime-001'],
+            reviewed_claim_locator_refs: ['claim:page:3'],
+            entries: [
+              {
+                evidence_id: 'catalog:runtime-api-test',
+                title: 'Runtime API test evidence',
+                evidence_type: 'literature_evidence',
+                strength_level: 'moderate',
+                source_document_id: 'source-doc-runtime-001',
+                source_artifact_ids: ['source-artifact-runtime-001'],
+                source_locator_refs: ['page:3'],
+                reviewed_claim_ids: ['claim-runtime-001'],
+                reviewed_claim_locator_refs: ['claim:page:3'],
+                review_status: 'accepted',
+                metadata_quality_level: 'medium',
+                metadata_quality_score: 0.72,
+                veracity_level: 'medium',
+                veracity_score: 0.68,
+                confidence_penalties: ['single source trace'],
+                trace_limited: true,
+              },
+            ],
+          },
+        },
         created_at: evaluation.audit_record.timestamp,
       },
     ],
@@ -125,6 +159,137 @@ const acceptedCatalogItem: ExternalEvidenceCatalogItemDetail = {
   review_status: 'accepted',
   source_state: 'reviewed',
   reviewed_claim_count: 1,
+  metadata_quality: {
+    score: 0.82,
+    level: 'high',
+    present_fields: ['doi', 'source_document_id', 'review_status'],
+    missing_fields: [],
+    categories: {
+      data_lineage: {
+        extraction_method: 'manual_review',
+      },
+    },
+    notes: ['Accepted catalog evidence preserved source metadata.'],
+  },
+  veracity_score: {
+    score: 0.78,
+    level: 'high',
+    components: {
+      source_rigor: 0.82,
+      metadata_completeness: 0.82,
+      measurement_quality: 0.7,
+      extraction_method: 0.9,
+      trace_quality: 0.88,
+      normalization_support: 0.45,
+      review_status: 1,
+      relevance: 0.8,
+      recency_context_fit: 0.74,
+      corroboration_conflict: 0.72,
+    },
+    confidence_penalties: [],
+    notes: ['Accepted catalog evidence keeps a high trace-quality posture.'],
+  },
+  source_document: {
+    id: 'source-doc-catalog-accepted-001',
+    source_type: 'crossref',
+    source_category: 'scholarly_work',
+    source_url: 'https://doi.org/10.1000/example',
+    doi: '10.1000/example',
+    publisher: 'Journal of Wastewater Systems',
+    journal: 'Journal of Wastewater Systems',
+    published_at: '2025-05-10T00:00:00.000Z',
+    access_status: 'green',
+    license: 'CC BY-NC',
+    pdf_url: null,
+    xml_url: null,
+    authors: [],
+  },
+  source_artifacts: [
+    {
+      artifact_id: 'artifact-catalog-accepted-001',
+      source_document_id: 'source-doc-catalog-accepted-001',
+      local_path: null,
+      file_name: 'accepted-catalog-evidence.pdf',
+      file_hash: 'sha256:accepted-catalog-evidence',
+      mime_type: 'application/pdf',
+      file_size_bytes: 2048,
+      page_count: 12,
+      extraction_method: 'manual',
+      ingestion_status: 'parsed',
+      title: 'Pilot wastewater instrumentation study',
+      doi: '10.1000/example',
+      license: 'CC BY-NC',
+      access_status: 'green',
+      metadata_quality: {
+        score: 0.82,
+        level: 'high',
+        present_fields: ['doi', 'source_document_id', 'review_status'],
+        missing_fields: [],
+        categories: {
+          data_lineage: {
+            extraction_method: 'manual_review',
+          },
+        },
+        notes: ['Accepted catalog evidence preserved source metadata.'],
+      },
+      veracity_score: {
+        score: 0.78,
+        level: 'high',
+        components: {
+          source_rigor: 0.82,
+          metadata_completeness: 0.82,
+          measurement_quality: 0.7,
+          extraction_method: 0.9,
+          trace_quality: 0.88,
+          normalization_support: 0.45,
+          review_status: 1,
+          relevance: 0.8,
+          recency_context_fit: 0.74,
+          corroboration_conflict: 0.72,
+        },
+        confidence_penalties: [],
+        notes: [
+          'Accepted catalog evidence keeps a high trace-quality posture.',
+        ],
+      },
+      failure_message: null,
+      imported_at: '2026-04-14T12:00:00.000Z',
+      chunks: [],
+    },
+  ],
+  claims: [
+    {
+      id: 'claim-accepted-001',
+      source_document_id: 'source-doc-catalog-accepted-001',
+      catalog_item_id: 'catalog-item-accepted-001',
+      claim_type: 'applicability',
+      content:
+        'Accepted instrumentation evidence remains useful when source locators and review state are preserved into evaluation intake.',
+      extracted_value: null,
+      unit: null,
+      confidence: 0.84,
+      extraction_method: 'manual',
+      extractor_version: 'fixture-v1',
+      source_snippet:
+        'Instrumentation evidence remains useful when source locators and review state are preserved.',
+      source_locator: 'results.table_2',
+      page_number: 2,
+      metadata: {},
+      reviews: [
+        {
+          id: 'claim-review-accepted-001',
+          status: 'accepted',
+          analyst_id: 'user-analyst-001',
+          analyst_role: 'ANALYST',
+          analyst_note: 'Accepted for decision-support intake.',
+          reviewed_at: '2026-04-14T12:05:00.000Z',
+        },
+      ],
+      ontology_mappings: [],
+      created_at: '2026-04-14T12:00:00.000Z',
+      updated_at: '2026-04-14T12:05:00.000Z',
+    },
+  ],
 };
 
 const openAlexCatalogItem: ExternalEvidenceCatalogItemDetail = {
@@ -492,8 +657,36 @@ describe('api runtime flow', () => {
             'reviewed-catalog',
             `source:${acceptedCatalogItem.source_type}`,
           ]),
+          review_status: acceptedCatalogItem.review_status,
+          source_state: acceptedCatalogItem.source_state,
+          source_document_id: acceptedCatalogItem.source_document?.id,
+          source_artifact_ids: ['artifact-catalog-accepted-001'],
+          reviewed_claim_locator_refs: ['results.table_2'],
+          metadata_quality: expect.objectContaining({
+            level: 'high',
+          }),
+          veracity_score: expect.objectContaining({
+            level: 'high',
+          }),
+          applicability_scope: expect.objectContaining({
+            import_query: 'wastewater instrumentation',
+            source_document_id: acceptedCatalogItem.source_document?.id,
+          }),
         }),
       ]),
+    );
+    expect(
+      created.audit_record.raw_input_snapshot.evidence_records?.[0],
+    ).toEqual(
+      expect.objectContaining({
+        metadata_quality: expect.objectContaining({
+          level: 'high',
+        }),
+        veracity_score: expect.objectContaining({
+          level: 'high',
+        }),
+        source_document_id: acceptedCatalogItem.source_document?.id,
+      }),
     );
     expect(created.audit_record.typed_evidence[0]?.title).not.toBe(
       'Tampered title',
@@ -1032,6 +1225,7 @@ describe('api runtime flow', () => {
         citations: expect.arrayContaining([
           expect.objectContaining({
             section: 'input_support',
+            note: expect.stringContaining('Evidence quality:'),
           }),
         ]),
         narrative_metadata: expect.objectContaining({

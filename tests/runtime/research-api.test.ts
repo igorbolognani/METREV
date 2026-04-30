@@ -376,4 +376,77 @@ describe('research API flow', () => {
       await app.close();
     }
   });
+
+  it('imports analyst-gated local PDF artifacts with metadata quality and veracity', async () => {
+    const app = await buildApp({
+      repository: evaluationRepository,
+      researchRepository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const forbiddenImport = await app.inject({
+        method: 'POST',
+        url: '/api/research/source-artifacts/import',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-viewer-session'),
+        },
+        payload: {
+          files: ['/tmp/fixture-local-source.pdf'],
+        },
+      });
+
+      expect(forbiddenImport.statusCode).toBe(403);
+
+      const importResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/source-artifacts/import',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          files: ['/tmp/fixture-local-source.pdf'],
+          access_status: 'green',
+          license: 'local-review-only',
+          review_status: 'pending',
+        },
+      });
+
+      expect(importResponse.statusCode).toBe(201);
+      const imported = importResponse.json();
+      expect(imported).toMatchObject({
+        imported_count: 1,
+        source_document_ids: [expect.any(String)],
+        artifacts: [
+          expect.objectContaining({
+            access_status: 'green',
+            metadata_quality: expect.objectContaining({
+              level: expect.any(String),
+            }),
+            veracity_score: expect.objectContaining({
+              confidence_penalties: expect.any(Array),
+            }),
+          }),
+        ],
+      });
+
+      const artifactResponse = await app.inject({
+        method: 'GET',
+        url: `/api/research/source-artifacts/${imported.source_document_ids[0]}`,
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(artifactResponse.statusCode).toBe(200);
+      expect(artifactResponse.json()).toMatchObject({
+        source_document_id: imported.source_document_ids[0],
+        file_name: 'fixture-local-source.pdf',
+      });
+    } finally {
+      await app.close();
+    }
+  });
 });

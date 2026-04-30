@@ -183,6 +183,38 @@ export const workspaceToneSchema = z.enum([
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 
+export const metadataQualityLevelSchema = z.enum(['low', 'medium', 'high']);
+
+export const metadataQualityProfileSchema = z.object({
+  score: z.number().min(0).max(1),
+  level: metadataQualityLevelSchema,
+  present_fields: z.array(z.string()).default([]),
+  missing_fields: z.array(z.string()).default([]),
+  categories: flexibleObjectSchema.default({}),
+  notes: z.array(z.string()).default([]),
+});
+
+export const evidenceVeracityLevelSchema = z.enum(['low', 'medium', 'high']);
+
+export const evidenceVeracityScoreSchema = z.object({
+  score: z.number().min(0).max(1),
+  level: evidenceVeracityLevelSchema,
+  components: z.object({
+    source_rigor: z.number().min(0).max(1),
+    metadata_completeness: z.number().min(0).max(1),
+    measurement_quality: z.number().min(0).max(1),
+    extraction_method: z.number().min(0).max(1),
+    trace_quality: z.number().min(0).max(1),
+    normalization_support: z.number().min(0).max(1),
+    review_status: z.number().min(0).max(1),
+    relevance: z.number().min(0).max(1),
+    recency_context_fit: z.number().min(0).max(1),
+    corroboration_conflict: z.number().min(0).max(1),
+  }),
+  confidence_penalties: z.array(z.string()).default([]),
+  notes: z.array(z.string()).default([]),
+});
+
 const scalarValueSchema = z.union([
   z.number(),
   z.string(),
@@ -976,6 +1008,10 @@ export const evidenceExplorerFacetsSchema = z.object({
   evidence_types: z.array(evidenceExplorerFacetBucketSchema),
   review_statuses: z.array(evidenceExplorerFacetBucketSchema),
   publishers: z.array(evidenceExplorerFacetBucketSchema),
+  metadata_quality_levels: z
+    .array(evidenceExplorerFacetBucketSchema)
+    .default([]),
+  veracity_levels: z.array(evidenceExplorerFacetBucketSchema).default([]),
 });
 
 export const evidenceExplorerWarehouseSnapshotSchema = z.object({
@@ -1139,6 +1175,8 @@ export const externalEvidenceCatalogSummarySchema = z.object({
   applicability_scope: flexibleObjectSchema.default({}),
   extracted_claims: z.array(z.unknown()).default([]),
   tags: z.array(z.string()).default([]),
+  metadata_quality: metadataQualityProfileSchema.optional(),
+  veracity_score: evidenceVeracityScoreSchema.optional(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
 });
@@ -1157,6 +1195,42 @@ export const sourceDocumentRecordSchema = z.object({
   pdf_url: z.string().nullable(),
   xml_url: z.string().nullable(),
   authors: z.array(flexibleObjectSchema).default([]),
+});
+
+export const sourceTextChunkSchema = z.object({
+  chunk_id: z.string().min(1),
+  artifact_id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  chunk_index: z.number().int().nonnegative(),
+  page_number: z.number().int().positive().nullable().default(null),
+  text: z.string().min(1),
+  source_locator: z.string().min(1),
+  char_start: z.number().int().nonnegative().nullable().default(null),
+  char_end: z.number().int().nonnegative().nullable().default(null),
+  metadata: flexibleObjectSchema.default({}),
+  created_at: z.string().min(1).optional(),
+});
+
+export const sourceArtifactSchema = z.object({
+  artifact_id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  local_path: z.string().nullable().default(null),
+  file_name: z.string().min(1),
+  file_hash: z.string().min(1),
+  mime_type: z.string().min(1),
+  file_size_bytes: z.number().int().nonnegative().nullable().default(null),
+  page_count: z.number().int().positive().nullable().default(null),
+  extraction_method: z.string().min(1),
+  ingestion_status: z.enum(['parsed', 'failed']),
+  title: z.string().nullable().default(null),
+  doi: z.string().nullable().default(null),
+  license: z.string().nullable().default(null),
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  metadata_quality: metadataQualityProfileSchema,
+  veracity_score: evidenceVeracityScoreSchema,
+  failure_message: z.string().nullable().default(null),
+  imported_at: z.string().min(1),
+  chunks: z.array(sourceTextChunkSchema).default([]),
 });
 
 export const evidenceClaimReviewSchema = z.object({
@@ -1256,6 +1330,7 @@ export const externalEvidenceCatalogDetailSchema =
     source_document: sourceDocumentRecordSchema.optional(),
     claims: z.array(evidenceClaimSchema).default([]),
     supplier_documents: z.array(supplierDocumentSchema).default([]),
+    source_artifacts: z.array(sourceArtifactSchema).default([]),
     abstract_text: z.string().nullable(),
     payload: z.unknown(),
     raw_payload: z.unknown(),
@@ -1422,6 +1497,12 @@ export type ExternalEvidenceSourceType = z.infer<
 export type ExternalEvidenceAccessStatus = z.infer<
   typeof externalEvidenceAccessStatusSchema
 >;
+export type MetadataQualityLevel = z.infer<typeof metadataQualityLevelSchema>;
+export type MetadataQualityProfile = z.infer<
+  typeof metadataQualityProfileSchema
+>;
+export type EvidenceVeracityLevel = z.infer<typeof evidenceVeracityLevelSchema>;
+export type EvidenceVeracityScore = z.infer<typeof evidenceVeracityScoreSchema>;
 export type ExternalEvidenceSourceState = z.infer<
   typeof externalEvidenceSourceStateSchema
 >;
@@ -1442,6 +1523,8 @@ export type ExternalEvidenceCatalogItemDetail = z.infer<
   typeof externalEvidenceCatalogDetailSchema
 >;
 export type SourceDocumentRecord = z.infer<typeof sourceDocumentRecordSchema>;
+export type SourceTextChunk = z.infer<typeof sourceTextChunkSchema>;
+export type SourceArtifact = z.infer<typeof sourceArtifactSchema>;
 export type EvidenceClaimReview = z.infer<typeof evidenceClaimReviewSchema>;
 export type EvidenceOntologyMapping = z.infer<
   typeof evidenceOntologyMappingSchema

@@ -1,0 +1,43 @@
+version: 0.1
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/metadata-taxonomy.yml
+
+source_artifact:
+  required_fields:
+    - artifact_id
+    - source_document_id
+    - file_name
+    - file_hash
+    - mime_type
+    - extraction_method
+    - ingestion_status
+    - metadata_quality
+    - veracity_score
+  optional_fields:
+    - local_path
+    - file_size_bytes
+    - page_count
+    - title
+    - doi
+    - license
+    - access_status
+    - imported_at
+    - failure_message
+
+source_text_chunk:
+  required_fields:
+    - chunk_id
+    - artifact_id
+    - source_document_id
+    - chunk_index
+    - text
+    - source_locator
+  optional_fields:
+    - page_number
+    - char_start
+    - char_end
+    - metadata
+
+rules:
+  - Source artifacts are linked to ExternalSourceRecord and do not replace it.
+  - File hash is the primary local-artifact dedupe key.
+  - Text chunks must include source locators suitable for evidence traces.

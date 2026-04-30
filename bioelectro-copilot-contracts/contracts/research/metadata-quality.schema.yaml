@@ -1,0 +1,53 @@
+version: 0.1
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/metadata-taxonomy.yml
+
+metadata_quality_profile:
+  required_fields:
+    - score
+    - level
+    - present_fields
+    - missing_fields
+    - categories
+  optional_fields:
+    - notes
+
+categories:
+  signal_generation:
+    fields:
+      - title
+      - source_identity
+      - measurement_units
+      - temporal_resolution
+      - timestamp_origin
+  signal_quality:
+    fields:
+      - calibration_context
+      - validation_context
+      - quality_flags
+      - measurement_range
+  contextual_annotations:
+    fields:
+      - operating_context
+      - event_annotations
+      - maintenance_history
+  data_lineage:
+    fields:
+      - file_hash
+      - extraction_method
+      - source_locator
+      - extractor_version
+  access_and_licensing:
+    fields:
+      - access_status
+      - license
+      - storage_posture
+  review_state:
+    fields:
+      - review_status
+      - analyst_note
+      - downstream_usage
+
+rules:
+  - Score range is 0 to 1.
+  - Low metadata quality must reduce confidence when evidence is used for recommendations.
+  - Missing fields remain explicit and audit-visible.

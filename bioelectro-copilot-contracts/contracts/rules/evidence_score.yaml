@@ -13,11 +13,20 @@ evidence_scoring:
       scale: [1, 2, 3, 4, 5]
     recency_or_context_fitness:
       scale: [1, 2, 3, 4, 5]
+    metadata_completeness:
+      scale: [1, 2, 3, 4, 5]
+    extraction_trace_quality:
+      scale: [1, 2, 3, 4, 5]
+    review_posture:
+      scale: [1, 2, 3, 4, 5]
   aggregation:
     method: weighted_average
     default_weights:
       source_rigor: 0.25
-      relevance_to_case: 0.30
-      measurement_quality: 0.20
-      comparability_after_normalization: 0.15
+      relevance_to_case: 0.20
+      measurement_quality: 0.15
+      comparability_after_normalization: 0.10
       recency_or_context_fitness: 0.10
+      metadata_completeness: 0.15
+      extraction_trace_quality: 0.10
+      review_posture: 0.05

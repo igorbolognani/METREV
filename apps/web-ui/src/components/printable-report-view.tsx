@@ -5,29 +5,29 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  PrintableEvaluationReportResponse,
-  ReportConversationResponse,
+    PrintableEvaluationReportResponse,
+    ReportConversationResponse,
 } from '@metrev/domain-contracts';
 
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-  askReportConversation,
-  fetchPrintableEvaluationReport,
+    askReportConversation,
+    fetchPrintableEvaluationReport,
 } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 import {
-  usePrintableReportTab,
-  type PrintableReportTab,
+    usePrintableReportTab,
+    type PrintableReportTab,
 } from '@/lib/printable-report-view-query-state';
 
 void React;
@@ -64,6 +64,122 @@ function formatPersistedUsage(
   return `${formatToken(value.usage_type)} · ${targetId}${
     value.note ? ` · ${value.note}` : ''
   }`;
+}
+
+type EvidenceQualitySnapshotEntry = {
+  confidence_penalties: string[];
+  evidence_id: string | null;
+  metadata_quality_level: string | null;
+  review_status: string | null;
+  source_artifact_ids: string[];
+  source_document_id: string | null;
+  source_locator_refs: string[];
+  title: string | null;
+  veracity_level: string | null;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    const text = readString(entry);
+    return text ? [text] : [];
+  });
+}
+
+function uniqueByKey<T>(items: T[], resolveKey: (item: T) => string): T[] {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = resolveKey(item);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function collectEvidenceQualityEntries(
+  report: PrintableEvaluationReportResponse,
+): EvidenceQualitySnapshotEntry[] {
+  const entries = report.evaluation_lineage.workspace_snapshots.flatMap(
+    (snapshot) => {
+      const payload = asRecord(snapshot.payload);
+      const summary = asRecord(payload?.evidence_quality_summary);
+      const summaryEntries = summary?.entries;
+
+      if (!Array.isArray(summaryEntries)) {
+        return [];
+      }
+
+      return summaryEntries.flatMap((entry) => {
+        const fields = asRecord(entry);
+
+        if (!fields) {
+          return [];
+        }
+
+        return [
+          {
+            confidence_penalties: readStringArray(fields.confidence_penalties),
+            evidence_id: readString(fields.evidence_id),
+            metadata_quality_level: readString(fields.metadata_quality_level),
+            review_status: readString(fields.review_status),
+            source_artifact_ids: readStringArray(fields.source_artifact_ids),
+            source_document_id: readString(fields.source_document_id),
+            source_locator_refs: readStringArray(fields.source_locator_refs),
+            title: readString(fields.title),
+            veracity_level: readString(fields.veracity_level),
+          },
+        ];
+      });
+    },
+  );
+
+  return uniqueByKey(
+    entries,
+    (entry) =>
+      entry.evidence_id ?? entry.title ?? entry.source_document_id ?? '',
+  );
+}
+
+function formatEvidenceQualityEntry(entry: EvidenceQualitySnapshotEntry) {
+  const parts = [
+    entry.metadata_quality_level
+      ? `Metadata ${formatToken(entry.metadata_quality_level)}`
+      : null,
+    entry.veracity_level
+      ? `Veracity ${formatToken(entry.veracity_level)}`
+      : null,
+    entry.review_status ? `Review ${formatToken(entry.review_status)}` : null,
+    entry.source_document_id ? `Source ${entry.source_document_id}` : null,
+    entry.source_artifact_ids.length > 0
+      ? `Artifacts ${entry.source_artifact_ids.slice(0, 2).join(', ')}`
+      : null,
+    entry.source_locator_refs.length > 0
+      ? `Locators ${entry.source_locator_refs.slice(0, 3).join(', ')}`
+      : null,
+    entry.confidence_penalties.length > 0
+      ? `Trace caveats ${entry.confidence_penalties.slice(0, 2).join('; ')}`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return `${entry.title ?? entry.evidence_id ?? 'Evidence record'} · ${parts.join(' · ')}`;
 }
 
 export function groupReportConversationCitations(
@@ -151,13 +267,14 @@ export function ReportConversationTrace({
       {citationGroups.map((group) => (
         <div className="report-conversation-trace__group" key={group.key}>
           <span className="badge subtle">{group.label}</span>
-          <div className="workspace-chip-list compact">
+          <ul className="list-block">
             {group.citations.map((citation) => (
-              <span className="meta-chip" key={citation.citation_id}>
-                {citation.label}
-              </span>
+              <li key={citation.citation_id}>
+                <strong>{citation.label}</strong>
+                {citation.note ? ` - ${citation.note}` : ''}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       ))}
     </div>
@@ -226,6 +343,7 @@ export function PrintableReportWorkspaceView({
   const [chatError, setChatError] = React.useState<string | null>(null);
   const [isAsking, setIsAsking] = React.useState(false);
   const presentation = report.presentation;
+  const evidenceQualityEntries = collectEvidenceQualityEntries(report);
   const tabs = presentation?.tabs.map((tab) => ({
     badge:
       tab.key === 'report'
@@ -501,6 +619,15 @@ export function PrintableReportWorkspaceView({
                     ),
                   )}
                 </ul>
+              </WorkspaceDataCard>
+              <WorkspaceDataCard>
+                <h3>Evidence quality caveats</h3>
+                {listOrEmpty(
+                  evidenceQualityEntries.map((entry) =>
+                    formatEvidenceQualityEntry(entry),
+                  ),
+                  'No metadata or veracity caveats were attached to persisted evidence snapshots.',
+                )}
               </WorkspaceDataCard>
             </WorkspaceSection>
 

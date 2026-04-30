@@ -4,22 +4,22 @@ import mfcPaperFixture from '../fixtures/research/mfc-paper.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-  evidenceClaimSchema,
-  researchColumnDefinitionSchema,
-  researchDecisionIngestionPreviewSchema,
-  researchEvidencePackSchema,
-  researchExtractionResultSchema,
-  researchPaperMetadataSchema,
-  researchSystemPerformanceExtractionSchema,
-  type EvidenceClaim,
+    evidenceClaimSchema,
+    researchColumnDefinitionSchema,
+    researchDecisionIngestionPreviewSchema,
+    researchEvidencePackSchema,
+    researchExtractionResultSchema,
+    researchPaperMetadataSchema,
+    researchSystemPerformanceExtractionSchema,
+    type EvidenceClaim,
 } from '@metrev/domain-contracts';
 import {
-  buildDecisionIngestionPreview,
-  buildResearchEvidencePack,
-  extractMetricMeasurements,
-  findDefaultResearchColumn,
-  getDefaultResearchColumns,
-  runDeterministicResearchExtraction,
+    buildDecisionIngestionPreview,
+    buildResearchEvidencePack,
+    extractMetricMeasurements,
+    findDefaultResearchColumn,
+    getDefaultResearchColumns,
+    runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 
 const now = '2026-04-24T12:00:00.000Z';
@@ -83,7 +83,7 @@ describe('research intelligence runtime contracts', () => {
       source: 'abstract',
       sourceDocumentId: 'fixture-source-mfc-001',
       sourceText:
-        'The microbial fuel cell reached power density of 1200 mW/m2 and current density of 1.2 A/m2.',
+        'The microbial fuel cell reached power density of 1200 mW/m2 and current density of 1.2 A/m2. The microbial electrolysis cell reported hydrogen production of 240 mL/L/d, NH4 recovery of 71%, conductivity of 18 mS/cm, HRT of 24 h, and energy input of 1.1 kWh/m3.',
     });
 
     expect(metrics).toEqual(
@@ -100,6 +100,31 @@ describe('research intelligence runtime contracts', () => {
           metric_key: 'current_density_a_m2',
           normalized_value: 1.2,
           normalized_unit: 'A/m2',
+        }),
+        expect.objectContaining({
+          metric_key: 'hydrogen_production_ml_l_d',
+          normalized_value: 240,
+          normalized_unit: 'mL/L/d',
+        }),
+        expect.objectContaining({
+          metric_key: 'ammonium_recovery_pct',
+          normalized_value: 71,
+          normalized_unit: '%',
+        }),
+        expect.objectContaining({
+          metric_key: 'conductivity_ms_cm',
+          normalized_value: 18,
+          normalized_unit: 'mS/cm',
+        }),
+        expect.objectContaining({
+          metric_key: 'hydraulic_retention_time_h',
+          normalized_value: 24,
+          normalized_unit: 'h',
+        }),
+        expect.objectContaining({
+          metric_key: 'energy_input_kwh_m3',
+          normalized_value: 1.1,
+          normalized_unit: 'kWh/m3',
         }),
       ]),
     );
@@ -219,7 +244,39 @@ describe('research intelligence runtime contracts', () => {
   });
 
   it('builds evidence packs and decision-ingestion previews from valid results only', () => {
-    const paper = researchPaperMetadataSchema.parse(mfcPaperFixture);
+    const paper = researchPaperMetadataSchema.parse({
+      ...mfcPaperFixture,
+      metadata: {
+        ...mfcPaperFixture.metadata,
+        local_source_artifact_id: 'source-artifact-fixture-001',
+        metadata_quality: {
+          score: 0.74,
+          level: 'medium',
+          present_fields: ['doi', 'publisher', 'abstract_text'],
+          missing_fields: ['license'],
+          categories: { signal_quality: true },
+          notes: ['Fixture metadata quality carried from local ingestion.'],
+        },
+        veracity_score: {
+          score: 0.69,
+          level: 'medium',
+          components: {
+            source_rigor: 0.8,
+            metadata_completeness: 0.74,
+            measurement_quality: 0.7,
+            extraction_method: 0.65,
+            trace_quality: 0.7,
+            normalization_support: 0.8,
+            review_status: 0.4,
+            relevance: 0.8,
+            recency_context_fit: 0.7,
+            corroboration_conflict: 0.55,
+          },
+          confidence_penalties: ['awaiting analyst evidence-pack review'],
+          notes: ['Fixture veracity is trace support, not claim truth.'],
+        },
+      },
+    });
     const summaryColumn = findDefaultResearchColumn('summary');
     const performanceColumn = findDefaultResearchColumn('performance_metrics');
     const limitationsColumn = findDefaultResearchColumn('limitations');
@@ -283,7 +340,22 @@ describe('research intelligence runtime contracts', () => {
     expect(pack.evidence_items[0]?.limitations).toEqual(
       expect.arrayContaining([expect.stringContaining('Membrane fouling')]),
     );
+    expect(pack.evidence_items[0]).toEqual(
+      expect.objectContaining({
+        metadata_quality: expect.objectContaining({ level: 'medium' }),
+        review_status: 'pending',
+        source_artifact_id: 'source-artifact-fixture-001',
+        source_locator_refs: expect.arrayContaining(['abstract']),
+        veracity_score: expect.objectContaining({ level: 'medium' }),
+      }),
+    );
     expect(decisionInput.evidence_records).toHaveLength(1);
+    expect(decisionInput.evidence_records[0]).toEqual(
+      expect.objectContaining({
+        source_artifact_ids: ['source-artifact-fixture-001'],
+        source_document_id: 'fixture-source-mfc-001',
+      }),
+    );
     expect(decisionInput.measured_metric_candidates).toEqual(
       expect.objectContaining({
         power_density_w_m2: expect.any(Number),

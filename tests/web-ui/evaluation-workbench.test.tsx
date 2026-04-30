@@ -215,12 +215,79 @@ describe('workspace presenters', () => {
       expect(failedModelingHtml).toContain('Model payload');
       expect(failedModelingHtml).toContain('Simulation provenance');
 
+      const evidenceQualityRecord = {
+        evidence_id: 'evidence-ui-quality-001',
+        evidence_type: 'literature_evidence' as const,
+        title: 'UI quality evidence fixture',
+        summary: 'Evidence record with visible metadata and veracity context.',
+        applicability_scope: {},
+        strength_level: 'moderate' as const,
+        provenance_note: 'Fixture evidence for UI quality disclosure.',
+        quantitative_metrics: {},
+        operating_conditions: {},
+        block_mapping: [],
+        limitations: [],
+        contradiction_notes: [],
+        tags: [],
+        metadata_quality: {
+          score: 0.92,
+          level: 'high',
+          present_fields: ['doi', 'publisher'],
+          missing_fields: [],
+          categories: {},
+          notes: [],
+        },
+        review_status: 'accepted',
+        source_artifact_ids: ['source-artifact-ui-001'],
+        source_locator_refs: ['page:7'],
+        veracity_score: {
+          score: 0.71,
+          level: 'medium',
+          components: {
+            source_rigor: 0.8,
+            metadata_completeness: 0.92,
+            measurement_quality: 0.7,
+            extraction_method: 0.7,
+            trace_quality: 0.7,
+            normalization_support: 0.7,
+            review_status: 0.9,
+            relevance: 0.8,
+            recency_context_fit: 0.6,
+            corroboration_conflict: 0.5,
+          },
+          confidence_penalties: ['single source trace'],
+          notes: [],
+        },
+      };
+      const qualityTypedEvidence =
+        workspace.evaluation.audit_record.typed_evidence.length > 0
+          ? workspace.evaluation.audit_record.typed_evidence.map(
+              (record, index) =>
+                index === 0
+                  ? {
+                      ...record,
+                      metadata_quality: evidenceQualityRecord.metadata_quality,
+                      review_status: evidenceQualityRecord.review_status,
+                      source_artifact_ids:
+                        evidenceQualityRecord.source_artifact_ids,
+                      source_locator_refs:
+                        evidenceQualityRecord.source_locator_refs,
+                      veracity_score: evidenceQualityRecord.veracity_score,
+                    }
+                  : record,
+            )
+          : [evidenceQualityRecord];
+
       const evidenceHtml = renderToStaticMarkup(
         React.createElement(EvaluationEvidenceTab, {
           workspace: {
             ...workspace,
             evaluation: {
               ...workspace.evaluation,
+              audit_record: {
+                ...workspace.evaluation.audit_record,
+                typed_evidence: qualityTypedEvidence,
+              },
               source_usages: [
                 {
                   id: 'source-usage-001',
@@ -257,6 +324,9 @@ describe('workspace presenters', () => {
       );
 
       expect(evidenceHtml).toContain('Persisted source usage');
+      expect(evidenceHtml).toContain('Metadata High');
+      expect(evidenceHtml).toContain('Veracity Medium');
+      expect(evidenceHtml).toContain('source-artifact-ui-001');
       expect(evidenceHtml).toContain('Accepted for analyst intake.');
       expect(evidenceHtml).toContain('Workspace snapshot inventory');
 

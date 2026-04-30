@@ -1,0 +1,45 @@
+version: 0.1
+domain: bioelectrochemical-metadata-intelligence
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/research-taxonomy.yml
+
+metadata_categories:
+  signal_generation:
+    description: Equipment, acquisition, measurement purpose, units, timestamp origin, temporal resolution, location, and signal modification metadata.
+    priority_levels: [basic, advanced, future_proof]
+  signal_quality:
+    description: Accuracy, trueness, precision, bias, drift, response time, calibration, validation, and quality-flag metadata.
+    priority_levels: [basic, advanced, future_proof]
+  contextual_annotations:
+    description: Events and operational context such as rain, toxic discharge, maintenance, cleaning, process upset, startup, and sampling campaign notes.
+    priority_levels: [basic, advanced, future_proof]
+  data_lineage:
+    description: Source, ingestion method, transformation history, extractor version, hash, chunk locator, and review lifecycle.
+    priority_levels: [basic, advanced, future_proof]
+  access_and_licensing:
+    description: Access posture, license, storage rights, redistribution constraints, and whether raw text may be committed.
+    priority_levels: [basic, advanced, future_proof]
+  review_state:
+    description: Analyst review status, accepted/rejected rationale, evidence type, confidence impact, and downstream usage boundary.
+    priority_levels: [basic, advanced, future_proof]
+
+quality_profile:
+  required_fields:
+    - source_identity
+    - extraction_method
+    - source_locator
+    - review_status
+  recommended_fields:
+    - doi
+    - license
+    - authors
+    - publication_date
+    - page_count
+    - measurement_units
+    - calibration_or_validation_context
+    - operating_context
+  scoring_principle: Missing metadata lowers confidence but must remain visible instead of blocking review.
+
+rules:
+  - Metadata quality is scored separately from claim correctness.
+  - Supplier claims must not be upgraded because their metadata is complete.
+  - Full extracted text from copyrighted sources stays in local persistence unless redistribution rights are explicit.

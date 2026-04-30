@@ -3,18 +3,18 @@ import fixture from '../fixtures/raw-case-input.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-    canonicalOutputSections,
-    createRawInputFromDomainTemplate,
-    loadContractInputDefinition,
-    loadContractOutputDefinition,
-    normalizeCaseInput,
-    normalizedCaseInputSchema,
-    rawCaseInputSchema,
-    runtimeAuthorityDecision,
-    runtimeFutureFacingReferenceFiles,
-    runtimeLoadedCanonicalFiles,
-    runtimeReferenceOnlyFiles,
-    runtimeValidationReferenceFiles,
+  canonicalOutputSections,
+  createRawInputFromDomainTemplate,
+  loadContractInputDefinition,
+  loadContractOutputDefinition,
+  normalizeCaseInput,
+  normalizedCaseInputSchema,
+  rawCaseInputSchema,
+  runtimeAuthorityDecision,
+  runtimeFutureFacingReferenceFiles,
+  runtimeLoadedCanonicalFiles,
+  runtimeReferenceOnlyFiles,
+  runtimeValidationReferenceFiles,
 } from '@metrev/domain-contracts';
 
 describe('domain-contract runtime alignment', () => {
@@ -58,6 +58,74 @@ describe('domain-contract runtime alignment', () => {
       normalized.cross_cutting_layers.evidence_and_provenance.typed_evidence,
     ).toHaveLength(1);
     expect(normalized.cross_cutting_layers.risk_and_maturity.trl).toBe(5);
+  });
+
+  it('marks penalized evidence as a trace-limited evidence profile during normalization', () => {
+    const normalized = normalizeCaseInput(
+      rawCaseInputSchema.parse({
+        ...fixture,
+        case_id: 'CASE-EVIDENCE-TRACE-001',
+        evidence_records: [
+          {
+            evidence_id: 'catalog:trace-penalty-001',
+            evidence_type: 'literature_evidence',
+            title: 'Pending PDF-derived benchmark',
+            summary:
+              'The source is relevant, but metadata completeness and review state still limit confidence.',
+            applicability_scope: {
+              source_document_id: 'source-doc-trace-001',
+            },
+            strength_level: 'strong',
+            provenance_note:
+              'Imported from a local PDF and awaiting final review.',
+            review_status: 'pending',
+            metadata_quality: {
+              score: 0.36,
+              level: 'low',
+              present_fields: ['source_document_id'],
+              missing_fields: ['doi', 'license'],
+              categories: {},
+              notes: ['Incomplete artifact metadata.'],
+            },
+            veracity_score: {
+              score: 0.48,
+              level: 'medium',
+              components: {
+                source_rigor: 0.72,
+                metadata_completeness: 0.36,
+                measurement_quality: 0.55,
+                extraction_method: 0.7,
+                trace_quality: 0.4,
+                normalization_support: 0.2,
+                review_status: 0.3,
+                relevance: 0.76,
+                recency_context_fit: 0.7,
+                corroboration_conflict: 0.52,
+              },
+              confidence_penalties: [
+                'pending_or_unaccepted_review',
+                'low_metadata_quality',
+              ],
+              notes: ['Awaiting analyst review and fuller metadata.'],
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(
+      normalized.cross_cutting_layers.evidence_and_provenance.evidence_profile,
+    ).toBe('single_source_with_trace_penalties');
+    expect(
+      normalized.cross_cutting_layers.evidence_and_provenance.typed_evidence[0],
+    ).toEqual(
+      expect.objectContaining({
+        review_status: 'pending',
+        applicability_scope: expect.objectContaining({
+          source_document_id: 'source-doc-trace-001',
+        }),
+      }),
+    );
   });
 
   it('records invalid core classifications as explicit fallback usage', () => {

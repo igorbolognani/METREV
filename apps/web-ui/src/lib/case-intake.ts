@@ -133,6 +133,8 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
 
 const runtimeIntakeProvenanceNote =
   'Captured directly during runtime intake and preserved as typed evidence.';
+const reviewedCatalogEvidenceNote =
+  'Reviewed and accepted into the external evidence catalog before intake selection.';
 
 function parseOptionalNumber(value: string): number | undefined {
   if (!value.trim()) {
@@ -393,7 +395,7 @@ function buildEvidenceRecords(
     summary: item.summary,
     applicability_scope: item.applicability_scope,
     strength_level: item.strength_level,
-    provenance_note: `${item.provenance_note} Reviewed and accepted into the external evidence catalog before intake selection.`,
+    provenance_note: `${item.provenance_note} ${reviewedCatalogEvidenceNote}`,
     quantitative_metrics: {},
     operating_conditions: {},
     block_mapping: [],
@@ -405,6 +407,19 @@ function buildEvidenceRecords(
       'reviewed-catalog',
       `source:${item.source_type}`,
     ]),
+    catalog_item_id: item.id,
+    review_status: item.review_status,
+    source_state: item.source_state,
+    source_type: item.source_type,
+    source_category: item.source_category,
+    source_url: item.source_url,
+    doi: item.doi,
+    publisher: item.publisher,
+    published_at: item.published_at,
+    claim_count: item.claim_count,
+    reviewed_claim_count: item.reviewed_claim_count,
+    metadata_quality: item.metadata_quality,
+    veracity_score: item.veracity_score,
   }));
   const researchEvidence = (researchDecisionInput?.evidence_records ?? []).map(
     (record) => ({

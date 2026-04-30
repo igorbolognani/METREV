@@ -10,6 +10,28 @@ scope:
     - hybrid_system
   source_role: literature_review_and_evidence_pack_generation
   downstream_boundary: bioelectrochemical_decision_support
+  strategic_reference_ecosystems:
+    - TRAMPOLINe
+
+application_areas:
+  wastewater_treatment:
+    description: Organic matter removal, effluent polishing, and treatment-performance benchmarking.
+  hydrogen_recovery:
+    description: MEC-oriented hydrogen production, gas handling, purity, and scale-up readiness.
+  nutrient_recovery:
+    description: Ammonia, nitrogen, phosphorus, and resource-recovery pathways.
+  co2_valorisation:
+    description: Microbial electrosynthesis and CO2 recycling into carbon-neutral products.
+  desalination:
+    description: Microbial desalination and salinity/conductivity-driven recovery use cases.
+  bioremediation:
+    description: Soil, aquifer, wastewater, organosulfur, and pollutant transformation cases.
+  industrial_bioproduction:
+    description: Bioelectrochemical production of fuels, chemicals, and industrial intermediates.
+  electrode_materials:
+    description: Anode, cathode, catalyst, separator, surface modification, durability, and procurement signals.
+  industrial_adoption:
+    description: TRL, scale-up, CAPEX/OPEX, integration, standards, reproducibility, and implementation barriers.
 
 review_column_groups:
   identification:
@@ -44,9 +66,35 @@ technical_detail_sections:
   - limitations
   - cost_scale_maturity
   - evidence_trace
+  - metadata_quality
+  - evidence_veracity
+
+trampoline_alignment:
+  work_package_lens:
+    - microbiology_of_electroactive_organisms
+    - engineering_redox_reactions_and_reactors
+    - innovative_materials_for_met
+    - industrial_bioproduction
+    - environmental_application_of_met
+    - industrial_adoption_communication_dissemination
+  decision_support_mapping:
+    microbiology_of_electroactive_organisms:
+      stack_blocks: [operational_biology]
+    engineering_redox_reactions_and_reactors:
+      stack_blocks: [reactor_architecture, electrical_interconnect_and_sealing]
+    innovative_materials_for_met:
+      stack_blocks: [anode_biofilm_support, cathode_catalyst_support, membrane_or_separator]
+    industrial_bioproduction:
+      outputs: [product_outputs, operating_conditions, technoeconomics]
+    environmental_application_of_met:
+      outputs: [treatment_outputs, nutrient_recovery, bioremediation]
+    industrial_adoption_communication_dissemination:
+      outputs: [risk_and_maturity, evidence_and_provenance, phased_roadmap]
 
 rules:
   - Research extraction must preserve source text spans for every non-null claim.
   - Numerical values must retain original unit, normalized unit, source span, and normalization rule id when converted.
   - Missing fields remain explicit and must not be filled through LLM inference.
   - Evidence packs are decision-support inputs only after schema validation and analyst-visible confidence review.
+  - Strategic project pages may inform vocabulary and ecosystem mapping but must not be treated as validated stack performance evidence.
+  - Metadata quality and evidence veracity are distinct review dimensions and both must remain audit-visible.

@@ -3,17 +3,17 @@ import rawFixture from './raw-case-input.json';
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  rawCaseInputSchema,
-  type ExternalEvidenceCatalogListResponse,
+    rawCaseInputSchema,
+    type ExternalEvidenceCatalogListResponse,
 } from '@metrev/domain-contracts';
 
 import {
-  buildCaseHistoryWorkspace,
-  buildEvidenceExplorerWorkspace,
-  buildEvaluationComparison,
-  buildEvaluationWorkspace,
-  buildEvidenceReviewWorkspace,
-  buildPrintableEvaluationReport,
+    buildCaseHistoryWorkspace,
+    buildEvaluationComparison,
+    buildEvaluationWorkspace,
+    buildEvidenceExplorerWorkspace,
+    buildEvidenceReviewWorkspace,
+    buildPrintableEvaluationReport,
 } from '../../apps/api-server/src/presenters/workspace-presenters';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 
@@ -88,7 +88,41 @@ export async function buildWorkspaceViewFixtures() {
         evaluation_id: current.evaluation_id,
         case_id: current.case_id,
         snapshot_type: 'report' as const,
-        payload: { generated_from: 'workspace-view-fixture' },
+        payload: {
+          generated_from: 'workspace-view-fixture',
+          evidence_quality_summary: {
+            typed_evidence_count: 1,
+            trace_limited_count: 1,
+            metadata_quality_levels: { high: 1 },
+            veracity_levels: { medium: 1 },
+            confidence_penalties: ['metadata license missing'],
+            source_document_ids: ['source-doc-fixture-001'],
+            source_artifact_ids: ['source-artifact-fixture-001'],
+            source_locator_refs: ['page:12'],
+            reviewed_claim_ids: ['claim-fixture-001'],
+            reviewed_claim_locator_refs: ['claim:page:12'],
+            entries: [
+              {
+                evidence_id: 'catalog:catalog-item-fixture-001',
+                title: 'Accepted benchmark source',
+                evidence_type: 'literature_evidence',
+                strength_level: 'strong',
+                source_document_id: 'source-doc-fixture-001',
+                source_artifact_ids: ['source-artifact-fixture-001'],
+                source_locator_refs: ['page:12'],
+                reviewed_claim_ids: ['claim-fixture-001'],
+                reviewed_claim_locator_refs: ['claim:page:12'],
+                review_status: 'accepted',
+                metadata_quality_level: 'high',
+                metadata_quality_score: 0.91,
+                veracity_level: 'medium',
+                veracity_score: 0.74,
+                confidence_penalties: ['metadata license missing'],
+                trace_limited: true,
+              },
+            ],
+          },
+        },
         created_at: current.audit_record.timestamp,
       },
     ],

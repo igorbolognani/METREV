@@ -99,6 +99,7 @@ const item: ExternalEvidenceCatalogItemDetail = {
       note: 'Linked by analyst during supplier review.',
     },
   ],
+  source_artifacts: [],
   raw_payload: {
     imported_from: 'crossref',
     raw: true,
@@ -128,6 +129,7 @@ describe('external evidence detail view', () => {
     expect(html).toContain('Provenance');
     expect(html).toContain('Payloads');
     expect(html).toContain('Source identity and timestamps');
+    expect(html).toContain('Metadata quality and veracity');
     expect(html).toContain('Applicability scope');
   });
 

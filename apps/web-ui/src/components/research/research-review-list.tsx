@@ -11,6 +11,7 @@ import type {
   ResearchPaperSearchFailure,
   ResearchPaperSearchResult,
   ResearchReviewSummary,
+  SourceArtifact,
 } from '@metrev/domain-contracts';
 
 import { TabsContent } from '@/components/ui/tabs';
@@ -27,6 +28,7 @@ import {
   createResearchReview,
   fetchResearchBackfills,
   fetchResearchReviews,
+  importLocalSources,
   queueResearchBackfill,
   searchResearchPapers,
   stageResearchPapers,
@@ -54,10 +56,16 @@ export function ResearchReviewListView({
   importPending,
   importedPapers,
   limit,
+  localPdfArtifacts,
+  localPdfImportError,
+  localPdfImportPending,
+  localPdfPaths,
   onBackfillMaxPagesChange,
   onCreate,
   onImportSelected,
+  onImportLocalPdfs,
   onLimitChange,
+  onLocalPdfPathsChange,
   onQueueBackfill,
   onRunSearch,
   onSearchQueryChange,
@@ -84,10 +92,16 @@ export function ResearchReviewListView({
   importPending: boolean;
   importedPapers: ResearchPaperMetadata[];
   limit: number;
+  localPdfArtifacts: SourceArtifact[];
+  localPdfImportError?: Error | null;
+  localPdfImportPending: boolean;
+  localPdfPaths: string;
   onBackfillMaxPagesChange: (pages: number) => void;
   onCreate: () => void;
   onImportSelected: () => void;
+  onImportLocalPdfs: () => void;
   onLimitChange: (limit: number) => void;
+  onLocalPdfPathsChange: (paths: string) => void;
   onQueueBackfill: () => void;
   onRunSearch: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -199,6 +213,9 @@ export function ResearchReviewListView({
               {importError ? (
                 <p className="error">{importError.message}</p>
               ) : null}
+              {localPdfImportError ? (
+                <p className="error">{localPdfImportError.message}</p>
+              ) : null}
               <div className="workspace-action-row">
                 <button
                   disabled={searchPending || searchQuery.trim().length < 3}
@@ -222,6 +239,66 @@ export function ResearchReviewListView({
                       : 'Create review'}
                 </button>
               </div>
+            </WorkspaceDataCard>
+
+            <WorkspaceDataCard>
+              <div className="workspace-data-card__header">
+                <div>
+                  <span className="badge subtle">Local sources</span>
+                  <h3>Local PDF import</h3>
+                </div>
+                <div className="workspace-chip-list compact">
+                  <span className="meta-chip">
+                    {localPdfArtifacts.length} artifact(s)
+                  </span>
+                  <span className="meta-chip">Metadata quality</span>
+                </div>
+              </div>
+              <p>
+                Import local MFC, MEC, MET, TRAMPOLINe, and metadata sources as
+                analyst-gated evidence with file hashes, extraction traces, page
+                locators, and veracity penalties.
+              </p>
+              <label>
+                <span>PDF paths or manifest</span>
+                <textarea
+                  onChange={(event) =>
+                    onLocalPdfPathsChange(event.target.value)
+                  }
+                  placeholder="/home/igor/Downloads/9781789063400.pdf"
+                  rows={4}
+                  value={localPdfPaths}
+                />
+              </label>
+              <div className="workspace-action-row">
+                <button
+                  disabled={
+                    localPdfImportPending ||
+                    localPdfPaths.trim().length === 0
+                  }
+                  onClick={onImportLocalPdfs}
+                  type="button"
+                >
+                  {localPdfImportPending ? 'Importing...' : 'Import local PDFs'}
+                </button>
+              </div>
+              {localPdfArtifacts.length === 0 ? (
+                <p className="muted">
+                  Imported PDF chunks stay in local storage and enter review as
+                  manual sources.
+                </p>
+              ) : (
+                <ul className="list-block">
+                  {localPdfArtifacts.map((artifact) => (
+                    <li key={artifact.artifact_id}>
+                      {artifact.file_name} - quality{' '}
+                      {formatToken(artifact.metadata_quality.level)} - veracity{' '}
+                      {formatToken(artifact.veracity_score.level)} - chunks{' '}
+                      {artifact.chunks.length}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </WorkspaceDataCard>
 
             <WorkspaceDataCard>
@@ -480,6 +557,16 @@ export function ResearchReviewListWorkspace() {
   const [importedPapers, setImportedPapers] = React.useState<
     ResearchPaperMetadata[]
   >([]);
+  const [localPdfPaths, setLocalPdfPaths] = React.useState(
+    [
+      '/home/igor/Downloads/9781789063400.pdf',
+      '/home/igor/Downloads/El valor de los metadatos para las estaciones de recuperaci n de recursos del agua.pdf',
+      '/home/igor/Downloads/9781789061154_0031.pdf',
+    ].join('\n'),
+  );
+  const [localPdfArtifacts, setLocalPdfArtifacts] = React.useState<
+    SourceArtifact[]
+  >([]);
 
   const query = useQuery({
     queryKey: ['research-reviews'],
@@ -513,6 +600,29 @@ export function ResearchReviewListWorkspace() {
       }),
     onSuccess: (response) => {
       setImportedPapers(response.papers);
+    },
+  });
+  const localPdfImportMutation = useMutation({
+    mutationFn: () =>
+      importLocalSources({
+        files: localPdfPaths
+          .split(/[\n,|]/)
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+        access_status: 'unknown',
+        review_status: 'pending',
+      }),
+    onSuccess: (response) => {
+      setLocalPdfArtifacts(response.artifacts);
+      setImportedPapers((current) => {
+        const bySourceDocument = new Map(
+          current.map((paper) => [paper.source_document_id, paper]),
+        );
+        for (const paper of response.papers) {
+          bySourceDocument.set(paper.source_document_id, paper);
+        }
+        return [...bySourceDocument.values()];
+      });
     },
   });
   const createMutation = useMutation({
@@ -582,6 +692,10 @@ export function ResearchReviewListWorkspace() {
       importPending={importMutation.isPending}
       importedPapers={importedPapers}
       limit={limit}
+      localPdfArtifacts={localPdfArtifacts}
+      localPdfImportError={localPdfImportMutation.error}
+      localPdfImportPending={localPdfImportMutation.isPending}
+      localPdfPaths={localPdfPaths}
       onBackfillMaxPagesChange={(pages) =>
         setBackfillMaxPages(
           Number.isFinite(pages) && pages > 0 ? Math.min(pages, 100) : 1,
@@ -589,7 +703,9 @@ export function ResearchReviewListWorkspace() {
       }
       onCreate={() => createMutation.mutate()}
       onImportSelected={() => importMutation.mutate()}
+      onImportLocalPdfs={() => localPdfImportMutation.mutate()}
       onLimitChange={setLimit}
+      onLocalPdfPathsChange={setLocalPdfPaths}
       onQueueBackfill={() => backfillMutation.mutate()}
       onRunSearch={() => searchMutation.mutate()}
       onSearchQueryChange={setSearchQuery}

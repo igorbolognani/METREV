@@ -18,6 +18,8 @@ import type {
   ExternalEvidenceCatalogListResponse,
   ExternalEvidenceReviewRequest,
   ExternalEvidenceReviewStatus,
+  LocalSourceImportRequest,
+  LocalSourceImportResponse,
   PrintableEvaluationReportResponse,
   QueueResearchBackfillRequest,
   RawCaseInput,
@@ -32,6 +34,7 @@ import type {
   RunResearchExtractionsResponse,
   SearchResearchPapersRequest,
   SearchResearchPapersResponse,
+  SourceArtifact,
   StageResearchPapersRequest,
   StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
@@ -541,6 +544,38 @@ export async function stageResearchPapers(
   });
 
   return parseJson<StageResearchPapersResponse>(response);
+}
+
+export async function importLocalSources(
+  payload: LocalSourceImportRequest,
+): Promise<LocalSourceImportResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/source-artifacts/import`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return parseJson<LocalSourceImportResponse>(response);
+}
+
+export async function fetchSourceArtifact(
+  sourceDocumentId: string,
+): Promise<SourceArtifact> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/source-artifacts/${sourceDocumentId}`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson<SourceArtifact>(response);
 }
 
 export async function createResearchReview(

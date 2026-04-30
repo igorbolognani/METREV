@@ -1,0 +1,38 @@
+version: 0.1
+canonical_owner: bioelectrochem_agent_kit/domain/ontology/metadata-taxonomy.yml
+
+evidence_veracity_score:
+  required_fields:
+    - score
+    - level
+    - components
+    - confidence_penalties
+  optional_fields:
+    - notes
+
+components:
+  source_rigor:
+    scale: [0, 1]
+  metadata_completeness:
+    scale: [0, 1]
+  measurement_quality:
+    scale: [0, 1]
+  extraction_method:
+    scale: [0, 1]
+  trace_quality:
+    scale: [0, 1]
+  normalization_support:
+    scale: [0, 1]
+  review_status:
+    scale: [0, 1]
+  relevance:
+    scale: [0, 1]
+  recency_context_fit:
+    scale: [0, 1]
+  corroboration_conflict:
+    scale: [0, 1]
+
+rules:
+  - Project/ecosystem pages can score high for context but low for validated performance evidence.
+  - Pending review state caps downstream confidence.
+  - Unsupported unit normalization and weak locators must be visible confidence penalties.

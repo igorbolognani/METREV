@@ -14,6 +14,7 @@ import {
   researchPaperSearchFailureSchema,
   researchPaperSearchResultSchema,
   researchReviewDetailSchema,
+  sourceArtifactSchema,
 } from '@metrev/domain-contracts';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 
@@ -44,6 +45,7 @@ vi.mock('@/lib/api', () => ({
   fetchResearchEvidencePackDecisionInput: vi.fn(),
   fetchResearchReview: vi.fn(),
   fetchResearchReviews: vi.fn(),
+  importLocalSources: vi.fn(),
   queueResearchBackfill: vi.fn(),
   searchResearchPapers: vi.fn(),
   stageResearchPapers: vi.fn(),
@@ -164,6 +166,54 @@ function buildPackFixture() {
   });
 }
 
+function buildSourceArtifactFixture() {
+  return sourceArtifactSchema.parse({
+    artifact_id: 'artifact-001',
+    source_document_id: 'source-001',
+    local_path: '/tmp/fixture.pdf',
+    file_name: 'fixture.pdf',
+    file_hash: 'fixture-hash',
+    mime_type: 'application/pdf',
+    file_size_bytes: 1024,
+    page_count: 2,
+    extraction_method: 'pdftotext',
+    ingestion_status: 'parsed',
+    title: 'Fixture PDF',
+    doi: null,
+    license: 'local-review-only',
+    access_status: 'green',
+    metadata_quality: {
+      score: 0.75,
+      level: 'medium',
+      present_fields: ['source_identity', 'file_hash'],
+      missing_fields: ['doi'],
+      categories: {},
+      notes: [],
+    },
+    veracity_score: {
+      score: 0.68,
+      level: 'medium',
+      components: {
+        source_rigor: 0.7,
+        metadata_completeness: 0.75,
+        measurement_quality: 0.55,
+        extraction_method: 0.72,
+        trace_quality: 0.82,
+        normalization_support: 0.45,
+        review_status: 0.45,
+        relevance: 0.72,
+        recency_context_fit: 0.68,
+        corroboration_conflict: 0.5,
+      },
+      confidence_penalties: ['pending_or_unaccepted_review'],
+      notes: [],
+    },
+    failure_message: null,
+    imported_at: now,
+    chunks: [],
+  });
+}
+
 describe('research review workspace UI', () => {
   it('renders the review list workspace shell', async () => {
     const { ResearchReviewListView } =
@@ -213,11 +263,16 @@ describe('research review workspace UI', () => {
           }),
         ],
         limit: 25,
+        localPdfArtifacts: [buildSourceArtifactFixture()],
+        localPdfImportPending: false,
+        localPdfPaths: '/tmp/fixture.pdf',
         onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
+        onImportLocalPdfs: vi.fn(),
         onQueueBackfill: vi.fn(),
         onImportSelected: vi.fn(),
         onLimitChange: vi.fn(),
+        onLocalPdfPathsChange: vi.fn(),
         onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
@@ -279,10 +334,15 @@ describe('research review workspace UI', () => {
         importPending: false,
         importedPapers: [],
         limit: 25,
+        localPdfArtifacts: [],
+        localPdfImportPending: false,
+        localPdfPaths: '',
         onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
         onImportSelected: vi.fn(),
+        onImportLocalPdfs: vi.fn(),
         onLimitChange: vi.fn(),
+        onLocalPdfPathsChange: vi.fn(),
         onQueueBackfill: vi.fn(),
         onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
@@ -315,6 +375,9 @@ describe('research review workspace UI', () => {
     expect(createHtml).toContain('Research intelligence');
     expect(createHtml).toContain('Research layers');
     expect(createHtml).toContain('Create review');
+    expect(createHtml).toContain('Local PDF import');
+    expect(createHtml).toContain('Metadata quality');
+    expect(createHtml).toContain('fixture.pdf');
     expect(createHtml).toContain('Warehouse backfill');
     expect(createHtml).toContain('Queue warehouse backfill');
     expect(createHtml).toContain('External paper search');

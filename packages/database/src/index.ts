@@ -3,43 +3,47 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  caseHistoryResponseSchema,
-  evaluationClaimUsageSchema,
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  evaluationSourceUsageSchema,
-  evidenceClaimSchema,
-  evidenceClaimTypeSchema,
-  evidenceExtractionMethodSchema,
-  evidenceStrengthSchema,
-  evidenceTypeSchema,
-  externalEvidenceAccessStatusSchema,
-  externalEvidenceBulkReviewResponseSchema,
-  externalEvidenceCatalogDetailSchema,
-  externalEvidenceCatalogListResponseSchema,
-  ontologyMappingSourceSchema,
-  reportConversationTurnSchema,
-  simulationEnrichmentSchema,
-  sourceDocumentRecordSchema,
-  supplierDocumentSchema,
-  supplierDocumentTypeSchema,
-  workspaceSnapshotRecordSchema,
-  type CaseHistoryResponse,
-  type ConfidenceLevel,
-  type EvaluationListResponse,
-  type EvaluationResponse,
-  type EvidenceClaim,
-  type ExternalEvidenceBulkReviewResponse,
-  type ExternalEvidenceCatalogItemDetail,
-  type ExternalEvidenceCatalogItemSummary,
-  type ExternalEvidenceCatalogListResponse,
-  type ExternalEvidenceReviewAction,
-  type ExternalEvidenceReviewStatus,
-  type ExternalEvidenceSourceType,
-  type NarrativeMetadata,
-  type ReportConversationCitation,
-  type ReportConversationGrounding,
-  type ReportConversationTurn,
+    caseHistoryResponseSchema,
+    evaluationClaimUsageSchema,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    evaluationSourceUsageSchema,
+    evidenceClaimSchema,
+    evidenceClaimTypeSchema,
+    evidenceExtractionMethodSchema,
+    evidenceStrengthSchema,
+    evidenceTypeSchema,
+    evidenceVeracityScoreSchema,
+    externalEvidenceAccessStatusSchema,
+    externalEvidenceBulkReviewResponseSchema,
+    externalEvidenceCatalogDetailSchema,
+    externalEvidenceCatalogListResponseSchema,
+    metadataQualityProfileSchema,
+    ontologyMappingSourceSchema,
+    reportConversationTurnSchema,
+    simulationEnrichmentSchema,
+    sourceArtifactSchema,
+    sourceDocumentRecordSchema,
+    supplierDocumentSchema,
+    supplierDocumentTypeSchema,
+    workspaceSnapshotRecordSchema,
+    type CaseHistoryResponse,
+    type ConfidenceLevel,
+    type EvaluationListResponse,
+    type EvaluationResponse,
+    type EvidenceClaim,
+    type ExternalEvidenceBulkReviewResponse,
+    type ExternalEvidenceCatalogItemDetail,
+    type ExternalEvidenceCatalogItemSummary,
+    type ExternalEvidenceCatalogListResponse,
+    type ExternalEvidenceReviewAction,
+    type ExternalEvidenceReviewStatus,
+    type ExternalEvidenceSourceType,
+    type NarrativeMetadata,
+    type ReportConversationCitation,
+    type ReportConversationGrounding,
+    type ReportConversationTurn,
+    type SourceArtifact,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -53,17 +57,27 @@ const PRISMA_TRANSACTION_OPTIONS = {
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-  createResearchRepository,
-  MemoryResearchRepository,
-  PrismaResearchRepository,
-  type AddResearchReviewColumnInput,
-  type ClaimResearchExtractionJobsInput,
-  type CreateResearchEvidencePackInput,
-  type CreateResearchReviewInput,
-  type ResearchExtractionWorkItem,
-  type ResearchRepository,
-  type SaveResearchExtractionResultInput,
+    createResearchRepository,
+    MemoryResearchRepository,
+    PrismaResearchRepository,
+    type AddResearchReviewColumnInput,
+    type ClaimResearchExtractionJobsInput,
+    type CreateResearchEvidencePackInput,
+    type CreateResearchReviewInput,
+    type ResearchExtractionWorkItem,
+    type ResearchRepository,
+    type SaveResearchExtractionResultInput
 } from './research-repository';
+export {
+    buildEvidenceVeracityScore,
+    getSourceArtifactForSourceDocument,
+    importLocalPdfSources,
+    localSourceImportRequestToInput,
+    normalizeCliFiles,
+    resolveLocalSourceImportRequestToInput,
+    type LocalPdfImportFile,
+    type LocalPdfImportInput
+} from './source-artifacts';
 
 export interface EvaluationRepository {
   saveEvaluation(evaluation: EvaluationResponse): Promise<EvaluationResponse>;
@@ -462,7 +476,9 @@ type ExternalEvidenceAggregateRow = {
   doi: string | null;
   source_url: string | null;
   claim_count: number;
+  metadata_quality_level: string | null;
   reviewed_claim_count: number;
+  veracity_level: string | null;
 };
 
 function titleCaseToken(value: string): string {
@@ -517,6 +533,12 @@ function buildExternalEvidenceWarehouseAggregate(
       publishers: createExplorerFacetBuckets(
         rows.map((row) => row.publisher),
         (value) => (value === 'not_stated' ? 'Publisher not stated' : value),
+      ),
+      metadata_quality_levels: createExplorerFacetBuckets(
+        rows.map((row) => row.metadata_quality_level),
+      ),
+      veracity_levels: createExplorerFacetBuckets(
+        rows.map((row) => row.veracity_level),
       ),
     },
     snapshot: {
@@ -718,6 +740,130 @@ function extractResearchEvidenceReferencesFromEvaluation(
   );
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    const text = readString(entry);
+    return text ? [text] : [];
+  });
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
+}
+
+function countByValue(values: Array<string | null | undefined>) {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    if (!value) {
+      return counts;
+    }
+
+    return {
+      ...counts,
+      [value]: (counts[value] ?? 0) + 1,
+    };
+  }, {});
+}
+
+function buildEvidenceQualitySummary(evaluation: EvaluationResponse) {
+  const entries = evaluation.audit_record.typed_evidence.map((record) => {
+    const recordFields = record as Record<string, unknown>;
+    const applicabilityScope = asRecord(record.applicability_scope);
+    const metadataQualityResult = metadataQualityProfileSchema.safeParse(
+      recordFields.metadata_quality,
+    );
+    const veracityScoreResult = evidenceVeracityScoreSchema.safeParse(
+      recordFields.veracity_score,
+    );
+    const metadataQuality = metadataQualityResult.success
+      ? metadataQualityResult.data
+      : null;
+    const veracityScore = veracityScoreResult.success
+      ? veracityScoreResult.data
+      : null;
+    const sourceDocumentId =
+      readString(recordFields.source_document_id) ??
+      readString(applicabilityScope?.source_document_id);
+    const sourceArtifactIds = uniqueStrings([
+      readString(recordFields.source_artifact_id),
+      ...readStringArray(recordFields.source_artifact_ids),
+    ]);
+    const sourceLocatorRefs = readStringArray(recordFields.source_locator_refs);
+    const reviewedClaimIds = readStringArray(recordFields.reviewed_claim_ids);
+    const reviewedClaimLocatorRefs = readStringArray(
+      recordFields.reviewed_claim_locator_refs,
+    );
+    const confidencePenalties = veracityScore?.confidence_penalties ?? [];
+    const reviewStatus = readString(recordFields.review_status);
+
+    return {
+      evidence_id: record.evidence_id,
+      title: record.title,
+      evidence_type: record.evidence_type,
+      strength_level: record.strength_level,
+      source_document_id: sourceDocumentId,
+      source_artifact_ids: sourceArtifactIds,
+      source_locator_refs: sourceLocatorRefs,
+      reviewed_claim_ids: reviewedClaimIds,
+      reviewed_claim_locator_refs: reviewedClaimLocatorRefs,
+      review_status: reviewStatus,
+      metadata_quality_level: metadataQuality?.level ?? null,
+      metadata_quality_score: metadataQuality?.score ?? null,
+      veracity_level: veracityScore?.level ?? null,
+      veracity_score: veracityScore?.score ?? null,
+      confidence_penalties: confidencePenalties,
+      trace_limited:
+        metadataQuality?.level === 'low' ||
+        veracityScore?.level === 'low' ||
+        confidencePenalties.length > 0 ||
+        reviewStatus === 'pending',
+    };
+  });
+
+  return {
+    typed_evidence_count: entries.length,
+    trace_limited_count: entries.filter((entry) => entry.trace_limited).length,
+    metadata_quality_levels: countByValue(
+      entries.map((entry) => entry.metadata_quality_level),
+    ),
+    veracity_levels: countByValue(entries.map((entry) => entry.veracity_level)),
+    confidence_penalties: uniqueStrings(
+      entries.flatMap((entry) => entry.confidence_penalties),
+    ),
+    source_document_ids: uniqueStrings(
+      entries.map((entry) => entry.source_document_id),
+    ),
+    source_artifact_ids: uniqueStrings(
+      entries.flatMap((entry) => entry.source_artifact_ids),
+    ),
+    source_locator_refs: uniqueStrings(
+      entries.flatMap((entry) => entry.source_locator_refs),
+    ),
+    reviewed_claim_ids: uniqueStrings(
+      entries.flatMap((entry) => entry.reviewed_claim_ids),
+    ),
+    reviewed_claim_locator_refs: uniqueStrings(
+      entries.flatMap((entry) => entry.reviewed_claim_locator_refs),
+    ),
+    entries,
+  };
+}
+
 function toEvaluationSourceUsageType(input: {
   sourceType:
     | 'OPENALEX'
@@ -761,6 +907,7 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
     extractResearchEvidenceReferencesFromEvaluation(evaluation).map(
       (entry) => entry.sourceDocumentId,
     );
+  const evidenceQualitySummary = buildEvidenceQualitySummary(evaluation);
   const basePayload = {
     evaluation_id: evaluation.evaluation_id,
     case_id: evaluation.case_id,
@@ -770,6 +917,7 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
         .confidence_level,
     attached_catalog_item_ids: catalogItemIds,
     attached_research_source_document_ids: researchSourceDocumentIds,
+    evidence_quality_summary: evidenceQualitySummary,
   };
 
   return [
@@ -1076,6 +1224,7 @@ function createExternalEvidenceSummary(record: {
   claimCount?: number;
   reviewedClaimCount?: number;
   tags: string[];
+  payload?: unknown;
   createdAt: Date;
   updatedAt: Date;
   sourceRecord: {
@@ -1120,9 +1269,29 @@ function createExternalEvidenceSummary(record: {
       ? record.extractedClaims
       : [],
     tags: record.tags,
+    metadata_quality: metadataQualityFromPayload(record.payload),
+    veracity_score: veracityScoreFromPayload(record.payload),
     created_at: record.createdAt.toISOString(),
     updated_at: record.updatedAt.toISOString(),
   };
+}
+
+function metadataQualityFromPayload(payload: unknown) {
+  const candidate =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>).metadata_quality
+      : null;
+  const parsed = metadataQualityProfileSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function veracityScoreFromPayload(payload: unknown) {
+  const candidate =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>).veracity_score
+      : null;
+  const parsed = evidenceVeracityScoreSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function createExternalEvidenceDetail(record: {
@@ -1229,6 +1398,45 @@ function createExternalEvidenceDetail(record: {
         | 'OTHER';
       note: string | null;
     }>;
+    sourceArtifacts?: Array<{
+      accessStatus:
+        | 'GOLD'
+        | 'GREEN'
+        | 'HYBRID'
+        | 'BRONZE'
+        | 'CLOSED'
+        | 'UNKNOWN';
+      chunks?: Array<{
+        artifactId: string;
+        charEnd: number | null;
+        charStart: number | null;
+        chunkIndex: number;
+        createdAt: Date;
+        id: string;
+        metadata: unknown;
+        pageNumber: number | null;
+        sourceLocator: string;
+        sourceRecordId: string;
+        text: string;
+      }>;
+      doi: string | null;
+      extractionMethod: string;
+      failureMessage: string | null;
+      fileHash: string;
+      fileName: string;
+      fileSizeBytes: number | null;
+      id: string;
+      importedAt: Date;
+      ingestionStatus: string;
+      license: string | null;
+      localPath: string | null;
+      metadataQuality: unknown;
+      mimeType: string;
+      pageCount: number | null;
+      sourceRecordId: string;
+      title: string | null;
+      veracityScore: unknown;
+    }>;
   };
 }): ExternalEvidenceCatalogItemDetail {
   return {
@@ -1238,10 +1446,84 @@ function createExternalEvidenceDetail(record: {
     supplier_documents: (record.sourceRecord.supplierDocuments ?? []).map(
       (document) => createSupplierDocument(document),
     ),
+    source_artifacts: (record.sourceRecord.sourceArtifacts ?? []).map(
+      (artifact) => createSourceArtifactRecord(artifact),
+    ),
     abstract_text: record.sourceRecord.abstractText,
     payload: record.payload,
     raw_payload: record.sourceRecord.rawPayload,
   };
+}
+
+function createSourceArtifactRecord(record: {
+  accessStatus: 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN';
+  chunks?: Array<{
+    artifactId: string;
+    charEnd: number | null;
+    charStart: number | null;
+    chunkIndex: number;
+    createdAt: Date;
+    id: string;
+    metadata: unknown;
+    pageNumber: number | null;
+    sourceLocator: string;
+    sourceRecordId: string;
+    text: string;
+  }>;
+  doi: string | null;
+  extractionMethod: string;
+  failureMessage: string | null;
+  fileHash: string;
+  fileName: string;
+  fileSizeBytes: number | null;
+  id: string;
+  importedAt: Date;
+  ingestionStatus: string;
+  license: string | null;
+  localPath: string | null;
+  metadataQuality: unknown;
+  mimeType: string;
+  pageCount: number | null;
+  sourceRecordId: string;
+  title: string | null;
+  veracityScore: unknown;
+}): SourceArtifact {
+  return sourceArtifactSchema.parse({
+    artifact_id: record.id,
+    source_document_id: record.sourceRecordId,
+    local_path: record.localPath,
+    file_name: record.fileName,
+    file_hash: record.fileHash,
+    mime_type: record.mimeType,
+    file_size_bytes: record.fileSizeBytes,
+    page_count: record.pageCount,
+    extraction_method: record.extractionMethod,
+    ingestion_status: record.ingestionStatus === 'failed' ? 'failed' : 'parsed',
+    title: record.title,
+    doi: record.doi,
+    license: record.license,
+    access_status: record.accessStatus.toLowerCase(),
+    metadata_quality: record.metadataQuality,
+    veracity_score: record.veracityScore,
+    failure_message: record.failureMessage,
+    imported_at: record.importedAt.toISOString(),
+    chunks: (record.chunks ?? []).map((chunk) => ({
+      chunk_id: chunk.id,
+      artifact_id: chunk.artifactId,
+      source_document_id: chunk.sourceRecordId,
+      chunk_index: chunk.chunkIndex,
+      page_number: chunk.pageNumber,
+      text: chunk.text,
+      source_locator: chunk.sourceLocator,
+      char_start: chunk.charStart,
+      char_end: chunk.charEnd,
+      metadata:
+        chunk.metadata && typeof chunk.metadata === 'object'
+          ? chunk.metadata
+          : {},
+      created_at: chunk.createdAt.toISOString(),
+    })),
+  });
 }
 
 function toCaseHistory(
@@ -1450,7 +1732,9 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
         doi: item.doi,
         source_url: item.source_url,
         claim_count: item.claim_count,
+        metadata_quality_level: item.metadata_quality?.level ?? null,
         reviewed_claim_count: item.reviewed_claim_count,
+        veracity_level: item.veracity_score?.level ?? null,
       })),
       pagedItems.length,
     );
@@ -2371,6 +2655,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 where,
                 select: {
                   evidenceType: true,
+                  payload: true,
                   reviewStatus: true,
                   claimCount: true,
                   sourceRecord: {
@@ -2427,7 +2712,11 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             doi: record.sourceRecord.doi,
             source_url: record.sourceRecord.sourceUrl,
             claim_count: record.claimCount,
+            metadata_quality_level:
+              metadataQualityFromPayload(record.payload)?.level ?? null,
             reviewed_claim_count: record.claims.length,
+            veracity_level:
+              veracityScoreFromPayload(record.payload)?.level ?? null,
           })),
           items.length,
         );
@@ -2474,6 +2763,14 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             include: {
               sourceRecord: {
                 include: {
+                  sourceArtifacts: {
+                    include: {
+                      chunks: {
+                        orderBy: [{ chunkIndex: 'asc' }],
+                        take: 12,
+                      },
+                    },
+                  },
                   supplierDocuments: true,
                 },
               },
@@ -2512,6 +2809,14 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             include: {
               sourceRecord: {
                 include: {
+                  sourceArtifacts: {
+                    include: {
+                      chunks: {
+                        orderBy: [{ chunkIndex: 'asc' }],
+                        take: 12,
+                      },
+                    },
+                  },
                   supplierDocuments: true,
                 },
               },
@@ -2542,6 +2847,14 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             include: {
               sourceRecord: {
                 include: {
+                  sourceArtifacts: {
+                    include: {
+                      chunks: {
+                        orderBy: [{ chunkIndex: 'asc' }],
+                        take: 12,
+                      },
+                    },
+                  },
                   supplierDocuments: true,
                 },
               },

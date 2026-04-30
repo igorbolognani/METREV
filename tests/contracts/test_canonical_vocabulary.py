@@ -219,6 +219,9 @@ def test_research_contract_pack_declares_core_boundaries() -> None:
         "column-definition.schema.yaml",
         "extraction-result.schema.yaml",
         "evidence-pack.schema.yaml",
+        "source-artifact.schema.yaml",
+        "metadata-quality.schema.yaml",
+        "evidence-veracity.schema.yaml",
     }
 
     existing_files = {path.name for path in RESEARCH_CONTRACTS_ROOT.glob("*.yaml")}
@@ -272,4 +275,49 @@ def test_research_domain_taxonomy_and_metric_rules_cover_runtime_terms() -> None
         "research_metric.internal_resistance.ohm_identity",
         "research_metric.voltage.v_identity",
         "research_metric.voltage.mv_to_v",
+        "research_metric.hydrogen_production.ml_l_d_identity",
+        "research_metric.ammonium_recovery.percent_identity",
+        "research_metric.conductivity.ms_cm_identity",
+        "research_metric.hrt.hours_identity",
+        "research_metric.energy_input.kwh_m3_identity",
     }.issubset(rule_ids)
+
+    applications = set((taxonomy.get("application_areas") or {}).keys())
+    assert {
+        "electrode_materials",
+        "nutrient_recovery",
+        "hydrogen_recovery",
+        "co2_valorisation",
+        "desalination",
+        "bioremediation",
+        "industrial_bioproduction",
+        "industrial_adoption",
+    }.issubset(applications)
+
+
+def test_metadata_taxonomy_declares_veracity_and_local_ingestion_boundaries() -> None:
+    metadata = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "metadata-taxonomy.yml")
+    categories = set((metadata.get("metadata_categories") or {}).keys())
+
+    assert {
+        "signal_generation",
+        "signal_quality",
+        "contextual_annotations",
+        "data_lineage",
+        "access_and_licensing",
+        "review_state",
+    }.issubset(categories)
+
+    source_artifact = _load_yaml(
+        RESEARCH_CONTRACTS_ROOT / "source-artifact.schema.yaml"
+    )
+    required_fields = set(
+        (source_artifact.get("source_artifact") or {}).get("required_fields") or []
+    )
+
+    assert {
+        "file_hash",
+        "extraction_method",
+        "metadata_quality",
+        "veracity_score",
+    }.issubset(required_fields)

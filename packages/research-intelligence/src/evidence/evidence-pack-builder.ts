@@ -1,18 +1,63 @@
 import {
-  researchEvidencePackSchema,
-  type ConfidenceLevel,
-  type RawEvidenceRecord,
-  type ResearchEvidencePack,
-  type ResearchExtractionResult,
-  type ResearchMetricMeasurement,
-  type ResearchPaperMetadata,
-  type ResearchReviewDetail,
+    evidenceVeracityScoreSchema,
+    metadataQualityProfileSchema,
+    researchEvidencePackSchema,
+    type ConfidenceLevel,
+    type EvidenceVeracityScore,
+    type MetadataQualityProfile,
+    type RawEvidenceRecord,
+    type ResearchEvidencePack,
+    type ResearchEvidenceTrace,
+    type ResearchExtractionResult,
+    type ResearchMetricMeasurement,
+    type ResearchPaperMetadata,
+    type ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return [
     ...new Set(values.filter((value): value is string => Boolean(value))),
   ];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readMetadataQuality(
+  metadata: Record<string, unknown> | null,
+): MetadataQualityProfile | undefined {
+  const parsed = metadataQualityProfileSchema.safeParse(
+    metadata?.metadata_quality,
+  );
+
+  return parsed.success ? parsed.data : undefined;
+}
+
+function readVeracityScore(
+  metadata: Record<string, unknown> | null,
+): EvidenceVeracityScore | undefined {
+  const parsed = evidenceVeracityScoreSchema.safeParse(
+    metadata?.veracity_score,
+  );
+
+  return parsed.success ? parsed.data : undefined;
+}
+
+function readSourceArtifactId(
+  metadata: Record<string, unknown> | null,
+): string | undefined {
+  return (
+    readString(metadata?.local_source_artifact_id) ??
+    readString(metadata?.source_artifact_id) ??
+    undefined
+  );
 }
 
 function confidenceFromResults(
@@ -53,6 +98,56 @@ function normalizedMetricsFromResults(
         )
       : [];
   });
+}
+
+function traceReferenceKey(input: {
+  columnId: string;
+  trace: ResearchEvidenceTrace;
+}) {
+  return [
+    input.columnId,
+    input.trace.source,
+    input.trace.source_document_id ?? '',
+    input.trace.claim_id ?? '',
+    input.trace.source_locator ?? '',
+    input.trace.page_number ?? '',
+  ].join('|');
+}
+
+function evidenceTraceReferences(results: ResearchExtractionResult[]): Array<{
+  claim_id: string | null;
+  column_id: string;
+  page_number: number | null;
+  source: ResearchEvidenceTrace['source'];
+  source_document_id: string | null;
+  source_locator: string | null;
+}> {
+  const references = new Map<
+    string,
+    {
+      claim_id: string | null;
+      column_id: string;
+      page_number: number | null;
+      source: ResearchEvidenceTrace['source'];
+      source_document_id: string | null;
+      source_locator: string | null;
+    }
+  >();
+
+  for (const result of results) {
+    for (const trace of result.evidence_trace) {
+      references.set(traceReferenceKey({ columnId: result.column_id, trace }), {
+        claim_id: trace.claim_id ?? null,
+        column_id: result.column_id,
+        page_number: trace.page_number ?? null,
+        source: trace.source,
+        source_document_id: trace.source_document_id ?? null,
+        source_locator: trace.source_locator ?? null,
+      });
+    }
+  }
+
+  return [...references.values()];
 }
 
 function collectStringValues(value: unknown): string[] {
@@ -112,12 +207,32 @@ function stringifyAnswer(answer: unknown): string {
 
 function buildEvidenceRecord(input: {
   limitationColumnIds: Set<string>;
+  packStatus: ResearchEvidencePack['status'];
   paper: ResearchPaperMetadata;
   results: ResearchExtractionResult[];
   reviewId: string;
 }): RawEvidenceRecord {
   const confidence = confidenceFromResults(input.results);
   const metrics = normalizedMetricsFromResults(input.results);
+  const metadata = asRecord(input.paper.metadata);
+  const metadataQuality = readMetadataQuality(metadata);
+  const veracityScore = readVeracityScore(metadata);
+  const sourceArtifactId = readSourceArtifactId(metadata);
+  const traceReferences = evidenceTraceReferences(input.results);
+  const sourceLocatorRefs = uniqueStrings(
+    traceReferences.map((trace) => trace.source_locator),
+  );
+  const pageLocatorRefs = uniqueStrings(
+    traceReferences.map((trace) =>
+      trace.page_number === null ? null : `page:${trace.page_number}`,
+    ),
+  );
+  const reviewedClaimIds = uniqueStrings(
+    traceReferences.map((trace) => trace.claim_id),
+  );
+  const resultIds = uniqueStrings(
+    input.results.map((result) => result.result_id ?? null),
+  );
   const limitations = uniqueStrings([
     ...input.results.flatMap((result) => limitationsFromAnswer(result.answer)),
     ...input.results.flatMap((result) =>
@@ -164,10 +279,23 @@ function buildEvidenceRecord(input: {
     contradiction_notes: [],
     benchmark_context:
       input.paper.journal ?? input.paper.publisher ?? undefined,
+    review_status: input.packStatus === 'reviewed' ? 'accepted' : 'pending',
+    source_document_id: input.paper.source_document_id,
+    source_locator_refs: [...sourceLocatorRefs, ...pageLocatorRefs],
+    reviewed_claim_ids: reviewedClaimIds,
+    source_artifact_ids: uniqueStrings([sourceArtifactId]),
+    evidence_trace_refs: traceReferences,
+    extraction_result_ids: resultIds,
+    ...(sourceArtifactId ? { source_artifact_id: sourceArtifactId } : {}),
+    ...(metadataQuality ? { metadata_quality: metadataQuality } : {}),
+    ...(veracityScore ? { veracity_score: veracityScore } : {}),
     tags: uniqueStrings([
       'research-review',
       `review:${input.reviewId}`,
       input.paper.source_type,
+      metadataQuality ? `metadata-quality:${metadataQuality.level}` : null,
+      veracityScore ? `veracity:${veracityScore.level}` : null,
+      sourceArtifactId ? 'local-source-artifact' : null,
     ]),
   };
 }
@@ -211,6 +339,7 @@ export function buildResearchEvidencePack(input: {
       ? [
           buildEvidenceRecord({
             limitationColumnIds,
+            packStatus: input.status,
             paper,
             results,
             reviewId: input.review.review_id,

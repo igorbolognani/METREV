@@ -157,6 +157,17 @@ export function EvidenceReviewTable({
                   <div className="evidence-review-cell-stack">
                     <span>{formatToken(item.evidence_type)}</span>
                     <span>{formatToken(item.source_state)}</span>
+                    {item.metadata_quality ? (
+                      <span>
+                        Metadata quality:{' '}
+                        {formatToken(item.metadata_quality.level)}
+                      </span>
+                    ) : null}
+                    {item.veracity_score ? (
+                      <span>
+                        Veracity: {formatToken(item.veracity_score.level)}
+                      </span>
+                    ) : null}
                     <span>Claims captured: {item.extracted_claims.length}</span>
                   </div>
                 </TableCell>

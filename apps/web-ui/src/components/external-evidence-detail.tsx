@@ -260,7 +260,7 @@ export function ExternalEvidenceDetailView({
     { badge: structuredClaims.length, label: 'Claims', value: 'claims' },
     {
       badge: sourceDocument
-        ? 1 + item.supplier_documents.length
+        ? 1 + item.supplier_documents.length + item.source_artifacts.length
         : item.supplier_documents.length,
       label: 'Provenance',
       value: 'provenance',
@@ -289,7 +289,10 @@ export function ExternalEvidenceDetailView({
       key: 'provenance-links',
       label: 'Provenance links',
       tone: 'success' as const,
-      value: (sourceDocument ? 1 : 0) + item.supplier_documents.length,
+      value:
+        (sourceDocument ? 1 : 0) +
+        item.supplier_documents.length +
+        item.source_artifacts.length,
     },
     {
       detail:
@@ -440,6 +443,31 @@ export function ExternalEvidenceDetailView({
                     </div>
                   ) : null}
                 </WorkspaceDataCard>
+                <WorkspaceDataCard tone="accent">
+                  <h3>Metadata quality and veracity</h3>
+                  <ul className="list-block">
+                    <li>
+                      Metadata quality{' '}
+                      {item.metadata_quality
+                        ? formatToken(item.metadata_quality.level)
+                        : 'Not scored'}
+                    </li>
+                    <li>
+                      Veracity{' '}
+                      {item.veracity_score
+                        ? formatToken(item.veracity_score.level)
+                        : 'Not scored'}
+                    </li>
+                    <li>
+                      Penalties{' '}
+                      {item.veracity_score?.confidence_penalties.length
+                        ? item.veracity_score.confidence_penalties
+                            .map(formatToken)
+                            .join(', ')
+                        : 'None recorded'}
+                    </li>
+                  </ul>
+                </WorkspaceDataCard>
                 <PayloadDisclosureCard
                   countBadge={applicabilityEntryCount}
                   description="Applicability stays explicit but collapsed until the analyst needs the raw object."
@@ -517,6 +545,58 @@ export function ExternalEvidenceDetailView({
                 ) : (
                   <p className="muted">
                     No supplier-linked documents were attached to this evidence
+                    record.
+                  </p>
+                )}
+              </WorkspaceDataCard>
+            </WorkspaceSection>
+
+            <WorkspaceSection
+              description="Imported local files keep hash, extraction, access, page, and chunk locators visible for analyst review."
+              eyebrow="Local artifacts"
+              title="Source artifacts and extracted chunks"
+            >
+              <WorkspaceDataCard>
+                {item.source_artifacts.length > 0 ? (
+                  <div className="workspace-card-list">
+                    {item.source_artifacts.map((artifact) => (
+                      <article
+                        className="workspace-inline-card"
+                        key={artifact.artifact_id}
+                      >
+                        <h3>{artifact.file_name}</h3>
+                        <ul className="list-block">
+                          <li>Hash {artifact.file_hash.slice(0, 16)}</li>
+                          <li>
+                            Extraction {formatToken(artifact.extraction_method)}
+                          </li>
+                          <li>
+                            Access {formatToken(artifact.access_status)}
+                          </li>
+                          <li>
+                            Metadata quality{' '}
+                            {formatToken(artifact.metadata_quality.level)}
+                          </li>
+                          <li>
+                            Veracity {formatToken(artifact.veracity_score.level)}
+                          </li>
+                          <li>{artifact.chunks.length} preview chunk(s)</li>
+                        </ul>
+                        {artifact.chunks.length > 0 ? (
+                          <ul className="list-block">
+                            {artifact.chunks.slice(0, 3).map((chunk) => (
+                              <li key={chunk.chunk_id}>
+                                {chunk.source_locator}: {chunk.text.slice(0, 160)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">
+                    No local source artifacts were attached to this evidence
                     record.
                   </p>
                 )}

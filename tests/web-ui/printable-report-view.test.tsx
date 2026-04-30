@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-  PrintableReportWorkspaceView,
-  ReportConversationTrace,
+    PrintableReportWorkspaceView,
+    ReportConversationTrace,
 } from '../../apps/web-ui/src/components/printable-report-view';
 import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 
@@ -41,6 +41,9 @@ describe('printable report view', () => {
       );
 
       expect(auditHtml).toContain('Defaults used');
+      expect(auditHtml).toContain('Evidence quality caveats');
+      expect(auditHtml).toContain('Metadata High');
+      expect(auditHtml).toContain('source-artifact-fixture-001');
       expect(auditHtml).toContain('Persisted provenance and snapshots');
     } finally {
       await repository.disconnect();
@@ -123,7 +126,9 @@ describe('printable report view', () => {
     expect(traceHtml).toContain('Refusal applied');
     expect(traceHtml).toContain('Recommended next checks');
     expect(traceHtml).toContain('Source links');
+    expect(traceHtml).toContain('Separator benchmark source.');
     expect(traceHtml).toContain('Claim links');
+    expect(traceHtml).toContain('Confidence caveat.');
     expect(traceHtml).toContain('Report anchors');
     expect(traceHtml).toContain(
       'Speculative what-if answers need deterministic recalculation first.',

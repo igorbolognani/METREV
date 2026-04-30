@@ -312,12 +312,61 @@ model ExternalSourceRecord {
   supplierDocuments    SupplierDocument[]
   evaluationUsages     EvaluationSourceUsage[]
   researchReviewPapers ResearchReviewPaper[]
+  sourceArtifacts      SourceArtifactRecord[]
+  sourceTextChunks     SourceTextChunkRecord[]
 
   @@unique([sourceType, sourceKey])
   @@index([sourceType, publishedAt])
   @@index([doi])
   @@index([ingestionRunId])
   @@index([hashDedup])
+}
+
+model SourceArtifactRecord {
+  id                   String               @id @default(cuid())
+  sourceRecordId       String
+  localPath            String?
+  fileName             String
+  fileHash             String               @unique
+  mimeType             String
+  fileSizeBytes        Int?
+  pageCount            Int?
+  extractionMethod     String
+  ingestionStatus      String
+  title                String?
+  doi                  String?
+  license              String?
+  accessStatus         ExternalAccessStatus @default(UNKNOWN)
+  metadataQuality      Json
+  veracityScore        Json
+  failureMessage       String?              @db.Text
+  importedAt           DateTime             @default(now())
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  sourceRecord         ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  chunks               SourceTextChunkRecord[]
+
+  @@index([sourceRecordId])
+  @@index([ingestionStatus, importedAt])
+}
+
+model SourceTextChunkRecord {
+  id             String               @id @default(cuid())
+  artifactId     String
+  sourceRecordId String
+  chunkIndex     Int
+  pageNumber     Int?
+  text           String               @db.Text
+  sourceLocator  String
+  charStart      Int?
+  charEnd        Int?
+  metadata       Json
+  createdAt      DateTime             @default(now())
+  artifact       SourceArtifactRecord @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  sourceRecord   ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([artifactId, chunkIndex])
+  @@index([sourceRecordId, pageNumber])
 }
 
 model ExternalEvidenceCatalogItem {

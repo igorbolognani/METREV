@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { basename } from 'node:path';
 
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
   evidenceClaimSchema,
+  localSourceImportResponseSchema,
+  metadataQualityProfileSchema,
   researchBackfillListResponseSchema,
   researchBackfillSummarySchema,
   researchDecisionIngestionPreviewSchema,
@@ -16,10 +19,13 @@ import {
   researchReviewListResponseSchema,
   researchReviewSummarySchema,
   searchResearchPapersResponseSchema,
+  sourceArtifactSchema,
   stageResearchPapersResponseSchema,
   type AddResearchColumnRequest,
   type CreateResearchReviewRequest,
   type EvidenceClaim,
+  type LocalSourceImportRequest,
+  type LocalSourceImportResponse,
   type QueueResearchBackfillRequest,
   type ResearchBackfillListResponse,
   type ResearchBackfillSummary,
@@ -35,6 +41,7 @@ import {
   type ResearchReviewListResponse,
   type SearchResearchPapersRequest,
   type SearchResearchPapersResponse,
+  type SourceArtifact,
   type StageResearchPapersRequest,
   type StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
@@ -46,6 +53,12 @@ import {
   searchResearchPapers as searchResearchPapersFromProviders,
   stageResearchPapers as stageResearchPapersToWarehouse,
 } from './research-paper-search';
+import {
+  buildEvidenceVeracityScore,
+  getSourceArtifactForSourceDocument,
+  importLocalPdfSources,
+  resolveLocalSourceImportRequestToInput,
+} from './source-artifacts';
 
 export interface CreateResearchReviewInput extends CreateResearchReviewRequest {
   actorId?: string;
@@ -126,6 +139,10 @@ export interface ResearchRepository {
   getResearchEvidencePackDecisionInput(
     packId: string,
   ): Promise<ResearchDecisionIngestionPreview | null>;
+  getSourceArtifact(sourceDocumentId: string): Promise<SourceArtifact | null>;
+  importLocalSources(
+    input: LocalSourceImportRequest,
+  ): Promise<LocalSourceImportResponse>;
   getResearchReview(reviewId: string): Promise<ResearchReviewDetail | null>;
   claimQueuedResearchBackfills(
     limit: number,
@@ -772,6 +789,7 @@ export class MemoryResearchRepository implements ResearchRepository {
   private readonly results = new Map<string, ResearchExtractionResult[]>();
   private readonly reviews = new Map<string, ResearchReviewDetail>();
   private readonly packs = new Map<string, ResearchEvidencePack>();
+  private readonly sourceArtifacts = new Map<string, SourceArtifact>();
   private readonly decisionInputs = new Map<
     string,
     ResearchDecisionIngestionPreview
@@ -972,6 +990,124 @@ export class MemoryResearchRepository implements ResearchRepository {
       source_document_ids: papers.map((paper) => paper.source_document_id),
       papers,
     });
+  }
+
+  async importLocalSources(
+    input: LocalSourceImportRequest,
+  ): Promise<LocalSourceImportResponse> {
+    const now = new Date().toISOString();
+    const paths =
+      input.files.length > 0
+        ? input.files
+        : input.manifest_path
+          ? [input.manifest_path]
+          : [];
+    const papers: ResearchPaperMetadata[] = [];
+    const artifacts: SourceArtifact[] = [];
+
+    for (const [index, filePath] of paths.entries()) {
+      const sourceDocumentId = `memory-local-source-${index}-${randomUUID()}`;
+      const fileName = basename(filePath);
+      const artifactId = `memory-artifact-${randomUUID()}`;
+      const metadataQuality = metadataQualityProfileSchema.parse({
+        score: 0.72,
+        level: 'medium',
+        present_fields: [
+          'source_identity',
+          'file_hash',
+          'access_status',
+          'extraction_method',
+        ],
+        missing_fields: ['doi', 'page_count', 'license'],
+        categories: {
+          data_lineage: {
+            fixture: true,
+            local_path: filePath,
+          },
+        },
+        notes: ['Memory repository fixture for local PDF import.'],
+      });
+      const veracityScore = buildEvidenceVeracityScore({
+        extractionMethod: 'memory-fixture',
+        metadataQuality,
+        reviewStatus: input.review_status,
+        traceCount: 1,
+      });
+      const artifact = sourceArtifactSchema.parse({
+        artifact_id: artifactId,
+        source_document_id: sourceDocumentId,
+        local_path: filePath,
+        file_name: fileName,
+        file_hash: `memory-${sourceDocumentId}`,
+        mime_type: 'application/pdf',
+        file_size_bytes: null,
+        page_count: null,
+        extraction_method: 'memory-fixture',
+        ingestion_status: 'parsed',
+        title: fileName,
+        doi: null,
+        license: input.license ?? null,
+        access_status: input.access_status,
+        metadata_quality: metadataQuality,
+        veracity_score: veracityScore,
+        failure_message: null,
+        imported_at: now,
+        chunks: [
+          {
+            chunk_id: `memory-chunk-${randomUUID()}`,
+            artifact_id: artifactId,
+            source_document_id: sourceDocumentId,
+            chunk_index: 0,
+            page_number: 1,
+            text: 'Memory local PDF import fixture chunk for metadata and veracity tests.',
+            source_locator: 'page:1:chunk:0',
+            char_start: 0,
+            char_end: 72,
+            metadata: {},
+            created_at: now,
+          },
+        ],
+      });
+      const paper = researchPaperMetadataSchema.parse({
+        paper_id: `source:${sourceDocumentId}`,
+        source_document_id: sourceDocumentId,
+        title: fileName,
+        authors: [],
+        year: null,
+        doi: null,
+        journal: null,
+        publisher: 'Memory local PDF import',
+        source_type: 'manual',
+        source_url: null,
+        pdf_url: null,
+        xml_url: null,
+        abstract_text:
+          'Memory local PDF import fixture for metadata quality and veracity disclosure.',
+        citation_count: null,
+        metadata: {
+          local_source_artifact_id: artifact.artifact_id,
+          metadata_quality: metadataQuality,
+          veracity_score: veracityScore,
+        },
+      });
+
+      this.sourceArtifacts.set(sourceDocumentId, artifact);
+      this.stagedPapers.set(sourceDocumentId, paper);
+      papers.push(paper);
+      artifacts.push(artifact);
+    }
+
+    return localSourceImportResponseSchema.parse({
+      imported_count: artifacts.length,
+      source_document_ids: papers.map((paper) => paper.source_document_id),
+      papers,
+      artifacts,
+      failed: [],
+    });
+  }
+
+  async getSourceArtifact(sourceDocumentId: string): Promise<SourceArtifact | null> {
+    return this.sourceArtifacts.get(sourceDocumentId) ?? null;
   }
 
   async listResearchReviews(): Promise<ResearchReviewListResponse> {
@@ -1262,6 +1398,19 @@ export class MemoryResearchRepository implements ResearchRepository {
 
 export class PrismaResearchRepository implements ResearchRepository {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async importLocalSources(
+    input: LocalSourceImportRequest,
+  ): Promise<LocalSourceImportResponse> {
+    return importLocalPdfSources(
+      this.prisma,
+      await resolveLocalSourceImportRequestToInput(input),
+    );
+  }
+
+  async getSourceArtifact(sourceDocumentId: string): Promise<SourceArtifact | null> {
+    return getSourceArtifactForSourceDocument(this.prisma, sourceDocumentId);
+  }
 
   private candidateSourceWhere(
     token: string,

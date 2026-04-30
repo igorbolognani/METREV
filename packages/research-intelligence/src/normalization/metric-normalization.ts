@@ -81,7 +81,7 @@ const metricRules: MetricRule[] = [
   {
     metricKey: 'voltage_v',
     canonicalUnit: 'V',
-    aliases: ['voltage', 'ocv', 'open circuit voltage'],
+    aliases: ['voltage', 'ocv', 'open circuit voltage', 'potential'],
     multipliers: {
       v: {
         ruleId: 'research_metric.voltage.v_identity',
@@ -93,10 +93,110 @@ const metricRules: MetricRule[] = [
       },
     },
   },
+  {
+    metricKey: 'hydrogen_production_ml_l_d',
+    canonicalUnit: 'mL/L/d',
+    aliases: ['hydrogen production', 'h2 production', 'hydrogen rate'],
+    multipliers: {
+      'ml/l/d': {
+        ruleId: 'research_metric.hydrogen_production.ml_l_d_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'hydrogen_yield_mol_mol',
+    canonicalUnit: 'mol/mol',
+    aliases: ['hydrogen yield', 'h2 yield'],
+    multipliers: {
+      'mol/mol': {
+        ruleId: 'research_metric.hydrogen_yield_mol_mol_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'conductivity_ms_cm',
+    canonicalUnit: 'mS/cm',
+    aliases: ['conductivity'],
+    multipliers: {
+      'ms/cm': {
+        ruleId: 'research_metric.conductivity.ms_cm_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'organic_loading_kg_cod_m3_d',
+    canonicalUnit: 'kgCOD/m3/d',
+    aliases: ['organic loading rate', 'olr'],
+    multipliers: {
+      'kgcod/m3/d': {
+        ruleId: 'research_metric.organic_loading.kg_cod_m3_d_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'hydraulic_retention_time_h',
+    canonicalUnit: 'h',
+    aliases: ['hydraulic retention time', 'hrt'],
+    multipliers: {
+      h: {
+        ruleId: 'research_metric.hrt.hours_identity',
+        multiplier: 1,
+      },
+      hr: {
+        ruleId: 'research_metric.hrt.hours_identity',
+        multiplier: 1,
+      },
+      hours: {
+        ruleId: 'research_metric.hrt.hours_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'energy_input_kwh_m3',
+    canonicalUnit: 'kWh/m3',
+    aliases: ['energy input', 'energy consumption'],
+    multipliers: {
+      'kwh/m3': {
+        ruleId: 'research_metric.energy_input.kwh_m3_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'durability_d',
+    canonicalUnit: 'days',
+    aliases: ['durability', 'operation duration', 'long-term operation'],
+    multipliers: {
+      day: {
+        ruleId: 'research_metric.durability.days_identity',
+        multiplier: 1,
+      },
+      days: {
+        ruleId: 'research_metric.durability.days_identity',
+        multiplier: 1,
+      },
+    },
+  },
+  {
+    metricKey: 'trl',
+    canonicalUnit: 'TRL',
+    aliases: ['trl', 'technology readiness level'],
+    multipliers: {
+      trl: {
+        ruleId: 'research_metric.trl.identity',
+        multiplier: 1,
+      },
+    },
+  },
 ];
 
 const metricValuePattern =
-  /\b(\d+(?:\.\d+)?)\s?(mW\/m2|W\/m2|mA\/cm2|A\/m2|mV|V|%|ohms?|mg\/L|g\/L)(?=\s|[,.;)]|$)/gi;
+  /\b(?:TRL\s*)?(\d+(?:\.\d+)?)\s?(mW\/m2|W\/m2|mA\/cm2|A\/m2|mV|V|%|ohms?|mg\/L|g\/L|mL\/L\/d|mol\/mol|mS\/cm|kgCOD\/m3\/d|kWh\/m3|h|hr|hours?|days?|TRL)(?=\s|[,.;)]|$)/gi;
 
 function normalizeUnit(unit: string): string {
   return unit.trim().toLowerCase();
@@ -119,6 +219,30 @@ function inferRule(text: string, unit: string): MetricRule | null {
   }
 
   if (normalizedUnit === 'v' || normalizedUnit === 'mv') {
+    if (
+      includesAny(normalizedText, [
+        'anode potential',
+        'cathode potential',
+        'electrode potential',
+      ])
+    ) {
+      return {
+        metricKey: 'electrode_potential_v',
+        canonicalUnit: 'V',
+        aliases: ['electrode potential'],
+        multipliers: {
+          v: {
+            ruleId: 'research_metric.voltage.v_identity',
+            multiplier: 1,
+          },
+          mv: {
+            ruleId: 'research_metric.electrode_potential.mv_to_v',
+            multiplier: 0.001,
+          },
+        },
+      };
+    }
+
     return metricRules.find((rule) => rule.metricKey === 'voltage_v') ?? null;
   }
 
@@ -127,6 +251,48 @@ function inferRule(text: string, unit: string): MetricRule | null {
   }
 
   if (normalizedUnit === '%') {
+    if (includesAny(normalizedText, ['ammonium recovery', 'nh4 recovery'])) {
+      return {
+        metricKey: 'ammonium_recovery_pct',
+        canonicalUnit: '%',
+        aliases: ['ammonium recovery', 'nh4 recovery'],
+        multipliers: {
+          '%': {
+            ruleId: 'research_metric.ammonium_recovery.percent_identity',
+            multiplier: 1,
+          },
+        },
+      };
+    }
+
+    if (includesAny(normalizedText, ['current efficiency'])) {
+      return {
+        metricKey: 'current_efficiency_pct',
+        canonicalUnit: '%',
+        aliases: ['current efficiency'],
+        multipliers: {
+          '%': {
+            ruleId: 'research_metric.current_efficiency.percent_identity',
+            multiplier: 1,
+          },
+        },
+      };
+    }
+
+    if (includesAny(normalizedText, ['selectivity', 'product selectivity'])) {
+      return {
+        metricKey: 'product_selectivity_pct',
+        canonicalUnit: '%',
+        aliases: ['product selectivity'],
+        multipliers: {
+          '%': {
+            ruleId: 'research_metric.product_selectivity.percent_identity',
+            multiplier: 1,
+          },
+        },
+      };
+    }
+
     if (
       includesAny(normalizedText, ['cod removal', 'chemical oxygen demand'])
     ) {
@@ -140,6 +306,13 @@ function inferRule(text: string, unit: string): MetricRule | null {
     }
 
     return null;
+  }
+
+  const directUnitMatch = metricRules.find(
+    (rule) => rule.multipliers[normalizedUnit],
+  );
+  if (directUnitMatch) {
+    return directUnitMatch;
   }
 
   const aliasMatch = metricRules.find((rule) =>

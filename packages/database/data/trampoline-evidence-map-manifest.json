@@ -1,0 +1,324 @@
+{
+  "version": 1,
+  "name": "metrev-trampoline-metadata-evidence-map",
+  "snapshotType": "curated_trampoline_metadata_manifest",
+  "recordCount": 8,
+  "claimCount": 16,
+  "records": [
+    {
+      "sourceKey": "trampoline-project-uab-101167647",
+      "title": "TRAMPOLINe project scope: industrial adoption of microbial electrochemical technologies",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "trampoline_project_scope",
+      "sourceUrl": "https://portalrecerca.uab.cat/en/projects/trampoline-a-training-programme-to-promote-the-industrial-adoptio/",
+      "publisher": "Universitat Autonoma de Barcelona",
+      "publishedAt": "2025-01-01",
+      "summary": "TRAMPOLINe is a Horizon Europe MSCA Doctoral Network coordinated by UAB around industrial adoption of microbial electrochemical technologies.",
+      "evidenceType": "derived_heuristic",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated ecosystem context only. Do not use as validated MFC/MEC stack-performance evidence.",
+      "tags": ["trampoline", "industrial-adoption", "met", "ecosystem-map"],
+      "applicabilityScope": {
+        "technology_family": "microbial_electrochemical_technology",
+        "objective_context": "industrial adoption ecosystem mapping",
+        "scale_context": "research_network"
+      },
+      "payload": {
+        "grant_reference": "101167647",
+        "context_role": "ecosystem_scope",
+        "performance_evidence": false,
+        "metadata_quality": {
+          "score": 0.78,
+          "level": "medium",
+          "missing_fields": ["validated_performance_metrics"]
+        },
+        "veracity_score": {
+          "score": 0.72,
+          "level": "medium",
+          "confidence_penalties": ["project_page_context_not_performance_evidence"]
+        }
+      },
+      "claims": [
+        {
+          "content": "TRAMPOLINe is useful for METREV as industrial-adoption vocabulary and ecosystem context, not as validated reactor-performance evidence.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.8,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "project-page",
+          "metadata": {
+            "context_role": "ecosystem_scope"
+          }
+        },
+        {
+          "content": "The project framing supports METREV's decision-support focus on translation, comparability, integration, scale-up, and adoption barriers.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.76,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "project-page"
+        }
+      ]
+    },
+    {
+      "sourceKey": "trampoline-work-package-lens",
+      "title": "TRAMPOLINe work-package lens mapped to METREV evidence ontology",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "trampoline_work_package_map",
+      "sourceUrl": "https://www.trampoline-msca.eu/",
+      "publisher": "TRAMPOLINe MSCA",
+      "publishedAt": "2025-01-01",
+      "summary": "TRAMPOLINe work-package themes map naturally to METREV layers: microbiology, redox/reactor engineering, materials, industrial bioproduction, environmental applications, and adoption.",
+      "evidenceType": "derived_heuristic",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated ontology mapping from public TRAMPOLINe descriptions. It is an adoption-taxonomy anchor, not experimental evidence.",
+      "tags": ["trampoline", "work-packages", "ontology", "adoption"],
+      "applicabilityScope": {
+        "technology_family": "microbial_electrochemical_technology",
+        "stack_block": "cross_cutting_layers.evidence_and_provenance"
+      },
+      "payload": {
+        "mapped_sections": [
+          "microbiology_of_electroactive_organisms",
+          "engineering_redox_reactions_and_reactors",
+          "innovative_materials_for_met",
+          "industrial_bioproduction",
+          "environmental_application_of_met",
+          "industrial_adoption"
+        ]
+      },
+      "claims": [
+        {
+          "content": "TRAMPOLINe's work-package structure can be used as a METREV evidence-map lens across biology, reactors, materials, applications, and adoption.",
+          "claimType": "ARCHITECTURE",
+          "confidence": 0.74,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "website-work-package-map"
+        },
+        {
+          "content": "Project work-package labels should not override canonical METREV domain or contract vocabulary.",
+          "claimType": "LIMITATION",
+          "confidence": 0.81,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "metrev-curation"
+        }
+      ]
+    },
+    {
+      "sourceKey": "trampoline-dc5-electrode-materials-map",
+      "title": "TRAMPOLINe DC5-style electrode-materials evidence map target",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "trampoline_doctoral_topic_map",
+      "sourceUrl": "https://www.trampoline-msca.eu/",
+      "publisher": "TRAMPOLINe MSCA",
+      "publishedAt": "2025-01-01",
+      "summary": "Next-generation electrode materials are a high-value METREV evidence-map target because material choice affects performance, durability, procurement, and scale-up comparability.",
+      "evidenceType": "derived_heuristic",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated topic map for electrode-material evidence collection.",
+      "tags": ["trampoline", "dc5", "electrode-materials", "mfc", "mec"],
+      "applicabilityScope": {
+        "technology_family": "microbial_electrochemical_technology",
+        "stack_block": "anode_biofilm_support"
+      },
+      "claims": [
+        {
+          "content": "Electrode material claims should preserve material family, modification, geometry, loading, durability, source span, and operating context.",
+          "claimType": "MATERIAL",
+          "confidence": 0.77,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        },
+        {
+          "content": "Material evidence is weak for procurement decisions unless durability, fouling, cost, and scale context are present.",
+          "claimType": "LIMITATION",
+          "confidence": 0.73,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        }
+      ]
+    },
+    {
+      "sourceKey": "trampoline-dc7-nh3-energy-recovery-map",
+      "title": "TRAMPOLINe DC7-style NH3 and energy recovery evidence map target",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "trampoline_doctoral_topic_map",
+      "sourceUrl": "https://www.trampoline-msca.eu/",
+      "publisher": "TRAMPOLINe MSCA",
+      "publishedAt": "2025-01-01",
+      "summary": "NH3 and energy recovery from wastewater is a priority evidence-map target for resource-recovery MEC and broader MET decision support.",
+      "evidenceType": "derived_heuristic",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated topic map for nutrient and energy recovery evidence collection.",
+      "tags": ["trampoline", "dc7", "ammonia-recovery", "nutrient-recovery", "mec"],
+      "applicabilityScope": {
+        "technology_family": "microbial_electrolysis_cell",
+        "objective_context": "nitrogen_recovery"
+      },
+      "claims": [
+        {
+          "content": "NH3 recovery evidence should preserve feed matrix, recovery efficiency, energy input, current efficiency, pH, conductivity, and product concentration.",
+          "claimType": "METRIC",
+          "confidence": 0.75,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        },
+        {
+          "content": "Resource-recovery recommendations should lower confidence when recovery objective, selectivity, or energy input is missing.",
+          "claimType": "LIMITATION",
+          "confidence": 0.76,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        }
+      ]
+    },
+    {
+      "sourceKey": "trampoline-dc10-hydrogen-scaleup-map",
+      "title": "TRAMPOLINe DC10-style hydrogen prototype scale-up evidence map target",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "trampoline_doctoral_topic_map",
+      "sourceUrl": "https://www.trampoline-msca.eu/",
+      "publisher": "TRAMPOLINe MSCA",
+      "publishedAt": "2025-01-01",
+      "summary": "Upscaled MEC hydrogen production is a priority evidence-map target for modeling, gas handling, safety, benchmark, and technoeconomic readiness.",
+      "evidenceType": "derived_heuristic",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated topic map for MEC hydrogen scale-up evidence collection.",
+      "tags": ["trampoline", "dc10", "hydrogen", "scale-up", "mec"],
+      "applicabilityScope": {
+        "technology_family": "microbial_electrolysis_cell",
+        "objective_context": "hydrogen_recovery",
+        "scale_context": "prototype"
+      },
+      "claims": [
+        {
+          "content": "MEC hydrogen scale-up evidence should preserve reactor volume, current density, hydrogen rate, gas purity, energy input, and operation duration.",
+          "claimType": "METRIC",
+          "confidence": 0.78,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        },
+        {
+          "content": "Hydrogen recommendations should expose gas-side observability, safety, purity validation, and long-startup uncertainty.",
+          "claimType": "CONDITION",
+          "confidence": 0.74,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-topic-map"
+        }
+      ]
+    },
+    {
+      "sourceKey": "iwa-digital-water-transformation-9781789063400",
+      "title": "A Strategic Digital Transformation for the Water Industry",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "metadata_reference_pdf",
+      "sourceUrl": "https://doi.org/10.2166/9781789063400",
+      "doi": "10.2166/9781789063400",
+      "publisher": "IWA Publishing",
+      "publishedAt": "2022-10-17",
+      "license": "CC BY-NC-SA",
+      "accessStatus": "GREEN",
+      "summary": "IWA digital-water reference framing data-driven decision support, data governance, veracity, and metadata as necessary for confident water-sector decisions.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated metadata reference. Import the local PDF for full source chunks before extraction-heavy use.",
+      "tags": ["metadata", "digital-water", "veracity", "decision-support"],
+      "claims": [
+        {
+          "content": "Digital water decision support requires governance, metadata, and data-quality visibility before confidence can be justified.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.79,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-reference"
+        },
+        {
+          "content": "Big-data value in water systems depends on veracity and variety, not only volume and velocity.",
+          "claimType": "LIMITATION",
+          "confidence": 0.77,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "curated-reference"
+        }
+      ]
+    },
+    {
+      "sourceKey": "iwa-metadata-signal-data-9781789061154-0031",
+      "title": "Metadata for a systematic description of signal data",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "metadata_reference_pdf",
+      "sourceUrl": "https://doi.org/10.2166/9781789061154_0031",
+      "doi": "10.2166/9781789061154_0031",
+      "publisher": "IWA Publishing",
+      "publishedAt": "2024-06-01",
+      "license": "CC BY-NC-ND",
+      "accessStatus": "GREEN",
+      "summary": "This metadata chapter organizes signal metadata into signal generation, signal quality, and contextual annotations, with basic, advanced, and future-proof priorities.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "strong",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated metadata reference. Import the local PDF for chunk-level extraction and page locators.",
+      "tags": ["metadata", "signal-generation", "signal-quality", "annotations"],
+      "claims": [
+        {
+          "content": "Signal-data metadata should distinguish signal generation, signal quality, and contextual annotations.",
+          "claimType": "ARCHITECTURE",
+          "confidence": 0.86,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "chapter-overview"
+        },
+        {
+          "content": "Metadata priority should separate basic, advanced, and future-proof information so missing fields can be interpreted by use case.",
+          "claimType": "CONDITION",
+          "confidence": 0.82,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "chapter-priority-list"
+        }
+      ]
+    },
+    {
+      "sourceKey": "ribagua-metadata-wrrf-10-1080-23863781-2023-2184286",
+      "title": "El valor de los metadatos para las estaciones de recuperación de recursos del agua",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "metadata_reference_pdf",
+      "sourceUrl": "https://doi.org/10.1080/23863781.2023.2184286",
+      "doi": "10.1080/23863781.2023.2184286",
+      "publisher": "Ribagua / Taylor & Francis",
+      "publishedAt": "2023-03-06",
+      "license": "CC BY-NC",
+      "accessStatus": "GREEN",
+      "summary": "Spanish-language metadata article emphasizing metadata as the ingredient that turns water-resource-recovery data graveyards into usable decision resources.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "strong",
+      "reviewStatus": "ACCEPTED",
+      "sourceState": "REVIEWED",
+      "provenanceNote": "Curated metadata reference. Import the local PDF for Spanish chunk-level extraction and page locators.",
+      "tags": ["metadata", "wrrf", "data-graveyards", "veracity", "spanish"],
+      "claims": [
+        {
+          "content": "Metadata are essential to convert raw water-resource-recovery data into useful information and decision resources.",
+          "claimType": "APPLICABILITY",
+          "confidence": 0.86,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "article-abstract"
+        },
+        {
+          "content": "Without descriptive metadata, large water-sector datasets risk becoming data graveyards rather than reusable evidence assets.",
+          "claimType": "LIMITATION",
+          "confidence": 0.84,
+          "reviewStatus": "ACCEPTED",
+          "sourceLocator": "article-introduction"
+        }
+      ]
+    }
+  ]
+}

@@ -333,7 +333,9 @@ export function EvidenceExplorerView({
     badge:
       tab.key === 'facets'
         ? workspace.warehouse_facets.source_types.length +
-          workspace.warehouse_facets.evidence_types.length
+          workspace.warehouse_facets.evidence_types.length +
+          workspace.warehouse_facets.metadata_quality_levels.length +
+          workspace.warehouse_facets.veracity_levels.length
         : tab.key === 'assistant'
           ? assistantRequested
             ? 1
@@ -348,7 +350,9 @@ export function EvidenceExplorerView({
       label: 'Facets',
       badge:
         workspace.warehouse_facets.source_types.length +
-        workspace.warehouse_facets.evidence_types.length,
+        workspace.warehouse_facets.evidence_types.length +
+        workspace.warehouse_facets.metadata_quality_levels.length +
+        workspace.warehouse_facets.veracity_levels.length,
     },
     { value: 'assistant', label: 'Assistant' },
     { value: 'exports', label: 'Exports', badge: 1 },
@@ -528,6 +532,16 @@ export function EvidenceExplorerView({
                 emptyLabel="No publisher metadata is present in this filtered warehouse."
                 items={workspace.warehouse_facets.publishers}
                 title="Publishers"
+              />
+              <ExplorerFacetCard
+                emptyLabel="No metadata-quality scores are present in this filtered warehouse."
+                items={workspace.warehouse_facets.metadata_quality_levels}
+                title="Metadata quality"
+              />
+              <ExplorerFacetCard
+                emptyLabel="No veracity scores are present in this filtered warehouse."
+                items={workspace.warehouse_facets.veracity_levels}
+                title="Veracity levels"
               />
             </div>
           </WorkspaceSection>

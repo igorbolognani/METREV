@@ -165,6 +165,32 @@ describe('case intake preset catalog', () => {
       },
       extracted_claims: [],
       tags: ['external-ingestion', 'crossref'],
+      metadata_quality: {
+        score: 0.78,
+        level: 'high',
+        present_fields: ['doi', 'review_status'],
+        missing_fields: [],
+        categories: {},
+        notes: ['Accepted summary keeps metadata posture visible in intake.'],
+      },
+      veracity_score: {
+        score: 0.74,
+        level: 'medium',
+        components: {
+          source_rigor: 0.8,
+          metadata_completeness: 0.78,
+          measurement_quality: 0.68,
+          extraction_method: 0.75,
+          trace_quality: 0.82,
+          normalization_support: 0.4,
+          review_status: 1,
+          relevance: 0.79,
+          recency_context_fit: 0.71,
+          corroboration_conflict: 0.69,
+        },
+        confidence_penalties: [],
+        notes: ['Accepted summary still carries trace-quality limits.'],
+      },
       created_at: '2026-04-14T12:00:00.000Z',
       updated_at: '2026-04-14T12:00:00.000Z',
     };
@@ -187,6 +213,19 @@ describe('case intake preset catalog', () => {
     );
     expect(payload.evidence_records?.[1]?.tags).toEqual(
       expect.arrayContaining(['reviewed-catalog', 'source:crossref']),
+    );
+    expect(payload.evidence_records?.[1]).toEqual(
+      expect.objectContaining({
+        catalog_item_id: acceptedCatalogEvidence.id,
+        review_status: acceptedCatalogEvidence.review_status,
+        source_state: acceptedCatalogEvidence.source_state,
+        metadata_quality: expect.objectContaining({
+          level: 'high',
+        }),
+        veracity_score: expect.objectContaining({
+          level: 'medium',
+        }),
+      }),
     );
   });
 

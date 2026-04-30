@@ -208,16 +208,33 @@ function inferEvidenceProfile(typedEvidence: EvidenceRecord[]): string {
   const strongCount = typedEvidence.filter(
     (record) => record.strength_level === 'strong',
   ).length;
+  const tracePenaltyCount = typedEvidence.filter((record) => {
+    const recordValue = ensureRecord(record);
+    const metadataQuality = ensureRecord(recordValue.metadata_quality);
+    const veracityScore = ensureRecord(recordValue.veracity_score);
+    const reviewStatus = firstNonEmptyString(recordValue.review_status);
+
+    return (
+      firstNonEmptyString(metadataQuality.level) === 'low' ||
+      firstNonEmptyString(veracityScore.level) === 'low' ||
+      toStringArray(veracityScore.confidence_penalties).length > 0 ||
+      (reviewStatus !== undefined && reviewStatus !== 'accepted')
+    );
+  }).length;
 
   if (strongCount >= 2) {
-    return 'corroborated';
+    return tracePenaltyCount > 0
+      ? 'corroborated_with_trace_penalties'
+      : 'corroborated';
   }
 
   if (typedEvidence.length >= 2) {
-    return 'mixed';
+    return tracePenaltyCount > 0 ? 'mixed_with_trace_penalties' : 'mixed';
   }
 
-  return 'single_source';
+  return tracePenaltyCount > 0
+    ? 'single_source_with_trace_penalties'
+    : 'single_source';
 }
 
 function inferSupplierClaimFraction(typedEvidence: EvidenceRecord[]): string {

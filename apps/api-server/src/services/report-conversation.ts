@@ -2,22 +2,35 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvaluationRepository } from '@metrev/database';
 import {
-  reportConversationResponseSchema,
-  type EvaluationResponse,
-  type PrintableEvaluationReportResponse,
-  type ReportConversationCitation,
-  type ReportConversationGrounding,
-  type ReportConversationResponse,
-  type ReportConversationTurn,
+    reportConversationResponseSchema,
+    type EvaluationResponse,
+    type PrintableEvaluationReportResponse,
+    type ReportConversationCitation,
+    type ReportConversationGrounding,
+    type ReportConversationResponse,
+    type ReportConversationTurn,
 } from '@metrev/domain-contracts';
 import {
-  generateReportConversationAnswer,
-  type ReportConversationAnswerResult,
-  type ReportConversationBoundedContextSummary,
-  type ReportConversationRecentTurnContext,
+    generateReportConversationAnswer,
+    type ReportConversationAnswerResult,
+    type ReportConversationBoundedContextSummary,
+    type ReportConversationRecentTurnContext,
 } from '@metrev/llm-adapter';
 
 const REPORT_CONVERSATION_HISTORY_LIMIT = 12;
+
+type EvidenceQualitySummaryEntry = {
+  confidence_penalties?: string[];
+  evidence_id?: string;
+  metadata_quality_level?: string | null;
+  review_status?: string | null;
+  reviewed_claim_ids?: string[];
+  source_artifact_ids?: string[];
+  source_document_id?: string | null;
+  source_locator_refs?: string[];
+  title?: string;
+  veracity_level?: string | null;
+};
 
 export interface CreatePersistedReportConversationInput {
   actorId: string;
@@ -32,6 +45,7 @@ export interface CreatePersistedReportConversationInput {
 export function buildReportConversationCitations(
   report: PrintableEvaluationReportResponse,
 ): ReportConversationCitation[] {
+  const qualityEntries = collectEvidenceQualitySummaryEntries(report);
   const sourceCitations = report.evaluation_lineage.source_usages.map(
     (usage): ReportConversationCitation => ({
       citation_id: `source:${usage.id}`,
@@ -39,7 +53,14 @@ export function buildReportConversationCitations(
       section: usage.usage_type,
       source_document_id: usage.source_document_id,
       claim_id: null,
-      note: usage.note,
+      note: appendCitationNote(
+        usage.note,
+        summarizeQualityEntries(
+          qualityEntries.filter(
+            (entry) => entry.source_document_id === usage.source_document_id,
+          ),
+        ),
+      ),
     }),
   );
   const claimCitations = report.evaluation_lineage.claim_usages.map(
@@ -49,7 +70,14 @@ export function buildReportConversationCitations(
       section: usage.usage_type,
       source_document_id: null,
       claim_id: usage.claim_id,
-      note: usage.note,
+      note: appendCitationNote(
+        usage.note,
+        summarizeQualityEntries(
+          qualityEntries.filter((entry) =>
+            entry.reviewed_claim_ids?.includes(usage.claim_id),
+          ),
+        ),
+      ),
     }),
   );
 
@@ -75,6 +103,122 @@ export function buildReportConversationCitations(
       note: report.sections.confidence_and_uncertainty_summary.summary,
     },
   ];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    const text = readString(entry);
+    return text ? [text] : [];
+  });
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
+}
+
+function collectEvidenceQualitySummaryEntries(
+  report: PrintableEvaluationReportResponse,
+): EvidenceQualitySummaryEntry[] {
+  return report.evaluation_lineage.workspace_snapshots.flatMap((snapshot) => {
+    const payload = asRecord(snapshot.payload);
+    const summary = asRecord(payload?.evidence_quality_summary);
+    const entries = summary?.entries;
+
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+
+    return entries.flatMap((entry) => {
+      const fields = asRecord(entry);
+
+      if (!fields) {
+        return [];
+      }
+
+      return [
+        {
+          confidence_penalties: readStringArray(fields.confidence_penalties),
+          evidence_id: readString(fields.evidence_id) ?? undefined,
+          metadata_quality_level: readString(fields.metadata_quality_level),
+          review_status: readString(fields.review_status),
+          reviewed_claim_ids: readStringArray(fields.reviewed_claim_ids),
+          source_artifact_ids: readStringArray(fields.source_artifact_ids),
+          source_document_id: readString(fields.source_document_id),
+          source_locator_refs: readStringArray(fields.source_locator_refs),
+          title: readString(fields.title) ?? undefined,
+          veracity_level: readString(fields.veracity_level),
+        },
+      ];
+    });
+  });
+}
+
+function appendCitationNote(
+  baseNote: string | null,
+  qualityNote: string | null,
+): string | null {
+  if (!qualityNote) {
+    return baseNote;
+  }
+
+  return baseNote ? `${baseNote} ${qualityNote}` : qualityNote;
+}
+
+function summarizeQualityEntries(
+  entries: EvidenceQualitySummaryEntry[],
+): string | null {
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const metadataLevels = uniqueStrings(
+    entries.map((entry) => entry.metadata_quality_level),
+  );
+  const veracityLevels = uniqueStrings(
+    entries.map((entry) => entry.veracity_level),
+  );
+  const reviewStatuses = uniqueStrings(
+    entries.map((entry) => entry.review_status),
+  );
+  const penalties = uniqueStrings(
+    entries.flatMap((entry) => entry.confidence_penalties ?? []),
+  );
+  const artifactIds = uniqueStrings(
+    entries.flatMap((entry) => entry.source_artifact_ids ?? []),
+  );
+  const locators = uniqueStrings(
+    entries.flatMap((entry) => entry.source_locator_refs ?? []),
+  );
+  const parts = [
+    metadataLevels.length > 0 ? `metadata ${metadataLevels.join('/')}` : null,
+    veracityLevels.length > 0 ? `veracity ${veracityLevels.join('/')}` : null,
+    reviewStatuses.length > 0 ? `review ${reviewStatuses.join('/')}` : null,
+    penalties.length > 0
+      ? `penalties ${penalties.slice(0, 2).join('; ')}`
+      : null,
+    artifactIds.length > 0
+      ? `artifacts ${artifactIds.slice(0, 2).join(', ')}`
+      : null,
+    locators.length > 0 ? `locators ${locators.slice(0, 2).join(', ')}` : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return parts.length > 0 ? `Evidence quality: ${parts.join('; ')}.` : null;
 }
 
 export function buildReportConversationGrounding(input: {

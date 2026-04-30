@@ -7,6 +7,7 @@ import {
   externalEvidenceAccessStatusSchema,
   externalEvidenceSourceTypeSchema,
   rawEvidenceRecordSchema,
+  sourceArtifactSchema,
 } from './schemas';
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
@@ -100,6 +101,34 @@ export const researchPaperMetadataSchema = z.object({
   abstract_text: z.string().nullable(),
   citation_count: z.number().int().nonnegative().nullable(),
   metadata: flexibleObjectSchema.default({}),
+});
+
+export const localSourceImportRequestSchema = z
+  .object({
+    files: z.array(z.string().trim().min(1)).max(20).default([]),
+    manifest_path: z.string().trim().min(1).optional(),
+    access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+    license: z.string().trim().min(1).optional(),
+    review_status: z.enum(['pending', 'accepted']).default('pending'),
+  })
+  .refine((value) => value.files.length > 0 || value.manifest_path, {
+    message: 'files or manifest_path is required',
+    path: ['files'],
+  });
+
+export const localSourceImportResponseSchema = z.object({
+  imported_count: z.number().int().nonnegative(),
+  source_document_ids: z.array(z.string().min(1)).default([]),
+  papers: z.array(researchPaperMetadataSchema).default([]),
+  artifacts: z.array(sourceArtifactSchema).default([]),
+  failed: z
+    .array(
+      z.object({
+        path: z.string().min(1),
+        message: z.string().min(1),
+      }),
+    )
+    .default([]),
 });
 
 export const researchPaperSearchResultSchema = z.object({
@@ -449,6 +478,12 @@ export type ResearchMetricMeasurement = z.infer<
   typeof researchMetricMeasurementSchema
 >;
 export type ResearchPaperMetadata = z.infer<typeof researchPaperMetadataSchema>;
+export type LocalSourceImportRequest = z.infer<
+  typeof localSourceImportRequestSchema
+>;
+export type LocalSourceImportResponse = z.infer<
+  typeof localSourceImportResponseSchema
+>;
 export type ResearchPaperSearchResult = z.infer<
   typeof researchPaperSearchResultSchema
 >;

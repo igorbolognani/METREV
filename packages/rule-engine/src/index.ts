@@ -1,18 +1,19 @@
 import {
-  canonicalOutputSections,
-  confidenceLevelSchema,
-  decisionOutputSchema,
-  loadContractCompatibilityDefinition,
-  loadContractDiagnosticsDefinition,
-  loadContractImprovementsDefinition,
-  loadContractOutputDefinition,
-  loadContractScoringModel,
-  loadContractSensitivityPolicy,
-  type ConfidenceLevel,
-  type DecisionOutput,
-  type DerivedObservation,
-  type NormalizedCaseInput,
-  type RecommendationRecord,
+    canonicalOutputSections,
+    confidenceLevelSchema,
+    decisionOutputSchema,
+    loadContractCompatibilityDefinition,
+    loadContractDiagnosticsDefinition,
+    loadContractImprovementsDefinition,
+    loadContractOutputDefinition,
+    loadContractScoringModel,
+    loadContractSensitivityPolicy,
+    type ConfidenceLevel,
+    type DecisionOutput,
+    type DerivedObservation,
+    type EvidenceRecord,
+    type NormalizedCaseInput,
+    type RecommendationRecord,
 } from '@metrev/domain-contracts';
 import { dedupeStrings, isNonEmptyString } from '@metrev/utils';
 
@@ -73,6 +74,118 @@ const placeholderTokens = new Set([
   'absent',
 ]);
 
+function toEvidenceRecordValue(
+  record: EvidenceRecord,
+): Record<string, unknown> {
+  return record as Record<string, unknown>;
+}
+
+function readEvidenceStringField(
+  record: EvidenceRecord,
+  key: string,
+): string | undefined {
+  const value = toEvidenceRecordValue(record)[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value
+    : undefined;
+}
+
+function readEvidenceStringArrayField(
+  record: EvidenceRecord,
+  key: string,
+): string[] {
+  const value = toEvidenceRecordValue(record)[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (entry): entry is string =>
+      typeof entry === 'string' && entry.trim().length > 0,
+  );
+}
+
+function readEvidenceNestedStringArrayField(
+  record: EvidenceRecord,
+  key: string,
+  nestedKey: string,
+): string[] {
+  const nestedValue = toEvidenceRecordValue(record)[key];
+  if (
+    !nestedValue ||
+    typeof nestedValue !== 'object' ||
+    Array.isArray(nestedValue)
+  ) {
+    return [];
+  }
+
+  const candidate = (nestedValue as Record<string, unknown>)[nestedKey];
+  if (!Array.isArray(candidate)) {
+    return [];
+  }
+
+  return candidate.filter(
+    (entry): entry is string =>
+      typeof entry === 'string' && entry.trim().length > 0,
+  );
+}
+
+function readEvidenceNestedStringField(
+  record: EvidenceRecord,
+  key: string,
+  nestedKey: string,
+): string | undefined {
+  const nestedValue = toEvidenceRecordValue(record)[key];
+  if (
+    !nestedValue ||
+    typeof nestedValue !== 'object' ||
+    Array.isArray(nestedValue)
+  ) {
+    return undefined;
+  }
+
+  const candidate = (nestedValue as Record<string, unknown>)[nestedKey];
+  return typeof candidate === 'string' && candidate.trim().length > 0
+    ? candidate
+    : undefined;
+}
+
+function countTracePenaltyEvidence(typedEvidence: EvidenceRecord[]): number {
+  return typedEvidence.filter((record) => {
+    const metadataLevel = readEvidenceNestedStringField(
+      record,
+      'metadata_quality',
+      'level',
+    );
+    const veracityLevel = readEvidenceNestedStringField(
+      record,
+      'veracity_score',
+      'level',
+    );
+    const confidencePenalties = readEvidenceNestedStringArrayField(
+      record,
+      'veracity_score',
+      'confidence_penalties',
+    );
+
+    return (
+      metadataLevel === 'low' ||
+      veracityLevel === 'low' ||
+      confidencePenalties.length > 0 ||
+      readEvidenceStringField(record, 'review_status') === 'pending'
+    );
+  }).length;
+}
+
+function countNonAcceptedReviewedEvidence(
+  typedEvidence: EvidenceRecord[],
+): number {
+  return typedEvidence.filter((record) => {
+    const reviewStatus = readEvidenceStringField(record, 'review_status');
+    return reviewStatus !== undefined && reviewStatus !== 'accepted';
+  }).length;
+}
+
 function toConfidenceLevel(input: {
   missingCount: number;
   defaultsCount: number;
@@ -81,6 +194,8 @@ function toConfidenceLevel(input: {
   highSeverityMatches: number;
   lowObservability: boolean;
   modeledObservationCount: number;
+  tracePenaltyEvidenceCount: number;
+  nonAcceptedEvidenceCount: number;
 }): ConfidenceLevel {
   let score = 0.6;
 
@@ -94,6 +209,8 @@ function toConfidenceLevel(input: {
   }
 
   score -= Math.min(0.08, input.modeledObservationCount * 0.02);
+  score -= Math.min(0.12, input.tracePenaltyEvidenceCount * 0.04);
+  score -= Math.min(0.08, input.nonAcceptedEvidenceCount * 0.03);
 
   if (input.supplierClaimFraction === 'high') {
     score -= 0.08;
@@ -636,6 +753,9 @@ export function runCaseEvaluation(
     resolvedCase.cross_cutting_layers.evidence_and_provenance.evidence_profile;
   const typedEvidence =
     resolvedCase.cross_cutting_layers.evidence_and_provenance.typed_evidence;
+  const tracePenaltyEvidenceCount = countTracePenaltyEvidence(typedEvidence);
+  const nonAcceptedEvidenceCount =
+    countNonAcceptedReviewedEvidence(typedEvidence);
 
   const compatibilityMatches = compatibilityRules.filter((rule) =>
     evaluateCondition(resolvedCase, rule.condition as RuleCondition),
@@ -665,6 +785,8 @@ export function runCaseEvaluation(
     lowObservability:
       resolvedCase.stack_blocks.sensors_and_analytics.data_quality === 'low',
     modeledObservationCount: modeledRuleInputsUsed.length,
+    tracePenaltyEvidenceCount,
+    nonAcceptedEvidenceCount,
   });
 
   const blockFindings = Object.entries(resolvedCase.stack_blocks).map(
@@ -703,6 +825,9 @@ export function runCaseEvaluation(
       : undefined,
     typedEvidence.length === 0
       ? 'No typed evidence records were supplied, so confidence depends on defaults and explicit missing-data handling.'
+      : undefined,
+    tracePenaltyEvidenceCount > 0
+      ? `${tracePenaltyEvidenceCount} evidence records carry metadata or veracity penalties, so confidence is intentionally reduced until trace quality improves.`
       : undefined,
     modeledRuleInputsUsed.length > 0
       ? `Deterministic evaluation used ${modeledRuleInputsUsed.length} modeled derived observations because measured anchors were unavailable for those signals.`
@@ -888,6 +1013,12 @@ export function runCaseEvaluation(
     resolvedCase.cross_cutting_layers.evidence_and_provenance
       .supplier_claim_fraction !== 'none'
       ? 'Supplier claims remained separated from validated evidence and lowered confidence accordingly.'
+      : undefined,
+    tracePenaltyEvidenceCount > 0
+      ? `${tracePenaltyEvidenceCount} typed evidence records carried metadata or veracity penalties and were down-weighted in confidence scoring.`
+      : undefined,
+    nonAcceptedEvidenceCount > 0
+      ? `${nonAcceptedEvidenceCount} typed evidence records were not fully accepted at review time and remained confidence-limited.`
       : undefined,
     `${triggeredDiagnostics.length} diagnostic rules and ${compatibilityMatches.length} compatibility rules matched the current case.`,
     `Evidence profile is ${evidenceProfile}.`,
