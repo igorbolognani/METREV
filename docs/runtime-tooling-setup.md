@@ -8,6 +8,7 @@ This document separates repository-managed integration from local-machine setup 
 
 - root `AGENTS.md`
 - root `.github/copilot-instructions.md`
+- root `WORKFLOW.md`
 - root `.github/instructions/`
 - root `.github/prompts/`
 - root `.github/agents/`
@@ -59,7 +60,7 @@ For the broader active-versus-reference classification across the repository, us
 ### Internal Spec-First Workflow
 
 - This repository does not require Spec Kit, a Spec Kit MCP server, or a Spec Kit VS Code extension.
-- The supported workflow is the root internal surface: `AGENTS.md`, `.github/copilot-instructions.md`, `docs/internal-feature-workflow.md`, `specs/_templates/`, the root agents, the root prompts, and the root `spec-workflow` skill.
+- The supported workflow is the root internal surface: `AGENTS.md`, `.github/copilot-instructions.md`, `WORKFLOW.md`, `docs/internal-feature-workflow.md`, `specs/_templates/`, the root agents, the root prompts, and the root `spec-workflow` skill.
 - Use `.github/prompts/clarify-feature.prompt.md` to close blocking questions, `.github/prompts/start-feature.prompt.md` to bootstrap a durable feature pack, `.github/prompts/plan-feature.prompt.md` for staged planning, and `.github/prompts/ship-change.prompt.md` as the autonomous one-shot entrypoint.
 - The autonomous one-shot path is backed by the root `workflow-orchestrator` agent and should preserve the current runtime invariants around Supabase, Prisma, Auth.js, telemetry, and quickstart flows unless a task explicitly changes them.
 - If `specify` or `specify init` is not installed locally, that is expected in this repository. The root internal workflow replaces external Spec Kit tooling here.
@@ -74,9 +75,12 @@ For the broader active-versus-reference classification across the repository, us
 ## Validation rule
 
 - A tool is not considered integrated until its repo config, setup steps, and success criteria are all documented.
+- `pnpm run format:workflow-assets` is the focused formatting gate for the promoted root workflow and CI surface. The broader repo-wide `pnpm run format` remains available, but it is not yet a safe promoted CI gate because the repository still carries unrelated formatting debt.
+- `pnpm run test:e2e:install` installs Chromium with system dependencies and should be the local-first mirror of the Playwright browser install used in CI.
 - `pnpm run validate:fast` is the promoted fast repository matrix and the first CI gate.
 - `pnpm run validate:local` is the promoted local Docker-backed acceptance matrix for PostgreSQL-backed persistence plus Playwright E2E; it will start `local:view` if needed and resolve the active published Postgres port before running. It remains a separate post-fast CI job so Docker/runtime failures stay isolated.
 - `pnpm run validate:advanced` is the promoted deterministic advanced big-data and research matrix. It runs focused advanced tests plus a curated-manifest-only `bootstrap:bigdata` dry-run without relying on live provider APIs, and it remains a separate post-fast CI job alongside `validate:local` so deterministic research regressions stay isolated from local runtime acceptance failures.
+- CI uploads `playwright-report/` and `test-results/` artifacts from the local validation job so full-stack failures stay inspectable after the run.
 - `pnpm run validate:full` combines the promoted fast, advanced, and local matrices.
 
 ## VS Code verification

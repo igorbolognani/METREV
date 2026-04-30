@@ -2,7 +2,7 @@
 name: plan-feature
 description: 'Create a dependency-ordered implementation plan and required durable feature artifacts before coding.'
 argument-hint: 'Describe the feature, goal, or task to plan'
-agent: 'Planner'
+agent: 'planner'
 ---
 
 Plan the requested work for this repository.

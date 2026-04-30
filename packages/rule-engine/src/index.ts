@@ -90,21 +90,6 @@ function readEvidenceStringField(
     : undefined;
 }
 
-function readEvidenceStringArrayField(
-  record: EvidenceRecord,
-  key: string,
-): string[] {
-  const value = toEvidenceRecordValue(record)[key];
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(
-    (entry): entry is string =>
-      typeof entry === 'string' && entry.trim().length > 0,
-  );
-}
-
 function readEvidenceNestedStringArrayField(
   record: EvidenceRecord,
   key: string,

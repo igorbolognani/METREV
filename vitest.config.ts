@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
+      '@metrev/domain-contracts/browser': fileURLToPath(
+        new URL('./packages/domain-contracts/src/browser.ts', import.meta.url),
+      ),
       '@metrev/domain-contracts': fileURLToPath(
         new URL('./packages/domain-contracts/src/index.ts', import.meta.url),
       ),

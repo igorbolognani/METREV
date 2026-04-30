@@ -1,7 +1,7 @@
 import {
-  researchDecisionIngestionPreviewSchema,
-  type ResearchDecisionIngestionPreview,
-  type ResearchEvidencePack,
+    researchDecisionIngestionPreviewSchema,
+    type ResearchDecisionIngestionPreview,
+    type ResearchEvidencePack,
 } from '@metrev/domain-contracts';
 
 export function buildDecisionIngestionPreview(
@@ -22,5 +22,8 @@ export function buildDecisionIngestionPreview(
     assumptions: [
       'Research evidence pack values are literature-derived and require case-context applicability review before automatic scoring.',
     ],
+    ...(pack.runtime_versions
+      ? { runtime_versions: pack.runtime_versions }
+      : {}),
   });
 }

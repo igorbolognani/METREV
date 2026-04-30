@@ -4,6 +4,8 @@
 
 This repository uses a root-owned internal workflow to deliver Spec-Kit-like ergonomics without introducing external tooling.
 The workflow exists to make feature work predictable, reviewable, and aligned to the repository's source-of-truth split.
+`WORKFLOW.md` is the repo-owned operational contract for how agentic work should
+move through that surface.
 
 ## Source-of-truth guardrails
 
@@ -96,7 +98,13 @@ Specialist prompts:
 The default autonomous one-shot entrypoint is `.github/prompts/ship-change.prompt.md`.
 That prompt is backed by the root `workflow-orchestrator` agent and should compose the staged workflow for medium and large changes without external Spec Kit tooling.
 The staged prompts remain the manual path when tighter control over clarification, bootstrap, or planning is preferable.
-The specialist prompts are optional overlays for debugging, refactoring, and critique once the main workflow path is already clear.
+The specialist prompts are optional overlays for debugging, refactoring, critique,
+test generation, and diff review once the main workflow path is already clear.
+
+- `.github/prompts/review-diff.prompt.md` for strict change review through the
+  `reviewer` agent
+- `.github/prompts/generate-tests.prompt.md` for focused regression and behavior
+  test generation
 
 ## Agent and skill surface
 
@@ -109,6 +117,12 @@ Agents:
 - `reviewer` for correctness, regression, architectural fit, and missing-validation review
 - `validation-sentinel` for provenance, defaults, uncertainty, and trustworthiness checks
 
+Use parallel agents only when they can stay read-only or hold separate file
+ownership. Prefer convergence at a validation gate such as
+`pnpm run test:workflow-assets`, `pnpm run validate:fast`,
+`pnpm run validate:local`, or `pnpm run validate:advanced` instead of merging
+conflicting edit branches by hand.
+
 Skills:
 
 - `spec-workflow` for medium and large feature delivery
@@ -116,7 +130,8 @@ Skills:
 - `use-context7` when implementation depends on current framework or library documentation
 
 If `specify` or `specify init` is not installed locally, that is expected here.
-This internal workflow replaces external Spec Kit tooling in this repository.
+This internal workflow plus `WORKFLOW.md` replaces external Spec Kit tooling in
+this repository.
 
 ## Workflow steps
 

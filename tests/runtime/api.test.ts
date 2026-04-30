@@ -1119,11 +1119,13 @@ describe('api runtime flow', () => {
         source_usages: expect.arrayContaining([
           expect.objectContaining({
             evaluation_id: created.evaluation_id,
+            runtime_versions: created.audit_record.runtime_versions,
           }),
         ]),
         workspace_snapshots: expect.arrayContaining([
           expect.objectContaining({
             evaluation_id: created.evaluation_id,
+            runtime_versions: created.audit_record.runtime_versions,
           }),
         ]),
       }),
@@ -1435,11 +1437,13 @@ describe('api runtime flow', () => {
         source_usages: expect.arrayContaining([
           expect.objectContaining({
             evaluation_id: current.evaluation_id,
+            runtime_versions: current.audit_record.runtime_versions,
           }),
         ]),
         workspace_snapshots: expect.arrayContaining([
           expect.objectContaining({
             evaluation_id: current.evaluation_id,
+            runtime_versions: current.audit_record.runtime_versions,
           }),
         ]),
       }),

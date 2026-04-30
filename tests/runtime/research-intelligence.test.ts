@@ -12,6 +12,7 @@ import {
     researchPaperMetadataSchema,
     researchSystemPerformanceExtractionSchema,
     type EvidenceClaim,
+    type RuntimeVersion,
 } from '@metrev/domain-contracts';
 import {
     buildDecisionIngestionPreview,
@@ -23,6 +24,14 @@ import {
 } from '@metrev/research-intelligence';
 
 const now = '2026-04-24T12:00:00.000Z';
+const researchRuntimeVersions: RuntimeVersion = {
+  contract_version: '0.3',
+  ontology_version: '0.3',
+  ruleset_version: '0.3',
+  prompt_version: 'research-evidence-pack-v1',
+  model_version: 'research-runtime-v1',
+  workspace_schema_version: '015.0.0',
+};
 
 function fixtureClaim(overrides: Partial<EvidenceClaim> = {}): EvidenceClaim {
   return evidenceClaimSchema.parse({
@@ -325,6 +334,7 @@ describe('research intelligence runtime contracts', () => {
       },
       status: 'draft',
       now,
+      versions: researchRuntimeVersions,
     });
     const parsedPack = researchEvidencePackSchema.parse(pack);
     const decisionInput = researchDecisionIngestionPreviewSchema.parse(
@@ -332,6 +342,7 @@ describe('research intelligence runtime contracts', () => {
     );
 
     expect(pack.evidence_items).toHaveLength(1);
+    expect(pack.runtime_versions).toEqual(researchRuntimeVersions);
     expect(pack.metrics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ metric_key: 'power_density_w_m2' }),
@@ -350,6 +361,7 @@ describe('research intelligence runtime contracts', () => {
       }),
     );
     expect(decisionInput.evidence_records).toHaveLength(1);
+    expect(decisionInput.runtime_versions).toEqual(researchRuntimeVersions);
     expect(decisionInput.evidence_records[0]).toEqual(
       expect.objectContaining({
         source_artifact_ids: ['source-artifact-fixture-001'],

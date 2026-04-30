@@ -12,8 +12,21 @@ evidence_pack:
     - missing_fields
     - confidence
     - payload
-  optional_fields: []
+  optional_fields:
+    - runtime_versions
+
+decision_ingestion_preview:
+  required_fields:
+    - pack_id
+    - review_id
+    - evidence_records
+    - measured_metric_candidates
+    - missing_data
+    - assumptions
+  optional_fields:
+    - runtime_versions
 rules:
   - Evidence packs may include only schema-valid extraction results.
   - Decision ingestion must adapt packs into existing RawEvidenceRecord-shaped evidence rather than coupling review UI to decision internals.
+  - When a research pack is created at runtime, its decision-ingestion preview should preserve the same runtime_versions lineage when available.
   - Literature and supplier claims must remain explicitly typed.

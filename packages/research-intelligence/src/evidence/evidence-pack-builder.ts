@@ -12,6 +12,7 @@ import {
     type ResearchMetricMeasurement,
     type ResearchPaperMetadata,
     type ResearchReviewDetail,
+    type RuntimeVersion,
 } from '@metrev/domain-contracts';
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
@@ -306,6 +307,7 @@ export function buildResearchEvidencePack(input: {
   review: ResearchReviewDetail;
   status: ResearchEvidencePack['status'];
   title?: string;
+  versions?: RuntimeVersion;
 }): ResearchEvidencePack {
   const substantiveColumnIds = new Set(
     input.review.columns
@@ -370,6 +372,7 @@ export function buildResearchEvidencePack(input: {
       valid_result_count: validResults.length,
       paper_count: input.review.papers.length,
     },
+    ...(input.versions ? { runtime_versions: input.versions } : {}),
     created_at: now,
     updated_at: now,
   });

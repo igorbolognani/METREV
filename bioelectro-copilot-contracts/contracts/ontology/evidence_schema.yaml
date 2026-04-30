@@ -114,6 +114,7 @@ evidence_registry:
       - created_at
     source_usage_optional_fields:
       - note
+      - runtime_versions
     claim_usage_required_fields:
       - id
       - evaluation_id
@@ -122,6 +123,7 @@ evidence_registry:
       - created_at
     claim_usage_optional_fields:
       - note
+      - runtime_versions
 
   workspace_snapshot:
     required_fields:
@@ -132,6 +134,7 @@ evidence_registry:
     optional_fields:
       - evaluation_id
       - case_id
+      - runtime_versions
 
 api_payloads:
   external_evidence_catalog_summary:

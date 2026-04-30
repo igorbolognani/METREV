@@ -1,43 +1,81 @@
 import type {
-  AddResearchColumnRequest,
-  CaseHistoryWorkspaceResponse,
-  CreateResearchEvidencePackRequest,
-  CreateResearchReviewRequest,
-  DashboardWorkspaceResponse,
-  EvaluationComparisonResponse,
-  EvaluationListResponse,
-  EvaluationResponse,
-  EvaluationWorkspaceResponse,
-  EvidenceExplorerAssistantResponse,
-  EvidenceExplorerWorkspaceResponse,
-  EvidenceReviewWorkspaceResponse,
-  ExportCsvResponseMetadata,
-  ExternalEvidenceBulkReviewRequest,
-  ExternalEvidenceBulkReviewResponse,
-  ExternalEvidenceCatalogItemDetail,
-  ExternalEvidenceCatalogListResponse,
-  ExternalEvidenceReviewRequest,
-  ExternalEvidenceReviewStatus,
-  LocalSourceImportRequest,
-  LocalSourceImportResponse,
-  PrintableEvaluationReportResponse,
-  QueueResearchBackfillRequest,
-  RawCaseInput,
-  ReportConversationRequest,
-  ReportConversationResponse,
-  ResearchBackfillListResponse,
-  ResearchDecisionIngestionPreview,
-  ResearchEvidencePack,
-  ResearchReviewDetail,
-  ResearchReviewListResponse,
-  RunResearchExtractionsRequest,
-  RunResearchExtractionsResponse,
-  SearchResearchPapersRequest,
-  SearchResearchPapersResponse,
-  SourceArtifact,
-  StageResearchPapersRequest,
-  StageResearchPapersResponse,
-} from '@metrev/domain-contracts';
+    AddResearchColumnRequest,
+    CaseHistoryWorkspaceResponse,
+    CreateResearchEvidencePackRequest,
+    CreateResearchReviewRequest,
+    DashboardWorkspaceResponse,
+    EvaluationComparisonResponse,
+    EvaluationListResponse,
+    EvaluationResponse,
+    EvaluationWorkspaceResponse,
+    EvidenceExplorerAssistantResponse,
+    EvidenceExplorerWorkspaceResponse,
+    EvidenceReviewWorkspaceResponse,
+    ExportCsvResponseMetadata,
+    ExternalEvidenceBulkReviewRequest,
+    ExternalEvidenceBulkReviewResponse,
+    ExternalEvidenceCatalogItemDetail,
+    ExternalEvidenceCatalogListResponse,
+    ExternalEvidenceReviewRequest,
+    ExternalEvidenceReviewStatus,
+    LocalSourceImportRequest,
+    LocalSourceImportResponse,
+    PrintableEvaluationReportResponse,
+    QueueResearchBackfillRequest,
+    RawCaseInput,
+    ReportConversationRequest,
+    ReportConversationResponse,
+    ResearchBackfillListResponse,
+    ResearchDecisionIngestionPreview,
+    ResearchEvidencePack,
+    ResearchReviewDetail,
+    ResearchReviewListResponse,
+    RunResearchExtractionsRequest,
+    RunResearchExtractionsResponse,
+    SearchResearchPapersRequest,
+    SearchResearchPapersResponse,
+    SourceArtifact,
+    StageResearchPapersRequest,
+    StageResearchPapersResponse,
+} from '@metrev/domain-contracts/browser';
+import {
+    addResearchColumnRequestSchema,
+    caseHistoryWorkspaceResponseSchema,
+    createResearchEvidencePackRequestSchema,
+    createResearchReviewRequestSchema,
+    dashboardWorkspaceResponseSchema,
+    evaluationComparisonResponseSchema,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    evaluationWorkspaceResponseSchema,
+    evidenceExplorerAssistantResponseSchema,
+    evidenceExplorerWorkspaceResponseSchema,
+    evidenceReviewWorkspaceResponseSchema,
+    externalEvidenceBulkReviewRequestSchema,
+    externalEvidenceBulkReviewResponseSchema,
+    externalEvidenceCatalogDetailSchema,
+    externalEvidenceCatalogListResponseSchema,
+    externalEvidenceReviewRequestSchema,
+    localSourceImportRequestSchema,
+    localSourceImportResponseSchema,
+    printableEvaluationReportResponseSchema,
+    queueResearchBackfillRequestSchema,
+    rawCaseInputSchema,
+    reportConversationRequestSchema,
+    reportConversationResponseSchema,
+    researchBackfillListResponseSchema,
+    researchDecisionIngestionPreviewSchema,
+    researchEvidencePackSchema,
+    researchReviewDetailSchema,
+    researchReviewListResponseSchema,
+    runResearchExtractionsRequestSchema,
+    runResearchExtractionsResponseSchema,
+    searchResearchPapersRequestSchema,
+    searchResearchPapersResponseSchema,
+    sourceArtifactSchema,
+    stageResearchPapersRequestSchema,
+    stageResearchPapersResponseSchema,
+} from '@metrev/domain-contracts/browser';
 
 export type ExternalEvidenceSourceTypeFilter =
   | 'openalex'
@@ -57,6 +95,10 @@ export type EvaluationListSortDirection = 'asc' | 'desc';
 
 export const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+
+type ContractParser<T> = {
+  parse(input: unknown): T;
+};
 
 function buildExternalEvidenceSearchParams(input?: {
   status?: ExternalEvidenceReviewStatus;
@@ -90,17 +132,38 @@ function buildExternalEvidenceSearchParams(input?: {
   return searchParams;
 }
 
-async function parseJson<T>(response: Response): Promise<T> {
+async function readErrorMessage(response: Response): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as {
+    message?: string;
+  } | null;
+
+  return payload?.message ?? `Request failed with status ${response.status}`;
+}
+
+function toJsonBody<T>(parser: ContractParser<T>, payload: unknown): string {
+  return JSON.stringify(parser.parse(payload));
+}
+
+async function parseJson<T>(
+  response: Response,
+  parser: ContractParser<T>,
+  responseLabel: string,
+): Promise<T> {
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      message?: string;
-    } | null;
-    throw new Error(
-      payload?.message ?? `Request failed with status ${response.status}`,
-    );
+    throw new Error(await readErrorMessage(response));
   }
 
-  return (await response.json()) as T;
+  const payload = await response.json().catch(() => {
+    throw new Error(
+      `Invalid ${responseLabel}: response body is not valid JSON.`,
+    );
+  });
+
+  try {
+    return parser.parse(payload);
+  } catch (error) {
+    throw new Error(`Invalid ${responseLabel}.`, { cause: error });
+  }
 }
 
 export async function evaluateCase(
@@ -120,10 +183,14 @@ export async function evaluateCase(
           }
         : {}),
     },
-    body: JSON.stringify(payload),
+    body: toJsonBody(rawCaseInputSchema, payload),
   });
 
-  return parseJson<EvaluationResponse>(response);
+  return parseJson(
+    response,
+    evaluationResponseSchema,
+    'case evaluation response',
+  );
 }
 
 export async function fetchEvaluation(id: string): Promise<EvaluationResponse> {
@@ -132,7 +199,7 @@ export async function fetchEvaluation(id: string): Promise<EvaluationResponse> {
     credentials: 'include',
   });
 
-  return parseJson<EvaluationResponse>(response);
+  return parseJson(response, evaluationResponseSchema, 'evaluation response');
 }
 
 export async function fetchDashboardWorkspace(): Promise<DashboardWorkspaceResponse> {
@@ -141,7 +208,11 @@ export async function fetchDashboardWorkspace(): Promise<DashboardWorkspaceRespo
     credentials: 'include',
   });
 
-  return parseJson<DashboardWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    dashboardWorkspaceResponseSchema,
+    'dashboard workspace response',
+  );
 }
 
 export async function fetchEvaluationWorkspace(
@@ -155,7 +226,11 @@ export async function fetchEvaluationWorkspace(
     },
   );
 
-  return parseJson<EvaluationWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    evaluationWorkspaceResponseSchema,
+    'evaluation workspace response',
+  );
 }
 
 export async function fetchEvaluationList(input?: {
@@ -201,7 +276,11 @@ export async function fetchEvaluationList(input?: {
     },
   );
 
-  return parseJson<EvaluationListResponse>(response);
+  return parseJson(
+    response,
+    evaluationListResponseSchema,
+    'evaluation list response',
+  );
 }
 
 export async function fetchCaseHistoryWorkspace(
@@ -215,7 +294,11 @@ export async function fetchCaseHistoryWorkspace(
     },
   );
 
-  return parseJson<CaseHistoryWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    caseHistoryWorkspaceResponseSchema,
+    'case history workspace response',
+  );
 }
 
 export async function fetchEvaluationComparison(
@@ -230,7 +313,11 @@ export async function fetchEvaluationComparison(
     },
   );
 
-  return parseJson<EvaluationComparisonResponse>(response);
+  return parseJson(
+    response,
+    evaluationComparisonResponseSchema,
+    'evaluation comparison response',
+  );
 }
 
 export async function fetchExternalEvidenceCatalog(input?: {
@@ -250,7 +337,11 @@ export async function fetchExternalEvidenceCatalog(input?: {
     },
   );
 
-  return parseJson<ExternalEvidenceCatalogListResponse>(response);
+  return parseJson(
+    response,
+    externalEvidenceCatalogListResponseSchema,
+    'external evidence catalog response',
+  );
 }
 
 export async function fetchEvidenceReviewWorkspace(input?: {
@@ -270,7 +361,11 @@ export async function fetchEvidenceReviewWorkspace(input?: {
     },
   );
 
-  return parseJson<EvidenceReviewWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    evidenceReviewWorkspaceResponseSchema,
+    'evidence review workspace response',
+  );
 }
 
 export async function fetchEvidenceExplorerWorkspace(input?: {
@@ -290,7 +385,11 @@ export async function fetchEvidenceExplorerWorkspace(input?: {
     },
   );
 
-  return parseJson<EvidenceExplorerWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    evidenceExplorerWorkspaceResponseSchema,
+    'evidence explorer workspace response',
+  );
 }
 
 export async function fetchEvidenceExplorerAssistant(input?: {
@@ -310,7 +409,11 @@ export async function fetchEvidenceExplorerAssistant(input?: {
     },
   );
 
-  return parseJson<EvidenceExplorerAssistantResponse>(response);
+  return parseJson(
+    response,
+    evidenceExplorerAssistantResponseSchema,
+    'evidence explorer assistant response',
+  );
 }
 
 export async function fetchExternalEvidenceCatalogItem(
@@ -321,7 +424,11 @@ export async function fetchExternalEvidenceCatalogItem(
     credentials: 'include',
   });
 
-  return parseJson<ExternalEvidenceCatalogItemDetail>(response);
+  return parseJson(
+    response,
+    externalEvidenceCatalogDetailSchema,
+    'external evidence catalog detail response',
+  );
 }
 
 export async function reviewExternalEvidenceCatalogItem(
@@ -336,11 +443,15 @@ export async function reviewExternalEvidenceCatalogItem(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(externalEvidenceReviewRequestSchema, payload),
     },
   );
 
-  return parseJson<ExternalEvidenceCatalogItemDetail>(response);
+  return parseJson(
+    response,
+    externalEvidenceCatalogDetailSchema,
+    'external evidence review response',
+  );
 }
 
 export async function reviewExternalEvidenceCatalogItems(
@@ -354,11 +465,15 @@ export async function reviewExternalEvidenceCatalogItems(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(externalEvidenceBulkReviewRequestSchema, payload),
     },
   );
 
-  return parseJson<ExternalEvidenceBulkReviewResponse>(response);
+  return parseJson(
+    response,
+    externalEvidenceBulkReviewResponseSchema,
+    'external evidence bulk review response',
+  );
 }
 
 export async function fetchPrintableEvaluationReport(
@@ -372,7 +487,11 @@ export async function fetchPrintableEvaluationReport(
     },
   );
 
-  return parseJson<PrintableEvaluationReportResponse>(response);
+  return parseJson(
+    response,
+    printableEvaluationReportResponseSchema,
+    'printable evaluation report response',
+  );
 }
 
 export async function askReportConversation(
@@ -387,14 +506,18 @@ export async function askReportConversation(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
+      body: toJsonBody(reportConversationRequestSchema, {
         ...payload,
         evaluation_id: evaluationId,
       }),
     },
   );
 
-  return parseJson<ReportConversationResponse>(response);
+  return parseJson(
+    response,
+    reportConversationResponseSchema,
+    'report conversation response',
+  );
 }
 
 export async function fetchEvaluationJsonExport(
@@ -408,7 +531,11 @@ export async function fetchEvaluationJsonExport(
     },
   );
 
-  return parseJson<EvaluationWorkspaceResponse>(response);
+  return parseJson(
+    response,
+    evaluationWorkspaceResponseSchema,
+    'evaluation JSON export response',
+  );
 }
 
 export async function fetchEvaluationCsvExport(evaluationId: string): Promise<{
@@ -429,12 +556,7 @@ export async function fetchEvaluationCsvExport(evaluationId: string): Promise<{
   );
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      message?: string;
-    } | null;
-    throw new Error(
-      payload?.message ?? `Request failed with status ${response.status}`,
-    );
+    throw new Error(await readErrorMessage(response));
   }
 
   return {
@@ -481,12 +603,7 @@ export async function fetchEvidenceExplorerCsvExport(input?: {
   );
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      message?: string;
-    } | null;
-    throw new Error(
-      payload?.message ?? `Request failed with status ${response.status}`,
-    );
+    throw new Error(await readErrorMessage(response));
   }
 
   return {
@@ -513,7 +630,11 @@ export async function fetchResearchReviews(): Promise<ResearchReviewListResponse
     credentials: 'include',
   });
 
-  return parseJson<ResearchReviewListResponse>(response);
+  return parseJson(
+    response,
+    researchReviewListResponseSchema,
+    'research review list response',
+  );
 }
 
 export async function searchResearchPapers(
@@ -525,10 +646,14 @@ export async function searchResearchPapers(
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: toJsonBody(searchResearchPapersRequestSchema, payload),
   });
 
-  return parseJson<SearchResearchPapersResponse>(response);
+  return parseJson(
+    response,
+    searchResearchPapersResponseSchema,
+    'research search response',
+  );
 }
 
 export async function stageResearchPapers(
@@ -540,10 +665,14 @@ export async function stageResearchPapers(
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: toJsonBody(stageResearchPapersRequestSchema, payload),
   });
 
-  return parseJson<StageResearchPapersResponse>(response);
+  return parseJson(
+    response,
+    stageResearchPapersResponseSchema,
+    'research import response',
+  );
 }
 
 export async function importLocalSources(
@@ -557,11 +686,15 @@ export async function importLocalSources(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(localSourceImportRequestSchema, payload),
     },
   );
 
-  return parseJson<LocalSourceImportResponse>(response);
+  return parseJson(
+    response,
+    localSourceImportResponseSchema,
+    'local source import response',
+  );
 }
 
 export async function fetchSourceArtifact(
@@ -575,7 +708,7 @@ export async function fetchSourceArtifact(
     },
   );
 
-  return parseJson<SourceArtifact>(response);
+  return parseJson(response, sourceArtifactSchema, 'source artifact response');
 }
 
 export async function createResearchReview(
@@ -587,10 +720,14 @@ export async function createResearchReview(
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: toJsonBody(createResearchReviewRequestSchema, payload),
   });
 
-  return parseJson<ResearchReviewDetail>(response);
+  return parseJson(
+    response,
+    researchReviewDetailSchema,
+    'research review detail response',
+  );
 }
 
 export async function fetchResearchBackfills(): Promise<ResearchBackfillListResponse> {
@@ -599,7 +736,11 @@ export async function fetchResearchBackfills(): Promise<ResearchBackfillListResp
     credentials: 'include',
   });
 
-  return parseJson<ResearchBackfillListResponse>(response);
+  return parseJson(
+    response,
+    researchBackfillListResponseSchema,
+    'research backfill list response',
+  );
 }
 
 export async function queueResearchBackfill(
@@ -611,10 +752,14 @@ export async function queueResearchBackfill(
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: toJsonBody(queueResearchBackfillRequestSchema, payload),
   });
 
-  return parseJson<ResearchBackfillListResponse>(response);
+  return parseJson(
+    response,
+    researchBackfillListResponseSchema,
+    'research backfill queue response',
+  );
 }
 
 export async function fetchResearchReview(
@@ -628,7 +773,11 @@ export async function fetchResearchReview(
     },
   );
 
-  return parseJson<ResearchReviewDetail>(response);
+  return parseJson(
+    response,
+    researchReviewDetailSchema,
+    'research review response',
+  );
 }
 
 export async function addResearchColumn(
@@ -643,11 +792,15 @@ export async function addResearchColumn(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(addResearchColumnRequestSchema, payload),
     },
   );
 
-  return parseJson<ResearchReviewDetail>(response);
+  return parseJson(
+    response,
+    researchReviewDetailSchema,
+    'research review column update response',
+  );
 }
 
 export async function runResearchExtractions(
@@ -662,11 +815,15 @@ export async function runResearchExtractions(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(runResearchExtractionsRequestSchema, payload),
     },
   );
 
-  return parseJson<RunResearchExtractionsResponse>(response);
+  return parseJson(
+    response,
+    runResearchExtractionsResponseSchema,
+    'research extraction response',
+  );
 }
 
 export async function createResearchEvidencePack(
@@ -681,11 +838,15 @@ export async function createResearchEvidencePack(
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: toJsonBody(createResearchEvidencePackRequestSchema, payload),
     },
   );
 
-  return parseJson<ResearchEvidencePack>(response);
+  return parseJson(
+    response,
+    researchEvidencePackSchema,
+    'research evidence pack response',
+  );
 }
 
 export async function fetchResearchEvidencePackDecisionInput(
@@ -699,5 +860,9 @@ export async function fetchResearchEvidencePackDecisionInput(
     },
   );
 
-  return parseJson<ResearchDecisionIngestionPreview>(response);
+  return parseJson(
+    response,
+    researchDecisionIngestionPreviewSchema,
+    'research decision-ingestion preview response',
+  );
 }

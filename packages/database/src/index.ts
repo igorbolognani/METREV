@@ -43,7 +43,7 @@ import {
     type ReportConversationCitation,
     type ReportConversationGrounding,
     type ReportConversationTurn,
-    type SourceArtifact,
+    type SourceArtifact
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -1192,6 +1192,28 @@ function createWorkspaceSnapshotRecord(record: {
   });
 }
 
+function attachLineageRuntimeVersions(
+  evaluation: EvaluationResponse,
+): EvaluationResponse {
+  const runtimeVersions = evaluation.audit_record.runtime_versions;
+
+  return {
+    ...evaluation,
+    source_usages: evaluation.source_usages.map((usage) => ({
+      ...usage,
+      runtime_versions: usage.runtime_versions ?? runtimeVersions,
+    })),
+    claim_usages: evaluation.claim_usages.map((usage) => ({
+      ...usage,
+      runtime_versions: usage.runtime_versions ?? runtimeVersions,
+    })),
+    workspace_snapshots: evaluation.workspace_snapshots.map((snapshot) => ({
+      ...snapshot,
+      runtime_versions: snapshot.runtime_versions ?? runtimeVersions,
+    })),
+  };
+}
+
 function createReportConversationTurn(record: {
   id: string;
   conversationId: string;
@@ -1638,6 +1660,7 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
   async saveEvaluation(
     evaluation: EvaluationResponse,
   ): Promise<EvaluationResponse> {
+    const normalizedEvaluation = attachLineageRuntimeVersions(evaluation);
     const idempotencyKey = evaluation.audit_record.idempotency_key?.trim();
 
     if (idempotencyKey) {
@@ -1648,13 +1671,19 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       }
     }
 
-    this.evaluations.set(evaluation.evaluation_id, evaluation);
+    this.evaluations.set(
+      normalizedEvaluation.evaluation_id,
+      normalizedEvaluation,
+    );
 
     if (idempotencyKey) {
-      this.evaluationsByIdempotencyKey.set(idempotencyKey, evaluation);
+      this.evaluationsByIdempotencyKey.set(
+        idempotencyKey,
+        normalizedEvaluation,
+      );
     }
 
-    return evaluation;
+    return normalizedEvaluation;
   }
 
   async getEvaluation(
@@ -2381,27 +2410,29 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           return null;
         }
 
-        return evaluationResponseSchema.parse({
-          evaluation_id: record.id,
-          case_id: record.caseId,
-          normalized_case: record.case.normalizedCase,
-          decision_output: record.decisionOutput,
-          audit_record: record.auditRecord,
-          narrative: record.narrative,
-          narrative_metadata: record.narrativeMetadata,
-          simulation_enrichment: record.simulationArtifact
-            ? fromSimulationArtifactRecord(record.simulationArtifact)
-            : undefined,
-          source_usages: record.sourceUsages.map((usage) =>
-            createEvaluationSourceUsage(usage),
-          ),
-          claim_usages: record.claimUsages.map((usage) =>
-            createEvaluationClaimUsage(usage),
-          ),
-          workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
-            createWorkspaceSnapshotRecord(snapshot),
-          ),
-        });
+        return attachLineageRuntimeVersions(
+          evaluationResponseSchema.parse({
+            evaluation_id: record.id,
+            case_id: record.caseId,
+            normalized_case: record.case.normalizedCase,
+            decision_output: record.decisionOutput,
+            audit_record: record.auditRecord,
+            narrative: record.narrative,
+            narrative_metadata: record.narrativeMetadata,
+            simulation_enrichment: record.simulationArtifact
+              ? fromSimulationArtifactRecord(record.simulationArtifact)
+              : undefined,
+            source_usages: record.sourceUsages.map((usage) =>
+              createEvaluationSourceUsage(usage),
+            ),
+            claim_usages: record.claimUsages.map((usage) =>
+              createEvaluationClaimUsage(usage),
+            ),
+            workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
+              createWorkspaceSnapshotRecord(snapshot),
+            ),
+          }),
+        );
       },
       { evaluation_id: evaluationId },
     );
@@ -2428,27 +2459,29 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           return null;
         }
 
-        return evaluationResponseSchema.parse({
-          evaluation_id: record.id,
-          case_id: record.caseId,
-          normalized_case: record.case.normalizedCase,
-          decision_output: record.decisionOutput,
-          audit_record: record.auditRecord,
-          narrative: record.narrative,
-          narrative_metadata: record.narrativeMetadata,
-          simulation_enrichment: record.simulationArtifact
-            ? fromSimulationArtifactRecord(record.simulationArtifact)
-            : undefined,
-          source_usages: record.sourceUsages.map((usage) =>
-            createEvaluationSourceUsage(usage),
-          ),
-          claim_usages: record.claimUsages.map((usage) =>
-            createEvaluationClaimUsage(usage),
-          ),
-          workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
-            createWorkspaceSnapshotRecord(snapshot),
-          ),
-        });
+        return attachLineageRuntimeVersions(
+          evaluationResponseSchema.parse({
+            evaluation_id: record.id,
+            case_id: record.caseId,
+            normalized_case: record.case.normalizedCase,
+            decision_output: record.decisionOutput,
+            audit_record: record.auditRecord,
+            narrative: record.narrative,
+            narrative_metadata: record.narrativeMetadata,
+            simulation_enrichment: record.simulationArtifact
+              ? fromSimulationArtifactRecord(record.simulationArtifact)
+              : undefined,
+            source_usages: record.sourceUsages.map((usage) =>
+              createEvaluationSourceUsage(usage),
+            ),
+            claim_usages: record.claimUsages.map((usage) =>
+              createEvaluationClaimUsage(usage),
+            ),
+            workspace_snapshots: record.workspaceSnapshots.map((snapshot) =>
+              createWorkspaceSnapshotRecord(snapshot),
+            ),
+          }),
+        );
       },
       { idempotency_key: idempotencyKey },
     );

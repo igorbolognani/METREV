@@ -1,13 +1,14 @@
 import { z } from 'zod';
 
 import {
-  confidenceLevelSchema,
-  evidenceStrengthSchema,
-  evidenceTypeSchema,
-  externalEvidenceAccessStatusSchema,
-  externalEvidenceSourceTypeSchema,
-  rawEvidenceRecordSchema,
-  sourceArtifactSchema,
+    confidenceLevelSchema,
+    evidenceStrengthSchema,
+    evidenceTypeSchema,
+    externalEvidenceAccessStatusSchema,
+    externalEvidenceSourceTypeSchema,
+    rawEvidenceRecordSchema,
+    runtimeVersionSchema,
+    sourceArtifactSchema,
 } from './schemas';
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
@@ -331,6 +332,7 @@ export const researchEvidencePackSchema = z.object({
   missing_fields: z.array(z.string()).default([]),
   confidence: confidenceLevelSchema,
   payload: flexibleObjectSchema.default({}),
+  runtime_versions: runtimeVersionSchema.optional(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
 });
@@ -342,6 +344,7 @@ export const researchDecisionIngestionPreviewSchema = z.object({
   measured_metric_candidates: flexibleObjectSchema.default({}),
   missing_data: z.array(z.string()).default([]),
   assumptions: z.array(z.string()).default([]),
+  runtime_versions: runtimeVersionSchema.optional(),
 });
 
 export const researchReviewSummarySchema = z.object({

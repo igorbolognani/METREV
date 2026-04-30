@@ -4,26 +4,52 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-  addResearchColumnRequestSchema,
-  createResearchEvidencePackRequestSchema,
-  createResearchReviewRequestSchema,
-  localSourceImportRequestSchema,
-  queueResearchBackfillRequestSchema,
-  runResearchExtractionsRequestSchema,
-  runResearchExtractionsResponseSchema,
-  searchResearchPapersRequestSchema,
-  stageResearchPapersRequestSchema,
+    addResearchColumnRequestSchema,
+    createResearchEvidencePackRequestSchema,
+    createResearchReviewRequestSchema,
+    localSourceImportRequestSchema,
+    queueResearchBackfillRequestSchema,
+    runResearchExtractionsRequestSchema,
+    runResearchExtractionsResponseSchema,
+    searchResearchPapersRequestSchema,
+    stageResearchPapersRequestSchema,
 } from '@metrev/domain-contracts';
 import {
-  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-  buildDecisionIngestionPreview,
-  buildResearchEvidencePack,
-  executeResearchExtraction,
-  getDefaultResearchColumns,
-  hydrateResearchPaperText,
-  type HydratedResearchPaperText,
+    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    buildDecisionIngestionPreview,
+    buildResearchEvidencePack,
+    executeResearchExtraction,
+    getDefaultResearchColumns,
+    hydrateResearchPaperText,
+    type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 import { withSpan } from '@metrev/telemetry';
+
+import { buildRuntimeVersions } from '../presenters/workspace-presenters';
+
+const RESEARCH_EVIDENCE_PACK_PROMPT_VERSION = 'research-evidence-pack-v1';
+
+function collapseExtractorVersions(
+  results: Array<{ extractor_version: string }>,
+): string | null {
+  const unique = [
+    ...new Set(
+      results
+        .map((result) => result.extractor_version?.trim())
+        .filter((version): version is string => Boolean(version)),
+    ),
+  ];
+
+  if (unique.length === 0) {
+    return null;
+  }
+
+  if (unique.length === 1) {
+    return unique[0];
+  }
+
+  return `mixed(${unique.join(',')})`;
+}
 
 function replyForAuthorizationError(
   request: FastifyRequest,
@@ -442,11 +468,16 @@ export async function registerResearchRoutes(
       });
     }
 
+    const packRuntimeVersions = buildRuntimeVersions({
+      promptVersion: RESEARCH_EVIDENCE_PACK_PROMPT_VERSION,
+      modelVersion: collapseExtractorVersions(review.extraction_results),
+    });
     const pack = buildResearchEvidencePack({
       packId: randomUUID(),
       review,
       title: parsed.data.title,
       status: parsed.data.status,
+      versions: packRuntimeVersions,
     });
     const decisionInput = buildDecisionIngestionPreview(pack);
     const savedPack = await withSpan(

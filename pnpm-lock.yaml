@@ -102,6 +102,9 @@ importers:
       '@metrev/research-intelligence':
         specifier: workspace:*
         version: link:../../packages/research-intelligence
+      '@metrev/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
     devDependencies:
       tsx:
         specifier: ^4.19.3

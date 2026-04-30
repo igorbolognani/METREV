@@ -1,4 +1,8 @@
+import rawFixture from '../fixtures/raw-case-input.json';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
     addResearchColumn,
@@ -15,8 +19,17 @@ import {
     fetchResearchReviews,
     runResearchExtractions,
 } from '../../apps/web-ui/src/lib/api';
+import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 
 const fetchMock = vi.fn<typeof fetch>();
+let workspaceFixturesPromise:
+  | ReturnType<typeof buildWorkspaceViewFixtures>
+  | undefined;
+
+function getWorkspaceFixtures() {
+  workspaceFixturesPromise ??= buildWorkspaceViewFixtures();
+  return workspaceFixturesPromise;
+}
 
 describe('web API client helpers', () => {
   afterEach(() => {
@@ -25,23 +38,18 @@ describe('web API client helpers', () => {
   });
 
   it('sends the idempotency key when evaluating a case', async () => {
+    const fixtures = await getWorkspaceFixtures();
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          evaluation_id: 'eval-001',
-          case_id: 'CASE-001',
-        }),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/json',
-          },
+      new Response(JSON.stringify(fixtures.current), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
         },
-      ),
+      }),
     );
 
-    await evaluateCase({ case_id: 'CASE-001' } as never, {
+    await evaluateCase(rawCaseInputSchema.parse(rawFixture), {
       idempotencyKey: 'idem-001',
     });
 
@@ -69,7 +77,7 @@ describe('web API client helpers', () => {
             filtered_total: 0,
             page: 2,
             page_size: 25,
-            total_pages: 0,
+            total_pages: 1,
             returned: 0,
           },
         }),
@@ -97,6 +105,35 @@ describe('web API client helpers', () => {
         cache: 'no-store',
         credentials: 'include',
       }),
+    );
+  });
+
+  it('rejects invalid JSON payloads that drift from the shared response contract', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          summary: {
+            total: 0,
+            filtered_total: 0,
+            page: 1,
+            page_size: 25,
+            total_pages: 0,
+            returned: 0,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    await expect(fetchEvaluationList()).rejects.toThrow(
+      'Invalid evaluation list response.',
     );
   });
 
@@ -128,53 +165,15 @@ describe('web API client helpers', () => {
   });
 
   it('calls the dedicated explorer workspace route with the expected query string', async () => {
+    const fixtures = await getWorkspaceFixtures();
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          meta: {},
-          filters: {},
-          summary: {
-            total: 0,
-            filtered_total: 0,
-            pending: 0,
-            accepted: 0,
-            rejected: 0,
-            page: 2,
-            page_size: 50,
-            total_pages: 1,
-            returned: 0,
-          },
-          spotlight: [],
-          items: [],
-          table_groups: {
-            intake_ready: [],
-            recently_published: [],
-          },
-          warehouse_facets: {
-            source_types: [],
-            evidence_types: [],
-            review_statuses: [],
-            publishers: [],
-          },
-          warehouse_snapshot: {
-            filtered_item_count: 0,
-            returned_item_count: 0,
-            claim_count: 0,
-            reviewed_claim_count: 0,
-            doi_count: 0,
-            linked_source_count: 0,
-            publisher_count: 0,
-          },
-          export_csv_href: '/api/exports/evidence/explorer/csv',
-        }),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/json',
-          },
+      new Response(JSON.stringify(fixtures.evidenceExplorerWorkspace), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
         },
-      ),
+      }),
     );
 
     await fetchEvidenceExplorerWorkspace({
@@ -195,22 +194,17 @@ describe('web API client helpers', () => {
   });
 
   it('calls the dedicated explorer assistant route with the expected query string', async () => {
+    const fixtures = await getWorkspaceFixtures();
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
-          meta: {},
-          filters: {},
-          warehouse_snapshot: {
-            filtered_item_count: 1,
-            returned_item_count: 1,
-            claim_count: 1,
-            reviewed_claim_count: 0,
-            doi_count: 1,
-            linked_source_count: 1,
-            publisher_count: 1,
-          },
-          spotlight: [],
+          meta: fixtures.evidenceExplorerWorkspace.meta,
+          presentation: fixtures.evidenceExplorerWorkspace.presentation,
+          filters: fixtures.evidenceExplorerWorkspace.filters,
+          warehouse_snapshot:
+            fixtures.evidenceExplorerWorkspace.warehouse_snapshot,
+          spotlight: fixtures.evidenceExplorerWorkspace.spotlight,
           assistant: {
             summary: 'stub summary',
             narrative_metadata: {
@@ -368,6 +362,7 @@ describe('web API client helpers', () => {
         body: JSON.stringify({
           query: 'microbial fuel cell',
           limit: 10,
+          page: 1,
         }),
         method: 'POST',
       }),

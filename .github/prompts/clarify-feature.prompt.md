@@ -2,7 +2,7 @@
 name: clarify-feature
 description: 'Clarify underspecified feature requests, separate assumptions from blocking decisions, and decide which durable artifacts are required before planning.'
 argument-hint: 'Describe the feature, change, or uncertainty to clarify'
-agent: 'Planner'
+agent: 'planner'
 ---
 
 Clarify the requested work for this repository before planning or implementation.

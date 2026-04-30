@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import {
-  MemoryEvaluationRepository,
-  MemoryResearchRepository,
+    MemoryEvaluationRepository,
+    MemoryResearchRepository,
 } from '@metrev/database';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -283,6 +283,10 @@ describe('research API flow', () => {
       expect(pack).toMatchObject({
         title: 'MFC fixture evidence pack',
         review_id: created.review_id,
+        runtime_versions: expect.objectContaining({
+          prompt_version: 'research-evidence-pack-v1',
+          workspace_schema_version: '015.0.0',
+        }),
       });
       expect(pack.evidence_items.length).toBeGreaterThan(0);
 
@@ -308,6 +312,10 @@ describe('research API flow', () => {
       expect(analystDecisionInputResponse.json()).toMatchObject({
         pack_id: pack.pack_id,
         review_id: created.review_id,
+        runtime_versions: expect.objectContaining({
+          prompt_version: 'research-evidence-pack-v1',
+          workspace_schema_version: '015.0.0',
+        }),
         evidence_records: expect.any(Array),
         measured_metric_candidates: expect.objectContaining({
           power_density_w_m2: expect.any(Number),

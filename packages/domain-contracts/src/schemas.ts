@@ -1296,6 +1296,7 @@ export const evaluationSourceUsageSchema = z.object({
   source_document_id: z.string().min(1),
   usage_type: evaluationEvidenceUsageTypeSchema,
   note: z.string().nullable(),
+  runtime_versions: runtimeVersionSchema.optional(),
   created_at: z.string().min(1),
 });
 
@@ -1305,6 +1306,7 @@ export const evaluationClaimUsageSchema = z.object({
   claim_id: z.string().min(1),
   usage_type: evaluationEvidenceUsageTypeSchema,
   note: z.string().nullable(),
+  runtime_versions: runtimeVersionSchema.optional(),
   created_at: z.string().min(1),
 });
 
@@ -1314,6 +1316,7 @@ export const workspaceSnapshotRecordSchema = z.object({
   case_id: z.string().nullable(),
   snapshot_type: workspaceSnapshotTypeSchema,
   payload: z.unknown(),
+  runtime_versions: runtimeVersionSchema.optional(),
   created_at: z.string().min(1),
 });
 
