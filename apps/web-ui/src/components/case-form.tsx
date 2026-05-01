@@ -6,8 +6,8 @@ import * as React from 'react';
 
 import type { Role } from '@metrev/auth';
 import type {
-  ExternalEvidenceCatalogItemSummary,
-  ResearchDecisionIngestionPreview,
+    ExternalEvidenceCatalogItemSummary,
+    ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
 
 import { CaseFormContextStep } from '@/components/case-form/case-form-context-step';
@@ -18,34 +18,34 @@ import { CaseFormStackDetailStep } from '@/components/case-form/case-form-stack-
 import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
 import {
-  WorkspaceDataCard,
-  WorkspacePageHeader,
-  WorkspaceSection,
+    WorkspaceDataCard,
+    WorkspacePageHeader,
+    WorkspaceSection,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
-import {
-  clearPendingSubmission,
-  clearSubmissionError,
-  loadDraftInput,
-  loadSubmissionError,
-  saveDraftInput,
-  savePendingSubmission,
-} from '@/lib/case-draft';
 import { fetchResearchEvidencePackDecisionInput } from '@/lib/api';
 import {
-  caseFormSteps,
-  caseFormStepValues,
-  getCaseFormStepIndex,
-  useCaseFormStep,
-  type CaseFormStep,
+    clearPendingSubmission,
+    clearSubmissionError,
+    loadDraftInput,
+    loadSubmissionError,
+    saveDraftInput,
+    savePendingSubmission,
+} from '@/lib/case-draft';
+import {
+    caseFormSteps,
+    caseFormStepValues,
+    getCaseFormStepIndex,
+    useCaseFormStep,
+    type CaseFormStep,
 } from '@/lib/case-form-query-state';
 import {
-  buildCaseInputFromFormValues,
-  caseIntakePresets,
-  defaultCaseIntakeFormValues,
-  findCaseIntakePreset,
-  hydrateCaseIntakeFormValues,
-  type CaseIntakeFormValues,
+    buildCaseInputFromFormValues,
+    caseIntakePresets,
+    defaultCaseIntakeFormValues,
+    findCaseIntakePreset,
+    hydrateCaseIntakeFormValues,
+    type CaseIntakeFormValues,
 } from '@/lib/case-intake';
 import { formatToken } from '@/lib/formatting';
 
@@ -509,22 +509,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     return false;
   }
 
-  function moveToStep(nextStep: CaseFormStep) {
-    const nextIndex = getCaseFormStepIndex(nextStep);
-
-    if (nextIndex <= currentStepIndex) {
-      setStepError(null);
-      setCurrentStep(nextStep);
-      return;
-    }
-
-    for (let index = currentStepIndex; index < nextIndex; index += 1) {
-      const step = caseFormStepValues[index];
-      if (!step || !ensureStepIsValid(step)) {
-        return;
-      }
-    }
-
+  function handleStepperStepChange(nextStep: CaseFormStep) {
     setStepError(null);
     setCurrentStep(nextStep);
   }
@@ -788,7 +773,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
             <CaseFormStepper
               completedSteps={completedSteps}
               currentStep={currentStep}
-              onStepChange={moveToStep}
+              onStepChange={handleStepperStepChange}
             />
           </div>
 
