@@ -14,6 +14,8 @@ export interface HydratedResearchPaperText {
   trace: ResearchEvidenceTrace[];
 }
 
+const DEFAULT_FULL_TEXT_FETCH_TIMEOUT_MS = 1000;
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
@@ -154,12 +156,23 @@ export async function hydrateResearchPaperText(
   );
 
   for (const candidate of candidates) {
+    const timeoutMs = Math.max(
+      100,
+      Number(
+        process.env.RESEARCH_FULL_TEXT_FETCH_TIMEOUT_MS ??
+          DEFAULT_FULL_TEXT_FETCH_TIMEOUT_MS,
+      ),
+    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const response = await fetchImpl(candidate, {
         headers: {
           accept:
             'application/xml, text/xml, text/html, application/pdf;q=0.9, text/plain;q=0.8',
         },
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -194,6 +207,8 @@ export async function hydrateResearchPaperText(
       };
     } catch {
       continue;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

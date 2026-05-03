@@ -93,6 +93,7 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm install`
 - `pnpm run db:bootstrap`
 - `pnpm run db:bootstrap:bigdata:curated`
+- `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true`
 - `pnpm prisma:generate` after Prisma schema changes or when `postinstall` was skipped
 - `pnpm run db:migrate:deploy`
 - `pnpm run db:seed`
@@ -124,7 +125,32 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run validate:local` is the promoted Docker-backed local acceptance matrix. It ensures the local-view stack is reachable, resolves the active published Postgres port, seeds the shared database, then runs `pnpm run test:db` and `pnpm run test:e2e` against that stack. It stays a separate post-fast CI job alongside `validate:advanced` because Docker and browser/runtime failures are a different risk surface from deterministic research validation.
 - `pnpm run validate:full` combines all promoted repository matrices in sequence: fast, advanced, and local.
 - `pnpm run db:bootstrap:bigdata:curated` persists only the committed curated snapshot into PostgreSQL. Use `pnpm run db:bootstrap:bigdata` when you explicitly want the broader bounded live-provider bootstrap.
+- `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true` runs the production-scale scientific corpus ingestion path. It processes OpenAlex, Crossref, and Europe PMC in batches, resumes from the latest bulk ingestion checkpoint, system-accepts trusted valid scientific records, sends exceptions to review, skips duplicates, and reports honestly if real providers do not yield enough records to reach the configured target.
 - `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
+
+## Production-scale evidence ingestion
+
+The evidence catalog is PostgreSQL-backed and configured for a 500,000-record target without treating that target as a permanent ceiling. Configure the ingestion environment with:
+
+- `EVIDENCE_TARGET_TOTAL=500000`
+- `EVIDENCE_BATCH_SIZE=1000`
+- `EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS=true`
+- `EVIDENCE_REVIEW_ONLY_EXCEPTIONS=true`
+- `EVIDENCE_MAX_RECORDS=500000`
+- `EVIDENCE_INGESTION_MODE=bulk`
+
+Run:
+
+```bash
+pnpm run db:migrate:deploy
+pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true
+```
+
+The target is total catalog size. If 4,678 accepted records already exist, the command plans around `500000 - 4678` remaining catalog records. It does not fabricate article rows or inflate dashboard counts. When configured real sources are exhausted before the target is reached, the ingestion run completes with a warning in `IngestionRun.failureDetail` and the CLI output.
+
+Valid trusted scientific records flow through schema validation, normalization, deduplication, quality checks, audit logging, and automatic system acceptance with `accepted_by=system` and `acceptance_policy=auto_accept_trusted_scientific_corpus_v1`. Records with missing provenance, malformed shape, failed normalization, low extraction confidence, or unresolved duplicate conflicts remain in the Evidence Review Queue as exceptions.
+
+The database now separates raw article/source metadata, catalog acceptance state, ingestion audit events, duplicate decisions, extracted scientific fact placeholders, and benchmark-ready records. Evidence Explorer and Evidence Review use server-side pagination and counts; the Stack Cockpit continues to attach only accepted catalog evidence and can query accepted evidence slices through the catalog API without loading the full corpus into the browser or LLM context.
 
 ## Supabase-hosted Postgres
 

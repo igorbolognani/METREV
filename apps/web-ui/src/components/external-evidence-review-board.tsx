@@ -45,7 +45,7 @@ void React;
 export function ExternalEvidenceReviewBoard() {
   const queryClient = useQueryClient();
   const { filter, searchInput, setFilter, setSearchInput } =
-    useEvidenceReviewQueryState();
+    useEvidenceReviewQueryState('pending');
   const [activeTab, setActiveTab] = useEvidenceReviewTab();
   const deferredSearch = useDeferredValue(searchInput);
   const [sourceType, setSourceType] =
@@ -427,7 +427,7 @@ export function EvidenceReviewWorkspaceView({
         }
         description={
           presentation?.short_summary ??
-          'Review imported records before they can enter intake. Accepted items remain explicit and selectable; rejected and pending records stay blocked from deterministic evaluation.'
+          'Review only exception records that failed validation, normalization, provenance, extraction-confidence, or duplicate-resolution checks. Valid trusted imports are system-accepted and audited before they enter the catalog.'
         }
         title={presentation?.page_title ?? 'Imported evidence control surface'}
       />

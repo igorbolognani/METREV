@@ -11,15 +11,16 @@ export const evidenceReviewFilterValues = [
 
 export type EvidenceReviewFilter = (typeof evidenceReviewFilterValues)[number];
 
-const filterParser = parseAsStringLiteral(evidenceReviewFilterValues)
-  .withDefault('all')
-  .withOptions({ history: 'push' });
-
 const searchParser = parseAsString
   .withDefault('')
   .withOptions({ clearOnDefault: true, history: 'replace' });
 
-export function useEvidenceReviewQueryState() {
+export function useEvidenceReviewQueryState(
+  defaultFilter: EvidenceReviewFilter = 'all',
+) {
+  const filterParser = parseAsStringLiteral(evidenceReviewFilterValues)
+    .withDefault(defaultFilter)
+    .withOptions({ history: 'push' });
   const [filter, setFilter] = useQueryState('status', filterParser);
   const [searchInput, setSearchInput] = useQueryState('q', searchParser);
 

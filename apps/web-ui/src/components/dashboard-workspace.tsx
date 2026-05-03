@@ -74,6 +74,23 @@ export function DashboardWorkspaceView({
   const latestRun = workspace.recent_evaluations[0] ?? null;
   const hasSavedRuns = workspace.summary.total_runs > 0;
   const latestRunOverview = workspace.latest_run_overview;
+  const evidenceCatalog = workspace.evidence_catalog ?? {
+    total: 0,
+    catalog_total: 0,
+    filtered_total: 0,
+    pending: 0,
+    pending_review: 0,
+    accepted: 0,
+    rejected: 0,
+    failed_ingestion: 0,
+    duplicate_skipped: 0,
+    last_ingestion_batch: null,
+    ingestion_progress: null,
+    page: 1,
+    page_size: 1,
+    total_pages: 1,
+    returned: 0,
+  };
   const presentation = workspace.presentation;
   const tabItems = [
     { value: 'overview', label: 'Overview' },
@@ -173,6 +190,33 @@ export function DashboardWorkspaceView({
           label="Parameter controls"
           tone="success"
           value={latestRunOverview?.parameter_summary.total ?? 0}
+        />
+      </div>
+
+      <div className="workspace-detail-grid">
+        <WorkspaceStatCard
+          detail={`${evidenceCatalog.accepted} accepted, ${evidenceCatalog.pending_review ?? evidenceCatalog.pending} requiring exception review.`}
+          label="Evidence catalog total"
+          tone="accent"
+          value={evidenceCatalog.catalog_total ?? evidenceCatalog.total}
+        />
+        <WorkspaceStatCard
+          detail="Trusted scientific records accepted by policy after validation, normalization, dedupe, and audit."
+          label="System-accepted evidence"
+          tone="success"
+          value={evidenceCatalog.accepted}
+        />
+        <WorkspaceStatCard
+          detail={`${evidenceCatalog.failed_ingestion} failed ingestion record(s) remain visible for audit.`}
+          label="Review exceptions"
+          tone="warning"
+          value={evidenceCatalog.pending_review ?? evidenceCatalog.pending}
+        />
+        <WorkspaceStatCard
+          detail={`Last batch: ${evidenceCatalog.last_ingestion_batch ?? 'none'}; duplicates skipped are not counted as catalog rows.`}
+          label="Duplicate skipped"
+          tone="default"
+          value={evidenceCatalog.duplicate_skipped}
         />
       </div>
 

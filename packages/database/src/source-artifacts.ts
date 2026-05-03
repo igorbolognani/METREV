@@ -660,6 +660,17 @@ async function importOneLocalPdf(
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
         reviewStatus: mapReviewStatusToDatabase(reviewStatus),
         sourceState: 'PARSED',
+        acceptedBy: reviewStatus === 'accepted' ? 'system' : null,
+        acceptancePolicy:
+          reviewStatus === 'accepted'
+            ? 'local_source_import_accepted_input'
+            : null,
+        acceptedAt: reviewStatus === 'accepted' ? now : null,
+        reviewRequired: reviewStatus !== 'accepted',
+        ingestionMode: 'local_pdf',
+        extractionStatus: chunks.length > 0 ? 'heuristic_extracted' : 'failed',
+        normalizationStatus: 'parsed',
+        evidenceQuality: veracityScore.level,
         applicabilityScope: toPrismaJsonValue({
           source_artifact_id: artifact.id,
           metadata_quality_level: metadataQuality.level,
@@ -689,6 +700,17 @@ async function importOneLocalPdf(
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
         reviewStatus: mapReviewStatusToDatabase(reviewStatus),
         sourceState: 'PARSED',
+        acceptedBy: reviewStatus === 'accepted' ? 'system' : null,
+        acceptancePolicy:
+          reviewStatus === 'accepted'
+            ? 'local_source_import_accepted_input'
+            : null,
+        acceptedAt: reviewStatus === 'accepted' ? now : null,
+        reviewRequired: reviewStatus !== 'accepted',
+        ingestionMode: 'local_pdf',
+        extractionStatus: chunks.length > 0 ? 'heuristic_extracted' : 'failed',
+        normalizationStatus: 'parsed',
+        evidenceQuality: veracityScore.level,
         applicabilityScope: toPrismaJsonValue({
           source_artifact_id: artifact.id,
           metadata_quality_level: metadataQuality.level,

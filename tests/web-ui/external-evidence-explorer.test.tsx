@@ -35,10 +35,17 @@ describe('external evidence explorer', () => {
           onRequestAssistant: vi.fn(),
           onSearchInputChange: vi.fn(),
           onSourceTypeChange: vi.fn(),
+          onTechnicalFilterChange: vi.fn(),
           page: 1,
           pageSize: 25,
           searchInput: 'benchmark',
           sourceType: 'all',
+          technicalFilters: {
+            componentType: 'anode',
+            material: 'carbon felt',
+            metricType: 'power_density',
+            systemType: 'MFC',
+          },
           workspace: evidenceExplorerWorkspace,
         }),
       );
@@ -63,6 +70,12 @@ describe('external evidence explorer', () => {
           pageSize: 25,
           searchInput: 'benchmark',
           sourceType: 'all',
+          technicalFilters: {
+            componentType: 'anode',
+            material: 'carbon felt',
+            metricType: 'power_density',
+            systemType: 'MFC',
+          },
           workspace: evidenceExplorerWorkspace,
         }),
       );
@@ -87,6 +100,12 @@ describe('external evidence explorer', () => {
           pageSize: 25,
           searchInput: 'benchmark',
           sourceType: 'all',
+          technicalFilters: {
+            componentType: 'anode',
+            material: 'carbon felt',
+            metricType: 'power_density',
+            systemType: 'MFC',
+          },
           workspace: evidenceExplorerWorkspace,
         }),
       );
@@ -111,6 +130,12 @@ describe('external evidence explorer', () => {
           pageSize: 25,
           searchInput: 'benchmark',
           sourceType: 'all',
+          technicalFilters: {
+            componentType: 'anode',
+            material: 'carbon felt',
+            metricType: 'power_density',
+            systemType: 'MFC',
+          },
           workspace: evidenceExplorerWorkspace,
         }),
       );
@@ -125,6 +150,10 @@ describe('external evidence explorer', () => {
       expect(catalogHtml).toContain('Intake-ready records');
       expect(catalogHtml).toContain('Recently published on this page');
       expect(catalogHtml).toContain('Full explorer catalog');
+      expect(catalogHtml).toContain('System type');
+      expect(catalogHtml).toContain('Component');
+      expect(catalogHtml).toContain('Metric');
+      expect(catalogHtml).toContain('Material');
       expect(catalogHtml).toContain('Open review queue');
       expect(catalogHtml).toContain('Open evidence detail');
 
@@ -135,6 +164,8 @@ describe('external evidence explorer', () => {
       expect(assistantHtml).toContain('Warehouse-aware evidence briefing');
       expect(assistantHtml).toContain('Generate assistant brief');
       expect(exportHtml).toContain('Export current slice CSV');
+      expect(exportHtml).toContain('System: MFC');
+      expect(exportHtml).toContain('Material: carbon felt');
       expect(exportHtml).toContain(
         'http://localhost:4000/api/exports/evidence/explorer/csv?status=accepted&amp;q=benchmark&amp;sourceType=crossref&amp;page=1&amp;pageSize=25',
       );

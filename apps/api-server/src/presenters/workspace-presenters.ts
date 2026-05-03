@@ -939,6 +939,7 @@ function buildDashboardLatestRunOverview(evaluation: EvaluationResponse) {
 }
 
 export function buildDashboardWorkspace(input: {
+  evidenceCatalogSummary?: ExternalEvidenceCatalogListResponse['summary'];
   evaluationList: EvaluationListResponse;
   latestEvaluation?: EvaluationResponse | null;
   versions: RuntimeVersion;
@@ -1017,6 +1018,23 @@ export function buildDashboardWorkspace(input: {
       total_cases: totalCases,
       high_confidence_runs: highConfidenceRuns,
       modeled_runs: modeledRuns,
+    },
+    evidence_catalog: input.evidenceCatalogSummary ?? {
+      total: 0,
+      catalog_total: 0,
+      filtered_total: 0,
+      pending: 0,
+      pending_review: 0,
+      accepted: 0,
+      rejected: 0,
+      failed_ingestion: 0,
+      duplicate_skipped: 0,
+      last_ingestion_batch: null,
+      ingestion_progress: null,
+      page: 1,
+      page_size: 1,
+      total_pages: 1,
+      returned: 0,
     },
     hero: {
       title: 'Bioelectrochemical decision workspace',
@@ -1573,7 +1591,7 @@ export function buildEvidenceReviewWorkspace(input: {
     }),
     presentation: createPresentation({
       pageTitle: 'Evidence review queue',
-      shortSummary: `${input.evidenceCatalog.summary.pending} pending record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
+      shortSummary: `${input.evidenceCatalog.summary.pending} exception record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review; valid trusted imports are system-accepted.`,
       defaultTab: 'queue',
       tabs: [
         { key: 'queue', label: 'Queue' },
@@ -1583,7 +1601,7 @@ export function buildEvidenceReviewWorkspace(input: {
       badges: [
         {
           key: 'pending',
-          label: `${input.evidenceCatalog.summary.pending} pending`,
+          label: `${input.evidenceCatalog.summary.pending} exceptions`,
           tone:
             input.evidenceCatalog.summary.pending > 0 ? 'warning' : 'success',
         },
@@ -1602,7 +1620,7 @@ export function buildEvidenceReviewWorkspace(input: {
       ],
       copy: {
         headline: 'Evidence review queue',
-        summary: `${input.evidenceCatalog.summary.pending} pending record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
+        summary: `${input.evidenceCatalog.summary.pending} exception record${input.evidenceCatalog.summary.pending === 1 ? '' : 's'} need analyst review.`,
         detail: input.filters?.query?.trim()
           ? `Filtered by "${input.filters.query.trim()}".`
           : undefined,
@@ -1661,11 +1679,15 @@ function toPublishedAtTimestamp(value: string | null | undefined): number {
 }
 
 function buildEvidenceExplorerCsvHref(input?: {
+  componentType?: string;
+  material?: string;
+  metricType?: string;
   page?: number;
   pageSize?: number;
   query?: string;
   sourceType?: string;
   status?: string;
+  systemType?: string;
 }) {
   const searchParams = new URLSearchParams();
 
@@ -1679,6 +1701,22 @@ function buildEvidenceExplorerCsvHref(input?: {
 
   if (input?.sourceType?.trim()) {
     searchParams.set('sourceType', input.sourceType.trim());
+  }
+
+  if (input?.systemType?.trim()) {
+    searchParams.set('systemType', input.systemType.trim());
+  }
+
+  if (input?.componentType?.trim()) {
+    searchParams.set('componentType', input.componentType.trim());
+  }
+
+  if (input?.material?.trim()) {
+    searchParams.set('material', input.material.trim());
+  }
+
+  if (input?.metricType?.trim()) {
+    searchParams.set('metricType', input.metricType.trim());
   }
 
   if (input?.page) {
@@ -1697,11 +1735,15 @@ export function buildEvidenceExplorerWorkspace(input: {
   evidenceCatalog: ExternalEvidenceCatalogListResponse;
   versions: RuntimeVersion;
   filters?: {
+    componentType?: string;
+    material?: string;
+    metricType?: string;
     page?: number;
     pageSize?: number;
     query?: string;
     sourceType?: string;
     status?: string;
+    systemType?: string;
   };
 }): EvidenceExplorerWorkspaceResponse {
   const items = input.evidenceCatalog.items;
@@ -1776,7 +1818,12 @@ export function buildEvidenceExplorerWorkspace(input: {
         headline: 'Evidence explorer',
         summary: `${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count} matching record${input.evidenceCatalog.warehouse_aggregate.snapshot.filtered_item_count === 1 ? '' : 's'} in the current warehouse slice.`,
         detail:
-          input.filters?.query?.trim() || input.filters?.sourceType?.trim()
+          input.filters?.query?.trim() ||
+          input.filters?.sourceType?.trim() ||
+          input.filters?.systemType?.trim() ||
+          input.filters?.componentType?.trim() ||
+          input.filters?.material?.trim() ||
+          input.filters?.metricType?.trim()
             ? 'Filters stay explicit in the workspace state and export links.'
             : 'Use facets and exports to keep the warehouse slice inspectable.',
       },
@@ -1882,11 +1929,15 @@ export function buildEvidenceExplorerAssistantResponse(input: {
   narrative: string | null;
   narrativeMetadata: NarrativeMetadata;
   filters?: {
+    componentType?: string;
+    material?: string;
+    metricType?: string;
     page?: number;
     pageSize?: number;
     query?: string;
     sourceType?: string;
     status?: string;
+    systemType?: string;
   };
 }): EvidenceExplorerAssistantResponse {
   const spotlight = input.evidenceCatalog.items.slice(0, 3);

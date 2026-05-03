@@ -1,5 +1,7 @@
 'use client';
 
+import { useDeferredValue } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
@@ -7,6 +9,8 @@ import * as React from 'react';
 import type { Role } from '@metrev/auth';
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
 
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { fetchExternalEvidenceCatalog } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
@@ -22,9 +26,30 @@ export function AcceptedEvidenceSelector({
   selectedEvidence: ExternalEvidenceCatalogItemSummary[];
   onSelectionChange: (items: ExternalEvidenceCatalogItemSummary[]) => void;
 }) {
+  const [searchInput, setSearchInput] = React.useState('');
+  const [systemType, setSystemType] = React.useState('');
+  const [material, setMaterial] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const deferredSearch = useDeferredValue(searchInput);
+  const deferredMaterial = useDeferredValue(material);
   const query = useQuery({
-    queryKey: ['external-evidence', 'accepted-intake-selector'],
-    queryFn: () => fetchExternalEvidenceCatalog({ status: 'accepted' }),
+    queryKey: [
+      'external-evidence',
+      'accepted-intake-selector',
+      deferredSearch,
+      systemType,
+      deferredMaterial,
+      page,
+    ],
+    queryFn: () =>
+      fetchExternalEvidenceCatalog({
+        status: 'accepted',
+        query: deferredSearch,
+        systemType: systemType || undefined,
+        material: deferredMaterial || undefined,
+        page,
+        pageSize: 25,
+      }),
   });
 
   const selectedIds = new Set(selectedEvidence.map((item) => item.id));
@@ -42,6 +67,23 @@ export function AcceptedEvidenceSelector({
     onSelectionChange([...selectedEvidence, item]);
   }
 
+  function handleSearchInputChange(value: string) {
+    setSearchInput(value);
+    setPage(1);
+  }
+
+  function handleSystemTypeChange(value: string) {
+    setSystemType(value === 'all' ? '' : value);
+    setPage(1);
+  }
+
+  function handleMaterialChange(value: string) {
+    setMaterial(value);
+    setPage(1);
+  }
+
+  const summary = query.data?.summary;
+
   return (
     <section className="panel nested-panel grid">
       <div className="stack split compact">
@@ -56,6 +98,67 @@ export function AcceptedEvidenceSelector({
         explicit and additive: reviewed catalog evidence is attached alongside
         any manual typed evidence you enter below.
       </p>
+
+      <div className="workspace-form-grid workspace-form-grid--two">
+        <Input
+          className="workspace-form-field--wide"
+          hint="Title, DOI, publisher, material, metric, or operating context"
+          label="Search accepted evidence"
+          onChange={(event) => handleSearchInputChange(event.target.value)}
+          placeholder="carbon anode, MEC hydrogen, wastewater"
+          value={searchInput}
+        />
+        <Select
+          label="System type"
+          onValueChange={handleSystemTypeChange}
+          options={[
+            { label: 'All accepted systems', value: 'all' },
+            { label: 'MFC', value: 'MFC' },
+            { label: 'MEC', value: 'MEC' },
+            { label: 'MET', value: 'MET' },
+            { label: 'BES', value: 'BES' },
+          ]}
+          value={systemType || 'all'}
+        />
+        <Input
+          hint="Normalized or partial material name"
+          label="Material"
+          onChange={(event) => handleMaterialChange(event.target.value)}
+          placeholder="carbon felt, platinum, membrane"
+          value={material}
+        />
+      </div>
+
+      {summary ? (
+        <div className="workspace-action-row">
+          <span className="meta-chip">
+            Page {summary.page} of {summary.total_pages}; showing{' '}
+            {summary.returned} of {summary.filtered_total} accepted match(es).
+          </span>
+          <button
+            className="secondary"
+            disabled={page <= 1}
+            onClick={() =>
+              setPage((currentValue) => Math.max(1, currentValue - 1))
+            }
+            type="button"
+          >
+            Previous page
+          </button>
+          <button
+            className="secondary"
+            disabled={page >= summary.total_pages}
+            onClick={() =>
+              setPage((currentValue) =>
+                Math.min(summary.total_pages, currentValue + 1),
+              )
+            }
+            type="button"
+          >
+            Next page
+          </button>
+        </div>
+      ) : null}
 
       {query.isLoading ? (
         <p className="muted">Loading accepted catalog evidence...</p>

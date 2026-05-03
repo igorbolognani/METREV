@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import React from 'react';
 
 import { Tooltip } from '@/components/ui/tooltip';
 import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';

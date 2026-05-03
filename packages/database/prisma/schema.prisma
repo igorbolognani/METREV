@@ -223,9 +223,9 @@ model CaseRecord {
 }
 
 model EvaluationRecord {
-  id                     String                    @id
+  id                     String                      @id
   caseId                 String
-  idempotencyKey         String?                   @unique
+  idempotencyKey         String?                     @unique
   decisionOutput         Json
   auditRecord            Json
   narrative              String?
@@ -236,8 +236,8 @@ model EvaluationRecord {
   defaultsUsed           String[]
   missingData            String[]
   assumptions            String[]
-  createdAt              DateTime                  @default(now())
-  case                   CaseRecord                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt              DateTime                    @default(now())
+  case                   CaseRecord                  @relation(fields: [caseId], references: [id], onDelete: Cascade)
   simulationArtifact     SimulationArtifactRecord?
   supplierShortlistItems SupplierShortlistItem[]
   sourceUsages           EvaluationSourceUsage[]
@@ -301,6 +301,12 @@ model ExternalSourceRecord {
   pdfUrl               String?
   xmlUrl               String?
   hashDedup            String?
+  normalizedTitle      String?
+  publicationYear      Int?
+  firstAuthor          String?
+  sourceIdentifier     String?
+  contentHash          String?
+  metadataHash         String?
   ingestionRunId       String?
   abstractText         String?                       @db.Text
   rawPayload           Json
@@ -314,37 +320,46 @@ model ExternalSourceRecord {
   researchReviewPapers ResearchReviewPaper[]
   sourceArtifacts      SourceArtifactRecord[]
   sourceTextChunks     SourceTextChunkRecord[]
+  scientificFacts      ScientificEvidenceFact[]
+  benchmarkRecords     EvidenceBenchmarkRecord[]
+  ingestionAudits      EvidenceIngestionAudit[]
+  duplicateMatches     EvidenceDuplicateDecision[]   @relation("DuplicateMatchedSource")
 
   @@unique([sourceType, sourceKey])
   @@index([sourceType, publishedAt])
   @@index([doi])
+  @@index([sourceUrl])
   @@index([ingestionRunId])
   @@index([hashDedup])
+  @@index([normalizedTitle, publicationYear, firstAuthor])
+  @@index([publicationYear])
+  @@index([contentHash])
+  @@index([metadataHash])
 }
 
 model SourceArtifactRecord {
-  id                   String               @id @default(cuid())
-  sourceRecordId       String
-  localPath            String?
-  fileName             String
-  fileHash             String               @unique
-  mimeType             String
-  fileSizeBytes        Int?
-  pageCount            Int?
-  extractionMethod     String
-  ingestionStatus      String
-  title                String?
-  doi                  String?
-  license              String?
-  accessStatus         ExternalAccessStatus @default(UNKNOWN)
-  metadataQuality      Json
-  veracityScore        Json
-  failureMessage       String?              @db.Text
-  importedAt           DateTime             @default(now())
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  sourceRecord         ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
-  chunks               SourceTextChunkRecord[]
+  id               String                  @id @default(cuid())
+  sourceRecordId   String
+  localPath        String?
+  fileName         String
+  fileHash         String                  @unique
+  mimeType         String
+  fileSizeBytes    Int?
+  pageCount        Int?
+  extractionMethod String
+  ingestionStatus  String
+  title            String?
+  doi              String?
+  license          String?
+  accessStatus     ExternalAccessStatus    @default(UNKNOWN)
+  metadataQuality  Json
+  veracityScore    Json
+  failureMessage   String?                 @db.Text
+  importedAt       DateTime                @default(now())
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  sourceRecord     ExternalSourceRecord    @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  chunks           SourceTextChunkRecord[]
 
   @@index([sourceRecordId])
   @@index([ingestionStatus, importedAt])
@@ -370,47 +385,79 @@ model SourceTextChunkRecord {
 }
 
 model ExternalEvidenceCatalogItem {
-  id                 String                       @id @default(cuid())
-  sourceRecordId     String
-  evidenceType       String
-  title              String
-  summary            String                       @db.Text
-  strengthLevel      String
-  provenanceNote     String                       @db.Text
-  reviewStatus       ExternalEvidenceReviewStatus @default(PENDING)
-  sourceState        ExternalSourceState          @default(PARSED)
-  claimCount         Int                          @default(0)
-  applicabilityScope Json
-  extractedClaims    Json
-  tags               String[]
-  payload            Json
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  sourceRecord       ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
-  claims             EvidenceClaim[]
+  id                      String                       @id @default(cuid())
+  sourceRecordId          String
+  evidenceType            String
+  title                   String
+  summary                 String                       @db.Text
+  strengthLevel           String
+  provenanceNote          String                       @db.Text
+  reviewStatus            ExternalEvidenceReviewStatus @default(PENDING)
+  sourceState             ExternalSourceState          @default(PARSED)
+  claimCount              Int                          @default(0)
+  applicabilityScope      Json
+  extractedClaims         Json
+  tags                    String[]
+  payload                 Json
+  acceptedBy              String?
+  acceptancePolicy        String?
+  acceptedAt              DateTime?
+  reviewRequired          Boolean                      @default(true)
+  ingestionMode           String                       @default("manual")
+  ingestionBatchId        String?
+  extractionStatus        String                       @default("pending")
+  normalizationStatus     String                       @default("pending")
+  evidenceQuality         String?
+  duplicateDecision       Json?
+  decisionSupportMetadata Json?
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  sourceRecord            ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  claims                  EvidenceClaim[]
+  scientificFacts         ScientificEvidenceFact[]
+  benchmarkRecords        EvidenceBenchmarkRecord[]
+  ingestionAudits         EvidenceIngestionAudit[]
+  duplicateMatches        EvidenceDuplicateDecision[]  @relation("DuplicateMatchedCatalogItem")
 
   @@unique([sourceRecordId, evidenceType, title])
   @@index([reviewStatus, evidenceType])
+  @@index([acceptedBy])
+  @@index([acceptedAt])
+  @@index([ingestionBatchId])
+  @@index([reviewRequired, reviewStatus])
+  @@index([extractionStatus, normalizationStatus])
+  @@index([evidenceQuality])
 }
 
 model IngestionRun {
-  id             String                 @id @default(cuid())
-  sourceType     ExternalSourceType
-  triggerMode    String
-  query          String?
-  status         IngestionRunStatus
-  recordsFetched Int                    @default(0)
-  recordsStored  Int                    @default(0)
-  checkpoint     Json?
-  summary        Json
-  failureDetail  Json?
-  startedAt      DateTime
-  completedAt    DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  sourceRecords  ExternalSourceRecord[]
+  id                   String                      @id @default(cuid())
+  sourceType           ExternalSourceType
+  triggerMode          String
+  query                String?
+  status               IngestionRunStatus
+  recordsFetched       Int                         @default(0)
+  recordsStored        Int                         @default(0)
+  targetTotal          Int?
+  batchSize            Int?
+  autoAccept           Boolean                     @default(false)
+  recordsAccepted      Int                         @default(0)
+  recordsPendingReview Int                         @default(0)
+  recordsRejected      Int                         @default(0)
+  recordsFailed        Int                         @default(0)
+  duplicatesSkipped    Int                         @default(0)
+  checkpoint           Json?
+  summary              Json
+  failureDetail        Json?
+  startedAt            DateTime
+  completedAt          DateTime?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  sourceRecords        ExternalSourceRecord[]
+  ingestionAudits      EvidenceIngestionAudit[]
+  duplicateDecisions   EvidenceDuplicateDecision[]
 
   @@index([sourceType, startedAt])
+  @@index([triggerMode, status, updatedAt])
 }
 
 model EvidenceClaim {
@@ -435,10 +482,140 @@ model EvidenceClaim {
   reviews          EvidenceClaimReview[]
   ontologyMappings EvidenceOntologyMapping[]
   evaluationUsages EvaluationClaimUsage[]
+  scientificFacts  ScientificEvidenceFact[]
 
   @@index([sourceRecordId, claimType])
   @@index([catalogItemId, claimType])
   @@index([confidence, createdAt])
+}
+
+model EvidenceIngestionAudit {
+  id             String                       @id @default(cuid())
+  ingestionRunId String?
+  sourceRecordId String?
+  catalogItemId  String?
+  eventType      String
+  decision       String?
+  actor          String                       @default("system")
+  reason         String?                      @db.Text
+  payload        Json
+  createdAt      DateTime                     @default(now())
+  ingestionRun   IngestionRun?                @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+  sourceRecord   ExternalSourceRecord?        @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  catalogItem    ExternalEvidenceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+
+  @@index([ingestionRunId, eventType])
+  @@index([catalogItemId, eventType])
+  @@index([sourceRecordId, eventType])
+  @@index([eventType, createdAt])
+}
+
+model EvidenceDuplicateDecision {
+  id                    String                       @id @default(cuid())
+  ingestionRunId        String?
+  matchedSourceRecordId String?
+  matchedCatalogItemId  String?
+  dedupeKeyType         String
+  dedupeKey             String
+  decision              String
+  reason                String                       @db.Text
+  payload               Json
+  createdAt             DateTime                     @default(now())
+  ingestionRun          IngestionRun?                @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+  matchedSourceRecord   ExternalSourceRecord?        @relation("DuplicateMatchedSource", fields: [matchedSourceRecordId], references: [id], onDelete: SetNull)
+  matchedCatalogItem    ExternalEvidenceCatalogItem? @relation("DuplicateMatchedCatalogItem", fields: [matchedCatalogItemId], references: [id], onDelete: SetNull)
+
+  @@index([ingestionRunId])
+  @@index([dedupeKeyType, dedupeKey])
+  @@index([matchedSourceRecordId])
+  @@index([matchedCatalogItemId])
+  @@index([decision, createdAt])
+}
+
+model ScientificEvidenceFact {
+  id                    String                      @id @default(cuid())
+  sourceRecordId        String
+  catalogItemId         String
+  claimId               String?
+  factLayer             String                      @default("extracted")
+  factType              String
+  fieldKey              String
+  originalValue         String?                     @db.Text
+  originalUnit          String?
+  normalizedValue       Float?
+  normalizedText        String?                     @db.Text
+  normalizedUnit        String?
+  uncertainty           String?
+  confidence            Float                       @default(0)
+  extractionStatus      String                      @default("pending")
+  normalizationStatus   String                      @default("pending")
+  systemType            String?
+  reactorType           String?
+  componentType         String?
+  material              String?
+  metricType            String?
+  operatingConditionKey String?
+  evidenceQuality       String?
+  payload               Json
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  claim                 EvidenceClaim?              @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  benchmarkRecords      EvidenceBenchmarkRecord[]
+
+  @@index([sourceRecordId])
+  @@index([catalogItemId, fieldKey])
+  @@index([claimId])
+  @@index([systemType])
+  @@index([reactorType])
+  @@index([componentType, material])
+  @@index([metricType])
+  @@index([operatingConditionKey])
+  @@index([evidenceQuality])
+  @@index([extractionStatus, normalizationStatus])
+  @@index([createdAt])
+}
+
+model EvidenceBenchmarkRecord {
+  id                    String                      @id @default(cuid())
+  sourceRecordId        String
+  catalogItemId         String
+  factId                String?
+  systemType            String?
+  application           String?
+  componentType         String?
+  material              String?
+  membraneSeparator     String?
+  operatingConditionKey String?
+  metricType            String?
+  normalizedValue       Float?
+  normalizedUnit        String?
+  publicationYear       Int?
+  evidenceQuality       String?
+  scale                 String?
+  trl                   Int?
+  costIndicator         String?
+  riskIndicator         String?
+  payload               Json
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  fact                  ScientificEvidenceFact?     @relation(fields: [factId], references: [id], onDelete: SetNull)
+
+  @@index([sourceRecordId])
+  @@index([catalogItemId])
+  @@index([factId])
+  @@index([systemType, application])
+  @@index([componentType, material])
+  @@index([membraneSeparator])
+  @@index([operatingConditionKey])
+  @@index([metricType, normalizedUnit])
+  @@index([publicationYear])
+  @@index([evidenceQuality])
+  @@index([scale])
+  @@index([trl])
 }
 
 model EvidenceClaimReview {

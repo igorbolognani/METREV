@@ -4,11 +4,11 @@ import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-    buildEvaluationWorkspace,
-    buildEvidenceExplorerWorkspace,
-    buildRuntimeVersions,
-    serializeEvaluationCsv,
-    serializeEvidenceExplorerCsv,
+  buildEvaluationWorkspace,
+  buildEvidenceExplorerWorkspace,
+  buildRuntimeVersions,
+  serializeEvaluationCsv,
+  serializeEvidenceExplorerCsv,
 } from '../presenters/workspace-presenters';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
@@ -163,9 +163,13 @@ export async function registerExportRoutes(
     }
 
     const query = request.query as {
+      componentType?: string;
+      material?: string;
+      metricType?: string;
       status?: string;
       q?: string;
       sourceType?: string;
+      systemType?: string;
       page?: string;
       pageSize?: string;
     };
@@ -186,6 +190,10 @@ export async function registerExportRoutes(
           reviewStatus: parsed.status,
           searchQuery: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         }),
@@ -203,6 +211,10 @@ export async function registerExportRoutes(
         status: parsed.status,
         query: parsed.query,
         sourceType: parsed.sourceType,
+        systemType: parsed.systemType,
+        componentType: parsed.componentType,
+        material: parsed.material,
+        metricType: parsed.metricType,
         page: parsed.page,
         pageSize: parsed.pageSize,
       },

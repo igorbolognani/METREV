@@ -13,7 +13,10 @@ import type {
 } from '@metrev/domain-contracts';
 
 import type { EvidenceExplorerSourceFilter } from '@/components/evidence-explorer/evidence-explorer-toolbar';
-import { EvidenceExplorerToolbar } from '@/components/evidence-explorer/evidence-explorer-toolbar';
+import {
+    EvidenceExplorerToolbar,
+    type EvidenceExplorerTechnicalFilterField,
+} from '@/components/evidence-explorer/evidence-explorer-toolbar';
 import { EvidenceReviewTable } from '@/components/evidence-review/evidence-review-table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -103,6 +106,13 @@ export function ExternalEvidenceExplorer() {
   const deferredSearch = useDeferredValue(searchInput);
   const [sourceType, setSourceType] =
     React.useState<EvidenceExplorerSourceFilter>('all');
+  const [technicalFilters, setTechnicalFilters] = React.useState({
+    componentType: '',
+    material: '',
+    metricType: '',
+    systemType: '',
+  });
+  const deferredMaterial = useDeferredValue(technicalFilters.material);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
   const [assistantRequested, setAssistantRequested] = React.useState(false);
@@ -113,6 +123,10 @@ export function ExternalEvidenceExplorer() {
       filter,
       deferredSearch,
       sourceType,
+      technicalFilters.componentType,
+      deferredMaterial,
+      technicalFilters.metricType,
+      technicalFilters.systemType,
       page,
       pageSize,
     ],
@@ -121,6 +135,10 @@ export function ExternalEvidenceExplorer() {
         status: filter === 'all' ? undefined : filter,
         query: deferredSearch,
         sourceType: sourceType === 'all' ? undefined : sourceType,
+        systemType: technicalFilters.systemType || undefined,
+        componentType: technicalFilters.componentType || undefined,
+        material: deferredMaterial || undefined,
+        metricType: technicalFilters.metricType || undefined,
         page,
         pageSize,
       }),
@@ -132,6 +150,10 @@ export function ExternalEvidenceExplorer() {
       filter,
       deferredSearch,
       sourceType,
+      technicalFilters.componentType,
+      deferredMaterial,
+      technicalFilters.metricType,
+      technicalFilters.systemType,
       page,
       pageSize,
     ],
@@ -140,6 +162,10 @@ export function ExternalEvidenceExplorer() {
         status: filter === 'all' ? undefined : filter,
         query: deferredSearch,
         sourceType: sourceType === 'all' ? undefined : sourceType,
+        systemType: technicalFilters.systemType || undefined,
+        componentType: technicalFilters.componentType || undefined,
+        material: deferredMaterial || undefined,
+        metricType: technicalFilters.metricType || undefined,
         page,
         pageSize,
       }),
@@ -148,7 +174,17 @@ export function ExternalEvidenceExplorer() {
 
   React.useEffect(() => {
     setAssistantRequested(false);
-  }, [filter, deferredSearch, sourceType, page, pageSize]);
+  }, [
+    filter,
+    deferredSearch,
+    sourceType,
+    technicalFilters.componentType,
+    deferredMaterial,
+    technicalFilters.metricType,
+    technicalFilters.systemType,
+    page,
+    pageSize,
+  ]);
 
   React.useEffect(() => {
     if (!query.data) {
@@ -178,6 +214,17 @@ export function ExternalEvidenceExplorer() {
   function handlePageSizeChange(nextValue: number) {
     setPage(1);
     setPageSize(nextValue);
+  }
+
+  function handleTechnicalFilterChange(
+    field: EvidenceExplorerTechnicalFilterField,
+    value: string,
+  ) {
+    setPage(1);
+    setTechnicalFilters((currentValue) => ({
+      ...currentValue,
+      [field]: value,
+    }));
   }
 
   function handlePreviousPage() {
@@ -229,10 +276,15 @@ export function ExternalEvidenceExplorer() {
       onRequestAssistant={handleAssistantRequest}
       onSearchInputChange={handleSearchInputChange}
       onSourceTypeChange={handleSourceTypeChange}
+      onTechnicalFilterChange={handleTechnicalFilterChange}
       page={page}
       pageSize={pageSize}
       searchInput={searchInput}
       sourceType={sourceType}
+      technicalFilters={{
+        ...technicalFilters,
+        material: deferredMaterial,
+      }}
       assistant={assistantRequested ? (assistantQuery.data ?? null) : null}
       assistantError={
         assistantRequested && assistantQuery.error
@@ -263,10 +315,12 @@ export function EvidenceExplorerView({
   onSearchInputChange,
   onSourceTypeChange,
   onTabChange,
+  onTechnicalFilterChange = () => undefined,
   page,
   pageSize,
   searchInput,
   sourceType,
+  technicalFilters,
   workspace,
 }: {
   activeTab?: EvidenceExplorerTab;
@@ -283,10 +337,20 @@ export function EvidenceExplorerView({
   onSearchInputChange: (nextValue: string) => void;
   onSourceTypeChange: (nextValue: EvidenceExplorerSourceFilter) => void;
   onTabChange?: (nextTab: EvidenceExplorerTab) => void;
+  onTechnicalFilterChange?: (
+    field: EvidenceExplorerTechnicalFilterField,
+    value: string,
+  ) => void;
   page: number;
   pageSize: number;
   searchInput: string;
   sourceType: EvidenceExplorerSourceFilter;
+  technicalFilters?: {
+    componentType: string;
+    material: string;
+    metricType: string;
+    systemType: string;
+  };
   workspace: EvidenceExplorerWorkspaceResponse;
 }) {
   const spotlightIds = workspace.spotlight.map((item) => item.id);
@@ -428,17 +492,22 @@ export function EvidenceExplorerView({
             title="Search, filter, and navigate"
           >
             <EvidenceExplorerToolbar
+              componentType={technicalFilters?.componentType ?? ''}
               filter={filter}
+              material={technicalFilters?.material ?? ''}
+              metricType={technicalFilters?.metricType ?? ''}
               onFilterChange={onFilterChange}
               onNextPage={onNextPage}
               onPageSizeChange={onPageSizeChange}
               onPreviousPage={onPreviousPage}
               onSearchInputChange={onSearchInputChange}
               onSourceTypeChange={onSourceTypeChange}
+              onTechnicalFilterChange={onTechnicalFilterChange}
               page={page}
               pageSize={pageSize}
               searchInput={searchInput}
               sourceType={sourceType}
+              systemType={technicalFilters?.systemType ?? ''}
               totalCount={workspace.summary.total}
               visibleSummary={workspace.summary}
             />
@@ -681,6 +750,18 @@ export function EvidenceExplorerView({
               <div className="workspace-chip-list compact">
                 <span className="meta-chip">Status: {filter}</span>
                 <span className="meta-chip">Source: {sourceType}</span>
+                <span className="meta-chip">
+                  System: {technicalFilters?.systemType || 'all'}
+                </span>
+                <span className="meta-chip">
+                  Component: {technicalFilters?.componentType || 'all'}
+                </span>
+                <span className="meta-chip">
+                  Metric: {technicalFilters?.metricType || 'all'}
+                </span>
+                <span className="meta-chip">
+                  Material: {technicalFilters?.material || 'all'}
+                </span>
                 <span className="meta-chip">
                   Query: {searchInput || 'none'}
                 </span>

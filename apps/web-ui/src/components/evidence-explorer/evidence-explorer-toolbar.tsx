@@ -44,17 +44,25 @@ const pageSizeOptions = [
 ];
 
 export interface EvidenceExplorerToolbarProps {
+  componentType: string;
   filter: EvidenceReviewFilter;
+  material: string;
+  metricType: string;
   onFilterChange: (nextFilter: EvidenceReviewFilter) => void;
   onNextPage: () => void;
   onPageSizeChange: (nextValue: number) => void;
   onPreviousPage: () => void;
   onSearchInputChange: (nextValue: string) => void;
   onSourceTypeChange: (nextValue: EvidenceExplorerSourceFilter) => void;
+  onTechnicalFilterChange: (
+    field: EvidenceExplorerTechnicalFilterField,
+    value: string,
+  ) => void;
   page: number;
   pageSize: number;
   searchInput: string;
   sourceType: EvidenceExplorerSourceFilter;
+  systemType: string;
   totalCount: number;
   visibleSummary: {
     accepted: number;
@@ -69,18 +77,54 @@ export interface EvidenceExplorerToolbarProps {
   };
 }
 
+export type EvidenceExplorerTechnicalFilterField =
+  | 'componentType'
+  | 'material'
+  | 'metricType'
+  | 'systemType';
+
+const systemTypeOptions = [
+  { label: 'All system types', value: 'all' },
+  { label: 'MFC', value: 'MFC' },
+  { label: 'MEC', value: 'MEC' },
+  { label: 'MET', value: 'MET' },
+  { label: 'BES', value: 'BES' },
+];
+
+const componentTypeOptions = [
+  { label: 'All components', value: 'all' },
+  { label: 'Anode', value: 'anode' },
+  { label: 'Cathode', value: 'cathode' },
+  { label: 'Membrane/separator', value: 'membrane_separator' },
+  { label: 'Catalyst', value: 'catalyst' },
+];
+
+const metricTypeOptions = [
+  { label: 'All metrics', value: 'all' },
+  { label: 'Current density', value: 'current_density' },
+  { label: 'Power density', value: 'power_density' },
+  { label: 'Coulombic efficiency', value: 'coulombic_efficiency' },
+  { label: 'Hydrogen production', value: 'hydrogen_production' },
+  { label: 'Removal efficiency', value: 'contaminant_removal_efficiency' },
+];
+
 export function EvidenceExplorerToolbar({
+  componentType,
   filter,
+  material,
+  metricType,
   onFilterChange,
   onNextPage,
   onPageSizeChange,
   onPreviousPage,
   onSearchInputChange,
   onSourceTypeChange,
+  onTechnicalFilterChange,
   page,
   pageSize,
   searchInput,
   sourceType,
+  systemType,
   totalCount,
   visibleSummary,
 }: EvidenceExplorerToolbarProps) {
@@ -122,6 +166,48 @@ export function EvidenceExplorerToolbar({
             }
             options={pageSizeOptions}
             value={String(pageSize)}
+          />
+          <Select
+            label="System type"
+            onValueChange={(value) =>
+              onTechnicalFilterChange(
+                'systemType',
+                value === 'all' ? '' : value,
+              )
+            }
+            options={systemTypeOptions}
+            value={systemType || 'all'}
+          />
+          <Select
+            label="Component"
+            onValueChange={(value) =>
+              onTechnicalFilterChange(
+                'componentType',
+                value === 'all' ? '' : value,
+              )
+            }
+            options={componentTypeOptions}
+            value={componentType || 'all'}
+          />
+          <Select
+            label="Metric"
+            onValueChange={(value) =>
+              onTechnicalFilterChange(
+                'metricType',
+                value === 'all' ? '' : value,
+              )
+            }
+            options={metricTypeOptions}
+            value={metricType || 'all'}
+          />
+          <Input
+            hint="Normalized or partial material name"
+            label="Material"
+            onChange={(event) =>
+              onTechnicalFilterChange('material', event.target.value)
+            }
+            placeholder="carbon felt, platinum, membrane"
+            value={material}
           />
           <PanelTabs
             activeTab={filter}

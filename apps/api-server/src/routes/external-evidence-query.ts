@@ -6,19 +6,27 @@ import {
 } from '@metrev/domain-contracts';
 
 export interface ExternalEvidenceListQueryInput {
+  componentType?: string;
+  material?: string;
+  metricType?: string;
   page?: string;
   pageSize?: string;
   q?: string;
   sourceType?: string;
   status?: string;
+  systemType?: string;
 }
 
 export interface ParsedExternalEvidenceListQuery {
   page: number;
   pageSize: number;
+  componentType: string | undefined;
+  material: string | undefined;
+  metricType: string | undefined;
   query: string | undefined;
   sourceType: ExternalEvidenceSourceType | undefined;
   status: ExternalEvidenceReviewStatus | undefined;
+  systemType: string | undefined;
 }
 
 function parsePositiveInteger(
@@ -92,6 +100,10 @@ export function parseExternalEvidenceListQuery(
       status: parsedStatus?.success ? parsedStatus.data : undefined,
       sourceType: parsedSourceType?.success ? parsedSourceType.data : undefined,
       query: query.q?.trim() || undefined,
+      systemType: query.systemType?.trim() || undefined,
+      componentType: query.componentType?.trim() || undefined,
+      material: query.material?.trim() || undefined,
+      metricType: query.metricType?.trim() || undefined,
       page: parsedPage,
       pageSize: parsedPageSize,
     },

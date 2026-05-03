@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 const CLAIM_EXTRACTOR_VERSION = 'heuristic-v1';
 const MANIFEST_EXTRACTOR_VERSION = 'manifest-v1';
 const CLAIM_SENTENCE_LIMIT = 6;
+export const TRUSTED_CORPUS_AUTO_ACCEPT_POLICY =
+  'auto_accept_trusted_scientific_corpus_v1';
+export const DEFAULT_EVIDENCE_TARGET_TOTAL = 500000;
+export const DEFAULT_EVIDENCE_BATCH_SIZE = 1000;
 const METRIC_VALUE_PATTERN =
   /\b(\d+(?:\.\d+)?)\s?(mW\/m2|W\/m2|A\/m2|mA\/cm2|mA\/g|V|mV|%|mg\/L|g\/L|mg\/g|g\/m2|kWh\/m3|kWh|ohm|ohms|days?|hours?|USD\/kg|USD|EUR)\b/i;
 const CONDITION_KEYWORDS = [
@@ -139,6 +143,89 @@ function stripMarkup(value) {
 function nonEmptyString(value) {
   const normalized = normalizeWhitespace(value);
   return normalized ? normalized : null;
+}
+
+function normalizeDoi(value) {
+  return nonEmptyString(value)
+    ?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')
+    .toLowerCase();
+}
+
+function normalizeUrl(value) {
+  return nonEmptyString(value)?.replace(/\/+$/g, '').toLowerCase();
+}
+
+function normalizeTitleForLookup(value) {
+  return nonEmptyString(value)
+    ?.toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function getPublicationYear(value) {
+  const timestamp = Date.parse(value ?? '');
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  return new Date(timestamp).getUTCFullYear();
+}
+
+function getFirstAuthor(authors) {
+  const normalized = normalizeAuthorList(authors);
+  const first = normalized?.[0];
+  return nonEmptyString(first?.name)?.toLowerCase() ?? null;
+}
+
+function hashJson(value) {
+  return createHash('sha256')
+    .update(JSON.stringify(value ?? null))
+    .digest('hex');
+}
+
+export function getEvidenceIngestionConfig(options = {}) {
+  return {
+    autoAcceptTrustedCorpus: optionFlag(
+      options,
+      ['auto-accept', 'autoAccept'],
+      process.env.EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS === 'true',
+    ),
+    batchSize: optionNumber(
+      options,
+      ['batch-size', 'batchSize'],
+      Number(process.env.EVIDENCE_BATCH_SIZE ?? DEFAULT_EVIDENCE_BATCH_SIZE),
+      1,
+      10000,
+    ),
+    ingestionMode: String(
+      optionValue(
+        options,
+        ['ingestion-mode', 'ingestionMode'],
+        process.env.EVIDENCE_INGESTION_MODE?.trim() || 'bulk',
+      ),
+    ),
+    maxRecords: optionNumber(
+      options,
+      ['max-records', 'maxRecords'],
+      Number(process.env.EVIDENCE_MAX_RECORDS ?? DEFAULT_EVIDENCE_TARGET_TOTAL),
+      1,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    reviewOnlyExceptions: optionFlag(
+      options,
+      ['review-only-exceptions', 'reviewOnlyExceptions'],
+      process.env.EVIDENCE_REVIEW_ONLY_EXCEPTIONS !== 'false',
+    ),
+    targetTotal: optionNumber(
+      options,
+      ['target-total', 'targetTotal'],
+      Number(
+        process.env.EVIDENCE_TARGET_TOTAL ?? DEFAULT_EVIDENCE_TARGET_TOTAL,
+      ),
+      1,
+      Number.MAX_SAFE_INTEGER,
+    ),
+  };
 }
 
 function normalizeEnumValue(value, fallback) {
@@ -612,6 +699,110 @@ function createHashDedup(parts) {
   return createHash('sha256').update(normalized).digest('hex');
 }
 
+export const SCIENTIFIC_FACT_FIELD_KEYS = [
+  'system_type',
+  'reactor_type',
+  'anode_material',
+  'cathode_material',
+  'membrane_separator',
+  'catalyst',
+  'current_collector',
+  'substrate_wastewater_type',
+  'inoculum_biology',
+  'ph',
+  'temperature',
+  'conductivity',
+  'cod',
+  'hrt',
+  'current_density',
+  'power_density',
+  'coulombic_efficiency',
+  'hydrogen_production',
+  'methane_biogas_relationship',
+  'contaminant_removal_efficiency',
+  'scale',
+  'trl_maturity',
+  'cost_indicator',
+  'operating_constraint',
+  'reported_limitation',
+  'failure_mode',
+  'reported_trade_off',
+];
+
+function isTrustedScientificSource(sourceType, evidenceType) {
+  if (evidenceType !== 'literature_evidence') {
+    return false;
+  }
+
+  return (
+    sourceType === 'OPENALEX' ||
+    sourceType === 'CROSSREF' ||
+    sourceType === 'EUROPE_PMC' ||
+    sourceType === 'CURATED_MANIFEST'
+  );
+}
+
+function validateTrustedScientificEntry(input) {
+  const reasons = [];
+
+  if (!nonEmptyString(input.title)) {
+    reasons.push('missing_title');
+  }
+
+  if (!nonEmptyString(input.sourceIdentifier)) {
+    reasons.push('missing_source_identifier');
+  }
+
+  if (!nonEmptyString(input.sourceUrl) && !nonEmptyString(input.doi)) {
+    reasons.push('missing_external_provenance');
+  }
+
+  if (
+    Array.isArray(input.claims) &&
+    input.claims.some((claim) => Number(claim.confidence ?? 0) < 0.45)
+  ) {
+    reasons.push('low_extraction_confidence');
+  }
+
+  if (!isTrustedScientificSource(input.normalizedSourceType, 'literature_evidence')) {
+    reasons.push('untrusted_or_non_scientific_source');
+  }
+
+  return {
+    valid: reasons.length === 0,
+    reasons,
+  };
+}
+
+function inferCatalogEvidenceQuality({ claims, sourceType, validation }) {
+  if (!validation.valid) {
+    return 'needs_review';
+  }
+
+  if (sourceType === 'CURATED_MANIFEST') {
+    return 'moderate';
+  }
+
+  const confidenceValues = Array.isArray(claims)
+    ? claims.map((claim) => Number(claim.confidence ?? 0)).filter(Boolean)
+    : [];
+  const averageConfidence =
+    confidenceValues.length > 0
+      ? confidenceValues.reduce((total, value) => total + value, 0) /
+        confidenceValues.length
+      : 0.55;
+
+  if (averageConfidence >= 0.75) {
+    return 'high';
+  }
+
+  if (averageConfidence >= 0.55) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
 export function expandOpenAlexAbstract(abstractInvertedIndex) {
   if (
     !abstractInvertedIndex ||
@@ -676,6 +867,10 @@ function buildCatalogEntry({
   payload,
   explicitClaims,
   supplierDocuments = [],
+  autoAcceptTrustedCorpus = false,
+  acceptancePolicy = TRUSTED_CORPUS_AUTO_ACCEPT_POLICY,
+  ingestionMode = 'manual',
+  ingestionBatchId = null,
 }) {
   if (!sourceKey || !title) {
     return null;
@@ -704,6 +899,53 @@ function buildCatalogEntry({
     importQuery,
     explicitClaims,
   });
+  const normalizedAuthors = normalizeAuthorList(authors);
+  const publicationYear = getPublicationYear(publishedAt);
+  const normalizedTitle = normalizeTitleForLookup(title);
+  const firstAuthor = getFirstAuthor(authors);
+  const sourceIdentifier =
+    normalizeDoi(doi) ?? normalizeUrl(sourceUrl) ?? nonEmptyString(sourceKey);
+  const metadataHash = hashJson({
+    doi: normalizeDoi(doi),
+    firstAuthor,
+    journal,
+    publicationYear,
+    publisher,
+    sourceIdentifier,
+    title: normalizedTitle,
+  });
+  const contentHash = createHashDedup([
+    title,
+    abstractText,
+    publicationYear,
+    firstAuthor,
+  ]);
+  const validation = validateTrustedScientificEntry({
+    abstractText,
+    claims,
+    doi,
+    normalizedSourceType,
+    sourceIdentifier,
+    sourceUrl,
+    title,
+  });
+  const shouldAutoAccept =
+    autoAcceptTrustedCorpus &&
+    validation.valid &&
+    isTrustedScientificSource(normalizedSourceType, evidenceType);
+  const normalizedReviewStatus = shouldAutoAccept
+    ? 'ACCEPTED'
+    : normalizeReviewStatus(reviewStatus, 'PENDING');
+  const acceptedAt = shouldAutoAccept ? new Date().toISOString() : null;
+  const reviewRequired = normalizedReviewStatus === 'PENDING';
+  const extractionStatus =
+    claims.length > 0 ? 'heuristic_extracted' : 'not_extracted';
+  const normalizationStatus = validation.valid ? 'normalized' : 'failed';
+  const evidenceQuality = inferCatalogEvidenceQuality({
+    claims,
+    sourceType: normalizedSourceType,
+    validation,
+  });
 
   return {
     sourceRecord: {
@@ -730,6 +972,12 @@ function buildCatalogEntry({
         publishedAt,
         normalizedSourceType,
       ]),
+      normalizedTitle,
+      publicationYear,
+      firstAuthor,
+      sourceIdentifier,
+      contentHash,
+      metadataHash,
       abstractText,
       rawPayload,
     },
@@ -740,11 +988,17 @@ function buildCatalogEntry({
       strengthLevel,
       provenanceNote:
         provenanceNote ??
-        `Imported from ${normalizedSourceType} metadata for query "${importQuery}". Review before use in decision flows.`,
-      reviewStatus: normalizeReviewStatus(reviewStatus, 'PENDING'),
-      sourceState: normalizeEnumValue(sourceState, 'PARSED'),
+        (shouldAutoAccept
+          ? `Imported from trusted ${normalizedSourceType} scientific metadata for query "${importQuery}" and system-accepted after validation, normalization, deduplication, and audit logging.`
+          : `Imported from ${normalizedSourceType} metadata for query "${importQuery}". Problematic or untrusted records require review before use in decision flows.`),
+      reviewStatus: normalizedReviewStatus,
+      sourceState: shouldAutoAccept
+        ? 'REVIEWED'
+        : normalizeEnumValue(sourceState, 'PARSED'),
       applicabilityScope: {
         import_query: importQuery,
+        review_required: reviewRequired,
+        validation_reasons: validation.reasons,
         ...(applicabilityScope && typeof applicabilityScope === 'object'
           ? applicabilityScope
           : {}),
@@ -758,7 +1012,30 @@ function buildCatalogEntry({
         journal,
         import_query: importQuery,
         imported_at: asOf,
+        accepted_by: shouldAutoAccept ? 'system' : null,
+        acceptance_policy: shouldAutoAccept ? acceptancePolicy : null,
+        accepted_at: acceptedAt,
+        extraction_status: extractionStatus,
+        normalization_status: normalizationStatus,
+        evidence_quality: evidenceQuality,
+        ingestion_mode: ingestionMode,
+        ingestion_batch_id: ingestionBatchId,
+        review_required: reviewRequired,
         ...(payload && typeof payload === 'object' ? payload : {}),
+      },
+      acceptedBy: shouldAutoAccept ? 'system' : null,
+      acceptancePolicy: shouldAutoAccept ? acceptancePolicy : null,
+      acceptedAt,
+      reviewRequired,
+      ingestionMode,
+      ingestionBatchId,
+      extractionStatus,
+      normalizationStatus,
+      evidenceQuality,
+      decisionSupportMetadata: {
+        validation_reasons: validation.reasons,
+        structured_extraction_ready: true,
+        structured_extraction_fields: SCIENTIFIC_FACT_FIELD_KEYS,
       },
     },
     claims,
@@ -799,7 +1076,12 @@ function normalizeFullTextUrlList(fullTextUrlList) {
   };
 }
 
-export function normalizeOpenAlexWork(work, importQuery, ingestedAt) {
+export function normalizeOpenAlexWork(
+  work,
+  importQuery,
+  ingestedAt,
+  options = {},
+) {
   const sourceKey = typeof work?.id === 'string' ? work.id : null;
   const title =
     typeof work?.display_name === 'string' ? work.display_name.trim() : null;
@@ -862,10 +1144,16 @@ export function normalizeOpenAlexWork(work, importQuery, ingestedAt) {
     tags: Array.isArray(work?.keywords)
       ? work.keywords.slice(0, 5).map((keyword) => keyword?.display_name)
       : [],
+    ...options,
   });
 }
 
-export function normalizeCrossrefWork(work, importQuery, ingestedAt) {
+export function normalizeCrossrefWork(
+  work,
+  importQuery,
+  ingestedAt,
+  options = {},
+) {
   const sourceKey =
     typeof work?.DOI === 'string'
       ? work.DOI
@@ -925,10 +1213,16 @@ export function normalizeCrossrefWork(work, importQuery, ingestedAt) {
             : null,
     },
     tags: Array.isArray(work?.subject) ? work.subject.slice(0, 5) : [],
+    ...options,
   });
 }
 
-export function normalizeEuropePmcWork(work, importQuery, ingestedAt) {
+export function normalizeEuropePmcWork(
+  work,
+  importQuery,
+  ingestedAt,
+  options = {},
+) {
   const source = nonEmptyString(work?.source) ?? 'EPMC';
   const identifier = nonEmptyString(work?.id ?? work?.pmid ?? work?.pmcid);
   const sourceKey = identifier ? `${source}:${identifier}` : null;
@@ -978,6 +1272,7 @@ export function normalizeEuropePmcWork(work, importQuery, ingestedAt) {
       has_pdf: nonEmptyString(work?.hasPDF) ?? null,
     },
     tags: [work?.journalTitle, work?.pubType].filter(Boolean),
+    ...options,
   });
 }
 
@@ -1048,6 +1343,7 @@ export function normalizeCuratedManifestRecord(
   record,
   ingestedAt,
   manifestPath,
+  options = {},
 ) {
   if (!record || typeof record !== 'object') {
     return null;
@@ -1118,6 +1414,7 @@ export function normalizeCuratedManifestRecord(
         : {},
     explicitClaims: Array.isArray(record.claims) ? record.claims : [],
     supplierDocuments,
+    ...options,
   });
 }
 
@@ -1244,20 +1541,66 @@ export function readJsonFile(filePath, importMetaUrl) {
   return JSON.parse(readFileSync(absolutePath, 'utf8'));
 }
 
+export function buildDeduplicationKeys(entry) {
+  const sourceRecord = entry?.sourceRecord ?? {};
+  const normalizedDoi = normalizeDoi(sourceRecord.doi);
+  const normalizedTitle = normalizeTitleForLookup(sourceRecord.title);
+  const publicationYear =
+    sourceRecord.publicationYear ?? getPublicationYear(sourceRecord.publishedAt);
+  const firstAuthor =
+    sourceRecord.firstAuthor ?? getFirstAuthor(sourceRecord.authors);
+  const sourceUrl = normalizeUrl(sourceRecord.sourceUrl);
+  const contentHash =
+    nonEmptyString(sourceRecord.contentHash) ??
+    createHashDedup([
+      sourceRecord.title,
+      sourceRecord.abstractText,
+      publicationYear,
+      firstAuthor,
+    ]);
+  const metadataHash =
+    nonEmptyString(sourceRecord.metadataHash) ??
+    hashJson({
+      doi: normalizedDoi,
+      firstAuthor,
+      publicationYear,
+      sourceUrl,
+      title: normalizedTitle,
+    });
+  const keys = [];
+
+  if (normalizedDoi) {
+    keys.push({ type: 'doi', value: normalizedDoi });
+  }
+
+  if (normalizedTitle && publicationYear && firstAuthor) {
+    keys.push({
+      type: 'normalized_title_year_first_author',
+      value: `${normalizedTitle}|${publicationYear}|${firstAuthor}`,
+    });
+  }
+
+  if (sourceUrl) {
+    keys.push({ type: 'source_url', value: sourceUrl });
+  }
+
+  if (contentHash) {
+    keys.push({ type: 'content_hash', value: contentHash });
+  }
+
+  if (metadataHash) {
+    keys.push({ type: 'metadata_hash', value: metadataHash });
+  }
+
+  return keys;
+}
+
 export function deduplicateEntries(entries) {
   const map = new Map();
 
   for (const entry of entries.filter(Boolean)) {
-    const doi = nonEmptyString(entry.sourceRecord.doi)?.toLowerCase();
-    const normalizedDoi = doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
-    const normalizedTitle = nonEmptyString(entry.sourceRecord.title)
-      ?.toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, ' ')
-      .trim();
     const key =
-      normalizedDoi ||
-      nonEmptyString(entry.sourceRecord.hashDedup) ||
-      normalizedTitle ||
+      buildDeduplicationKeys(entry)[0]?.value ||
       `${entry.sourceRecord.sourceType}:${entry.sourceRecord.sourceKey}`;
 
     if (!map.has(key)) {
@@ -1446,6 +1789,7 @@ async function syncClaims(
       claim,
     ]),
   );
+  const persistedClaims = [];
   const seenKeys = new Set();
 
   for (const claim of claims) {
@@ -1483,11 +1827,29 @@ async function syncClaims(
       ? await prisma.evidenceClaim.update({
           where: { id: existing.id },
           data,
-          select: { id: true },
+          select: {
+            id: true,
+            claimType: true,
+            content: true,
+            extractedValue: true,
+            unit: true,
+            confidence: true,
+            sourceSnippet: true,
+            sourceLocator: true,
+          },
         })
       : await prisma.evidenceClaim.create({
           data,
-          select: { id: true },
+          select: {
+            id: true,
+            claimType: true,
+            content: true,
+            extractedValue: true,
+            unit: true,
+            confidence: true,
+            sourceSnippet: true,
+            sourceLocator: true,
+          },
         });
 
     await syncOntologyMappings(
@@ -1496,6 +1858,7 @@ async function syncClaims(
       claim.ontologyMappings,
     );
     await syncClaimReview(prisma, persistedClaim.id, claim.review);
+    persistedClaims.push(persistedClaim);
   }
 
   const staleIds = existingClaims.filter(
@@ -1536,7 +1899,7 @@ async function syncClaims(
     });
   }
 
-  return claims.length;
+  return persistedClaims;
 }
 
 async function syncSupplierDocuments(
@@ -1641,26 +2004,438 @@ function resolveCatalogSourceState(existingState, incomingState) {
     : incomingState;
 }
 
+function validateNormalizedEntry(entry) {
+  const reasons = [];
+
+  if (!entry || typeof entry !== 'object') {
+    return {
+      valid: false,
+      reasons: ['malformed_record'],
+    };
+  }
+
+  if (!nonEmptyString(entry.sourceRecord?.sourceKey)) {
+    reasons.push('missing_source_key');
+  }
+
+  if (!nonEmptyString(entry.sourceRecord?.title)) {
+    reasons.push('missing_title');
+  }
+
+  if (!nonEmptyString(entry.catalogItem?.evidenceType)) {
+    reasons.push('missing_evidence_type');
+  }
+
+  if (!nonEmptyString(entry.sourceRecord?.sourceIdentifier)) {
+    reasons.push('missing_source_identifier');
+  }
+
+  if (
+    !nonEmptyString(entry.sourceRecord?.doi) &&
+    !nonEmptyString(entry.sourceRecord?.sourceUrl) &&
+    !nonEmptyString(entry.sourceRecord?.sourceKey)
+  ) {
+    reasons.push('missing_provenance');
+  }
+
+  return {
+    valid: reasons.length === 0,
+    reasons,
+  };
+}
+
+async function findExistingSourceRecordForEntry(transaction, entry) {
+  const providerRecord = await transaction.externalSourceRecord.findUnique({
+    where: {
+      sourceType_sourceKey: {
+        sourceType: entry.sourceRecord.sourceType,
+        sourceKey: entry.sourceRecord.sourceKey,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (providerRecord) {
+    return { mode: 'provider_key', record: providerRecord };
+  }
+
+  const keys = buildDeduplicationKeys(entry);
+
+  for (const key of keys) {
+    let record = null;
+
+    if (key.type === 'doi') {
+      record = await transaction.externalSourceRecord.findFirst({
+        where: {
+          doi: {
+            in: [
+              key.value,
+              key.value.toUpperCase(),
+              `https://doi.org/${key.value}`,
+              `https://dx.doi.org/${key.value}`,
+            ],
+          },
+        },
+        select: { id: true },
+      });
+    }
+
+    if (key.type === 'normalized_title_year_first_author') {
+      record = await transaction.externalSourceRecord.findFirst({
+        where: {
+          normalizedTitle: entry.sourceRecord.normalizedTitle,
+          publicationYear: entry.sourceRecord.publicationYear,
+          firstAuthor: entry.sourceRecord.firstAuthor,
+        },
+        select: { id: true },
+      });
+    }
+
+    if (key.type === 'source_url') {
+      record = await transaction.externalSourceRecord.findFirst({
+        where: { sourceUrl: entry.sourceRecord.sourceUrl },
+        select: { id: true },
+      });
+    }
+
+    if (key.type === 'content_hash') {
+      record = await transaction.externalSourceRecord.findFirst({
+        where: {
+          OR: [{ contentHash: key.value }, { hashDedup: key.value }],
+        },
+        select: { id: true },
+      });
+    }
+
+    if (key.type === 'metadata_hash') {
+      record = await transaction.externalSourceRecord.findFirst({
+        where: { metadataHash: key.value },
+        select: { id: true },
+      });
+    }
+
+    if (record) {
+      return { dedupeKey: key, mode: 'duplicate', record };
+    }
+  }
+
+  return null;
+}
+
+function inferSystemType(text) {
+  const normalized = text.toLowerCase();
+
+  if (
+    normalized.includes('microbial electrolysis cell') ||
+    /\bmec\b/i.test(text)
+  ) {
+    return 'MEC';
+  }
+
+  if (
+    normalized.includes('microbial fuel cell') ||
+    /\bmfc\b/i.test(text)
+  ) {
+    return 'MFC';
+  }
+
+  if (normalized.includes('microbial electrochemical technolog')) {
+    return 'MET';
+  }
+
+  if (normalized.includes('bioelectrochemical system') || /\bbes\b/i.test(text)) {
+    return 'BES';
+  }
+
+  return null;
+}
+
+function inferStructuredFactFields(claim) {
+  const text = claim.content ?? '';
+  const normalized = text.toLowerCase();
+  const fields = {
+    componentType: null,
+    fieldKey: claim.claimType.toLowerCase(),
+    material: null,
+    metricType: null,
+    operatingConditionKey: null,
+    reactorType: null,
+    systemType: inferSystemType(text),
+  };
+
+  if (normalized.includes('anode')) {
+    fields.componentType = 'anode';
+    fields.fieldKey = 'anode_material';
+  }
+  if (normalized.includes('cathode')) {
+    fields.componentType = 'cathode';
+    fields.fieldKey = 'cathode_material';
+  }
+  if (normalized.includes('membrane') || normalized.includes('separator')) {
+    fields.componentType = 'membrane_separator';
+    fields.fieldKey = 'membrane_separator';
+  }
+  if (normalized.includes('catalyst')) {
+    fields.componentType = fields.componentType ?? 'catalyst';
+    fields.fieldKey = 'catalyst';
+  }
+  for (const material of MATERIAL_KEYWORDS) {
+    if (normalized.includes(material)) {
+      fields.material = material.replace(/\s+/g, '_');
+      break;
+    }
+  }
+  if (normalized.includes('current density')) {
+    fields.metricType = 'current_density';
+    fields.fieldKey = 'current_density';
+  } else if (normalized.includes('power density')) {
+    fields.metricType = 'power_density';
+    fields.fieldKey = 'power_density';
+  } else if (normalized.includes('coulombic')) {
+    fields.metricType = 'coulombic_efficiency';
+    fields.fieldKey = 'coulombic_efficiency';
+  } else if (normalized.includes('hydrogen')) {
+    fields.metricType = 'hydrogen_production';
+    fields.fieldKey = 'hydrogen_production';
+  } else if (normalized.includes('methane') || normalized.includes('biogas')) {
+    fields.metricType = 'methane_biogas_relationship';
+    fields.fieldKey = 'methane_biogas_relationship';
+  } else if (normalized.includes('removal')) {
+    fields.metricType = 'contaminant_removal_efficiency';
+    fields.fieldKey = 'contaminant_removal_efficiency';
+  }
+  if (normalized.includes('ph')) {
+    fields.operatingConditionKey = 'ph';
+    fields.fieldKey = 'ph';
+  } else if (normalized.includes('temperature')) {
+    fields.operatingConditionKey = 'temperature';
+    fields.fieldKey = 'temperature';
+  } else if (normalized.includes('conductivity')) {
+    fields.operatingConditionKey = 'conductivity';
+    fields.fieldKey = 'conductivity';
+  } else if (normalized.includes('cod')) {
+    fields.operatingConditionKey = 'cod';
+    fields.fieldKey = 'cod';
+  } else if (
+    normalized.includes('hydraulic retention time') ||
+    normalized.includes('hrt')
+  ) {
+    fields.operatingConditionKey = 'hrt';
+    fields.fieldKey = 'hrt';
+  }
+  if (normalized.includes('single-chamber')) {
+    fields.reactorType = 'single_chamber';
+  } else if (normalized.includes('two-chamber')) {
+    fields.reactorType = 'two_chamber';
+  }
+
+  return fields;
+}
+
+function buildFactRows({ catalogItem, claims, sourceRecordId, catalogItemId }) {
+  return claims.map((claim) => {
+    const fields = inferStructuredFactFields(claim);
+    const normalizedValue = Number(claim.extractedValue);
+
+    return {
+      sourceRecordId,
+      catalogItemId,
+      claimId: claim.id,
+      factLayer: 'ingestion_claim_placeholder',
+      factType: claim.claimType.toLowerCase(),
+      fieldKey: fields.fieldKey,
+      originalValue: claim.extractedValue ?? claim.content,
+      originalUnit: claim.unit,
+      normalizedValue: Number.isFinite(normalizedValue) ? normalizedValue : null,
+      normalizedText: claim.extractedValue ? null : claim.content,
+      normalizedUnit: claim.unit,
+      uncertainty:
+        claim.confidence >= 0.75
+          ? 'low'
+          : claim.confidence >= 0.55
+            ? 'medium'
+            : 'high',
+      confidence: claim.confidence,
+      extractionStatus: catalogItem.extractionStatus ?? 'heuristic_extracted',
+      normalizationStatus:
+        catalogItem.normalizationStatus ?? 'normalization_pending',
+      systemType: fields.systemType,
+      reactorType: fields.reactorType,
+      componentType: fields.componentType,
+      material: fields.material,
+      metricType: fields.metricType,
+      operatingConditionKey: fields.operatingConditionKey,
+      evidenceQuality: catalogItem.evidenceQuality ?? null,
+      payload: {
+        source: 'ingestion_claim_placeholder',
+        source_locator: claim.sourceLocator,
+        source_snippet: claim.sourceSnippet,
+        structured_extraction_ready: true,
+      },
+    };
+  });
+}
+
+async function syncScientificDecisionRecords(
+  transaction,
+  sourceRecordId,
+  catalogItemId,
+  catalogItem,
+  claims,
+  publicationYear,
+) {
+  await transaction.scientificEvidenceFact.deleteMany({
+    where: { catalogItemId, factLayer: 'ingestion_claim_placeholder' },
+  });
+  await transaction.evidenceBenchmarkRecord.deleteMany({
+    where: {
+      catalogItemId,
+      payload: {
+        path: ['source'],
+        equals: 'ingestion_claim_placeholder',
+      },
+    },
+  });
+
+  const facts = buildFactRows({
+    catalogItem,
+    catalogItemId,
+    claims,
+    sourceRecordId,
+  });
+
+  if (facts.length > 0) {
+    await transaction.scientificEvidenceFact.createMany({ data: facts });
+    await transaction.evidenceBenchmarkRecord.createMany({
+      data: facts.map((fact) => ({
+        sourceRecordId,
+        catalogItemId,
+        systemType: fact.systemType,
+        application: catalogItem.applicabilityScope?.import_query ?? null,
+        componentType: fact.componentType,
+        material: fact.material,
+        membraneSeparator:
+          fact.componentType === 'membrane_separator' ? fact.material : null,
+        operatingConditionKey: fact.operatingConditionKey,
+        metricType: fact.metricType,
+        normalizedValue: fact.normalizedValue,
+        normalizedUnit: fact.normalizedUnit,
+        publicationYear,
+        evidenceQuality: fact.evidenceQuality,
+        scale: null,
+        trl: null,
+        costIndicator: fact.factType === 'economic' ? fact.normalizedText : null,
+        riskIndicator:
+          fact.factType === 'limitation' ? fact.normalizedText : null,
+        payload: {
+          source: 'ingestion_claim_placeholder',
+          field_key: fact.fieldKey,
+          uncertainty: fact.uncertainty,
+        },
+      })),
+    });
+  }
+
+  return facts.length;
+}
+
 export async function persistNormalizedEntries(
   prisma,
   entries,
-  { runId = null } = {},
+  {
+    acceptancePolicy = TRUSTED_CORPUS_AUTO_ACCEPT_POLICY,
+    autoAcceptTrustedCorpus = false,
+    ingestionBatchId = runId,
+    ingestionMode = 'bulk',
+    maxNewCatalogItems = Number.MAX_SAFE_INTEGER,
+    runId = null,
+  } = {},
 ) {
   let recordsStored = 0;
+  let recordsAccepted = 0;
+  let recordsPendingReview = 0;
+  let recordsRejected = 0;
+  let recordsFailed = 0;
+  let duplicatesSkipped = 0;
   let claimsStored = 0;
+  let scientificFactsStored = 0;
+  let benchmarkRecordsStored = 0;
   let supplierDocumentsStored = 0;
 
   for (const entry of entries) {
+    if (recordsStored >= maxNewCatalogItems) {
+      break;
+    }
+
+    const validation = validateNormalizedEntry(entry);
+    if (!validation.valid) {
+      recordsFailed += 1;
+      await prisma.evidenceIngestionAudit.create({
+        data: {
+          ingestionRunId: runId,
+          eventType: 'evidence_ingestion_failed',
+          decision: 'review_required',
+          reason: validation.reasons.join(', '),
+          payload: {
+            validation_reasons: validation.reasons,
+            source_key: entry?.sourceRecord?.sourceKey ?? null,
+            title: entry?.sourceRecord?.title ?? null,
+          },
+        },
+      });
+      continue;
+    }
+
     await prisma.$transaction(
       async (transaction) => {
-        const sourceRecord = await transaction.externalSourceRecord.upsert({
-          where: {
-            sourceType_sourceKey: {
-              sourceType: entry.sourceRecord.sourceType,
-              sourceKey: entry.sourceRecord.sourceKey,
+        const existingSource = await findExistingSourceRecordForEntry(
+          transaction,
+          entry,
+        );
+
+        if (existingSource?.mode === 'duplicate') {
+          const matchedCatalogItem =
+            await transaction.externalEvidenceCatalogItem.findFirst({
+              where: { sourceRecordId: existingSource.record.id },
+              select: { id: true },
+            });
+          await transaction.evidenceDuplicateDecision.create({
+            data: {
+              ingestionRunId: runId,
+              matchedSourceRecordId: existingSource.record.id,
+              matchedCatalogItemId: matchedCatalogItem?.id ?? null,
+              dedupeKeyType: existingSource.dedupeKey.type,
+              dedupeKey: existingSource.dedupeKey.value,
+              decision: 'skipped_duplicate',
+              reason:
+                'Duplicate scientific evidence record matched existing catalog source by configured dedupe priority.',
+              payload: {
+                incoming_source_type: entry.sourceRecord.sourceType,
+                incoming_source_key: entry.sourceRecord.sourceKey,
+                incoming_title: entry.sourceRecord.title,
+                incoming_doi: entry.sourceRecord.doi,
+              },
             },
-          },
-          update: {
+          });
+          await transaction.evidenceIngestionAudit.create({
+            data: {
+              ingestionRunId: runId,
+              sourceRecordId: existingSource.record.id,
+              catalogItemId: matchedCatalogItem?.id ?? null,
+              eventType: 'evidence_duplicate_skipped',
+              decision: 'skipped_duplicate',
+              reason: `${existingSource.dedupeKey.type}:${existingSource.dedupeKey.value}`,
+              payload: {
+                incoming_source_key: entry.sourceRecord.sourceKey,
+                matched_source_record_id: existingSource.record.id,
+              },
+            },
+          });
+          duplicatesSkipped += 1;
+          return;
+        }
+
+        const sourceRecordData = {
             sourceUrl: entry.sourceRecord.sourceUrl,
             title: entry.sourceRecord.title,
             sourceCategory: entry.sourceRecord.sourceCategory,
@@ -1680,38 +2455,30 @@ export async function persistNormalizedEntries(
             pdfUrl: entry.sourceRecord.pdfUrl,
             xmlUrl: entry.sourceRecord.xmlUrl,
             hashDedup: entry.sourceRecord.hashDedup,
+            normalizedTitle: entry.sourceRecord.normalizedTitle,
+            publicationYear: entry.sourceRecord.publicationYear,
+            firstAuthor: entry.sourceRecord.firstAuthor,
+            sourceIdentifier: entry.sourceRecord.sourceIdentifier,
+            contentHash: entry.sourceRecord.contentHash,
+            metadataHash: entry.sourceRecord.metadataHash,
             ingestionRunId: runId,
             abstractText: entry.sourceRecord.abstractText,
             rawPayload: entry.sourceRecord.rawPayload,
-          },
-          create: {
+        };
+        const sourceRecord = existingSource?.record
+          ? await transaction.externalSourceRecord.update({
+              where: { id: existingSource.record.id },
+              data: sourceRecordData,
+              select: { id: true },
+            })
+          : await transaction.externalSourceRecord.create({
+              data: {
+                ...sourceRecordData,
             sourceType: entry.sourceRecord.sourceType,
             sourceKey: entry.sourceRecord.sourceKey,
-            sourceUrl: entry.sourceRecord.sourceUrl,
-            title: entry.sourceRecord.title,
-            sourceCategory: entry.sourceRecord.sourceCategory,
-            doi: entry.sourceRecord.doi,
-            publisher: entry.sourceRecord.publisher,
-            journal: entry.sourceRecord.journal,
-            authors: entry.sourceRecord.authors,
-            language: entry.sourceRecord.language,
-            license: entry.sourceRecord.license,
-            accessStatus: entry.sourceRecord.accessStatus,
-            publishedAt: entry.sourceRecord.publishedAt
-              ? new Date(entry.sourceRecord.publishedAt)
-              : null,
-            asOf: entry.sourceRecord.asOf
-              ? new Date(entry.sourceRecord.asOf)
-              : null,
-            pdfUrl: entry.sourceRecord.pdfUrl,
-            xmlUrl: entry.sourceRecord.xmlUrl,
-            hashDedup: entry.sourceRecord.hashDedup,
-            ingestionRunId: runId,
-            abstractText: entry.sourceRecord.abstractText,
-            rawPayload: entry.sourceRecord.rawPayload,
-          },
-          select: { id: true },
-        });
+              },
+              select: { id: true },
+            });
 
         const catalogItemKey = {
           sourceRecordId_evidenceType_title: {
@@ -1733,6 +2500,12 @@ export async function persistNormalizedEntries(
           existingCatalogItem?.sourceState,
           entry.catalogItem.sourceState,
         );
+        const catalogItemWasCreated = !existingCatalogItem;
+        const autoAccept = autoAcceptTrustedCorpus &&
+          entry.catalogItem.reviewStatus === 'ACCEPTED';
+        const acceptedAt =
+          entry.catalogItem.acceptedAt ??
+          (autoAccept ? new Date().toISOString() : null);
 
         const catalogItem =
           await transaction.externalEvidenceCatalogItem.upsert({
@@ -1746,7 +2519,34 @@ export async function persistNormalizedEntries(
               applicabilityScope: entry.catalogItem.applicabilityScope,
               extractedClaims: entry.catalogItem.extractedClaims,
               tags: entry.catalogItem.tags,
-              payload: entry.catalogItem.payload,
+              payload: {
+                ...entry.catalogItem.payload,
+                acceptance_policy:
+                  nextReviewStatus === 'ACCEPTED'
+                    ? (entry.catalogItem.acceptancePolicy ?? acceptancePolicy)
+                    : null,
+              },
+              acceptedBy:
+                nextReviewStatus === 'ACCEPTED'
+                  ? (entry.catalogItem.acceptedBy ?? 'system')
+                  : null,
+              acceptancePolicy:
+                nextReviewStatus === 'ACCEPTED'
+                  ? (entry.catalogItem.acceptancePolicy ?? acceptancePolicy)
+                  : null,
+              acceptedAt:
+                nextReviewStatus === 'ACCEPTED' && acceptedAt
+                  ? new Date(acceptedAt)
+                  : null,
+              reviewRequired: nextReviewStatus === 'PENDING',
+              ingestionMode,
+              ingestionBatchId,
+              extractionStatus: entry.catalogItem.extractionStatus,
+              normalizationStatus: entry.catalogItem.normalizationStatus,
+              evidenceQuality: entry.catalogItem.evidenceQuality,
+              duplicateDecision: null,
+              decisionSupportMetadata:
+                entry.catalogItem.decisionSupportMetadata ?? {},
             },
             create: {
               sourceRecordId: sourceRecord.id,
@@ -1761,30 +2561,103 @@ export async function persistNormalizedEntries(
               extractedClaims: entry.catalogItem.extractedClaims,
               tags: entry.catalogItem.tags,
               payload: entry.catalogItem.payload,
+              acceptedBy: entry.catalogItem.acceptedBy,
+              acceptancePolicy: entry.catalogItem.acceptancePolicy,
+              acceptedAt: entry.catalogItem.acceptedAt
+                ? new Date(entry.catalogItem.acceptedAt)
+                : null,
+              reviewRequired: entry.catalogItem.reviewRequired,
+              ingestionMode,
+              ingestionBatchId,
+              extractionStatus: entry.catalogItem.extractionStatus,
+              normalizationStatus: entry.catalogItem.normalizationStatus,
+              evidenceQuality: entry.catalogItem.evidenceQuality,
+              duplicateDecision: null,
+              decisionSupportMetadata:
+                entry.catalogItem.decisionSupportMetadata ?? {},
             },
             select: { id: true, reviewStatus: true, sourceState: true },
           });
+        const statusBecameAccepted =
+          existingCatalogItem?.reviewStatus !== 'ACCEPTED' &&
+          catalogItem.reviewStatus === 'ACCEPTED';
 
-        const claimCount = await syncClaims(
+        const persistedClaims = await syncClaims(
           transaction,
           sourceRecord.id,
           catalogItem.id,
           entry.claims,
           runId,
         );
+        const claimCount = persistedClaims.length;
         const supplierDocumentCount = await syncSupplierDocuments(
           transaction,
           sourceRecord.id,
           entry.supplierDocuments,
+        );
+        const factCount = await syncScientificDecisionRecords(
+          transaction,
+          sourceRecord.id,
+          catalogItem.id,
+          entry.catalogItem,
+          persistedClaims,
+          entry.sourceRecord.publicationYear,
         );
 
         await transaction.externalEvidenceCatalogItem.update({
           where: { id: catalogItem.id },
           data: { claimCount },
         });
+        await transaction.evidenceIngestionAudit.create({
+          data: {
+            ingestionRunId: runId,
+            sourceRecordId: sourceRecord.id,
+            catalogItemId: catalogItem.id,
+            eventType:
+              catalogItem.reviewStatus === 'ACCEPTED'
+                ? 'evidence_system_accepted'
+                : 'evidence_queued_for_review',
+            decision:
+              catalogItem.reviewStatus === 'ACCEPTED'
+                ? 'accepted'
+                : 'review_required',
+            reason:
+              catalogItem.reviewStatus === 'ACCEPTED'
+                ? acceptancePolicy
+                : 'Record did not satisfy trusted auto-accept policy.',
+            payload: {
+              ingestion_mode: ingestionMode,
+              ingestion_batch_id: ingestionBatchId,
+              acceptance_policy:
+                catalogItem.reviewStatus === 'ACCEPTED'
+                  ? acceptancePolicy
+                  : null,
+              review_required: catalogItem.reviewStatus === 'PENDING',
+              claim_count: claimCount,
+              scientific_fact_count: factCount,
+            },
+          },
+        });
 
-        recordsStored += 1;
+        if (catalogItemWasCreated) {
+          recordsStored += 1;
+
+          if (catalogItem.reviewStatus === 'REJECTED') {
+            recordsRejected += 1;
+          } else if (catalogItem.reviewStatus === 'PENDING') {
+            recordsPendingReview += 1;
+          }
+        }
+
+        if (
+          (catalogItemWasCreated || statusBecameAccepted) &&
+          catalogItem.reviewStatus === 'ACCEPTED'
+        ) {
+          recordsAccepted += 1;
+        }
         claimsStored += claimCount;
+        scientificFactsStored += factCount;
+        benchmarkRecordsStored += factCount;
         supplierDocumentsStored += supplierDocumentCount;
       },
       {
@@ -1796,7 +2669,14 @@ export async function persistNormalizedEntries(
 
   return {
     recordsStored,
+    recordsAccepted,
+    recordsPendingReview,
+    recordsRejected,
+    recordsFailed,
+    duplicatesSkipped,
     claimsStored,
+    scientificFactsStored,
+    benchmarkRecordsStored,
     supplierDocumentsStored,
   };
 }
@@ -1810,6 +2690,10 @@ export async function collectIngestionInventory(prisma) {
     suppliers,
     products,
     runs,
+    ingestionAudits,
+    duplicateDecisions,
+    scientificFacts,
+    benchmarkRecords,
   ] = await prisma.$transaction([
     prisma.externalSourceRecord.count(),
     prisma.externalEvidenceCatalogItem.count(),
@@ -1818,6 +2702,10 @@ export async function collectIngestionInventory(prisma) {
     prisma.supplier.count(),
     prisma.supplierProduct.count(),
     prisma.ingestionRun.count(),
+    prisma.evidenceIngestionAudit.count(),
+    prisma.evidenceDuplicateDecision.count(),
+    prisma.scientificEvidenceFact.count(),
+    prisma.evidenceBenchmarkRecord.count(),
   ]);
 
   return {
@@ -1828,5 +2716,9 @@ export async function collectIngestionInventory(prisma) {
     suppliers,
     products,
     runs,
+    ingestionAudits,
+    duplicateDecisions,
+    scientificFacts,
+    benchmarkRecords,
   };
 }

@@ -17,6 +17,27 @@ evidence_record:
     - supplier_name
     - benchmark_context
     - tags
+    - accepted_by
+    - acceptance_policy
+    - accepted_at
+    - review_required
+    - ingestion_mode
+    - ingestion_batch_id
+    - extraction_status
+    - normalization_status
+    - evidence_quality
+
+scientific_decision_database_layers:
+  raw_evidence:
+    purpose: Preserve article/source metadata, provenance, original payload, ingestion batch, and audit trail.
+  extracted_scientific_facts:
+    purpose: Store article-derived technical facts such as BES/MFC/MEC system type, materials, membranes, biology, operating conditions, metrics, scale, TRL, limitations, and failure modes.
+  normalized_comparison:
+    purpose: Preserve original values while adding canonical units, material names, ontology mappings, confidence, missing-data flags, and uncertainty.
+  benchmark:
+    purpose: Support comparison by system type, component, material, operating condition, metric, year, maturity, evidence quality, scale, and cost/risk proxy.
+  decision_support:
+    purpose: Retrieve relevant evidence slices for stack diagnosis, benchmarking, and recommendations before any LLM narrative is generated.
 
 enums:
   evidence_type:
@@ -61,3 +82,27 @@ provenance_requirements:
   - date_or_version_if_known
   - applicability_scope
   - limitations
+  - ingestion_batch_id
+  - acceptance_policy
+  - duplicate_decision_when_skipped
+
+acceptance_policy:
+  trusted_scientific_corpus_v1:
+    accepted_by: system
+    review_status: accepted
+    review_required: false
+    applies_when:
+      - schema_validation_passed
+      - provenance_present
+      - normalization_completed
+      - duplicate_conflicts_absent
+      - extraction_confidence_not_low
+      - source_type_is_trusted_scientific_corpus
+    exception_queue_when:
+      - schema_validation_failed
+      - required_fields_missing
+      - provenance_missing
+      - malformed_record
+      - normalization_failed
+      - low_extraction_confidence
+      - duplicate_conflict_requires_human_decision

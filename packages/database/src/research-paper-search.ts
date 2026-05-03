@@ -76,6 +76,28 @@ function normalizeResearchTitle(
     : null;
 }
 
+function firstAuthorFromMetadata(authors: unknown): string | null {
+  if (!Array.isArray(authors) || authors.length === 0) {
+    return null;
+  }
+
+  const first = authors[0];
+  if (typeof first === 'string') {
+    return normalizeWhitespace(first)?.toLowerCase() ?? null;
+  }
+
+  if (!first || typeof first !== 'object') {
+    return null;
+  }
+
+  const name = (first as { name?: unknown; display_name?: unknown }).name ??
+    (first as { display_name?: unknown }).display_name;
+
+  return typeof name === 'string'
+    ? normalizeWhitespace(name)?.toLowerCase() ?? null
+    : null;
+}
+
 function toYear(value: string | number | null | undefined): number | null {
   if (typeof value === 'number' && Number.isInteger(value)) {
     return value;
@@ -614,13 +636,22 @@ function resolveCatalogReviewStatus(
     return existingStatus;
   }
 
-  return 'PENDING';
+  return process.env.EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS === 'true'
+    ? 'ACCEPTED'
+    : 'PENDING';
 }
 
 function resolveCatalogSourceState(
   existingState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED' | null,
 ): 'NORMALIZED' | 'REVIEWED' {
-  return existingState === 'REVIEWED' ? 'REVIEWED' : 'NORMALIZED';
+  if (
+    existingState === 'REVIEWED' ||
+    process.env.EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS === 'true'
+  ) {
+    return 'REVIEWED';
+  }
+
+  return 'NORMALIZED';
 }
 
 function toSourcePayload(
@@ -910,6 +941,13 @@ export async function stageResearchPapers(
         abstractText: item.abstract_text,
         rawPayload: toSourcePayload(item, existing?.rawPayload),
         publishedAt: item.year ? new Date(Date.UTC(item.year, 0, 1)) : null,
+        normalizedTitle: normalizeResearchTitle(item.title),
+        publicationYear: item.year,
+        firstAuthor: firstAuthorFromMetadata(item.authors),
+        sourceIdentifier:
+          normalizeDoi(item.doi) ??
+          normalizeSourceUrl(item.source_url) ??
+          item.source_key,
         asOf: new Date(),
       };
 
@@ -953,6 +991,14 @@ export async function stageResearchPapers(
       const existingCatalogItem = existingCatalogItems.get(
         buildCatalogLookupKey(sourceRecordId, item.title),
       );
+      const nextReviewStatus = resolveCatalogReviewStatus(
+        existingCatalogItem?.reviewStatus ?? null,
+      );
+      const nextSourceState = resolveCatalogSourceState(
+        existingCatalogItem?.sourceState ?? null,
+      );
+      const acceptedAt =
+        nextReviewStatus === 'ACCEPTED' ? new Date() : null;
 
       await transaction.externalEvidenceCatalogItem.upsert({
         where: catalogKey,
@@ -963,21 +1009,39 @@ export async function stageResearchPapers(
           provenanceNote: input.query
             ? `Imported from ${item.source_type} live research search for query "${input.query}".`
             : `Imported from ${item.source_type} live research search.`,
-          reviewStatus: resolveCatalogReviewStatus(
-            existingCatalogItem?.reviewStatus ?? null,
-          ),
-          sourceState: resolveCatalogSourceState(
-            existingCatalogItem?.sourceState ?? null,
-          ),
+          reviewStatus: nextReviewStatus,
+          sourceState: nextSourceState,
           applicabilityScope: {},
           extractedClaims: [],
           tags: buildCatalogTags(item),
           payload: {
             imported_via: 'research_live_search',
+            accepted_by: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+            acceptance_policy:
+              nextReviewStatus === 'ACCEPTED'
+                ? 'auto_accept_trusted_scientific_corpus_v1'
+                : null,
+            extraction_status: 'not_extracted',
+            normalization_status: 'normalized',
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
             metadata: item.metadata,
+          },
+          acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+          acceptancePolicy:
+            nextReviewStatus === 'ACCEPTED'
+              ? 'auto_accept_trusted_scientific_corpus_v1'
+              : null,
+          acceptedAt,
+          reviewRequired: nextReviewStatus === 'PENDING',
+          ingestionMode: 'live_search',
+          extractionStatus: 'not_extracted',
+          normalizationStatus: 'normalized',
+          evidenceQuality: 'medium',
+          decisionSupportMetadata: {
+            structured_extraction_ready: true,
+            source: 'research_live_search',
           },
         },
         create: {
@@ -989,18 +1053,40 @@ export async function stageResearchPapers(
           provenanceNote: input.query
             ? `Imported from ${item.source_type} live research search for query "${input.query}".`
             : `Imported from ${item.source_type} live research search.`,
-          reviewStatus: 'PENDING',
-          sourceState: 'NORMALIZED',
+          reviewStatus: nextReviewStatus,
+          sourceState: nextSourceState,
           claimCount: 0,
           applicabilityScope: {},
           extractedClaims: [],
           tags: buildCatalogTags(item),
           payload: {
             imported_via: 'research_live_search',
+            accepted_by: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+            acceptance_policy:
+              nextReviewStatus === 'ACCEPTED'
+                ? 'auto_accept_trusted_scientific_corpus_v1'
+                : null,
+            extraction_status: 'not_extracted',
+            normalization_status: 'normalized',
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
             metadata: item.metadata,
+          },
+          acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+          acceptancePolicy:
+            nextReviewStatus === 'ACCEPTED'
+              ? 'auto_accept_trusted_scientific_corpus_v1'
+              : null,
+          acceptedAt,
+          reviewRequired: nextReviewStatus === 'PENDING',
+          ingestionMode: 'live_search',
+          extractionStatus: 'not_extracted',
+          normalizationStatus: 'normalized',
+          evidenceQuality: 'medium',
+          decisionSupportMetadata: {
+            structured_extraction_ready: true,
+            source: 'research_live_search',
           },
         },
       });

@@ -24,6 +24,12 @@ evidence_registry:
       - xml_url
       - abstract_text
       - hash_dedup
+      - normalized_title
+      - publication_year
+      - first_author
+      - source_identifier
+      - content_hash
+      - metadata_hash
       - ingestion_run_id
 
   catalog_item:
@@ -44,6 +50,96 @@ evidence_registry:
     optional_fields:
       - claim_count
       - reviewed_claim_count
+      - accepted_by
+      - acceptance_policy
+      - accepted_at
+      - review_required
+      - ingestion_mode
+      - ingestion_batch_id
+      - extraction_status
+      - normalization_status
+      - evidence_quality
+      - duplicate_decision
+      - decision_support_metadata
+
+  ingestion_audit:
+    required_fields:
+      - id
+      - event_type
+      - actor
+      - payload
+      - created_at
+    optional_fields:
+      - ingestion_run_id
+      - source_document_id
+      - catalog_item_id
+      - decision
+      - reason
+
+  duplicate_decision:
+    required_fields:
+      - id
+      - dedupe_key_type
+      - dedupe_key
+      - decision
+      - reason
+      - payload
+      - created_at
+    optional_fields:
+      - ingestion_run_id
+      - matched_source_document_id
+      - matched_catalog_item_id
+
+  scientific_fact:
+    required_fields:
+      - id
+      - source_document_id
+      - catalog_item_id
+      - fact_type
+      - field_key
+      - extraction_status
+      - normalization_status
+      - confidence
+      - payload
+    optional_fields:
+      - claim_id
+      - system_type
+      - reactor_type
+      - component_type
+      - material
+      - metric_type
+      - operating_condition_key
+      - original_value
+      - original_unit
+      - normalized_value
+      - normalized_text
+      - normalized_unit
+      - uncertainty
+      - evidence_quality
+
+  benchmark_record:
+    required_fields:
+      - id
+      - source_document_id
+      - catalog_item_id
+      - payload
+    optional_fields:
+      - fact_id
+      - system_type
+      - application
+      - component_type
+      - material
+      - membrane_separator
+      - operating_condition_key
+      - metric_type
+      - normalized_value
+      - normalized_unit
+      - publication_year
+      - evidence_quality
+      - scale
+      - trl
+      - cost_indicator
+      - risk_indicator
 
   evidence_claim:
     required_fields:
@@ -161,6 +257,15 @@ api_payloads:
       - published_at
       - claim_count
       - reviewed_claim_count
+      - accepted_by
+      - acceptance_policy
+      - accepted_at
+      - review_required
+      - ingestion_mode
+      - ingestion_batch_id
+      - extraction_status
+      - normalization_status
+      - evidence_quality
 
   external_evidence_catalog_detail:
     inherited_from:
@@ -178,6 +283,15 @@ api_payloads:
     required_fields:
       - items
       - summary
+    summary_required_fields:
+      - catalog_total
+      - accepted
+      - pending_review
+      - rejected
+      - failed_ingestion
+      - duplicate_skipped
+      - last_ingestion_batch
+      - ingestion_progress
 
   external_evidence_bulk_review_request:
     required_fields:
