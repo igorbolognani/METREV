@@ -22,6 +22,7 @@ export function CaseFormStepper({
   onStepChange,
 }: CaseFormStepperProps) {
   const currentIndex = getCaseFormStepIndex(currentStep);
+  const currentStepMeta = caseFormSteps[currentIndex] ?? caseFormSteps[0];
 
   return (
     <section
@@ -29,10 +30,14 @@ export function CaseFormStepper({
       aria-label="Stack cockpit wizard steps"
     >
       <div className="case-form-stepper__summary">
-        <span className="badge subtle">Cockpit flow</span>
-        <strong>
-          Step {currentIndex + 1} of {caseFormSteps.length}
-        </strong>
+        <div className="case-form-stepper__summary-copy">
+          <span className="badge subtle">Input navigator</span>
+          <strong>
+            Step {currentIndex + 1} of {caseFormSteps.length}
+          </strong>
+          <p>{currentStepMeta.description}</p>
+        </div>
+        <span className="meta-chip">Jump between stack blocks</span>
       </div>
       <div className="case-form-stepper__items">
         {caseFormSteps.map((step, index) => {
@@ -44,13 +49,12 @@ export function CaseFormStepper({
               className={`case-form-stepper__item${isActive ? ' case-form-stepper__item--active' : ''}${isDone ? ' case-form-stepper__item--done' : ''}`}
               key={step.value}
               onClick={() => onStepChange(step.value)}
+              aria-current={isActive ? 'step' : undefined}
               type="button"
+              title={step.description}
             >
               <span className="case-form-stepper__marker">{index + 1}</span>
-              <span className="case-form-stepper__copy">
-                <strong>{step.label}</strong>
-                <span>{step.description}</span>
-              </span>
+              <span className="case-form-stepper__label">{step.label}</span>
             </button>
           );
         })}

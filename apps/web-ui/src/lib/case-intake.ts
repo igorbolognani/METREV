@@ -8,6 +8,69 @@ type EvidenceRecordInput = NonNullable<
   RawCaseInput['evidence_records']
 >[number];
 
+type ParameterStateInput = NonNullable<RawCaseInput['parameter_state']>[string];
+
+export type CaseIntakeParameterFieldId =
+  | 'reactorArchitectureType'
+  | 'reactorSolidsTolerance'
+  | 'reactorServiceabilityLevel'
+  | 'operatingRegime'
+  | 'influentType'
+  | 'substrateProfile'
+  | 'temperature'
+  | 'ph'
+  | 'conductivity'
+  | 'hydraulicRetentionTime'
+  | 'membranePresence'
+  | 'anodeMaterialFamily'
+  | 'anodeSurfaceTreatment'
+  | 'anodeBiofilmSupportLevel'
+  | 'cathodeReactionTarget'
+  | 'cathodeCatalystFamily'
+  | 'cathodeMassTransportLimitationRisk'
+  | 'cathodeGasHandlingInterface'
+  | 'membraneSeparatorType'
+  | 'membraneFoulingRisk'
+  | 'membraneCrossoverControlLevel'
+  | 'electricalCurrentCollectionStrategy'
+  | 'electricalSealingStrategy'
+  | 'electricalCorrosionProtectionLevel'
+  | 'balanceFlowControl'
+  | 'balanceGasHandlingReadiness'
+  | 'balanceDosingCapability'
+  | 'balanceSummary'
+  | 'sensorsDataQuality'
+  | 'sensorsVoltageCurrentLogging'
+  | 'sensorsWaterQualityCoverage'
+  | 'biologyBiofilmMaturity'
+  | 'biologyContaminationRisk'
+  | 'biologyInoculumSource'
+  | 'biologyStartupProtocol';
+
+export type CaseIntakeParameterMode = 'client' | 'system_default' | 'exclude';
+
+export type CaseIntakeParameterModeMap = Partial<
+  Record<CaseIntakeParameterFieldId, CaseIntakeParameterMode>
+>;
+
+interface CaseIntakeParameterConfig {
+  confidenceImpact: NonNullable<ParameterStateInput['confidence_impact']>;
+  defaultRationale?: string;
+  defaultValue?: string | number | boolean | null;
+  field: CaseIntakeParameterFieldId;
+  getPayloadValue: (
+    input: RawCaseInput,
+  ) => string | number | boolean | null | undefined;
+  clearPayloadValue: (input: RawCaseInput) => void;
+  label: string;
+  parameterKey: string;
+  setPayloadValue: (
+    input: RawCaseInput,
+    value: string | number | boolean | null | undefined,
+  ) => void;
+  unit?: string;
+}
+
 export interface CaseIntakeFormValues {
   caseId: string;
   technologyFamily: string;
@@ -62,6 +125,7 @@ export interface CaseIntakeFormValues {
   evidenceTitle: string;
   evidenceSummary: string;
   evidenceStrength: EvidenceRecordInput['strength_level'];
+  parameterModes?: CaseIntakeParameterModeMap;
 }
 
 export interface CaseIntakePreset {
@@ -129,6 +193,7 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
   evidenceTitle: '',
   evidenceSummary: '',
   evidenceStrength: 'moderate',
+  parameterModes: {},
 };
 
 const runtimeIntakeProvenanceNote =
@@ -191,12 +256,899 @@ function resolveOptionalFormText(
   return trimToUndefined(value);
 }
 
+function formatParameterAuditValue(
+  value: string | number | boolean | null | undefined,
+  unit?: string,
+): string {
+  if (value === null || typeof value === 'undefined') {
+    return unit ? `unset ${unit}` : 'unset';
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'yes' : 'no';
+  }
+
+  return unit ? `${value} ${unit}` : String(value);
+}
+
+function isBlankParameterValue(
+  value: string | number | boolean | null | undefined,
+): boolean {
+  return (
+    value === null ||
+    typeof value === 'undefined' ||
+    (typeof value === 'string' && value.trim().length === 0)
+  );
+}
+
+export const caseIntakeParameterConfigs: Record<
+  CaseIntakeParameterFieldId,
+  CaseIntakeParameterConfig
+> = {
+  reactorArchitectureType: {
+    confidenceImpact: 'medium',
+    field: 'reactorArchitectureType',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.reactor_architecture?.architecture_type,
+      ),
+    clearPayloadValue: (input) => {
+      const reactorArchitecture = input.stack_blocks?.reactor_architecture;
+      if (reactorArchitecture) {
+        delete reactorArchitecture.architecture_type;
+      }
+    },
+    label: 'Reactor architecture type',
+    parameterKey: 'architecture_type',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const reactorArchitecture = (stackBlocks.reactor_architecture ??= {});
+      reactorArchitecture.architecture_type =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  reactorSolidsTolerance: {
+    confidenceImpact: 'medium',
+    field: 'reactorSolidsTolerance',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.reactor_architecture?.solids_tolerance,
+      ),
+    clearPayloadValue: (input) => {
+      const reactorArchitecture = input.stack_blocks?.reactor_architecture;
+      if (reactorArchitecture) {
+        delete reactorArchitecture.solids_tolerance;
+      }
+    },
+    label: 'Solids tolerance',
+    parameterKey: 'solids_tolerance',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const reactorArchitecture = (stackBlocks.reactor_architecture ??= {});
+      reactorArchitecture.solids_tolerance =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  reactorServiceabilityLevel: {
+    confidenceImpact: 'medium',
+    field: 'reactorServiceabilityLevel',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.reactor_architecture?.serviceability_level,
+      ),
+    clearPayloadValue: (input) => {
+      const reactorArchitecture = input.stack_blocks?.reactor_architecture;
+      if (reactorArchitecture) {
+        delete reactorArchitecture.serviceability_level;
+      }
+    },
+    label: 'Serviceability level',
+    parameterKey: 'serviceability_level',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const reactorArchitecture = (stackBlocks.reactor_architecture ??= {});
+      reactorArchitecture.serviceability_level =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  operatingRegime: {
+    confidenceImpact: 'medium',
+    field: 'operatingRegime',
+    getPayloadValue: (input) =>
+      readStringValue(input.feed_and_operation?.operating_regime),
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.operating_regime;
+      }
+    },
+    label: 'Operating regime',
+    parameterKey: 'operating_regime',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.operating_regime =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  influentType: {
+    confidenceImpact: 'medium',
+    field: 'influentType',
+    getPayloadValue: (input) =>
+      readStringValue(input.feed_and_operation?.influent_type),
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.influent_type;
+      }
+    },
+    label: 'Influent type',
+    parameterKey: 'influent_type',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.influent_type =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  substrateProfile: {
+    confidenceImpact: 'medium',
+    field: 'substrateProfile',
+    getPayloadValue: (input) =>
+      readStringValue(input.feed_and_operation?.substrate_profile),
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.substrate_profile;
+      }
+    },
+    label: 'Substrate profile',
+    parameterKey: 'substrate_profile',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.substrate_profile =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  temperature: {
+    confidenceImpact: 'medium',
+    field: 'temperature',
+    getPayloadValue: (input) => input.feed_and_operation?.temperature_c,
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.temperature_c;
+      }
+    },
+    label: 'Temperature',
+    parameterKey: 'temperature_c',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.temperature_c =
+        typeof value === 'number'
+          ? value
+          : parseOptionalNumber(String(value ?? ''));
+    },
+    unit: 'C',
+  },
+  ph: {
+    confidenceImpact: 'medium',
+    field: 'ph',
+    getPayloadValue: (input) => input.feed_and_operation?.pH,
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.pH;
+      }
+    },
+    label: 'pH',
+    parameterKey: 'pH',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.pH =
+        typeof value === 'number'
+          ? value
+          : parseOptionalNumber(String(value ?? ''));
+    },
+    unit: 'unitless',
+  },
+  conductivity: {
+    confidenceImpact: 'medium',
+    field: 'conductivity',
+    getPayloadValue: (input) =>
+      input.feed_and_operation?.conductivity_ms_per_cm,
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.conductivity_ms_per_cm;
+      }
+    },
+    label: 'Conductivity',
+    parameterKey: 'conductivity_ms_per_cm',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.conductivity_ms_per_cm =
+        typeof value === 'number'
+          ? value
+          : parseOptionalNumber(String(value ?? ''));
+    },
+    unit: 'mS/cm',
+  },
+  hydraulicRetentionTime: {
+    confidenceImpact: 'medium',
+    field: 'hydraulicRetentionTime',
+    getPayloadValue: (input) =>
+      input.feed_and_operation?.hydraulic_retention_time_h,
+    clearPayloadValue: (input) => {
+      if (input.feed_and_operation) {
+        delete input.feed_and_operation.hydraulic_retention_time_h;
+      }
+    },
+    label: 'Hydraulic retention time',
+    parameterKey: 'hydraulic_retention_time_h',
+    setPayloadValue: (input, value) => {
+      const feedAndOperation = (input.feed_and_operation ??= {});
+      feedAndOperation.hydraulic_retention_time_h =
+        typeof value === 'number'
+          ? value
+          : parseOptionalNumber(String(value ?? ''));
+    },
+    unit: 'h',
+  },
+  membranePresence: {
+    confidenceImpact: 'medium',
+    defaultRationale:
+      'Absence of clear membrane information should not be collapsed into present or absent.',
+    defaultValue: 'unknown',
+    field: 'membranePresence',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.reactor_architecture?.membrane_presence,
+      ) || readStringValue(input.technology_context?.membrane_presence),
+    clearPayloadValue: (input) => {
+      if (input.technology_context) {
+        delete input.technology_context.membrane_presence;
+      }
+
+      const reactorArchitecture = input.stack_blocks?.reactor_architecture;
+      if (reactorArchitecture) {
+        delete reactorArchitecture.membrane_presence;
+      }
+    },
+    label: 'Membrane presence',
+    parameterKey: 'membrane_presence',
+    setPayloadValue: (input, value) => {
+      const nextValue = typeof value === 'string' ? value : undefined;
+      const technologyContext = (input.technology_context ??= {});
+      technologyContext.membrane_presence = nextValue;
+      const stackBlocks = (input.stack_blocks ??= {});
+      const reactorArchitecture = (stackBlocks.reactor_architecture ??= {});
+      reactorArchitecture.membrane_presence = nextValue;
+    },
+  },
+  anodeMaterialFamily: {
+    confidenceImpact: 'medium',
+    field: 'anodeMaterialFamily',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.anode_biofilm_support?.material_family,
+      ),
+    clearPayloadValue: (input) => {
+      const anodeBiofilmSupport = input.stack_blocks?.anode_biofilm_support;
+      if (anodeBiofilmSupport) {
+        delete anodeBiofilmSupport.material_family;
+      }
+    },
+    label: 'Anode material family',
+    parameterKey: 'anode_material_family',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const anodeBiofilmSupport = (stackBlocks.anode_biofilm_support ??= {});
+      anodeBiofilmSupport.material_family =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  anodeSurfaceTreatment: {
+    confidenceImpact: 'medium',
+    field: 'anodeSurfaceTreatment',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.anode_biofilm_support?.surface_treatment,
+      ),
+    clearPayloadValue: (input) => {
+      const anodeBiofilmSupport = input.stack_blocks?.anode_biofilm_support;
+      if (anodeBiofilmSupport) {
+        delete anodeBiofilmSupport.surface_treatment;
+      }
+    },
+    label: 'Surface treatment',
+    parameterKey: 'surface_treatment',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const anodeBiofilmSupport = (stackBlocks.anode_biofilm_support ??= {});
+      anodeBiofilmSupport.surface_treatment =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  anodeBiofilmSupportLevel: {
+    confidenceImpact: 'medium',
+    field: 'anodeBiofilmSupportLevel',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.anode_biofilm_support?.biofilm_support_level,
+      ),
+    clearPayloadValue: (input) => {
+      const anodeBiofilmSupport = input.stack_blocks?.anode_biofilm_support;
+      if (anodeBiofilmSupport) {
+        delete anodeBiofilmSupport.biofilm_support_level;
+      }
+    },
+    label: 'Biofilm support level',
+    parameterKey: 'biofilm_support_level',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const anodeBiofilmSupport = (stackBlocks.anode_biofilm_support ??= {});
+      anodeBiofilmSupport.biofilm_support_level =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  cathodeReactionTarget: {
+    confidenceImpact: 'medium',
+    field: 'cathodeReactionTarget',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.cathode_catalyst_support?.reaction_target,
+      ),
+    clearPayloadValue: (input) => {
+      const cathodeCatalystSupport =
+        input.stack_blocks?.cathode_catalyst_support;
+      if (cathodeCatalystSupport) {
+        delete cathodeCatalystSupport.reaction_target;
+      }
+    },
+    label: 'Reaction target',
+    parameterKey: 'reaction_target',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const cathodeCatalystSupport = (stackBlocks.cathode_catalyst_support ??=
+        {});
+      cathodeCatalystSupport.reaction_target =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  cathodeCatalystFamily: {
+    confidenceImpact: 'medium',
+    field: 'cathodeCatalystFamily',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.cathode_catalyst_support?.catalyst_family,
+      ),
+    clearPayloadValue: (input) => {
+      const cathodeCatalystSupport =
+        input.stack_blocks?.cathode_catalyst_support;
+      if (cathodeCatalystSupport) {
+        delete cathodeCatalystSupport.catalyst_family;
+      }
+    },
+    label: 'Cathode catalyst family',
+    parameterKey: 'cathode_material_family',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const cathodeCatalystSupport = (stackBlocks.cathode_catalyst_support ??=
+        {});
+      cathodeCatalystSupport.catalyst_family =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  cathodeMassTransportLimitationRisk: {
+    confidenceImpact: 'medium',
+    field: 'cathodeMassTransportLimitationRisk',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.cathode_catalyst_support
+          ?.mass_transport_limitation_risk,
+      ),
+    clearPayloadValue: (input) => {
+      const cathodeCatalystSupport =
+        input.stack_blocks?.cathode_catalyst_support;
+      if (cathodeCatalystSupport) {
+        delete cathodeCatalystSupport.mass_transport_limitation_risk;
+      }
+    },
+    label: 'Mass-transport limitation risk',
+    parameterKey: 'mass_transport_limitation_risk',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const cathodeCatalystSupport = (stackBlocks.cathode_catalyst_support ??=
+        {});
+      cathodeCatalystSupport.mass_transport_limitation_risk =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  cathodeGasHandlingInterface: {
+    confidenceImpact: 'medium',
+    field: 'cathodeGasHandlingInterface',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.cathode_catalyst_support?.gas_handling_interface,
+      ),
+    clearPayloadValue: (input) => {
+      const cathodeCatalystSupport =
+        input.stack_blocks?.cathode_catalyst_support;
+      if (cathodeCatalystSupport) {
+        delete cathodeCatalystSupport.gas_handling_interface;
+      }
+    },
+    label: 'Gas-handling interface',
+    parameterKey: 'gas_handling_interface',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const cathodeCatalystSupport = (stackBlocks.cathode_catalyst_support ??=
+        {});
+      cathodeCatalystSupport.gas_handling_interface =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  membraneSeparatorType: {
+    confidenceImpact: 'medium',
+    field: 'membraneSeparatorType',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.membrane_or_separator?.type),
+    clearPayloadValue: (input) => {
+      const membraneOrSeparator = input.stack_blocks?.membrane_or_separator;
+      if (membraneOrSeparator) {
+        delete membraneOrSeparator.type;
+      }
+    },
+    label: 'Separator or membrane type',
+    parameterKey: 'separator_family',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const membraneOrSeparator = (stackBlocks.membrane_or_separator ??= {});
+      membraneOrSeparator.type =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  membraneFoulingRisk: {
+    confidenceImpact: 'medium',
+    field: 'membraneFoulingRisk',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.membrane_or_separator?.fouling_risk),
+    clearPayloadValue: (input) => {
+      const membraneOrSeparator = input.stack_blocks?.membrane_or_separator;
+      if (membraneOrSeparator) {
+        delete membraneOrSeparator.fouling_risk;
+      }
+    },
+    label: 'Fouling risk',
+    parameterKey: 'fouling_risk',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const membraneOrSeparator = (stackBlocks.membrane_or_separator ??= {});
+      membraneOrSeparator.fouling_risk =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  membraneCrossoverControlLevel: {
+    confidenceImpact: 'medium',
+    field: 'membraneCrossoverControlLevel',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.membrane_or_separator?.crossover_control_level,
+      ),
+    clearPayloadValue: (input) => {
+      const membraneOrSeparator = input.stack_blocks?.membrane_or_separator;
+      if (membraneOrSeparator) {
+        delete membraneOrSeparator.crossover_control_level;
+      }
+    },
+    label: 'Crossover control level',
+    parameterKey: 'crossover_control_level',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const membraneOrSeparator = (stackBlocks.membrane_or_separator ??= {});
+      membraneOrSeparator.crossover_control_level =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  electricalCurrentCollectionStrategy: {
+    confidenceImpact: 'medium',
+    field: 'electricalCurrentCollectionStrategy',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.electrical_interconnect_and_sealing
+          ?.current_collection_strategy,
+      ),
+    clearPayloadValue: (input) => {
+      const electricalInterconnect =
+        input.stack_blocks?.electrical_interconnect_and_sealing;
+      if (electricalInterconnect) {
+        delete electricalInterconnect.current_collection_strategy;
+      }
+    },
+    label: 'Current collection strategy',
+    parameterKey: 'current_collection_strategy',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const electricalInterconnect =
+        (stackBlocks.electrical_interconnect_and_sealing ??= {});
+      electricalInterconnect.current_collection_strategy =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  electricalSealingStrategy: {
+    confidenceImpact: 'medium',
+    field: 'electricalSealingStrategy',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.electrical_interconnect_and_sealing
+          ?.sealing_strategy,
+      ),
+    clearPayloadValue: (input) => {
+      const electricalInterconnect =
+        input.stack_blocks?.electrical_interconnect_and_sealing;
+      if (electricalInterconnect) {
+        delete electricalInterconnect.sealing_strategy;
+      }
+    },
+    label: 'Sealing strategy',
+    parameterKey: 'sealing_strategy',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const electricalInterconnect =
+        (stackBlocks.electrical_interconnect_and_sealing ??= {});
+      electricalInterconnect.sealing_strategy =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  electricalCorrosionProtectionLevel: {
+    confidenceImpact: 'medium',
+    field: 'electricalCorrosionProtectionLevel',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.electrical_interconnect_and_sealing
+          ?.corrosion_protection_level,
+      ),
+    clearPayloadValue: (input) => {
+      const electricalInterconnect =
+        input.stack_blocks?.electrical_interconnect_and_sealing;
+      if (electricalInterconnect) {
+        delete electricalInterconnect.corrosion_protection_level;
+      }
+    },
+    label: 'Corrosion protection level',
+    parameterKey: 'corrosion_protection_level',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const electricalInterconnect =
+        (stackBlocks.electrical_interconnect_and_sealing ??= {});
+      electricalInterconnect.corrosion_protection_level =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  balanceFlowControl: {
+    confidenceImpact: 'medium',
+    field: 'balanceFlowControl',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.balance_of_plant?.flow_control),
+    clearPayloadValue: (input) => {
+      const balanceOfPlant = input.stack_blocks?.balance_of_plant;
+      if (balanceOfPlant) {
+        delete balanceOfPlant.flow_control;
+      }
+    },
+    label: 'Flow control',
+    parameterKey: 'flow_control',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const balanceOfPlant = (stackBlocks.balance_of_plant ??= {});
+      balanceOfPlant.flow_control =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  balanceGasHandlingReadiness: {
+    confidenceImpact: 'medium',
+    field: 'balanceGasHandlingReadiness',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.balance_of_plant?.gas_handling_readiness,
+      ),
+    clearPayloadValue: (input) => {
+      const balanceOfPlant = input.stack_blocks?.balance_of_plant;
+      if (balanceOfPlant) {
+        delete balanceOfPlant.gas_handling_readiness;
+      }
+    },
+    label: 'Gas-handling readiness',
+    parameterKey: 'gas_handling_readiness',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const balanceOfPlant = (stackBlocks.balance_of_plant ??= {});
+      balanceOfPlant.gas_handling_readiness =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  balanceDosingCapability: {
+    confidenceImpact: 'medium',
+    field: 'balanceDosingCapability',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.balance_of_plant?.dosing_capability),
+    clearPayloadValue: (input) => {
+      const balanceOfPlant = input.stack_blocks?.balance_of_plant;
+      if (balanceOfPlant) {
+        delete balanceOfPlant.dosing_capability;
+      }
+    },
+    label: 'Dosing capability',
+    parameterKey: 'dosing_capability',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const balanceOfPlant = (stackBlocks.balance_of_plant ??= {});
+      balanceOfPlant.dosing_capability =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  balanceSummary: {
+    confidenceImpact: 'medium',
+    field: 'balanceSummary',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.balance_of_plant?.bop_summary),
+    clearPayloadValue: (input) => {
+      const balanceOfPlant = input.stack_blocks?.balance_of_plant;
+      if (balanceOfPlant) {
+        delete balanceOfPlant.bop_summary;
+      }
+    },
+    label: 'Balance-of-plant summary',
+    parameterKey: 'bop_summary',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const balanceOfPlant = (stackBlocks.balance_of_plant ??= {});
+      balanceOfPlant.bop_summary =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  sensorsDataQuality: {
+    confidenceImpact: 'medium',
+    field: 'sensorsDataQuality',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.sensors_and_analytics?.data_quality),
+    clearPayloadValue: (input) => {
+      const sensorsAndAnalytics = input.stack_blocks?.sensors_and_analytics;
+      if (sensorsAndAnalytics) {
+        delete sensorsAndAnalytics.data_quality;
+      }
+    },
+    label: 'Data quality',
+    parameterKey: 'data_quality',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const sensorsAndAnalytics = (stackBlocks.sensors_and_analytics ??= {});
+      sensorsAndAnalytics.data_quality =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  sensorsVoltageCurrentLogging: {
+    confidenceImpact: 'medium',
+    field: 'sensorsVoltageCurrentLogging',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.sensors_and_analytics?.voltage_current_logging,
+      ),
+    clearPayloadValue: (input) => {
+      const sensorsAndAnalytics = input.stack_blocks?.sensors_and_analytics;
+      if (sensorsAndAnalytics) {
+        delete sensorsAndAnalytics.voltage_current_logging;
+      }
+    },
+    label: 'Voltage / current logging',
+    parameterKey: 'voltage_current_logging',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const sensorsAndAnalytics = (stackBlocks.sensors_and_analytics ??= {});
+      sensorsAndAnalytics.voltage_current_logging =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  sensorsWaterQualityCoverage: {
+    confidenceImpact: 'medium',
+    field: 'sensorsWaterQualityCoverage',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.sensors_and_analytics?.water_quality_coverage,
+      ),
+    clearPayloadValue: (input) => {
+      const sensorsAndAnalytics = input.stack_blocks?.sensors_and_analytics;
+      if (sensorsAndAnalytics) {
+        delete sensorsAndAnalytics.water_quality_coverage;
+      }
+    },
+    label: 'Water-quality coverage',
+    parameterKey: 'water_quality_coverage',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const sensorsAndAnalytics = (stackBlocks.sensors_and_analytics ??= {});
+      sensorsAndAnalytics.water_quality_coverage =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  biologyBiofilmMaturity: {
+    confidenceImpact: 'medium',
+    field: 'biologyBiofilmMaturity',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.operational_biology?.biofilm_maturity,
+      ),
+    clearPayloadValue: (input) => {
+      const operationalBiology = input.stack_blocks?.operational_biology;
+      if (operationalBiology) {
+        delete operationalBiology.biofilm_maturity;
+      }
+    },
+    label: 'Biofilm maturity',
+    parameterKey: 'biofilm_maturity',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const operationalBiology = (stackBlocks.operational_biology ??= {});
+      operationalBiology.biofilm_maturity =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  biologyContaminationRisk: {
+    confidenceImpact: 'medium',
+    field: 'biologyContaminationRisk',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.operational_biology?.contamination_risk,
+      ),
+    clearPayloadValue: (input) => {
+      const operationalBiology = input.stack_blocks?.operational_biology;
+      if (operationalBiology) {
+        delete operationalBiology.contamination_risk;
+      }
+    },
+    label: 'Contamination risk',
+    parameterKey: 'contamination_risk',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const operationalBiology = (stackBlocks.operational_biology ??= {});
+      operationalBiology.contamination_risk =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  biologyInoculumSource: {
+    confidenceImpact: 'medium',
+    field: 'biologyInoculumSource',
+    getPayloadValue: (input) =>
+      readStringValue(input.stack_blocks?.operational_biology?.inoculum_source),
+    clearPayloadValue: (input) => {
+      const operationalBiology = input.stack_blocks?.operational_biology;
+      if (operationalBiology) {
+        delete operationalBiology.inoculum_source;
+      }
+    },
+    label: 'Inoculum source',
+    parameterKey: 'inoculum_source',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const operationalBiology = (stackBlocks.operational_biology ??= {});
+      operationalBiology.inoculum_source =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+  biologyStartupProtocol: {
+    confidenceImpact: 'medium',
+    field: 'biologyStartupProtocol',
+    getPayloadValue: (input) =>
+      readStringValue(
+        input.stack_blocks?.operational_biology?.startup_protocol,
+      ),
+    clearPayloadValue: (input) => {
+      const operationalBiology = input.stack_blocks?.operational_biology;
+      if (operationalBiology) {
+        delete operationalBiology.startup_protocol;
+      }
+    },
+    label: 'Startup protocol',
+    parameterKey: 'startup_protocol',
+    setPayloadValue: (input, value) => {
+      const stackBlocks = (input.stack_blocks ??= {});
+      const operationalBiology = (stackBlocks.operational_biology ??= {});
+      operationalBiology.startup_protocol =
+        typeof value === 'string' ? trimToUndefined(value) : undefined;
+    },
+  },
+};
+
+export function getCaseIntakeParameterMode(
+  values: CaseIntakeFormValues,
+  field: CaseIntakeParameterFieldId,
+): CaseIntakeParameterMode {
+  return values.parameterModes?.[field] ?? 'client';
+}
+
+function applyParameterStateToPayload(
+  input: RawCaseInput,
+  values: CaseIntakeFormValues,
+): void {
+  const parameterState: NonNullable<RawCaseInput['parameter_state']> = {};
+  const assumptions = [...(input.assumptions ?? [])];
+  const defaultsUsed = [...(input.defaults_used ?? [])];
+
+  for (const config of Object.values(caseIntakeParameterConfigs)) {
+    const mode = getCaseIntakeParameterMode(values, config.field);
+    const currentValue = config.getPayloadValue(input);
+
+    if (mode === 'client') {
+      if (isBlankParameterValue(currentValue)) {
+        continue;
+      }
+
+      parameterState[config.parameterKey] = {
+        included: true,
+        value_source: 'client',
+        value: currentValue,
+        ...(config.unit ? { unit: config.unit } : {}),
+        confidence_impact: config.confidenceImpact,
+        evidence_refs: [],
+        audit_note: `${config.label} provided directly in client intake.`,
+      };
+      continue;
+    }
+
+    if (
+      mode === 'system_default' &&
+      typeof config.defaultValue !== 'undefined'
+    ) {
+      config.setPayloadValue(input, config.defaultValue);
+      const defaultValue = config.getPayloadValue(input);
+
+      parameterState[config.parameterKey] = {
+        included: true,
+        value_source: 'system_default',
+        ...(typeof defaultValue !== 'undefined' ? { value: defaultValue } : {}),
+        ...(config.unit ? { unit: config.unit } : {}),
+        ...(config.defaultRationale
+          ? { default_rationale: config.defaultRationale }
+          : {}),
+        confidence_impact: config.confidenceImpact,
+        evidence_refs: [],
+        audit_note: `${config.label} uses the system default for this run.`,
+      };
+      defaultsUsed.push(
+        `${config.parameterKey}=${formatParameterAuditValue(defaultValue, config.unit)} (system default)`,
+      );
+      if (config.defaultRationale) {
+        assumptions.push(`${config.label}: ${config.defaultRationale}`);
+      }
+      continue;
+    }
+
+    config.clearPayloadValue(input);
+    parameterState[config.parameterKey] = {
+      included: false,
+      value_source: 'unset',
+      ...(config.unit ? { unit: config.unit } : {}),
+      ...(config.defaultRationale
+        ? { default_rationale: config.defaultRationale }
+        : {}),
+      confidence_impact: config.confidenceImpact,
+      evidence_refs: [],
+      audit_note: `${config.label} was explicitly excluded from the current run input.`,
+    };
+    assumptions.push(
+      `${config.label} was explicitly excluded from the current run input.`,
+    );
+  }
+
+  input.parameter_state =
+    Object.keys(parameterState).length > 0 ? parameterState : undefined;
+  input.assumptions = dedupeStrings(assumptions);
+  input.defaults_used = dedupeStrings(defaultsUsed);
+}
+
 export function normalizeCaseIntakeFormValues(
   values?: Partial<CaseIntakeFormValues>,
 ): CaseIntakeFormValues {
   return {
     ...defaultCaseIntakeFormValues,
     ...values,
+    parameterModes: {
+      ...defaultCaseIntakeFormValues.parameterModes,
+      ...(values?.parameterModes ?? {}),
+    },
   };
 }
 
@@ -208,6 +1160,30 @@ export function hydrateCaseIntakeFormValues(
 
   if (!presetPayload) {
     return normalized;
+  }
+
+  const parameterModes: CaseIntakeParameterModeMap = {
+    ...(normalized.parameterModes ?? {}),
+  };
+
+  for (const config of Object.values(caseIntakeParameterConfigs)) {
+    if (parameterModes[config.field]) {
+      continue;
+    }
+
+    const presetState = presetPayload.parameter_state?.[config.parameterKey];
+    if (presetState) {
+      parameterModes[config.field] = !presetState.included
+        ? 'exclude'
+        : presetState.value_source === 'system_default'
+          ? 'system_default'
+          : 'client';
+      continue;
+    }
+
+    if (!isBlankParameterValue(config.getPayloadValue(presetPayload))) {
+      parameterModes[config.field] = 'client';
+    }
   }
 
   return {
@@ -379,6 +1355,7 @@ export function hydrateCaseIntakeFormValues(
         presetPayload.stack_blocks?.reactor_architecture?.membrane_presence,
       ) ||
       readStringValue(presetPayload.technology_context?.membrane_presence),
+    parameterModes,
   };
 }
 
@@ -485,7 +1462,7 @@ export function buildCaseInputFromFormValues(
   const presetPayload = preset?.payload;
   const presetStackBlocks = presetPayload?.stack_blocks;
 
-  return {
+  const rawInput: RawCaseInput = {
     ...presetPayload,
     case_id: values.caseId.trim() || undefined,
     technology_family: values.technologyFamily,
@@ -733,6 +1710,10 @@ export function buildCaseInputFromFormValues(
     assumptions: assumptions.length > 0 ? assumptions : undefined,
     missing_data: missingData.length > 0 ? missingData : undefined,
   };
+
+  applyParameterStateToPayload(rawInput, values);
+
+  return rawInput;
 }
 
 const wastewaterGoldenCaseSourcePath =

@@ -181,6 +181,18 @@ export const workspaceToneSchema = z.enum([
   'muted',
 ]);
 
+export const parameterValueSourceSchema = z.enum([
+  'client',
+  'system_default',
+  'unset',
+]);
+
+export const parameterConfidenceImpactSchema = z.enum([
+  'low',
+  'medium',
+  'high',
+]);
+
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 
 export const metadataQualityLevelSchema = z.enum(['low', 'medium', 'high']);
@@ -221,6 +233,17 @@ const scalarValueSchema = z.union([
   z.boolean(),
   z.null(),
 ]);
+
+export const parameterStateSchema = z.object({
+  included: z.boolean(),
+  value_source: parameterValueSourceSchema,
+  value: scalarValueSchema.optional(),
+  unit: z.string().min(1).optional(),
+  default_rationale: z.string().min(1).optional(),
+  confidence_impact: parameterConfidenceImpactSchema.optional(),
+  evidence_refs: z.array(z.string()).default([]),
+  audit_note: z.string().min(1).optional(),
+});
 
 export const supplierContextSchema = z
   .object({
@@ -405,6 +428,7 @@ export const rawCaseInputSchema = z.object({
   assumptions: z.array(z.string()).optional(),
   missing_data: z.array(z.string()).optional(),
   defaults_used: z.array(z.string()).optional(),
+  parameter_state: z.record(z.string(), parameterStateSchema).optional(),
   supplier_context: supplierContextSchema.optional(),
   normalization_status: flexibleObjectSchema.optional(),
 });
@@ -864,6 +888,54 @@ export const workspaceMetricRecordSchema = z.object({
   note: z.string().min(1),
 });
 
+export const parameterStateSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  client_values: z.number().int().nonnegative(),
+  system_defaults: z.number().int().nonnegative(),
+  excluded: z.number().int().nonnegative(),
+  unresolved: z.number().int().nonnegative(),
+});
+
+export const dashboardParameterSummarySchema = parameterStateSummarySchema;
+
+export const parameterStateAuditEntrySchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  included: z.boolean(),
+  value_source: parameterValueSourceSchema,
+  value_label: z.string().min(1),
+  unit: z.string().min(1).nullable(),
+  confidence_impact: parameterConfidenceImpactSchema.nullable(),
+  default_rationale: z.string().min(1).nullable(),
+  audit_note: z.string().min(1).nullable(),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+export const parameterStateAuditSchema = z.object({
+  summary: parameterStateSummarySchema,
+  entries: z.array(parameterStateAuditEntrySchema),
+});
+export const dashboardRunOutputStatusSchema = z.object({
+  report_available: z.boolean(),
+  narrative_available: z.boolean(),
+  modeled: z.boolean(),
+});
+
+export const dashboardLatestRunOverviewSchema = z.object({
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  assumptions_count: z.number().int().nonnegative(),
+  evidence_count: z.number().int().nonnegative(),
+  attention_count: z.number().int().nonnegative(),
+  parameter_summary: dashboardParameterSummarySchema,
+  brief_cards: z.array(workspaceBriefCardSchema),
+  attention_items: z.array(workspaceAttentionItemSchema),
+  lead_action: workspaceLeadActionSchema,
+  output_status: dashboardRunOutputStatusSchema,
+});
+
 export const dashboardWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
   presentation: workspacePresentationSchema.optional(),
@@ -889,6 +961,7 @@ export const dashboardWorkspaceResponseSchema = z.object({
     latest_evaluation_href: z.string().nullable(),
     latest_case_history_href: z.string().nullable(),
   }),
+  latest_run_overview: dashboardLatestRunOverviewSchema.nullable(),
   recent_evaluations: z.array(evaluationSummarySchema),
   recent_reports: z.array(dashboardReportSummarySchema),
 });
@@ -1087,6 +1160,7 @@ export const printableEvaluationReportResponseSchema = z.object({
     supplier_shortlist: z.array(supplierShortlistEntrySchema),
     phased_roadmap: z.array(phasedRoadmapEntrySchema),
     assumptions_and_defaults_audit: assumptionsAndDefaultsAuditSchema,
+    parameter_state_audit: parameterStateAuditSchema,
     confidence_and_uncertainty_summary: confidenceAndUncertaintySummarySchema,
   }),
 });
@@ -1411,6 +1485,7 @@ export type WorkspaceLeadAction = z.infer<typeof workspaceLeadActionSchema>;
 export type WorkspaceRoadmapItem = z.infer<typeof workspaceRoadmapItemSchema>;
 export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
 export type WorkspaceMetricRecord = z.infer<typeof workspaceMetricRecordSchema>;
+export type ParameterStateAudit = z.infer<typeof parameterStateAuditSchema>;
 export type DashboardWorkspaceResponse = z.infer<
   typeof dashboardWorkspaceResponseSchema
 >;

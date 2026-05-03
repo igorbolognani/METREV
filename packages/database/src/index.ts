@@ -43,7 +43,7 @@ import {
     type ReportConversationCitation,
     type ReportConversationGrounding,
     type ReportConversationTurn,
-    type SourceArtifact
+    type SourceArtifact,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -56,6 +56,12 @@ const PRISMA_TRANSACTION_OPTIONS = {
 } as const;
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
+export {
+    MFC_MEC_30000_PRESET_ID,
+    planResearchBackfillPreset,
+    type PlannedResearchBackfill,
+    type PlannedResearchBackfillPreset
+} from './research-backfill-presets';
 export {
     createResearchRepository,
     MemoryResearchRepository,

@@ -4,60 +4,60 @@ import { basename } from 'node:path';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  evidenceClaimSchema,
-  localSourceImportResponseSchema,
-  metadataQualityProfileSchema,
-  researchBackfillListResponseSchema,
-  researchBackfillSummarySchema,
-  researchDecisionIngestionPreviewSchema,
-  researchEvidencePackSchema,
-  researchExtractionJobSchema,
-  researchExtractionResultSchema,
-  researchPaperMetadataSchema,
-  researchPaperSearchFailureSchema,
-  researchReviewDetailSchema,
-  researchReviewListResponseSchema,
-  researchReviewSummarySchema,
-  searchResearchPapersResponseSchema,
-  sourceArtifactSchema,
-  stageResearchPapersResponseSchema,
-  type AddResearchColumnRequest,
-  type CreateResearchReviewRequest,
-  type EvidenceClaim,
-  type LocalSourceImportRequest,
-  type LocalSourceImportResponse,
-  type QueueResearchBackfillRequest,
-  type ResearchBackfillListResponse,
-  type ResearchBackfillSummary,
-  type ResearchColumnDefinition,
-  type ResearchDecisionIngestionPreview,
-  type ResearchEvidencePack,
-  type ResearchExtractionJob,
-  type ResearchExtractionResult,
-  type ResearchPaperMetadata,
-  type ResearchPaperSearchFailure,
-  type ResearchPaperSearchResult,
-  type ResearchReviewDetail,
-  type ResearchReviewListResponse,
-  type SearchResearchPapersRequest,
-  type SearchResearchPapersResponse,
-  type SourceArtifact,
-  type StageResearchPapersRequest,
-  type StageResearchPapersResponse,
+    evidenceClaimSchema,
+    localSourceImportResponseSchema,
+    metadataQualityProfileSchema,
+    researchBackfillListResponseSchema,
+    researchBackfillSummarySchema,
+    researchDecisionIngestionPreviewSchema,
+    researchEvidencePackSchema,
+    researchExtractionJobSchema,
+    researchExtractionResultSchema,
+    researchPaperMetadataSchema,
+    researchPaperSearchFailureSchema,
+    researchReviewDetailSchema,
+    researchReviewListResponseSchema,
+    researchReviewSummarySchema,
+    searchResearchPapersResponseSchema,
+    sourceArtifactSchema,
+    stageResearchPapersResponseSchema,
+    type AddResearchColumnRequest,
+    type CreateResearchReviewRequest,
+    type EvidenceClaim,
+    type LocalSourceImportRequest,
+    type LocalSourceImportResponse,
+    type QueueResearchBackfillRequest,
+    type ResearchBackfillListResponse,
+    type ResearchBackfillSummary,
+    type ResearchColumnDefinition,
+    type ResearchDecisionIngestionPreview,
+    type ResearchEvidencePack,
+    type ResearchExtractionJob,
+    type ResearchExtractionResult,
+    type ResearchPaperMetadata,
+    type ResearchPaperSearchFailure,
+    type ResearchPaperSearchResult,
+    type ResearchReviewDetail,
+    type ResearchReviewListResponse,
+    type SearchResearchPapersRequest,
+    type SearchResearchPapersResponse,
+    type SourceArtifact,
+    type StageResearchPapersRequest,
+    type StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
 import { getPrismaClient } from './prisma-client';
 import {
-  dedupeResearchPaperItems,
-  searchResearchPapers as searchResearchPapersFromProviders,
-  stageResearchPapers as stageResearchPapersToWarehouse,
+    dedupeResearchPaperItems,
+    searchResearchPapers as searchResearchPapersFromProviders,
+    stageResearchPapers as stageResearchPapersToWarehouse,
 } from './research-paper-search';
 import {
-  buildEvidenceVeracityScore,
-  getSourceArtifactForSourceDocument,
-  importLocalPdfSources,
-  resolveLocalSourceImportRequestToInput,
+    buildEvidenceVeracityScore,
+    getSourceArtifactForSourceDocument,
+    importLocalPdfSources,
+    resolveLocalSourceImportRequestToInput,
 } from './source-artifacts';
 
 export interface CreateResearchReviewInput extends CreateResearchReviewRequest {
@@ -634,7 +634,11 @@ function parseBackfillSummaryPayload(
   value: unknown,
 ): Pick<
   ResearchBackfillSummary,
-  'failed_providers' | 'max_pages' | 'per_provider_limit' | 'providers'
+  | 'failed_providers'
+  | 'max_pages'
+  | 'per_provider_limit'
+  | 'providers'
+  | 'target_records'
 > {
   const record =
     value && typeof value === 'object'
@@ -659,6 +663,23 @@ function parseBackfillSummaryPayload(
       typeof record.max_pages === 'number' && Number.isFinite(record.max_pages)
         ? Math.max(1, Math.trunc(record.max_pages))
         : 1,
+    target_records:
+      typeof record.target_records === 'number' &&
+      Number.isFinite(record.target_records)
+        ? Math.max(1, Math.trunc(record.target_records))
+        : Math.max(
+            1,
+            Math.trunc(
+              (typeof record.per_provider_limit === 'number' &&
+              Number.isFinite(record.per_provider_limit)
+                ? Math.max(1, Math.trunc(record.per_provider_limit))
+                : 25) *
+                (typeof record.max_pages === 'number' &&
+                Number.isFinite(record.max_pages)
+                  ? Math.max(1, Math.trunc(record.max_pages))
+                  : 1),
+            ),
+          ),
     failed_providers: Array.isArray(record.failed_providers)
       ? record.failed_providers
           .map((entry) =>
@@ -730,6 +751,14 @@ function toBackfillSummary(record: {
     record.failureDetail && typeof record.failureDetail === 'object'
       ? ((record.failureDetail as Record<string, unknown>).message ?? null)
       : null;
+  const recordsRemaining = Math.max(
+    summary.target_records - record.recordsStored,
+    0,
+  );
+  const completionRatio =
+    summary.target_records > 0
+      ? Math.min(record.recordsStored / summary.target_records, 1)
+      : 0;
 
   return researchBackfillSummarySchema.parse({
     run_id: record.id,
@@ -738,10 +767,13 @@ function toBackfillSummary(record: {
     providers: summary.providers,
     per_provider_limit: summary.per_provider_limit,
     max_pages: summary.max_pages,
+    target_records: summary.target_records,
     next_page: checkpoint.next_page,
     pages_completed: checkpoint.pages_completed,
     records_fetched: record.recordsFetched,
     records_stored: record.recordsStored,
+    records_remaining: recordsRemaining,
+    completion_ratio: completionRatio,
     failed_providers: summary.failed_providers,
     created_at: record.createdAt.toISOString(),
     updated_at: record.updatedAt.toISOString(),
@@ -1106,7 +1138,9 @@ export class MemoryResearchRepository implements ResearchRepository {
     });
   }
 
-  async getSourceArtifact(sourceDocumentId: string): Promise<SourceArtifact | null> {
+  async getSourceArtifact(
+    sourceDocumentId: string,
+  ): Promise<SourceArtifact | null> {
     return this.sourceArtifacts.get(sourceDocumentId) ?? null;
   }
 
@@ -1131,6 +1165,12 @@ export class MemoryResearchRepository implements ResearchRepository {
     input: QueueResearchBackfillInput,
   ): Promise<ResearchBackfillSummary> {
     const now = new Date().toISOString();
+    const targetRecords = Math.max(
+      1,
+      Math.trunc(
+        input.target_records ?? input.per_provider_limit * input.max_pages,
+      ),
+    );
     const backfill = researchBackfillSummarySchema.parse({
       run_id: randomUUID(),
       query: input.query,
@@ -1138,10 +1178,13 @@ export class MemoryResearchRepository implements ResearchRepository {
       providers: input.providers ?? ['openalex', 'crossref', 'europe_pmc'],
       per_provider_limit: input.per_provider_limit,
       max_pages: input.max_pages,
+      target_records: targetRecords,
       next_page: 1,
       pages_completed: 0,
       records_fetched: 0,
       records_stored: 0,
+      records_remaining: targetRecords,
+      completion_ratio: 0,
       failed_providers: [],
       created_at: now,
       updated_at: now,
@@ -1192,13 +1235,25 @@ export class MemoryResearchRepository implements ResearchRepository {
       return null;
     }
 
+    const recordsStored = current.records_stored + input.recordsStoredDelta;
+    const recordsRemaining = Math.max(
+      current.target_records - recordsStored,
+      0,
+    );
+    const completionRatio =
+      current.target_records > 0
+        ? Math.min(recordsStored / current.target_records, 1)
+        : 0;
+
     const updated = researchBackfillSummarySchema.parse({
       ...current,
       status: input.isComplete ? 'completed' : 'queued',
       next_page: input.isComplete ? current.next_page : input.nextPage,
       pages_completed: input.pagesCompleted,
       records_fetched: current.records_fetched + input.recordsFetchedDelta,
-      records_stored: current.records_stored + input.recordsStoredDelta,
+      records_stored: recordsStored,
+      records_remaining: recordsRemaining,
+      completion_ratio: completionRatio,
       failed_providers: input.failedProviders,
       updated_at: new Date().toISOString(),
       completed_at: input.isComplete ? new Date().toISOString() : null,
@@ -1408,7 +1463,9 @@ export class PrismaResearchRepository implements ResearchRepository {
     );
   }
 
-  async getSourceArtifact(sourceDocumentId: string): Promise<SourceArtifact | null> {
+  async getSourceArtifact(
+    sourceDocumentId: string,
+  ): Promise<SourceArtifact | null> {
     return getSourceArtifactForSourceDocument(this.prisma, sourceDocumentId);
   }
 
@@ -1650,6 +1707,12 @@ export class PrismaResearchRepository implements ResearchRepository {
     input: QueueResearchBackfillInput,
   ): Promise<ResearchBackfillSummary> {
     return withSpan('database.research_backfill.enqueue', async () => {
+      const targetRecords = Math.max(
+        1,
+        Math.trunc(
+          input.target_records ?? input.per_provider_limit * input.max_pages,
+        ),
+      );
       const created = await this.prisma.ingestionRun.create({
         data: {
           sourceType: 'MANUAL',
@@ -1671,6 +1734,7 @@ export class PrismaResearchRepository implements ResearchRepository {
             ],
             per_provider_limit: input.per_provider_limit,
             max_pages: input.max_pages,
+            target_records: targetRecords,
             failed_providers: [],
           },
           failureDetail: Prisma.JsonNull,
@@ -1776,6 +1840,7 @@ export class PrismaResearchRepository implements ResearchRepository {
             providers: summary.providers,
             per_provider_limit: summary.per_provider_limit,
             max_pages: summary.max_pages,
+            target_records: summary.target_records,
             failed_providers: input.failedProviders,
           }),
           completedAt: input.isComplete ? new Date() : null,

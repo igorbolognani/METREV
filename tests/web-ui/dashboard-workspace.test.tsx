@@ -88,6 +88,68 @@ const workspace = {
     latest_evaluation_href: '/evaluations/eval-002',
     latest_case_history_href: '/cases/CASE-002/history',
   },
+  latest_run_overview: {
+    title: 'CASE-002 latest run',
+    subtitle: 'Retrofit run with modeled uplift and higher confidence.',
+    defaults_count: 2,
+    missing_data_count: 1,
+    assumptions_count: 3,
+    evidence_count: 4,
+    attention_count: 1,
+    parameter_summary: {
+      total: 5,
+      client_values: 3,
+      system_defaults: 1,
+      excluded: 1,
+      unresolved: 0,
+    },
+    brief_cards: [
+      {
+        key: 'context',
+        label: 'Run context',
+        value: 'CASE-002',
+        detail: 'Microbial Fuel Cell · Wastewater Treatment · retrofit stack',
+      },
+      {
+        key: 'evidence',
+        label: 'Evidence posture',
+        value: '4 typed records',
+        detail: 'Reviewed evidence and default posture remain explicit.',
+      },
+      {
+        key: 'traceability',
+        label: 'Traceability',
+        value: '3 assumptions',
+        detail: '2 defaults · 1 missing-data flag',
+      },
+    ],
+    attention_items: [
+      {
+        key: 'cathode-risk',
+        block: 'Cathode',
+        finding: 'Gas-handling detail still limits confidence.',
+        severity: 'Medium',
+        tone: 'warning',
+      },
+    ],
+    lead_action: {
+      title: 'Cathode hardening',
+      phase: 'Phase 1',
+      score_label: '83 priority',
+      confidence_label: 'High',
+      effort_label: 'Medium',
+      benefit_label: 'Stabilize gas-side performance.',
+      rationale: 'Prioritize cathode-side hardening before scale-up decisions.',
+      blockers: ['gas handling validation'],
+      measurement_requests: ['flooding inspection'],
+      supplier_candidates: ['Supplier A'],
+    },
+    output_status: {
+      report_available: true,
+      narrative_available: false,
+      modeled: true,
+    },
+  },
   recent_evaluations: [
     {
       evaluation_id: 'eval-002',
@@ -130,7 +192,7 @@ const workspace = {
 } satisfies DashboardWorkspaceResponse;
 
 describe('dashboard workspace', () => {
-  it('renders a summary-first dashboard with tabbed detail areas from the workspace payload', () => {
+  it('renders a compact client workspace with report access inside the dashboard tabs', () => {
     const overviewHtml = renderToStaticMarkup(
       React.createElement(DashboardWorkspaceView, {
         activeTab: 'overview',
@@ -145,25 +207,87 @@ describe('dashboard workspace', () => {
     );
 
     expect(overviewHtml).toContain('Decision workspace');
-    expect(overviewHtml).toContain('Workspace home');
+    expect(overviewHtml).toContain('Client workspace');
     expect(overviewHtml).toContain('Overview');
     expect(overviewHtml).toContain('Runs');
     expect(overviewHtml).toContain('Reports');
-    expect(overviewHtml).toContain('Saved runs');
-    expect(overviewHtml).toContain('High-confidence runs');
+    expect(overviewHtml).toContain('Saved evaluations');
+    expect(overviewHtml).toContain('Latest defaults');
+    expect(overviewHtml).toContain('Missing-data flags');
+    expect(overviewHtml).toContain('Parameter controls');
     expect(overviewHtml).toContain('CASE-002');
+    expect(overviewHtml).toContain('Start or continue');
+    expect(overviewHtml).toContain('Latest saved run');
+    expect(overviewHtml).toContain('Latest run posture');
+    expect(overviewHtml).toContain('Run context');
+    expect(overviewHtml).toContain('Traceability');
+    expect(overviewHtml).toContain('Next action Cathode hardening');
     expect(overviewHtml).toContain('Open latest run');
     expect(overviewHtml).toContain('Open case history');
     expect(overviewHtml).toContain('Configure stack');
     expect(overviewHtml).toContain('Open evaluations');
     expect(overviewHtml).toContain('Open reports');
-    expect(overviewHtml).toContain('Run momentum');
-    expect(overviewHtml).toContain('Confidence posture');
+    expect(overviewHtml).not.toContain('Run momentum');
+    expect(overviewHtml).not.toContain('Confidence posture');
     expect(overviewHtml).not.toContain('Accepted sidestream benchmark');
     expect(overviewHtml).not.toContain('Primary modules');
 
-    expect(reportsHtml).toContain('Recent reports');
-    expect(reportsHtml).toContain('Open reports');
+    expect(reportsHtml).toContain('Report outputs');
+    expect(reportsHtml).toContain('Open full report registry');
     expect(reportsHtml).toContain('CASE-002 report');
+  });
+
+  it('renders a clean empty-state dashboard after the local registry is reset', () => {
+    const emptyHtml = renderToStaticMarkup(
+      React.createElement(DashboardWorkspaceView, {
+        activeTab: 'overview',
+        workspace: {
+          ...workspace,
+          presentation: {
+            ...workspace.presentation,
+            short_summary:
+              'No deterministic evaluation is saved yet. Configure a stack to generate diagnosis, modeling, reports, and audit output.',
+            copy: {
+              ...workspace.presentation.copy,
+              summary:
+                'No deterministic evaluation is saved yet. Configure a stack to generate diagnosis, modeling, reports, and audit output.',
+              detail: 'The local evaluation registry is currently clean.',
+            },
+          },
+          summary: {
+            total_runs: 0,
+            total_cases: 0,
+            high_confidence_runs: 0,
+            modeled_runs: 0,
+          },
+          hero: {
+            ...workspace.hero,
+            latest_case_id: null,
+            latest_summary: null,
+          },
+          trends: {
+            run_growth: [],
+            confidence: [],
+            model_coverage: [],
+          },
+          quick_actions: {
+            ...workspace.quick_actions,
+            latest_evaluation_href: null,
+            latest_case_history_href: null,
+          },
+          latest_run_overview: null,
+          recent_evaluations: [],
+          recent_reports: [],
+        },
+      }),
+    );
+
+    expect(emptyHtml).toContain('Start the first stack');
+    expect(emptyHtml).toContain('What appears after the first run');
+    expect(emptyHtml).toContain('Diagnosis and prioritized recommendations');
+    expect(emptyHtml).toContain(
+      'No saved evaluations remain in this local workspace.',
+    );
+    expect(emptyHtml).toContain('Open evaluations');
   });
 });

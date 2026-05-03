@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 import {
-    analystEmail,
-    analystPassword,
-    playwrightApiBaseUrl,
-    seededEvidenceSummary,
-    seededEvidenceTitle,
+  analystEmail,
+  analystPassword,
+  playwrightApiBaseUrl,
+  seededEvidenceSummary,
+  seededEvidenceTitle,
 } from './support/local-runtime';
 
 async function signInAsAnalyst(page: import('@playwright/test').Page) {
@@ -217,6 +217,8 @@ test.describe('local-first professional workspace', () => {
 
     await page.getByRole('link', { name: 'Open stack cockpit' }).click();
     await expect(page).toHaveURL(/\/cases\/new$/);
+
+    await page.getByRole('button', { name: /Preset library/ }).click();
 
     const wastewaterPreset = page
       .locator('article')

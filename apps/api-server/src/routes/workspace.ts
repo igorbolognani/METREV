@@ -101,9 +101,22 @@ export async function registerWorkspaceRoutes(
       },
     );
 
+    const latestEvaluationId = evaluationList.items[0]?.evaluation_id;
+    const latestEvaluation = latestEvaluationId
+      ? await withSpan(
+          'workspace.dashboard.latest_evaluation',
+          () => app.evaluationRepository.getEvaluation(latestEvaluationId),
+          {
+            actor_id: actor.userId,
+            evaluation_id: latestEvaluationId,
+          },
+        )
+      : null;
+
     return reply.send(
       buildDashboardWorkspace({
         evaluationList,
+        latestEvaluation,
         versions: buildVersionsFromEvaluation(),
       }),
     );

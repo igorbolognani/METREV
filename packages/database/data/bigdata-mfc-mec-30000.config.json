@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "queries": [
+    "microbial fuel cell wastewater treatment",
+    "microbial electrolysis cell wastewater hydrogen",
+    "microbial fuel cell carbon felt anode",
+    "microbial electrolysis cell carbon cloth cathode",
+    "electroactive biofilm anode wastewater",
+    "bioelectrochemical system wastewater pilot scale",
+    "microbial fuel cell COD removal coulombic efficiency",
+    "microbial electrolysis cell hydrogen recovery wastewater",
+    "microbial fuel cell internal resistance scale up",
+    "microbial electrolysis cell cathode catalyst oxygen evolution",
+    "bioelectrochemical nutrient recovery wastewater ammonium",
+    "microbial desalination cell wastewater salinity removal",
+    "anaerobic electrochemical membrane bioreactor wastewater",
+    "microbial fuel cell separator membrane fouling",
+    "microbial electrolysis cell stainless steel current collector",
+    "microbial fuel cell graphite brush anode",
+    "microbial electrolysis reactor startup inoculum",
+    "microbial fuel cell industrial effluent pilot",
+    "microbial electrolysis cell wastewater full text",
+    "microbial fuel cell carbon brush scale up",
+    "microbial fuel cell power density wastewater",
+    "microbial electrolysis cell methane suppression",
+    "bioelectrochemical system wastewater treatment review",
+    "microbial fuel cell cathode oxygen reduction catalyst",
+    "microbial electrolysis cell coulombic efficiency wastewater",
+    "microbial fuel cell hydraulic retention time wastewater",
+    "microbial electrolysis cell pH conductivity wastewater",
+    "bioelectrochemical reactor corrosion sealing reliability",
+    "microbial fuel cell wastewater treatment catalyst membrane review",
+    "microbial electrolysis cell pilot wastewater performance"
+  ],
+  "sources": {
+    "openalex": {
+      "enabled": true
+    },
+    "crossref": {
+      "enabled": true
+    },
+    "europepmc": {
+      "enabled": true
+    }
+  }
+}

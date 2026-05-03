@@ -287,4 +287,108 @@ describe('case intake preset catalog', () => {
       expect.arrayContaining(['pilot_duration']),
     );
   });
+
+  it('maps explicit parameter controls into raw intake state and audit-visible defaults or exclusions', () => {
+    const payload = buildCaseInputFromFormValues(
+      {
+        ...wastewaterGoldenCasePreset.formValues,
+        cathodeGasHandlingInterface:
+          'Passive air cathode with intermittent fouling risk',
+        electricalCurrentCollectionStrategy: 'Bolted graphite plate contacts',
+        electricalSealingStrategy: '',
+        electricalCorrosionProtectionLevel: 'high',
+        membranePresence: '',
+        operatingRegime: '',
+        sensorsVoltageCurrentLogging: 'Continuous stack-level logging',
+        substrateProfile:
+          'High-COD fermentation sidestream with suspended solids spikes',
+        parameterModes: {
+          cathodeGasHandlingInterface: 'client',
+          operatingRegime: 'exclude',
+          membranePresence: 'system_default',
+          sensorsVoltageCurrentLogging: 'client',
+          substrateProfile: 'client',
+          temperature: 'exclude',
+          conductivity: 'client',
+          electricalCurrentCollectionStrategy: 'client',
+          electricalSealingStrategy: 'exclude',
+          electricalCorrosionProtectionLevel: 'client',
+        },
+      },
+      wastewaterGoldenCasePreset,
+    );
+
+    expect(payload.parameter_state).toEqual(
+      expect.objectContaining({
+        membrane_presence: expect.objectContaining({
+          included: true,
+          value_source: 'system_default',
+          value: 'unknown',
+        }),
+        temperature_c: expect.objectContaining({
+          included: false,
+          value_source: 'unset',
+        }),
+        conductivity_ms_per_cm: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value: 7.2,
+        }),
+        operating_regime: expect.objectContaining({
+          included: false,
+          value_source: 'unset',
+        }),
+        substrate_profile: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value:
+            'High-COD fermentation sidestream with suspended solids spikes',
+        }),
+        gas_handling_interface: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value: 'Passive air cathode with intermittent fouling risk',
+        }),
+        voltage_current_logging: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value: 'Continuous stack-level logging',
+        }),
+        current_collection_strategy: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value: 'Bolted graphite plate contacts',
+        }),
+        sealing_strategy: expect.objectContaining({
+          included: false,
+          value_source: 'unset',
+        }),
+        corrosion_protection_level: expect.objectContaining({
+          included: true,
+          value_source: 'client',
+          value: 'high',
+        }),
+      }),
+    );
+    expect(payload.feed_and_operation?.temperature_c).toBeUndefined();
+    expect(payload.feed_and_operation?.operating_regime).toBeUndefined();
+    expect(payload.stack_blocks?.reactor_architecture?.membrane_presence).toBe(
+      'unknown',
+    );
+    expect(
+      payload.stack_blocks?.electrical_interconnect_and_sealing
+        ?.sealing_strategy,
+    ).toBeUndefined();
+    expect(payload.defaults_used).toEqual(
+      expect.arrayContaining(['membrane_presence=unknown (system default)']),
+    );
+    expect(payload.assumptions).toEqual(
+      expect.arrayContaining([
+        'Membrane presence: Absence of clear membrane information should not be collapsed into present or absent.',
+        'Temperature was explicitly excluded from the current run input.',
+        'Operating regime was explicitly excluded from the current run input.',
+        'Sealing strategy was explicitly excluded from the current run input.',
+      ]),
+    );
+  });
 });

@@ -21,6 +21,8 @@ import type {
     LocalSourceImportRequest,
     LocalSourceImportResponse,
     PrintableEvaluationReportResponse,
+    QueueResearchBackfillPresetRequest,
+    QueueResearchBackfillPresetResponse,
     QueueResearchBackfillRequest,
     RawCaseInput,
     ReportConversationRequest,
@@ -30,6 +32,7 @@ import type {
     ResearchEvidencePack,
     ResearchReviewDetail,
     ResearchReviewListResponse,
+    ResearchWarehouseProgressResponse,
     RunResearchExtractionsRequest,
     RunResearchExtractionsResponse,
     SearchResearchPapersRequest,
@@ -59,6 +62,8 @@ import {
     localSourceImportRequestSchema,
     localSourceImportResponseSchema,
     printableEvaluationReportResponseSchema,
+    queueResearchBackfillPresetRequestSchema,
+    queueResearchBackfillPresetResponseSchema,
     queueResearchBackfillRequestSchema,
     rawCaseInputSchema,
     reportConversationRequestSchema,
@@ -68,6 +73,7 @@ import {
     researchEvidencePackSchema,
     researchReviewDetailSchema,
     researchReviewListResponseSchema,
+    researchWarehouseProgressResponseSchema,
     runResearchExtractionsRequestSchema,
     runResearchExtractionsResponseSchema,
     searchResearchPapersRequestSchema,
@@ -759,6 +765,41 @@ export async function queueResearchBackfill(
     response,
     researchBackfillListResponseSchema,
     'research backfill queue response',
+  );
+}
+
+export async function fetchResearchWarehouseProgress(): Promise<ResearchWarehouseProgressResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/warehouse-progress`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    researchWarehouseProgressResponseSchema,
+    'research warehouse progress response',
+  );
+}
+
+export async function queueResearchBackfillPreset(
+  payload: QueueResearchBackfillPresetRequest,
+): Promise<QueueResearchBackfillPresetResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/backfills/presets`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: toJsonBody(queueResearchBackfillPresetRequestSchema, payload),
+  });
+
+  return parseJson(
+    response,
+    queueResearchBackfillPresetResponseSchema,
+    'research backfill preset response',
   );
 }
 

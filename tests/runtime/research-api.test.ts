@@ -457,4 +457,94 @@ describe('research API flow', () => {
       await app.close();
     }
   });
+
+  it('queues preset backfills and exposes warehouse progress', async () => {
+    const app = await buildApp({
+      repository: evaluationRepository,
+      researchRepository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const queueResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/backfills',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial fuel cell wastewater',
+          per_provider_limit: 40,
+          max_pages: 3,
+          target_records: 120,
+        },
+      });
+
+      expect(queueResponse.statusCode).toBe(201);
+      expect(queueResponse.json()).toMatchObject({
+        items: [
+          expect.objectContaining({
+            query: 'microbial fuel cell wastewater',
+            target_records: 120,
+            records_remaining: 120,
+          }),
+        ],
+      });
+
+      const progressResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/warehouse-progress',
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(progressResponse.statusCode).toBe(200);
+      expect(progressResponse.json()).toMatchObject({
+        target_records: 120,
+        queued_backfills: 1,
+        completion_ratio: 0,
+      });
+
+      const presetResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/backfills/presets',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          preset_id: 'mfc_mec_30000',
+          target_records: 30000,
+        },
+      });
+
+      expect(presetResponse.statusCode).toBe(201);
+      expect(presetResponse.json()).toMatchObject({
+        preset_id: 'mfc_mec_30000',
+        queued_runs: expect.any(Number),
+      });
+      expect(presetResponse.json().queued_runs).toBeGreaterThan(10);
+
+      const updatedProgressResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/warehouse-progress',
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(updatedProgressResponse.statusCode).toBe(200);
+      expect(updatedProgressResponse.json()).toMatchObject({
+        target_records: 30120,
+        queued_backfills: expect.any(Number),
+      });
+      expect(updatedProgressResponse.json().queued_backfills).toBeGreaterThan(
+        10,
+      );
+    } finally {
+      await app.close();
+    }
+  });
 });

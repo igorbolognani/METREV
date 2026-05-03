@@ -6,15 +6,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-  researchBackfillSummarySchema,
-  researchDecisionIngestionPreviewSchema,
-  researchEvidencePackSchema,
-  researchExtractionResultSchema,
-  researchPaperMetadataSchema,
-  researchPaperSearchFailureSchema,
-  researchPaperSearchResultSchema,
-  researchReviewDetailSchema,
-  sourceArtifactSchema,
+    researchBackfillSummarySchema,
+    researchDecisionIngestionPreviewSchema,
+    researchEvidencePackSchema,
+    researchExtractionResultSchema,
+    researchPaperMetadataSchema,
+    researchPaperSearchFailureSchema,
+    researchPaperSearchResultSchema,
+    researchReviewDetailSchema,
+    researchWarehouseProgressResponseSchema,
+    sourceArtifactSchema,
 } from '@metrev/domain-contracts';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 
@@ -42,11 +43,13 @@ vi.mock('@/lib/api', () => ({
   createResearchEvidencePack: vi.fn(),
   createResearchReview: vi.fn(),
   fetchResearchBackfills: vi.fn(),
+  fetchResearchWarehouseProgress: vi.fn(),
   fetchResearchEvidencePackDecisionInput: vi.fn(),
   fetchResearchReview: vi.fn(),
   fetchResearchReviews: vi.fn(),
   importLocalSources: vi.fn(),
   queueResearchBackfill: vi.fn(),
+  queueResearchBackfillPreset: vi.fn(),
   searchResearchPapers: vi.fn(),
   stageResearchPapers: vi.fn(),
   runResearchExtractions: vi.fn(),
@@ -231,10 +234,13 @@ describe('research review workspace UI', () => {
             providers: ['openalex', 'crossref', 'europe_pmc'],
             per_provider_limit: 25,
             max_pages: 3,
+            target_records: 75,
             next_page: 1,
             pages_completed: 0,
             records_fetched: 0,
             records_stored: 0,
+            records_remaining: 75,
+            completion_ratio: 0,
             failed_providers: [],
             created_at: now,
             updated_at: now,
@@ -242,6 +248,7 @@ describe('research review workspace UI', () => {
             failure_message: null,
           }),
         ],
+        presetBackfillPending: false,
         createPending: false,
         importPending: false,
         importedPapers: [
@@ -274,10 +281,36 @@ describe('research review workspace UI', () => {
         onLimitChange: vi.fn(),
         onLocalPdfPathsChange: vi.fn(),
         onRunSearch: vi.fn(),
+        onQueuePresetBackfill: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
         onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
+        warehouseProgress: researchWarehouseProgressResponseSchema.parse({
+          target_records: 30000,
+          stored_records: 683,
+          fetched_records: 1200,
+          records_remaining: 29317,
+          completion_ratio: 0.0227666667,
+          pending_records: 683,
+          accepted_records: 0,
+          rejected_records: 0,
+          high_quality_records: 214,
+          linked_document_records: 312,
+          pdf_records: 0,
+          xml_records: 0,
+          queued_backfills: 5,
+          running_backfills: 1,
+          completed_backfills: 2,
+          failed_backfills: 0,
+          source_breakdown: [
+            { key: 'openalex', label: 'OpenAlex', count: 400 },
+            { key: 'crossref', label: 'Crossref', count: 200 },
+          ],
+          metadata_quality_levels: [{ key: 'high', label: 'High', count: 214 }],
+          veracity_levels: [],
+          last_updated_at: now,
+        }),
         searchFailures: [
           researchPaperSearchFailureSchema.parse({
             provider: 'crossref',
@@ -330,6 +363,7 @@ describe('research review workspace UI', () => {
         backfillMaxPages: 3,
         backfillPending: false,
         backfills: [],
+        presetBackfillPending: false,
         createPending: false,
         importPending: false,
         importedPapers: [],
@@ -344,11 +378,13 @@ describe('research review workspace UI', () => {
         onLimitChange: vi.fn(),
         onLocalPdfPathsChange: vi.fn(),
         onQueueBackfill: vi.fn(),
+        onQueuePresetBackfill: vi.fn(),
         onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
         onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
+        warehouseProgress: null,
         searchFailures: [],
         searchPending: false,
         searchResults: [],
@@ -379,6 +415,8 @@ describe('research review workspace UI', () => {
     expect(createHtml).toContain('Metadata quality');
     expect(createHtml).toContain('fixture.pdf');
     expect(createHtml).toContain('Warehouse backfill');
+    expect(createHtml).toContain('MFC/MEC warehouse expansion');
+    expect(createHtml).toContain('Queue MFC/MEC 30,000 preset');
     expect(createHtml).toContain('Queue warehouse backfill');
     expect(createHtml).toContain('External paper search');
     expect(createHtml).toContain('Live search fixture paper');

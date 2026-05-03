@@ -17,6 +17,7 @@ import { CaseFormReviewSubmitStep } from '@/components/case-form/case-form-revie
 import { CaseFormStackDetailStep } from '@/components/case-form/case-form-stack-detail-step';
 import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
+import { Collapsible } from '@/components/ui/collapsible';
 import {
     WorkspaceDataCard,
     WorkspacePageHeader,
@@ -44,8 +45,11 @@ import {
     caseIntakePresets,
     defaultCaseIntakeFormValues,
     findCaseIntakePreset,
+    getCaseIntakeParameterMode,
     hydrateCaseIntakeFormValues,
     type CaseIntakeFormValues,
+    type CaseIntakeParameterFieldId,
+    type CaseIntakeParameterMode,
 } from '@/lib/case-intake';
 import { formatToken } from '@/lib/formatting';
 
@@ -94,6 +98,15 @@ function formatAutosaveTimestamp(value: string | null): string {
 function stepIssue(condition: boolean, message: string): string[] {
   return condition ? [message] : [];
 }
+
+const deterministicOutputLabels = [
+  'Diagnosis',
+  'Recommendations',
+  'Modeling',
+  'Roadmap & suppliers',
+  'Report',
+  'Audit',
+] as const;
 
 export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
   const router = useRouter();
@@ -227,20 +240,62 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     formValues.preferredSuppliers,
   );
   const assumptionCount = countCommaSeparated(formValues.assumptionsNote);
+
+  function resolveParameterSnapshot(
+    field: CaseIntakeParameterFieldId,
+    value: string | undefined,
+    fallback = 'Not stated',
+  ): string {
+    const mode = getCaseIntakeParameterMode(formValues, field);
+
+    if (mode === 'system_default') {
+      return 'System default';
+    }
+
+    if (mode === 'exclude') {
+      return 'Excluded';
+    }
+
+    return value?.trim() ? value : fallback;
+  }
+
+  function parameterNeedsExplicitValue(
+    field: CaseIntakeParameterFieldId,
+    value: string | undefined,
+  ): boolean {
+    return (
+      getCaseIntakeParameterMode(formValues, field) === 'client' &&
+      !value?.trim()
+    );
+  }
+
   const numericFieldErrors = {
-    conductivity: getNumberFieldError(
-      formValues.conductivity,
-      numberFieldLabels.conductivity,
-    ),
-    hydraulicRetentionTime: getNumberFieldError(
-      formValues.hydraulicRetentionTime,
-      numberFieldLabels.hydraulicRetentionTime,
-    ),
-    ph: getNumberFieldError(formValues.ph, numberFieldLabels.ph),
-    temperature: getNumberFieldError(
-      formValues.temperature,
-      numberFieldLabels.temperature,
-    ),
+    conductivity:
+      getCaseIntakeParameterMode(formValues, 'conductivity') === 'client'
+        ? getNumberFieldError(
+            formValues.conductivity,
+            numberFieldLabels.conductivity,
+          )
+        : null,
+    hydraulicRetentionTime:
+      getCaseIntakeParameterMode(formValues, 'hydraulicRetentionTime') ===
+      'client'
+        ? getNumberFieldError(
+            formValues.hydraulicRetentionTime,
+            numberFieldLabels.hydraulicRetentionTime,
+          )
+        : null,
+    ph:
+      getCaseIntakeParameterMode(formValues, 'ph') === 'client'
+        ? getNumberFieldError(formValues.ph, numberFieldLabels.ph)
+        : null,
+    temperature:
+      getCaseIntakeParameterMode(formValues, 'temperature') === 'client'
+        ? getNumberFieldError(
+            formValues.temperature,
+            numberFieldLabels.temperature,
+          )
+        : null,
   };
   const hasNumericErrors = Object.values(numericFieldErrors).some(Boolean);
   const contextIssues = [
@@ -270,11 +325,14 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
       'Add at least one current pain point before continuing.',
     ),
     ...stepIssue(
-      !formValues.influentType.trim(),
+      parameterNeedsExplicitValue('influentType', formValues.influentType),
       'Influent type is required before continuing.',
     ),
     ...stepIssue(
-      !formValues.substrateProfile.trim(),
+      parameterNeedsExplicitValue(
+        'substrateProfile',
+        formValues.substrateProfile,
+      ),
       'Substrate profile is required before continuing.',
     ),
     ...stepIssue(
@@ -288,6 +346,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     'reactor-architecture': reactorIssues,
     'anode-biofilm': [],
     'cathode-catalyst': [],
+    'electrical-interconnect': [],
     'membrane-separator': [],
     'balance-of-plant': [],
     'sensors-analytics': [],
@@ -296,6 +355,10 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     'review-submit': reviewIssues,
     'suppliers-constraints': [],
   };
+  const inputStepValues = caseFormStepValues.filter(
+    (step): step is Exclude<CaseFormStep, 'review-submit'> =>
+      step !== 'review-submit',
+  );
   const currentStepIndex = Math.max(getCaseFormStepIndex(currentStep), 0);
   const completedSteps = caseFormStepValues.filter(
     (step, index) => index < currentStepIndex && stepIssues[step].length === 0,
@@ -318,14 +381,14 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     {
       detail:
         formValues.conductivity || formValues.hydraulicRetentionTime
-          ? `${formValues.conductivity || '?'} mS/cm - ${formValues.hydraulicRetentionTime || '?'} h`
+          ? `${resolveParameterSnapshot('conductivity', formValues.conductivity, '?')} - ${resolveParameterSnapshot('hydraulicRetentionTime', formValues.hydraulicRetentionTime, '?')}`
           : 'Conductivity and retention time are not set yet.',
       key: 'envelope',
       label: 'Operating envelope',
       tone: 'default' as const,
       value:
         formValues.temperature || formValues.ph
-          ? `${formValues.temperature || '?'} °C - pH ${formValues.ph || '?'}`
+          ? `${resolveParameterSnapshot('temperature', formValues.temperature, '?')} - pH ${resolveParameterSnapshot('ph', formValues.ph, '?')}`
           : 'Still incomplete',
     },
     {
@@ -364,7 +427,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
   const operationValidationErrors = {
     influentType:
       showStepValidation['operating-envelope'] &&
-      !formValues.influentType.trim()
+      parameterNeedsExplicitValue('influentType', formValues.influentType)
         ? 'Influent type is required.'
         : undefined,
     painPoints:
@@ -374,7 +437,10 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
         : undefined,
     substrateProfile:
       showStepValidation['operating-envelope'] &&
-      !formValues.substrateProfile.trim()
+      parameterNeedsExplicitValue(
+        'substrateProfile',
+        formValues.substrateProfile,
+      )
         ? 'Substrate profile is required.'
         : undefined,
   };
@@ -382,66 +448,137 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
     {
       key: 'reactor',
       label: 'Reactor',
-      value:
-        formValues.reactorArchitectureType ||
-        formValues.architectureFamily ||
-        'Not stated',
+      value: formValues.architectureFamily.trim()
+        ? formValues.architectureFamily
+        : resolveParameterSnapshot(
+            'reactorArchitectureType',
+            formValues.reactorArchitectureType,
+          ),
     },
     {
       key: 'anode',
       label: 'Anode',
-      value: formValues.anodeMaterialFamily || 'Not stated',
+      value: resolveParameterSnapshot(
+        'anodeMaterialFamily',
+        formValues.anodeMaterialFamily,
+      ),
     },
     {
       key: 'cathode',
       label: 'Cathode',
-      value: formValues.cathodeCatalystFamily || 'Not stated',
+      value: resolveParameterSnapshot(
+        'cathodeCatalystFamily',
+        formValues.cathodeCatalystFamily,
+      ),
     },
     {
       key: 'separator',
       label: 'Separator',
-      value:
-        formValues.membraneSeparatorType ||
-        formValues.membranePresence ||
-        'Not stated',
+      value: formValues.membraneSeparatorType?.trim()
+        ? resolveParameterSnapshot(
+            'membraneSeparatorType',
+            formValues.membraneSeparatorType,
+          )
+        : resolveParameterSnapshot(
+            'membranePresence',
+            formValues.membranePresence,
+          ),
+    },
+    {
+      key: 'electrical',
+      label: 'Electrical',
+      value: resolveParameterSnapshot(
+        'electricalCurrentCollectionStrategy',
+        formValues.electricalCurrentCollectionStrategy,
+      ),
     },
     {
       key: 'sensors',
       label: 'Sensors',
-      value: formValues.sensorsVoltageCurrentLogging || 'Not stated',
+      value: resolveParameterSnapshot(
+        'sensorsVoltageCurrentLogging',
+        formValues.sensorsVoltageCurrentLogging,
+      ),
     },
     {
       key: 'biology',
       label: 'Biology',
-      value: formValues.biologyStartupProtocol || 'Not stated',
+      value: resolveParameterSnapshot(
+        'biologyStartupProtocol',
+        formValues.biologyStartupProtocol,
+      ),
     },
   ];
   const cockpitWarnings = [
     ...stepIssue(
-      !formValues.reactorArchitectureType && !formValues.architectureFamily,
+      !formValues.architectureFamily.trim() &&
+        parameterNeedsExplicitValue(
+          'reactorArchitectureType',
+          formValues.reactorArchitectureType,
+        ),
       'Reactor architecture is still unspecified.',
     ),
     ...stepIssue(
-      !formValues.anodeMaterialFamily,
+      parameterNeedsExplicitValue(
+        'anodeMaterialFamily',
+        formValues.anodeMaterialFamily,
+      ),
       'Anode material family is still unspecified.',
     ),
     ...stepIssue(
-      !formValues.cathodeCatalystFamily,
+      parameterNeedsExplicitValue(
+        'cathodeCatalystFamily',
+        formValues.cathodeCatalystFamily,
+      ),
       'Cathode catalyst family is still unspecified.',
     ),
     ...stepIssue(
-      !formValues.membraneSeparatorType && !formValues.membranePresence,
+      parameterNeedsExplicitValue(
+        'membraneSeparatorType',
+        formValues.membraneSeparatorType,
+      ) &&
+        parameterNeedsExplicitValue(
+          'membranePresence',
+          formValues.membranePresence,
+        ),
       'Membrane or separator posture is still unspecified.',
     ),
     ...stepIssue(
-      !formValues.sensorsVoltageCurrentLogging,
+      parameterNeedsExplicitValue(
+        'sensorsVoltageCurrentLogging',
+        formValues.sensorsVoltageCurrentLogging,
+      ),
       'Sensor logging posture is still unspecified.',
     ),
     ...stepIssue(
-      !formValues.biologyStartupProtocol,
+      parameterNeedsExplicitValue(
+        'electricalCurrentCollectionStrategy',
+        formValues.electricalCurrentCollectionStrategy,
+      ),
+      'Electrical current collection strategy is still unspecified.',
+    ),
+    ...stepIssue(
+      parameterNeedsExplicitValue(
+        'biologyStartupProtocol',
+        formValues.biologyStartupProtocol,
+      ),
       'Startup protocol is still unspecified.',
     ),
   ];
+  const openInputIssueCount = inputStepValues.filter(
+    (step) => stepIssues[step].length > 0,
+  ).length;
+  const readinessWarnings = [
+    ...new Set([
+      ...inputStepValues.flatMap((step) => stepIssues[step]),
+      ...cockpitWarnings,
+    ]),
+  ].slice(0, 4);
+  const readinessTone = openInputIssueCount > 0 ? 'warning' : 'success';
+  const readinessLabel =
+    openInputIssueCount > 0
+      ? `${openInputIssueCount} required blocker(s)`
+      : 'Ready for final review';
 
   function updateField<Field extends keyof CaseIntakeFormValues>(
     field: Field,
@@ -462,6 +599,20 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
       field as keyof CaseIntakeFormValues,
       value as CaseIntakeFormValues[keyof CaseIntakeFormValues],
     );
+  }
+
+  function handleParameterModeChange(
+    field: CaseIntakeParameterFieldId,
+    mode: CaseIntakeParameterMode,
+  ) {
+    setStepError(null);
+    setFormValues((current) => ({
+      ...current,
+      parameterModes: {
+        ...(current.parameterModes ?? {}),
+        [field]: mode,
+      },
+    }));
   }
 
   function applyPreset(presetId: string) {
@@ -594,6 +745,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="reactor-architecture"
           />
         );
@@ -602,6 +754,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="anode-biofilm"
           />
         );
@@ -610,6 +763,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="cathode-catalyst"
           />
         );
@@ -618,7 +772,17 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="membrane-separator"
+          />
+        );
+      case 'electrical-interconnect':
+        return (
+          <CaseFormStackDetailStep
+            formValues={formValues}
+            onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
+            step="electrical-interconnect"
           />
         );
       case 'balance-of-plant':
@@ -626,6 +790,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="balance-of-plant"
           />
         );
@@ -634,6 +799,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="sensors-analytics"
           />
         );
@@ -642,6 +808,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           <CaseFormStackDetailStep
             formValues={formValues}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             step="biology-startup"
           />
         );
@@ -655,6 +822,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
             }
             influentTypeError={operationValidationErrors.influentType}
             onFieldChange={handleStringFieldChange}
+            onParameterModeChange={handleParameterModeChange}
             painPointsError={operationValidationErrors.painPoints}
             phError={numericFieldErrors.ph}
             substrateProfileError={operationValidationErrors.substrateProfile}
@@ -696,28 +864,28 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
   return (
     <form className="workspace-page" onSubmit={handleSubmit}>
       <WorkspacePageHeader
-        badge="Stack cockpit"
+        badge="Stack configurator"
         chips={[
           autosaveLabel,
           `${currentStepIndex + 1} of ${caseFormStepValues.length} steps`,
         ]}
-        description="Configure the current METREV stack block by block before handing the case into the deterministic workspace."
+        description="Define the stack inputs here. Diagnosis, recommendations, modeling, report, and audit are generated only after deterministic submission."
         title={
           formValues.caseId.trim() || activePreset?.label || 'Configure stack'
         }
       />
 
-      <SummaryRail items={summaryItems} label="Stack cockpit summary" />
+      <SummaryRail items={summaryItems} label="Current input snapshot" />
 
       <WorkspaceSection
         actions={
           <>
             <button className="secondary" onClick={resetForm} type="button">
-              Reset draft
+              Reset input draft
             </button>
             {canOpenInternalEvidence(actorRole) ? (
               <Link className="button secondary" href="/evidence/review">
-                Review evidence queue
+                Open admin evidence queue
               </Link>
             ) : (
               <p className="muted">
@@ -727,28 +895,94 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
             )}
           </>
         }
-        description="Walk the current stack through architecture, materials, instrumentation, biology, operating conditions, supplier posture, and explicit evidence before the deterministic handoff."
-        eyebrow="Stack cockpit"
+        description="Use the active panel to enter stack inputs. Navigation, draft context, presets, and readiness stay on the left so they do not compete with the generated outputs that arrive only after submission."
+        eyebrow="Client input"
         title={
-          formValues.caseId.trim() || activePreset?.label || 'Configure stack'
+          formValues.caseId.trim() ||
+          activePreset?.label ||
+          'Stack input workbench'
         }
       >
         <div className="case-form-wizard-shell">
-          <div className="case-form-wizard-shell__status">
+          <div className="case-form-wizard-shell__support">
+            <CaseFormStepper
+              completedSteps={completedSteps}
+              currentStep={currentStep}
+              onStepChange={handleStepperStepChange}
+            />
+
+            <WorkspaceDataCard tone={readinessTone}>
+              <div className="workspace-data-card__header">
+                <div>
+                  <span className="badge subtle">Preflight preview</span>
+                  <h3>Input vs generated output</h3>
+                </div>
+                <span className="meta-chip">{readinessLabel}</span>
+              </div>
+              <p>
+                This preview only reports current readiness. METREV generates
+                diagnosis, recommendations, modeling, report, and audit after
+                deterministic submission.
+              </p>
+              <div className="case-form-preflight-grid">
+                <section className="workspace-inline-card">
+                  <h3>Readiness signals</h3>
+                  <p>
+                    {cockpitWarnings.length} stack posture gap(s) still
+                    explicit.
+                  </p>
+                  <p className="muted">
+                    {evidenceCount} evidence record(s) and {assumptionCount}{' '}
+                    explicit assumption(s) will remain visible in the audit.
+                  </p>
+                  {readinessWarnings.length > 0 ? (
+                    <ul className="workspace-bullet-list compact">
+                      {readinessWarnings.map((entry) => (
+                        <li key={entry}>{entry}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="muted">
+                      No explicit blockers are open for the current input state.
+                    </p>
+                  )}
+                </section>
+                <section className="workspace-inline-card">
+                  <h3>Generated after submit</h3>
+                  <div className="workspace-chip-list compact">
+                    {deterministicOutputLabels.map((entry) => (
+                      <span className="meta-chip" key={entry}>
+                        {entry}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="muted">
+                    Final outputs depend on explicit inputs, evidence posture,
+                    defaults, and missing-data disclosure.
+                  </p>
+                </section>
+              </div>
+            </WorkspaceDataCard>
+
             <WorkspaceDataCard>
               <div className="workspace-data-card__header">
                 <div>
-                  <span className="badge subtle">Wizard status</span>
-                  <h3>One cockpit, one stack configuration surface</h3>
+                  <span className="badge subtle">Draft status</span>
+                  <h3>{currentStepMeta.label}</h3>
                 </div>
                 <span className="meta-chip">
                   {activePreset ? 'Preset loaded' : 'Manual draft'}
                 </span>
               </div>
+              <p>{currentStepMeta.description}</p>
               <div className="case-form-status-grid">
                 <div>
-                  <strong>{currentStepMeta.label}</strong>
-                  <p>{currentStepMeta.description}</p>
+                  <strong>Autosave and step history stay active</strong>
+                  <p>
+                    Move between inputs without losing the draft. Review and
+                    submit preserves the current state again before the
+                    deterministic handoff.
+                  </p>
                 </div>
                 <div className="case-form-status-meta">
                   <span className="meta-chip">{autosaveLabel}</span>
@@ -764,55 +998,62 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
               </div>
             </WorkspaceDataCard>
 
-            <CaseFormPresetPicker
-              activePresetId={activePresetId}
-              onApplyPreset={applyPreset}
-              presets={caseIntakePresets}
-            />
-
-            <CaseFormStepper
-              completedSteps={completedSteps}
-              currentStep={currentStep}
-              onStepChange={handleStepperStepChange}
-            />
+            <Collapsible
+              countBadge={caseIntakePresets.length}
+              defaultOpen={Boolean(activePresetId)}
+              meta={
+                activePreset?.label ??
+                'Choose a validated starting point or keep the draft manual.'
+              }
+              title="Preset library"
+            >
+              <CaseFormPresetPicker
+                activePresetId={activePresetId}
+                embedded
+                onApplyPreset={applyPreset}
+                presets={caseIntakePresets}
+              />
+            </Collapsible>
           </div>
 
-          {renderCurrentStep()}
+          <div className="case-form-wizard-shell__workspace">
+            {renderCurrentStep()}
 
-          <div className="workspace-submit-row case-form-submit-row">
-            <div>
-              <strong>
-                {currentStep === 'review-submit'
-                  ? 'Ready to run'
-                  : `Next: ${caseFormSteps[currentStepIndex + 1]?.label ?? 'Review & Submit'}`}
-              </strong>
-              <p>
-                Autosave remains active while you move between stack sections.
-                The review step preserves the draft again before the
-                deterministic submission handoff.
-              </p>
-            </div>
-            <div className="case-form-submit-row__actions">
-              {currentStepIndex > 0 ? (
-                <button
-                  className="secondary"
-                  onClick={handlePreviousStep}
-                  type="button"
-                >
-                  Previous step
-                </button>
-              ) : null}
-              {currentStep === 'review-submit' ? (
-                <button disabled={isSubmitting} type="submit">
-                  {isSubmitting
-                    ? 'Launching evaluation...'
-                    : 'Run deterministic evaluation'}
-                </button>
-              ) : (
-                <button onClick={handleNextStep} type="button">
-                  Next step
-                </button>
-              )}
+            <div className="workspace-submit-row case-form-submit-row">
+              <div>
+                <strong>
+                  {currentStep === 'review-submit'
+                    ? 'Ready to run'
+                    : `Next: ${caseFormSteps[currentStepIndex + 1]?.label ?? 'Review & Submit'}`}
+                </strong>
+                <p>
+                  Autosave remains active while you move between stack sections.
+                  The review step preserves the draft again before the
+                  deterministic submission handoff.
+                </p>
+              </div>
+              <div className="case-form-submit-row__actions">
+                {currentStepIndex > 0 ? (
+                  <button
+                    className="secondary"
+                    onClick={handlePreviousStep}
+                    type="button"
+                  >
+                    Previous step
+                  </button>
+                ) : null}
+                {currentStep === 'review-submit' ? (
+                  <button disabled={isSubmitting} type="submit">
+                    {isSubmitting
+                      ? 'Launching evaluation...'
+                      : 'Run deterministic evaluation'}
+                  </button>
+                ) : (
+                  <button onClick={handleNextStep} type="button">
+                    Next step
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import type {
     ResearchPaperSearchFailure,
     ResearchPaperSearchResult,
     ResearchReviewSummary,
+    ResearchWarehouseProgressResponse,
     SourceArtifact,
 } from '@metrev/domain-contracts';
 
@@ -28,8 +29,10 @@ import {
     createResearchReview,
     fetchResearchBackfills,
     fetchResearchReviews,
+    fetchResearchWarehouseProgress,
     importLocalSources,
     queueResearchBackfill,
+    queueResearchBackfillPreset,
     searchResearchPapers,
     stageResearchPapers,
 } from '@/lib/api';
@@ -49,6 +52,8 @@ export function ResearchReviewListView({
   backfillMaxPages,
   backfillPending,
   backfills,
+  presetBackfillPending,
+  presetBackfillError,
   createError,
   createDisabled,
   createPending,
@@ -67,6 +72,7 @@ export function ResearchReviewListView({
   onLimitChange,
   onLocalPdfPathsChange,
   onQueueBackfill,
+  onQueuePresetBackfill,
   onRunSearch,
   onSearchQueryChange,
   onTabChange,
@@ -79,12 +85,15 @@ export function ResearchReviewListView({
   reviews,
   searchQuery,
   title,
+  warehouseProgress,
 }: {
   activeTab?: ResearchReviewListTab;
   backfillError?: Error | null;
   backfillMaxPages: number;
   backfillPending: boolean;
   backfills: ResearchBackfillSummary[];
+  presetBackfillPending: boolean;
+  presetBackfillError?: Error | null;
   createError?: Error | null;
   createDisabled?: boolean;
   createPending: boolean;
@@ -103,6 +112,7 @@ export function ResearchReviewListView({
   onLimitChange: (limit: number) => void;
   onLocalPdfPathsChange: (paths: string) => void;
   onQueueBackfill: () => void;
+  onQueuePresetBackfill: () => void;
   onRunSearch: () => void;
   onSearchQueryChange: (query: string) => void;
   onTabChange?: (nextTab: ResearchReviewListTab) => void;
@@ -115,6 +125,7 @@ export function ResearchReviewListView({
   reviews: ResearchReviewSummary[];
   searchQuery: string;
   title: string;
+  warehouseProgress?: ResearchWarehouseProgressResponse | null;
 }) {
   const summaryItems = [
     {
@@ -140,6 +151,14 @@ export function ResearchReviewListView({
         (total, review) => total + review.completed_result_count,
         0,
       ),
+    },
+    {
+      detail:
+        'Evidence records already staged into the warehouse toward the active backfill target.',
+      key: 'warehouse',
+      label: 'Warehouse records',
+      tone: 'accent' as const,
+      value: warehouseProgress?.stored_records ?? 0,
     },
   ];
 
@@ -311,6 +330,73 @@ export function ResearchReviewListView({
                   <span className="meta-chip">{backfillMaxPages} page(s)</span>
                 </div>
               </div>
+              {warehouseProgress ? (
+                <WorkspaceDataCard tone="accent">
+                  <div className="workspace-data-card__header">
+                    <div>
+                      <span className="badge subtle">30,000 preset</span>
+                      <h3>MFC/MEC warehouse expansion</h3>
+                    </div>
+                  </div>
+                  <div className="workspace-chip-list compact">
+                    <span className="meta-chip">
+                      Stored {warehouseProgress.stored_records}/
+                      {warehouseProgress.target_records}
+                    </span>
+                    <span className="meta-chip">
+                      Remaining {warehouseProgress.records_remaining}
+                    </span>
+                    <span className="meta-chip">
+                      High quality {warehouseProgress.high_quality_records}
+                    </span>
+                    <span className="meta-chip">
+                      Linked docs {warehouseProgress.linked_document_records}
+                    </span>
+                  </div>
+                  <p>
+                    Queue the full 30,000-record MFC/MEC bootstrap preset with
+                    wastewater, materials, catalyst, and pilot-scale query
+                    coverage.
+                  </p>
+                  <div className="workspace-chip-list compact">
+                    <span className="meta-chip">
+                      Queued {warehouseProgress.queued_backfills}
+                    </span>
+                    <span className="meta-chip">
+                      Running {warehouseProgress.running_backfills}
+                    </span>
+                    <span className="meta-chip">
+                      Completed {warehouseProgress.completed_backfills}
+                    </span>
+                    <span className="meta-chip">
+                      Failed {warehouseProgress.failed_backfills}
+                    </span>
+                  </div>
+                  <div className="workspace-chip-list compact">
+                    {warehouseProgress.source_breakdown
+                      .slice(0, 4)
+                      .map((bucket) => (
+                        <span className="meta-chip" key={bucket.key}>
+                          {bucket.label} {bucket.count}
+                        </span>
+                      ))}
+                  </div>
+                  {presetBackfillError ? (
+                    <p className="error">{presetBackfillError.message}</p>
+                  ) : null}
+                  <div className="workspace-action-row">
+                    <button
+                      disabled={presetBackfillPending}
+                      onClick={onQueuePresetBackfill}
+                      type="button"
+                    >
+                      {presetBackfillPending
+                        ? 'Queueing 30,000 preset...'
+                        : 'Queue MFC/MEC 30,000 preset'}
+                    </button>
+                  </div>
+                </WorkspaceDataCard>
+              ) : null}
               <p>
                 Queue a resumable multi-page provider import for the current
                 query so the evidence warehouse can grow beyond the manually
@@ -328,7 +414,7 @@ export function ResearchReviewListView({
                 <label>
                   <span>Max pages</span>
                   <input
-                    max={100}
+                    max={500}
                     min={1}
                     onChange={(event) =>
                       onBackfillMaxPagesChange(Number(event.target.value))
@@ -379,7 +465,14 @@ export function ResearchReviewListView({
                           Pages {backfill.pages_completed}/{backfill.max_pages}
                         </span>
                         <span className="meta-chip">
+                          Target {backfill.target_records}
+                        </span>
+                        <span className="meta-chip">
                           Stored {backfill.records_stored}
+                        </span>
+                        <span className="meta-chip">
+                          Progress {Math.round(backfill.completion_ratio * 100)}
+                          %
                         </span>
                         <span className="meta-chip">
                           Updated {formatTimestamp(backfill.updated_at)}
@@ -569,6 +662,10 @@ export function ResearchReviewListWorkspace() {
     queryKey: ['research-backfills'],
     queryFn: fetchResearchBackfills,
   });
+  const warehouseProgressQuery = useQuery({
+    queryKey: ['research-warehouse-progress'],
+    queryFn: fetchResearchWarehouseProgress,
+  });
   const searchMutation = useMutation({
     mutationFn: () =>
       searchResearchPapers({
@@ -638,11 +735,32 @@ export function ResearchReviewListWorkspace() {
     mutationFn: () =>
       queueResearchBackfill({
         query: searchQuery,
-        per_provider_limit: Math.min(limit, 100),
+        per_provider_limit: Math.min(limit, 1000),
         max_pages: backfillMaxPages,
+        target_records: Math.max(Math.min(limit, 1000) * backfillMaxPages, 1),
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['research-backfills'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['research-backfills'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['research-warehouse-progress'],
+        }),
+      ]);
+    },
+  });
+  const presetBackfillMutation = useMutation({
+    mutationFn: () =>
+      queueResearchBackfillPreset({
+        preset_id: 'mfc_mec_30000',
+        target_records: 30000,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['research-backfills'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['research-warehouse-progress'],
+        }),
+      ]);
     },
   });
 
@@ -674,6 +792,14 @@ export function ResearchReviewListWorkspace() {
       backfillMaxPages={backfillMaxPages}
       backfillPending={backfillMutation.isPending}
       backfills={backfills}
+      presetBackfillError={
+        presetBackfillMutation.error instanceof Error
+          ? presetBackfillMutation.error
+          : warehouseProgressQuery.error instanceof Error
+            ? warehouseProgressQuery.error
+            : null
+      }
+      presetBackfillPending={presetBackfillMutation.isPending}
       createError={createMutation.error}
       createDisabled={
         createMutation.isPending ||
@@ -691,7 +817,7 @@ export function ResearchReviewListWorkspace() {
       localPdfPaths={localPdfPaths}
       onBackfillMaxPagesChange={(pages) =>
         setBackfillMaxPages(
-          Number.isFinite(pages) && pages > 0 ? Math.min(pages, 100) : 1,
+          Number.isFinite(pages) && pages > 0 ? Math.min(pages, 500) : 1,
         )
       }
       onCreate={() => createMutation.mutate()}
@@ -700,6 +826,7 @@ export function ResearchReviewListWorkspace() {
       onLimitChange={setLimit}
       onLocalPdfPathsChange={setLocalPdfPaths}
       onQueueBackfill={() => backfillMutation.mutate()}
+      onQueuePresetBackfill={() => presetBackfillMutation.mutate()}
       onRunSearch={() => searchMutation.mutate()}
       onSearchQueryChange={setSearchQuery}
       onTabChange={setActiveTab}
@@ -718,6 +845,7 @@ export function ResearchReviewListWorkspace() {
       reviews={reviews}
       searchQuery={searchQuery}
       title={title}
+      warehouseProgress={warehouseProgressQuery.data ?? null}
     />
   );
 }

@@ -16,6 +16,7 @@ import type {
   ExternalEvidenceCatalogListResponse,
   NarrativeMetadata,
   PrintableEvaluationReportResponse,
+  RawCaseInput,
   RuntimeVersion,
   SignalSourceKind,
   SimulationEnrichment,
@@ -788,6 +789,7 @@ function createPresentation(input: {
 
 function buildDashboardTraceability(
   evaluationList: EvaluationListResponse,
+  latestEvaluation?: EvaluationResponse | null,
 ): TraceabilitySummary {
   return {
     subject_type: 'workspace',
@@ -796,20 +798,156 @@ function buildDashboardTraceability(
     transformation_stages: ['evaluation_list', 'dashboard_workspace_presenter'],
     rule_refs: [],
     evidence_refs: [],
-    defaults_count: 0,
-    missing_data_count: 0,
-    evidence_count: 0,
-    case_id: evaluationList.items[0]?.case_id,
-    evaluation_id: evaluationList.items[0]?.evaluation_id,
+    defaults_count:
+      latestEvaluation?.decision_output.assumptions_and_defaults_audit
+        .defaults_used.length ?? 0,
+    missing_data_count:
+      latestEvaluation?.decision_output.assumptions_and_defaults_audit
+        .missing_data.length ?? 0,
+    evidence_count: latestEvaluation?.audit_record.typed_evidence.length ?? 0,
+    case_id: latestEvaluation?.case_id ?? evaluationList.items[0]?.case_id,
+    evaluation_id:
+      latestEvaluation?.evaluation_id ?? evaluationList.items[0]?.evaluation_id,
+  };
+}
+
+function summarizeDashboardParameterState(rawInput: RawCaseInput): {
+  client_values: number;
+  excluded: number;
+  system_defaults: number;
+  total: number;
+  unresolved: number;
+} {
+  const entries = Object.values(rawInput.parameter_state ?? {});
+
+  return {
+    total: entries.length,
+    client_values: entries.filter(
+      (entry) => entry.included && entry.value_source === 'client',
+    ).length,
+    system_defaults: entries.filter(
+      (entry) => entry.included && entry.value_source === 'system_default',
+    ).length,
+    excluded: entries.filter((entry) => !entry.included).length,
+    unresolved: entries.filter(
+      (entry) => entry.included && entry.value_source === 'unset',
+    ).length,
+  };
+}
+
+const parameterStateLabelByKey: Record<string, string> = {
+  architecture_type: 'Reactor architecture type',
+  solids_tolerance: 'Solids tolerance',
+  serviceability_level: 'Serviceability level',
+  membrane_presence: 'Membrane presence',
+  influent_type: 'Influent type',
+  substrate_profile: 'Substrate profile',
+  operating_regime: 'Operating regime',
+  temperature_c: 'Temperature',
+  pH: 'pH',
+  conductivity_ms_per_cm: 'Conductivity',
+  hydraulic_retention_time_h: 'Hydraulic retention time',
+  anode_material_family: 'Anode material family',
+  surface_treatment: 'Surface treatment',
+  biofilm_support_level: 'Biofilm support level',
+  reaction_target: 'Reaction target',
+  cathode_material_family: 'Cathode catalyst family',
+  mass_transport_limitation_risk: 'Mass-transport limitation risk',
+  gas_handling_interface: 'Gas-handling interface',
+  separator_family: 'Separator or membrane type',
+  fouling_risk: 'Fouling risk',
+  crossover_control_level: 'Crossover control level',
+  current_collection_strategy: 'Current collection strategy',
+  sealing_strategy: 'Sealing strategy',
+  corrosion_protection_level: 'Corrosion protection level',
+  flow_control: 'Flow control',
+  gas_handling_readiness: 'Gas-handling readiness',
+  dosing_capability: 'Dosing capability',
+  bop_summary: 'Balance-of-plant summary',
+  data_quality: 'Data quality',
+  voltage_current_logging: 'Voltage / current logging',
+  water_quality_coverage: 'Water-quality coverage',
+  biofilm_maturity: 'Biofilm maturity',
+  contamination_risk: 'Contamination risk',
+  inoculum_source: 'Inoculum source',
+  startup_protocol: 'Startup protocol',
+};
+
+function normalizeParameterUnit(unit?: string | null): string | null {
+  if (!unit || unit === 'unitless') {
+    return null;
+  }
+
+  return unit;
+}
+
+function buildParameterStateAudit(rawInput: RawCaseInput) {
+  const summary = summarizeDashboardParameterState(rawInput);
+  const entries = Object.entries(rawInput.parameter_state ?? {}).map(
+    ([key, entry]) => {
+      const unit = normalizeParameterUnit(entry.unit ?? null);
+
+      return {
+        key,
+        label: parameterStateLabelByKey[key] ?? formatToken(key),
+        included: entry.included,
+        value_source: entry.value_source,
+        value_label: !entry.included
+          ? 'Excluded from the active run input.'
+          : entry.value_source === 'unset'
+            ? 'Included without a resolved value.'
+            : formatScalarValue(entry.value, unit),
+        unit,
+        confidence_impact: entry.confidence_impact ?? null,
+        default_rationale: entry.default_rationale ?? null,
+        audit_note: entry.audit_note ?? null,
+        evidence_refs: entry.evidence_refs ?? [],
+      };
+    },
+  );
+
+  return {
+    summary,
+    entries,
+  };
+}
+
+function buildDashboardLatestRunOverview(evaluation: EvaluationResponse) {
+  const overview = buildEvaluationOverview(evaluation);
+  const audit = evaluation.decision_output.assumptions_and_defaults_audit;
+
+  return {
+    title: `${evaluation.case_id} latest run`,
+    subtitle: evaluation.decision_output.current_stack_diagnosis.summary,
+    defaults_count: audit.defaults_used.length,
+    missing_data_count: audit.missing_data.length,
+    assumptions_count: audit.assumptions.length,
+    evidence_count: evaluation.audit_record.typed_evidence.length,
+    attention_count: overview.attentionItems.length,
+    parameter_summary: summarizeDashboardParameterState(
+      evaluation.audit_record.raw_input_snapshot,
+    ),
+    brief_cards: overview.briefCards.slice(0, 3),
+    attention_items: overview.attentionItems.slice(0, 3),
+    lead_action: overview.leadAction,
+    output_status: {
+      report_available: true,
+      narrative_available: Boolean(evaluation.narrative),
+      modeled: evaluation.simulation_enrichment?.status === 'completed',
+    },
   };
 }
 
 export function buildDashboardWorkspace(input: {
   evaluationList: EvaluationListResponse;
+  latestEvaluation?: EvaluationResponse | null;
   versions: RuntimeVersion;
 }): DashboardWorkspaceResponse {
   const items = input.evaluationList.items;
   const latestEvaluation = items[0] ?? null;
+  const latestRunOverview = input.latestEvaluation
+    ? buildDashboardLatestRunOverview(input.latestEvaluation)
+    : null;
   const totalCases = new Set(items.map((item) => item.case_id)).size;
   const highConfidenceRuns = items.filter(
     (item) => item.confidence_level === 'high',
@@ -818,12 +956,17 @@ export function buildDashboardWorkspace(input: {
     (item) => item.simulation_summary?.status === 'completed',
   ).length;
   const latestSummary =
-    latestEvaluation?.summary ?? 'No evaluation has been saved yet.';
+    latestRunOverview?.subtitle ??
+    latestEvaluation?.summary ??
+    'No deterministic evaluation is saved yet. Configure a stack to generate diagnosis, modeling, reports, and audit output.';
 
   return dashboardWorkspaceResponseSchema.parse({
     meta: createMeta({
       versions: input.versions,
-      traceability: buildDashboardTraceability(input.evaluationList),
+      traceability: buildDashboardTraceability(
+        input.evaluationList,
+        input.latestEvaluation,
+      ),
     }),
     presentation: createPresentation({
       pageTitle: 'Decision workspace',
@@ -863,8 +1006,10 @@ export function buildDashboardWorkspace(input: {
         headline: 'Decision workspace',
         summary: latestSummary,
         detail: latestEvaluation?.case_id
-          ? `Latest case ${latestEvaluation.case_id}.`
-          : 'No saved run is available yet.',
+          ? latestRunOverview
+            ? `${latestRunOverview.defaults_count} defaults and ${latestRunOverview.missing_data_count} missing-data flags remain explicit in the latest run.`
+            : `Latest case ${latestEvaluation.case_id}.`
+          : 'The local evaluation registry is currently clean.',
       },
     }),
     summary: {
@@ -875,8 +1020,9 @@ export function buildDashboardWorkspace(input: {
     },
     hero: {
       title: 'Bioelectrochemical decision workspace',
-      subtitle:
-        'Configure stacks, continue evaluations, open reports, and trace decisions when needed.',
+      subtitle: latestEvaluation
+        ? 'Continue saved client decision work, open reports, and review defaults, missing data, and next actions from the latest run.'
+        : 'Start a stack to generate diagnosis, modeling, reports, and audit output from the main client workspace.',
       latest_case_id: latestEvaluation?.case_id ?? null,
       latest_summary: latestEvaluation?.summary ?? null,
     },
@@ -903,6 +1049,7 @@ export function buildDashboardWorkspace(input: {
         ? `/cases/${latestEvaluation.case_id}/history`
         : null,
     },
+    latest_run_overview: latestRunOverview,
     recent_evaluations: items.slice(0, 6),
     recent_reports: items.slice(0, 6).map((item) => ({
       ...item,
@@ -1897,6 +2044,9 @@ export function buildPrintableEvaluationReport(input: {
       phased_roadmap: input.evaluation.decision_output.phased_roadmap,
       assumptions_and_defaults_audit:
         input.evaluation.decision_output.assumptions_and_defaults_audit,
+      parameter_state_audit: buildParameterStateAudit(
+        input.evaluation.audit_record.raw_input_snapshot,
+      ),
       confidence_and_uncertainty_summary:
         input.evaluation.decision_output.confidence_and_uncertainty_summary,
     },

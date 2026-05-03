@@ -3,17 +3,17 @@ import rawFixture from './raw-case-input.json';
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    rawCaseInputSchema,
-    type ExternalEvidenceCatalogListResponse,
+  rawCaseInputSchema,
+  type ExternalEvidenceCatalogListResponse,
 } from '@metrev/domain-contracts';
 
 import {
-    buildCaseHistoryWorkspace,
-    buildEvaluationComparison,
-    buildEvaluationWorkspace,
-    buildEvidenceExplorerWorkspace,
-    buildEvidenceReviewWorkspace,
-    buildPrintableEvaluationReport,
+  buildCaseHistoryWorkspace,
+  buildEvaluationComparison,
+  buildEvaluationWorkspace,
+  buildEvidenceExplorerWorkspace,
+  buildEvidenceReviewWorkspace,
+  buildPrintableEvaluationReport,
 } from '../../apps/api-server/src/presenters/workspace-presenters';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 
@@ -62,6 +62,41 @@ export async function buildWorkspaceViewFixtures() {
 
   const currentWithLineage = {
     ...current,
+    audit_record: {
+      ...current.audit_record,
+      raw_input_snapshot: {
+        ...current.audit_record.raw_input_snapshot,
+        parameter_state: {
+          temperature_c: {
+            included: true,
+            value_source: 'client' as const,
+            value: 31,
+            unit: 'C',
+            confidence_impact: 'medium' as const,
+            evidence_refs: [],
+            audit_note: 'Temperature provided directly during fixture intake.',
+          },
+          membrane_presence: {
+            included: true,
+            value_source: 'system_default' as const,
+            value: 'unknown',
+            default_rationale:
+              'Fixture default keeps separator posture explicit when source detail is sparse.',
+            confidence_impact: 'medium' as const,
+            evidence_refs: [],
+            audit_note: 'Membrane presence uses the fixture default.',
+          },
+          startup_protocol: {
+            included: false,
+            value_source: 'unset' as const,
+            confidence_impact: 'medium' as const,
+            evidence_refs: [],
+            audit_note:
+              'Startup protocol was explicitly excluded in the fixture audit.',
+          },
+        },
+      },
+    },
     source_usages: [
       {
         id: 'source-usage-fixture-001',

@@ -4,13 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import {
-  collectIngestionInventory,
-  optionFlag,
-  optionList,
-  optionNumber,
-  optionValue,
-  parseScriptOptions,
-  readJsonFile,
+    collectIngestionInventory,
+    optionFlag,
+    optionList,
+    optionNumber,
+    optionValue,
+    parseScriptOptions,
+    readJsonFile,
 } from './external-ingestion-shared.mjs';
 import { runCrossrefIngestion } from './ingest-crossref-literature';
 import { runCuratedManifestIngestion } from './ingest-curated-manifest';
@@ -33,6 +33,60 @@ type BootstrapSource = keyof typeof runnerBySource;
 type BootstrapRunner = (
   overrides?: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
+
+interface BootstrapScalePlan {
+  activeSources: BootstrapSource[];
+  maxPages: number;
+  pageSize: number;
+  perQueryLimit: number;
+  queryCount: number;
+  runSlots: number;
+  targetRecords: number;
+}
+
+function normalizeBootstrapSource(value: string): BootstrapSource | null {
+  const normalized = value.toLowerCase();
+
+  if (normalized === 'openalex' || normalized === 'crossref') {
+    return normalized;
+  }
+
+  if (normalized === 'europepmc') {
+    return 'europepmc';
+  }
+
+  return null;
+}
+
+function buildBootstrapScalePlan(input: {
+  config: Record<string, any>;
+  queries: string[];
+  selectedSources: string[];
+  targetRecords: number;
+}): BootstrapScalePlan | null {
+  const activeSources = [...new Set(input.selectedSources)]
+    .map(normalizeBootstrapSource)
+    .filter((source): source is BootstrapSource => Boolean(source))
+    .filter((source) => input.config?.sources?.[source]?.enabled !== false);
+
+  if (activeSources.length === 0 || input.queries.length === 0) {
+    return null;
+  }
+
+  const runSlots = activeSources.length * input.queries.length;
+  const perQueryLimit = Math.max(1, Math.ceil(input.targetRecords / runSlots));
+  const pageSize = Math.max(1, Math.min(200, perQueryLimit));
+
+  return {
+    activeSources,
+    maxPages: Math.max(1, Math.ceil(perQueryLimit / pageSize)),
+    pageSize,
+    perQueryLimit,
+    queryCount: input.queries.length,
+    runSlots,
+    targetRecords: input.targetRecords,
+  };
+}
 
 function parseBootstrapCheckpoint(checkpoint: unknown) {
   const record =
@@ -143,12 +197,33 @@ export async function runBigDataBootstrap(
     0,
     1000,
   );
+  const targetRecords = optionNumber(
+    options,
+    'targetRecords',
+    Number.NaN,
+    1,
+    500000,
+  );
   const perQueryLimitOverride = optionNumber(
     options,
     'perQueryLimit',
     Number.NaN,
     1,
     5000,
+  );
+  const pageSizeOverride = optionNumber(
+    options,
+    'pageSize',
+    Number.NaN,
+    1,
+    1000,
+  );
+  const maxPagesOverride = optionNumber(
+    options,
+    'maxPages',
+    Number.NaN,
+    1,
+    500,
   );
   const configuredRunners = {
     ...runnerBySource,
@@ -160,6 +235,14 @@ export async function runBigDataBootstrap(
   const queries = Array.isArray(config?.queries)
     ? config.queries.slice(0, queryLimit || config.queries.length)
     : [];
+  const scalePlan = Number.isFinite(targetRecords)
+    ? buildBootstrapScalePlan({
+        config,
+        queries,
+        selectedSources,
+        targetRecords,
+      })
+    : null;
   const runResults = [];
 
   for (const source of selectedSources) {
@@ -171,8 +254,24 @@ export async function runBigDataBootstrap(
     }
 
     for (const query of queries) {
-      const configuredMaxPages =
-        sourceConfig?.maxPages ?? config?.defaults?.maxPages ?? 1;
+      const configuredLimit = Number.isFinite(perQueryLimitOverride)
+        ? perQueryLimitOverride
+        : (scalePlan?.perQueryLimit ??
+          sourceConfig?.perQueryLimit ??
+          config?.defaults?.perQueryLimit ??
+          25);
+      const configuredPageSize = Number.isFinite(pageSizeOverride)
+        ? pageSizeOverride
+        : (scalePlan?.pageSize ??
+          sourceConfig?.pageSize ??
+          config?.defaults?.pageSize ??
+          25);
+      const configuredMaxPages = Number.isFinite(maxPagesOverride)
+        ? maxPagesOverride
+        : (scalePlan?.maxPages ??
+          sourceConfig?.maxPages ??
+          config?.defaults?.maxPages ??
+          1);
       const resumeState =
         resume && prisma
           ? await findBootstrapResumeState({
@@ -196,12 +295,8 @@ export async function runBigDataBootstrap(
 
       const result = await runner({
         query,
-        limit: Number.isFinite(perQueryLimitOverride)
-          ? perQueryLimitOverride
-          : (sourceConfig?.perQueryLimit ??
-            config?.defaults?.perQueryLimit ??
-            25),
-        pageSize: sourceConfig?.pageSize ?? config?.defaults?.pageSize ?? 25,
+        limit: configuredLimit,
+        pageSize: configuredPageSize,
         maxPages: Math.max(1, remainingPages || configuredMaxPages),
         cursor: resumeState?.cursor,
         dryRun,
@@ -229,6 +324,7 @@ export async function runBigDataBootstrap(
     dryRun,
     executedRuns: runResults.filter((result) => !result.skipped).length,
     resumedRuns: runResults.filter((result) => result.resumed).length,
+    scalePlan,
     skippedRuns: runResults.filter((result) => result.skipped).length,
     totalRecordsFetched: runResults.reduce(
       (total, result) => total + Number(result.recordsFetched ?? 0),

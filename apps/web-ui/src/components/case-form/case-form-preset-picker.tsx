@@ -11,17 +11,19 @@ void React;
 
 export interface CaseFormPresetPickerProps {
   activePresetId: string | null;
+  embedded?: boolean;
   onApplyPreset: (presetId: string) => void;
   presets: CaseIntakePreset[];
 }
 
 export function CaseFormPresetPicker({
   activePresetId,
+  embedded = false,
   onApplyPreset,
   presets,
 }: CaseFormPresetPickerProps) {
-  return (
-    <WorkspaceDataCard tone="accent">
+  const content = (
+    <>
       <div className="workspace-data-card__header">
         <div>
           <span className="badge subtle">Accelerators</span>
@@ -69,6 +71,12 @@ export function CaseFormPresetPicker({
           );
         })}
       </div>
-    </WorkspaceDataCard>
+    </>
   );
+
+  if (embedded) {
+    return <div className="case-form-preset-picker">{content}</div>;
+  }
+
+  return <WorkspaceDataCard tone="accent">{content}</WorkspaceDataCard>;
 }

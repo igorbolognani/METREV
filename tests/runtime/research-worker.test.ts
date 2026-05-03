@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { MemoryResearchRepository } from '@metrev/database';
 import {
-  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-  getDefaultResearchColumns,
+    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    getDefaultResearchColumns,
 } from '@metrev/research-intelligence';
 
 import { runResearchWorkerCycle } from '../../apps/research-worker/src/worker';
@@ -38,7 +38,9 @@ describe('research worker', () => {
     expect(afterFirstCycle.items[0]).toEqual(
       expect.objectContaining({
         pages_completed: 1,
+        records_remaining: expect.any(Number),
         status: 'queued',
+        target_records: 4,
       }),
     );
 
@@ -53,7 +55,9 @@ describe('research worker', () => {
     const finalBackfills = await repository.listResearchBackfills();
     expect(finalBackfills.items[0]).toEqual(
       expect.objectContaining({
+        completion_ratio: 1,
         pages_completed: 2,
+        records_remaining: 0,
         status: 'completed',
       }),
     );

@@ -4,9 +4,11 @@ import type { EvaluationWorkspaceResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
 import { RawEvaluationDisclosure } from '@/components/evaluation/raw-evaluation-disclosure';
+import { ParameterStateAuditCard } from '@/components/parameter-state-audit-card';
 import { WorkspaceDataCard } from '@/components/workspace-chrome';
 import { DisclosurePanel } from '@/components/workspace/disclosure-panel';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
+import { buildParameterStateAuditViewModel } from '@/lib/parameter-state-audit';
 
 void React;
 
@@ -44,6 +46,9 @@ export function EvaluationAuditTab({
   const evaluation = workspace.evaluation;
   const decisionOutput = evaluation.decision_output;
   const confidenceSummary = decisionOutput.confidence_and_uncertainty_summary;
+  const parameterStateAudit = buildParameterStateAuditViewModel(
+    evaluation.audit_record.raw_input_snapshot,
+  );
 
   return (
     <div className="workspace-form-layout">
@@ -104,6 +109,11 @@ export function EvaluationAuditTab({
           </article>
         </div>
       </WorkspaceDataCard>
+
+      <ParameterStateAuditCard
+        audit={parameterStateAudit}
+        emptyMessage="No explicit parameter-state entries were stored for this evaluation."
+      />
 
       <WorkspaceDataCard>
         <span className="badge subtle">Traceability</span>
