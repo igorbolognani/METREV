@@ -1,18 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-  DecisionOutput,
-  ResearchColumnDefinition,
-  ResearchPaperMetadata,
+    DecisionOutput,
+    ResearchColumnDefinition,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-  generateEvidenceAssistantBrief,
-  generateNarrative,
-  generateReportConversationAnswer,
-  generateStructuredResearchExtraction,
-  type ReportConversationContextPackage,
+    generateCanonicalEvidenceMeasurementCandidates,
+    generateEvidenceAssistantBrief,
+    generateNarrative,
+    generateReportConversationAnswer,
+    generateStructuredResearchExtraction,
+    type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
 
@@ -20,6 +21,7 @@ const originalMode = process.env.METREV_LLM_MODE;
 const originalModel = process.env.METREV_LLM_MODEL;
 const originalBaseUrl = process.env.METREV_LLM_BASE_URL;
 const originalApiKey = process.env.METREV_LLM_API_KEY;
+const originalOllamaApiKey = process.env.OLLAMA_API_KEY;
 const originalTimeout = process.env.METREV_LLM_TIMEOUT_MS;
 
 function buildDecisionOutput(): DecisionOutput {
@@ -269,6 +271,12 @@ afterEach(() => {
     process.env.METREV_LLM_API_KEY = originalApiKey;
   }
 
+  if (originalOllamaApiKey === undefined) {
+    delete process.env.OLLAMA_API_KEY;
+  } else {
+    process.env.OLLAMA_API_KEY = originalOllamaApiKey;
+  }
+
   if (originalTimeout === undefined) {
     delete process.env.METREV_LLM_TIMEOUT_MS;
   } else {
@@ -325,6 +333,131 @@ describe('llm adapter', () => {
         fallback_used: false,
       }),
     });
+  });
+
+  it('adds a bearer token for authenticated Ollama-compatible endpoints', async () => {
+    process.env.METREV_LLM_MODE = 'ollama';
+    process.env.METREV_LLM_MODEL = 'gemma3:4b';
+    process.env.METREV_LLM_BASE_URL = 'https://ollama.com/v1';
+    process.env.METREV_LLM_API_KEY = 'test-api-key';
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: 'Authenticated Ollama narrative.',
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rawInput = rawCaseInputSchema.parse(rawFixture);
+    const result = await generateNarrative({
+      normalizedCase: rawInput,
+      decisionOutput: buildDecisionOutput(),
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://ollama.com/v1/chat/completions',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: 'Bearer test-api-key',
+        }),
+      }),
+    );
+    expect(result.narrative).toBe('Authenticated Ollama narrative.');
+  });
+
+  it('retries canonical evidence extraction with strict JSON instructions', async () => {
+    process.env.METREV_LLM_MODE = 'ollama';
+    process.env.METREV_LLM_MODEL = 'gpt-oss:20b';
+    process.env.METREV_LLM_BASE_URL = 'https://ollama.com/v1';
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ choices: [{ message: { content: '' } }] }),
+          {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    measurements: [
+                      {
+                        field_key: 'power_density',
+                        canonical_key: 'power_density_w_m2',
+                        raw_value: '900',
+                        raw_unit: 'mW/m2',
+                        text_span: 'power density of 900 mW/m2',
+                        source_locator: 'source:chunk:0',
+                        confidence: 0.9,
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+            },
+          },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const candidates = await generateCanonicalEvidenceMeasurementCandidates({
+      maxCandidates: 2,
+      paper: {
+        paper_id: 'paper-001',
+        source_document_id: 'source-001',
+        title: 'Validation paper',
+        doi: null,
+        year: 2026,
+        source_type: 'manual_validation',
+      },
+      sourceText:
+        'The microbial fuel cell reached a power density of 900 mW/m2.',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({
+        body: expect.stringContaining(
+          'Return exactly one JSON object with a measurements array',
+        ),
+      }),
+    );
+    expect(candidates).toEqual([
+      expect.objectContaining({
+        fieldKey: 'power_density',
+        canonicalKey: 'power_density_w_m2',
+      }),
+    ]);
   });
 
   it('falls back to the deterministic evidence stub when the Ollama request fails', async () => {

@@ -1,16 +1,16 @@
 import type {
-  ConfidenceLevel,
-  DecisionOutput,
-  EvidenceExplorerWarehouseSnapshot,
-  ExternalEvidenceCatalogItemSummary,
-  NarrativeMetadata,
-  NormalizedCaseInput,
-  PrintableEvaluationReportResponse,
-  ReportConversationCitation,
-  ReportConversationGrounding,
-  ResearchColumnDefinition,
-  ResearchEvidenceTrace,
-  ResearchPaperMetadata,
+    ConfidenceLevel,
+    DecisionOutput,
+    EvidenceExplorerWarehouseSnapshot,
+    ExternalEvidenceCatalogItemSummary,
+    NarrativeMetadata,
+    NormalizedCaseInput,
+    PrintableEvaluationReportResponse,
+    ReportConversationCitation,
+    ReportConversationGrounding,
+    ResearchColumnDefinition,
+    ResearchEvidenceTrace,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
@@ -155,6 +155,14 @@ function getOllamaBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
+function getOllamaApiKey(): string | null {
+  return (
+    process.env.METREV_LLM_API_KEY?.trim() ||
+    process.env.OLLAMA_API_KEY?.trim() ||
+    null
+  );
+}
+
 function getOllamaTimeoutMs(): number {
   const parsed = Number.parseInt(process.env.METREV_LLM_TIMEOUT_MS ?? '', 10);
 
@@ -244,13 +252,20 @@ async function requestChatCompletion(input: {
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const apiKey = getOllamaApiKey();
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+    };
+
+    if (apiKey) {
+      headers.authorization = `Bearer ${apiKey}`;
+    }
+
     const response = await fetch(
       `${baseUrlForProvider(input.provider)}/chat/completions`,
       {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           model,
           messages: input.messages,
@@ -609,6 +624,19 @@ function buildCanonicalEvidenceMeasurementMessages(input: {
   ];
 }
 
+function appendCanonicalEvidenceJsonRetryMessage(
+  messages: Array<{ role: 'system' | 'user'; content: string }>,
+  rootKey: 'measurements' | 'qualitative_facts',
+): Array<{ role: 'system' | 'user'; content: string }> {
+  return [
+    ...messages,
+    {
+      role: 'user',
+      content: `Return exactly one JSON object with a ${rootKey} array. Do not include prose, markdown, reasoning, or any other keys.`,
+    },
+  ];
+}
+
 export async function generateCanonicalEvidenceMeasurementCandidates(input: {
   maxCandidates?: number;
   paper: ResearchPaperMetadata;
@@ -621,28 +649,38 @@ export async function generateCanonicalEvidenceMeasurementCandidates(input: {
     return null;
   }
 
-  try {
-    const result = await requestChatCompletion({
-      provider,
-      promptVersion: 'canonical-evidence-measurements-ollama-v1',
-      messages: buildCanonicalEvidenceMeasurementMessages({
-        paper: input.paper,
-        sourceText: input.sourceText,
-        maxCandidates: Math.max(1, input.maxCandidates ?? 8),
-      }),
-    });
+  const maxCandidates = Math.max(1, input.maxCandidates ?? 8);
+  const messages = buildCanonicalEvidenceMeasurementMessages({
+    paper: input.paper,
+    sourceText: input.sourceText,
+    maxCandidates,
+  });
 
-    if (!result.narrative) {
-      return null;
+  for (const candidateMessages of [
+    messages,
+    appendCanonicalEvidenceJsonRetryMessage(messages, 'measurements'),
+  ]) {
+    try {
+      const result = await requestChatCompletion({
+        provider,
+        promptVersion: 'canonical-evidence-measurements-ollama-v1',
+        messages: candidateMessages,
+      });
+
+      if (!result.narrative) {
+        continue;
+      }
+
+      const parsed = parseCanonicalEvidenceMeasurementPayload(result.narrative);
+      if (parsed.length > 0) {
+        return parsed.slice(0, maxCandidates);
+      }
+    } catch {
+      continue;
     }
-
-    const parsed = parseCanonicalEvidenceMeasurementPayload(result.narrative);
-    return parsed.length > 0
-      ? parsed.slice(0, Math.max(1, input.maxCandidates ?? 8))
-      : null;
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 function buildCanonicalEvidenceQualitativeMessages(input: {
@@ -686,28 +724,38 @@ export async function generateCanonicalEvidenceQualitativeCandidates(input: {
     return null;
   }
 
-  try {
-    const result = await requestChatCompletion({
-      provider,
-      promptVersion: 'canonical-evidence-qualitative-ollama-v1',
-      messages: buildCanonicalEvidenceQualitativeMessages({
-        paper: input.paper,
-        sourceText: input.sourceText,
-        maxCandidates: Math.max(1, input.maxCandidates ?? 12),
-      }),
-    });
+  const maxCandidates = Math.max(1, input.maxCandidates ?? 12);
+  const messages = buildCanonicalEvidenceQualitativeMessages({
+    paper: input.paper,
+    sourceText: input.sourceText,
+    maxCandidates,
+  });
 
-    if (!result.narrative) {
-      return null;
+  for (const candidateMessages of [
+    messages,
+    appendCanonicalEvidenceJsonRetryMessage(messages, 'qualitative_facts'),
+  ]) {
+    try {
+      const result = await requestChatCompletion({
+        provider,
+        promptVersion: 'canonical-evidence-qualitative-ollama-v1',
+        messages: candidateMessages,
+      });
+
+      if (!result.narrative) {
+        continue;
+      }
+
+      const parsed = parseCanonicalEvidenceQualitativePayload(result.narrative);
+      if (parsed.length > 0) {
+        return parsed.slice(0, maxCandidates);
+      }
+    } catch {
+      continue;
     }
-
-    const parsed = parseCanonicalEvidenceQualitativePayload(result.narrative);
-    return parsed.length > 0
-      ? parsed.slice(0, Math.max(1, input.maxCandidates ?? 12))
-      : null;
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 function buildStructuredResearchExtractionMessages(input: {
