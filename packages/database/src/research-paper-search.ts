@@ -1,11 +1,11 @@
 import {
-  searchResearchPapersResponseSchema,
-  type ResearchPaperMetadata,
-  type ResearchPaperSearchResult,
-  type ResearchSearchProvider,
-  type SearchResearchPapersRequest,
-  type SearchResearchPapersResponse,
-  type StageResearchPapersRequest,
+    searchResearchPapersResponseSchema,
+    type ResearchPaperMetadata,
+    type ResearchPaperSearchResult,
+    type ResearchSearchProvider,
+    type SearchResearchPapersRequest,
+    type SearchResearchPapersResponse,
+    type StageResearchPapersRequest,
 } from '@metrev/domain-contracts';
 
 import type { Prisma, PrismaClient } from '../generated/prisma/client';
@@ -73,6 +73,28 @@ function normalizeResearchTitle(
         .toLowerCase()
         .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .trim()
+    : null;
+}
+
+function firstAuthorFromMetadata(authors: unknown): string | null {
+  if (!Array.isArray(authors) || authors.length === 0) {
+    return null;
+  }
+
+  const first = authors[0];
+  if (typeof first === 'string') {
+    return normalizeWhitespace(first)?.toLowerCase() ?? null;
+  }
+
+  if (!first || typeof first !== 'object') {
+    return null;
+  }
+
+  const name = (first as { name?: unknown; display_name?: unknown }).name ??
+    (first as { display_name?: unknown }).display_name;
+
+  return typeof name === 'string'
+    ? normalizeWhitespace(name)?.toLowerCase() ?? null
     : null;
 }
 
@@ -614,13 +636,22 @@ function resolveCatalogReviewStatus(
     return existingStatus;
   }
 
-  return 'PENDING';
+  return process.env.EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS === 'true'
+    ? 'ACCEPTED'
+    : 'PENDING';
 }
 
 function resolveCatalogSourceState(
   existingState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED' | null,
 ): 'NORMALIZED' | 'REVIEWED' {
-  return existingState === 'REVIEWED' ? 'REVIEWED' : 'NORMALIZED';
+  if (
+    existingState === 'REVIEWED' ||
+    process.env.EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS === 'true'
+  ) {
+    return 'REVIEWED';
+  }
+
+  return 'NORMALIZED';
 }
 
 function toSourcePayload(
@@ -644,83 +675,258 @@ function toSourcePayload(
   };
 }
 
-async function findExistingSourceRecord(
-  prisma: Prisma.TransactionClient,
+type ResearchPaperSearchPrisma = PrismaClient | Prisma.TransactionClient;
+
+type ExistingSourceRecord = {
+  doi: string | null;
+  id: string;
+  rawPayload: unknown;
+  sourceKey: string;
+  sourceType: string;
+  sourceUrl: string | null;
+};
+
+type ExistingCatalogItem = {
+  reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  sourceRecordId: string;
+  sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED';
+  title: string;
+};
+
+type ExistingSourceRecordLookups = {
+  byDoi: Map<string, ExistingSourceRecord>;
+  byProviderKey: Map<string, ExistingSourceRecord>;
+  byUrl: Map<string, ExistingSourceRecord>;
+};
+
+function buildExistingProviderLookupKey(input: {
+  sourceKey: string;
+  sourceType: string;
+}) {
+  return `${input.sourceType}:${input.sourceKey}`;
+}
+
+function buildCatalogLookupKey(sourceRecordId: string, title: string) {
+  return `${sourceRecordId}:${title}`;
+}
+
+function setLookupIfAbsent<Value>(
+  map: Map<string, Value>,
+  key: string,
+  value: Value,
+) {
+  if (!map.has(key)) {
+    map.set(key, value);
+  }
+}
+
+async function batchFindExistingSourceRecords(
+  prisma: ResearchPaperSearchPrisma,
+  items: ResearchPaperSearchResult[],
+): Promise<ExistingSourceRecordLookups> {
+  const doiTerms = [
+    ...new Set(items.map((item) => normalizeDoi(item.doi)).filter(isPresent)),
+  ];
+  const urlTerms = [
+    ...new Set(
+      items
+        .map((item) => normalizeSourceUrl(item.source_url))
+        .filter(isPresent),
+    ),
+  ];
+  const providerTerms = [
+    ...new Map(
+      items.map((item) => {
+        const sourceType = mapProviderToDatabaseSourceType(item.source_type);
+
+        return [
+          buildExistingProviderLookupKey({
+            sourceKey: item.source_key,
+            sourceType,
+          }),
+          {
+            sourceKey: item.source_key,
+            sourceType,
+          },
+        ] as const;
+      }),
+    ).values(),
+  ];
+
+  const select = {
+    doi: true,
+    id: true,
+    rawPayload: true,
+    sourceKey: true,
+    sourceType: true,
+    sourceUrl: true,
+  } satisfies Prisma.ExternalSourceRecordSelect;
+
+  const [doiMatches, urlMatches, providerMatches] = await Promise.all([
+    doiTerms.length > 0
+      ? prisma.externalSourceRecord.findMany({
+          where: {
+            OR: doiTerms.map((doi) => ({
+              doi: {
+                equals: doi,
+                mode: 'insensitive',
+              },
+            })),
+          },
+          orderBy: [{ updatedAt: 'desc' }],
+          select,
+        })
+      : Promise.resolve([]),
+    urlTerms.length > 0
+      ? prisma.externalSourceRecord.findMany({
+          where: {
+            OR: urlTerms.map((sourceUrl) => ({
+              sourceUrl: {
+                equals: sourceUrl,
+                mode: 'insensitive',
+              },
+            })),
+          },
+          orderBy: [{ updatedAt: 'desc' }],
+          select,
+        })
+      : Promise.resolve([]),
+    providerTerms.length > 0
+      ? prisma.externalSourceRecord.findMany({
+          where: {
+            OR: providerTerms.map((term) => ({
+              sourceKey: term.sourceKey,
+              sourceType: term.sourceType,
+            })),
+          },
+          orderBy: [{ updatedAt: 'desc' }],
+          select,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const byDoi = new Map<string, ExistingSourceRecord>();
+  const byUrl = new Map<string, ExistingSourceRecord>();
+  const byProviderKey = new Map<string, ExistingSourceRecord>();
+
+  for (const record of doiMatches) {
+    const normalizedDoi = normalizeDoi(record.doi);
+
+    if (normalizedDoi) {
+      setLookupIfAbsent(byDoi, normalizedDoi.toLowerCase(), record);
+    }
+  }
+
+  for (const record of urlMatches) {
+    const normalizedUrl = normalizeSourceUrl(record.sourceUrl);
+
+    if (normalizedUrl) {
+      setLookupIfAbsent(byUrl, normalizedUrl.toLowerCase(), record);
+    }
+  }
+
+  for (const record of providerMatches) {
+    setLookupIfAbsent(
+      byProviderKey,
+      buildExistingProviderLookupKey({
+        sourceKey: record.sourceKey,
+        sourceType: record.sourceType,
+      }),
+      record,
+    );
+  }
+
+  return {
+    byDoi,
+    byProviderKey,
+    byUrl,
+  };
+}
+
+function selectExistingSourceRecord(
+  lookups: ExistingSourceRecordLookups,
   item: ResearchPaperSearchResult,
 ) {
   const normalizedDoi = normalizeDoi(item.doi);
   if (normalizedDoi) {
-    const byDoi = await prisma.externalSourceRecord.findFirst({
-      where: {
-        doi: {
-          equals: normalizedDoi,
-          mode: 'insensitive',
-        },
-      },
-      orderBy: [{ updatedAt: 'desc' }],
-      select: {
-        id: true,
-        rawPayload: true,
-        sourceKey: true,
-        sourceType: true,
-      },
-    });
+    const record = lookups.byDoi.get(normalizedDoi.toLowerCase());
 
-    if (byDoi) {
-      return byDoi;
+    if (record) {
+      return record;
     }
   }
 
   const normalizedUrl = normalizeSourceUrl(item.source_url);
   if (normalizedUrl) {
-    const byUrl = await prisma.externalSourceRecord.findFirst({
-      where: {
-        sourceUrl: {
-          equals: normalizedUrl,
-          mode: 'insensitive',
-        },
-      },
-      orderBy: [{ updatedAt: 'desc' }],
-      select: {
-        id: true,
-        rawPayload: true,
-        sourceKey: true,
-        sourceType: true,
-      },
-    });
+    const record = lookups.byUrl.get(normalizedUrl.toLowerCase());
 
-    if (byUrl) {
-      return byUrl;
+    if (record) {
+      return record;
     }
   }
 
-  return prisma.externalSourceRecord.findUnique({
-    where: {
-      sourceType_sourceKey: {
-        sourceType: mapProviderToDatabaseSourceType(item.source_type),
+  return (
+    lookups.byProviderKey.get(
+      buildExistingProviderLookupKey({
         sourceKey: item.source_key,
+        sourceType: mapProviderToDatabaseSourceType(item.source_type),
+      }),
+    ) ?? null
+  );
+}
+
+async function batchFindExistingCatalogItems(
+  prisma: ResearchPaperSearchPrisma,
+  input: Array<{ sourceRecordId: string; title: string }>,
+): Promise<Map<string, ExistingCatalogItem>> {
+  const sourceRecordIds = [
+    ...new Set(input.map((item) => item.sourceRecordId)),
+  ];
+
+  if (sourceRecordIds.length === 0) {
+    return new Map();
+  }
+
+  const records = await prisma.externalEvidenceCatalogItem.findMany({
+    where: {
+      evidenceType: 'literature_evidence',
+      sourceRecordId: {
+        in: sourceRecordIds,
       },
     },
     select: {
-      id: true,
-      rawPayload: true,
-      sourceKey: true,
-      sourceType: true,
+      reviewStatus: true,
+      sourceRecordId: true,
+      sourceState: true,
+      title: true,
     },
   });
+
+  return new Map(
+    records.map((record) => [
+      buildCatalogLookupKey(record.sourceRecordId, record.title),
+      record,
+    ]),
+  );
 }
 
 export async function stageResearchPapers(
   prisma: PrismaClient,
   input: StageResearchPapersRequest,
 ): Promise<{ papers: ResearchPaperMetadata[]; sourceDocumentIds: string[] }> {
-  const papers: ResearchPaperMetadata[] = [];
-  const sourceDocumentIds: string[] = [];
   const uniqueItems = dedupeResearchPaperItems(input.items);
+  const stagedRecords = await prisma.$transaction(async (transaction) => {
+    const existingSourceLookups = await batchFindExistingSourceRecords(
+      transaction,
+      uniqueItems,
+    );
+    const persistedRecords: Array<{
+      item: ResearchPaperSearchResult;
+      sourceRecordId: string;
+    }> = [];
 
-  for (const item of uniqueItems) {
-    const sourceRecord = await prisma.$transaction(async (transaction) => {
-      const existing = await findExistingSourceRecord(transaction, item);
+    for (const item of uniqueItems) {
+      const existing = selectExistingSourceRecord(existingSourceLookups, item);
       const data = {
         sourceUrl: normalizeSourceUrl(item.source_url),
         title: item.title,
@@ -735,6 +941,13 @@ export async function stageResearchPapers(
         abstractText: item.abstract_text,
         rawPayload: toSourcePayload(item, existing?.rawPayload),
         publishedAt: item.year ? new Date(Date.UTC(item.year, 0, 1)) : null,
+        normalizedTitle: normalizeResearchTitle(item.title),
+        publicationYear: item.year,
+        firstAuthor: firstAuthorFromMetadata(item.authors),
+        sourceIdentifier:
+          normalizeDoi(item.doi) ??
+          normalizeSourceUrl(item.source_url) ??
+          item.source_key,
         asOf: new Date(),
       };
 
@@ -742,6 +955,7 @@ export async function stageResearchPapers(
         ? await transaction.externalSourceRecord.update({
             where: { id: existing.id },
             data,
+            select: { id: true },
           })
         : await transaction.externalSourceRecord.create({
             data: {
@@ -749,21 +963,42 @@ export async function stageResearchPapers(
               sourceType: mapProviderToDatabaseSourceType(item.source_type),
               sourceKey: item.source_key,
             },
+            select: { id: true },
           });
 
+      persistedRecords.push({
+        item,
+        sourceRecordId: record.id,
+      });
+    }
+
+    const existingCatalogItems = await batchFindExistingCatalogItems(
+      transaction,
+      persistedRecords.map((record) => ({
+        sourceRecordId: record.sourceRecordId,
+        title: record.item.title,
+      })),
+    );
+
+    for (const { item, sourceRecordId } of persistedRecords) {
       const catalogKey = {
         sourceRecordId_evidenceType_title: {
-          sourceRecordId: record.id,
+          sourceRecordId,
           evidenceType: 'literature_evidence',
           title: item.title,
         },
       };
-
-      const existingCatalogItem =
-        await transaction.externalEvidenceCatalogItem.findUnique({
-          where: catalogKey,
-          select: { reviewStatus: true, sourceState: true },
-        });
+      const existingCatalogItem = existingCatalogItems.get(
+        buildCatalogLookupKey(sourceRecordId, item.title),
+      );
+      const nextReviewStatus = resolveCatalogReviewStatus(
+        existingCatalogItem?.reviewStatus ?? null,
+      );
+      const nextSourceState = resolveCatalogSourceState(
+        existingCatalogItem?.sourceState ?? null,
+      );
+      const acceptedAt =
+        nextReviewStatus === 'ACCEPTED' ? new Date() : null;
 
       await transaction.externalEvidenceCatalogItem.upsert({
         where: catalogKey,
@@ -774,25 +1009,43 @@ export async function stageResearchPapers(
           provenanceNote: input.query
             ? `Imported from ${item.source_type} live research search for query "${input.query}".`
             : `Imported from ${item.source_type} live research search.`,
-          reviewStatus: resolveCatalogReviewStatus(
-            existingCatalogItem?.reviewStatus ?? null,
-          ),
-          sourceState: resolveCatalogSourceState(
-            existingCatalogItem?.sourceState ?? null,
-          ),
+          reviewStatus: nextReviewStatus,
+          sourceState: nextSourceState,
           applicabilityScope: {},
           extractedClaims: [],
           tags: buildCatalogTags(item),
           payload: {
             imported_via: 'research_live_search',
+            accepted_by: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+            acceptance_policy:
+              nextReviewStatus === 'ACCEPTED'
+                ? 'auto_accept_trusted_scientific_corpus_v1'
+                : null,
+            extraction_status: 'not_extracted',
+            normalization_status: 'normalized',
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
             metadata: item.metadata,
           },
+          acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+          acceptancePolicy:
+            nextReviewStatus === 'ACCEPTED'
+              ? 'auto_accept_trusted_scientific_corpus_v1'
+              : null,
+          acceptedAt,
+          reviewRequired: nextReviewStatus === 'PENDING',
+          ingestionMode: 'live_search',
+          extractionStatus: 'not_extracted',
+          normalizationStatus: 'normalized',
+          evidenceQuality: 'medium',
+          decisionSupportMetadata: {
+            structured_extraction_ready: true,
+            source: 'research_live_search',
+          },
         },
         create: {
-          sourceRecordId: record.id,
+          sourceRecordId,
           evidenceType: 'literature_evidence',
           title: item.title,
           summary: buildCatalogSummary(item),
@@ -800,33 +1053,57 @@ export async function stageResearchPapers(
           provenanceNote: input.query
             ? `Imported from ${item.source_type} live research search for query "${input.query}".`
             : `Imported from ${item.source_type} live research search.`,
-          reviewStatus: 'PENDING',
-          sourceState: 'NORMALIZED',
+          reviewStatus: nextReviewStatus,
+          sourceState: nextSourceState,
           claimCount: 0,
           applicabilityScope: {},
           extractedClaims: [],
           tags: buildCatalogTags(item),
           payload: {
             imported_via: 'research_live_search',
+            accepted_by: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+            acceptance_policy:
+              nextReviewStatus === 'ACCEPTED'
+                ? 'auto_accept_trusted_scientific_corpus_v1'
+                : null,
+            extraction_status: 'not_extracted',
+            normalization_status: 'normalized',
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
             metadata: item.metadata,
           },
+          acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
+          acceptancePolicy:
+            nextReviewStatus === 'ACCEPTED'
+              ? 'auto_accept_trusted_scientific_corpus_v1'
+              : null,
+          acceptedAt,
+          reviewRequired: nextReviewStatus === 'PENDING',
+          ingestionMode: 'live_search',
+          extractionStatus: 'not_extracted',
+          normalizationStatus: 'normalized',
+          evidenceQuality: 'medium',
+          decisionSupportMetadata: {
+            structured_extraction_ready: true,
+            source: 'research_live_search',
+          },
         },
       });
+    }
 
-      return record;
-    });
+    return persistedRecords;
+  });
 
-    sourceDocumentIds.push(sourceRecord.id);
-    papers.push(
-      toPaperMetadata({
-        sourceDocumentId: sourceRecord.id,
-        result: item,
-      }),
-    );
-  }
+  const sourceDocumentIds = stagedRecords.map(
+    (record) => record.sourceRecordId,
+  );
+  const papers = stagedRecords.map(({ item, sourceRecordId }) =>
+    toPaperMetadata({
+      sourceDocumentId: sourceRecordId,
+      result: item,
+    }),
+  );
 
   return {
     papers,

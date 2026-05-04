@@ -1,80 +1,86 @@
 import type {
-    AddResearchColumnRequest,
-    CaseHistoryWorkspaceResponse,
-    CreateResearchEvidencePackRequest,
-    CreateResearchReviewRequest,
-    DashboardWorkspaceResponse,
-    EvaluationComparisonResponse,
-    EvaluationListResponse,
-    EvaluationResponse,
-    EvaluationWorkspaceResponse,
-    EvidenceExplorerAssistantResponse,
-    EvidenceExplorerWorkspaceResponse,
-    EvidenceReviewWorkspaceResponse,
-    ExportCsvResponseMetadata,
-    ExternalEvidenceBulkReviewRequest,
-    ExternalEvidenceBulkReviewResponse,
-    ExternalEvidenceCatalogItemDetail,
-    ExternalEvidenceCatalogListResponse,
-    ExternalEvidenceReviewRequest,
-    ExternalEvidenceReviewStatus,
-    LocalSourceImportRequest,
-    LocalSourceImportResponse,
-    PrintableEvaluationReportResponse,
-    QueueResearchBackfillRequest,
-    RawCaseInput,
-    ReportConversationRequest,
-    ReportConversationResponse,
-    ResearchBackfillListResponse,
-    ResearchDecisionIngestionPreview,
-    ResearchEvidencePack,
-    ResearchReviewDetail,
-    ResearchReviewListResponse,
-    RunResearchExtractionsRequest,
-    RunResearchExtractionsResponse,
-    SearchResearchPapersRequest,
-    SearchResearchPapersResponse,
-    SourceArtifact,
-    StageResearchPapersRequest,
-    StageResearchPapersResponse,
+  AddResearchColumnRequest,
+  CaseHistoryWorkspaceResponse,
+  CreateResearchEvidencePackRequest,
+  CreateResearchReviewRequest,
+  DashboardWorkspaceResponse,
+  EvaluationComparisonResponse,
+  EvaluationListResponse,
+  EvaluationResponse,
+  EvaluationWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
+  EvidenceReviewWorkspaceResponse,
+  ExportCsvResponseMetadata,
+  ExternalEvidenceBulkReviewRequest,
+  ExternalEvidenceBulkReviewResponse,
+  ExternalEvidenceCatalogItemDetail,
+  ExternalEvidenceCatalogListResponse,
+  ExternalEvidenceReviewRequest,
+  ExternalEvidenceReviewStatus,
+  LocalSourceImportRequest,
+  LocalSourceImportResponse,
+  PrintableEvaluationReportResponse,
+  QueueResearchBackfillPresetRequest,
+  QueueResearchBackfillPresetResponse,
+  QueueResearchBackfillRequest,
+  RawCaseInput,
+  ReportConversationRequest,
+  ReportConversationResponse,
+  ResearchBackfillListResponse,
+  ResearchDecisionIngestionPreview,
+  ResearchEvidencePack,
+  ResearchReviewDetail,
+  ResearchReviewListResponse,
+  ResearchWarehouseProgressResponse,
+  RunResearchExtractionsRequest,
+  RunResearchExtractionsResponse,
+  SearchResearchPapersRequest,
+  SearchResearchPapersResponse,
+  SourceArtifact,
+  StageResearchPapersRequest,
+  StageResearchPapersResponse,
 } from '@metrev/domain-contracts/browser';
 import {
-    addResearchColumnRequestSchema,
-    caseHistoryWorkspaceResponseSchema,
-    createResearchEvidencePackRequestSchema,
-    createResearchReviewRequestSchema,
-    dashboardWorkspaceResponseSchema,
-    evaluationComparisonResponseSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evaluationWorkspaceResponseSchema,
-    evidenceExplorerAssistantResponseSchema,
-    evidenceExplorerWorkspaceResponseSchema,
-    evidenceReviewWorkspaceResponseSchema,
-    externalEvidenceBulkReviewRequestSchema,
-    externalEvidenceBulkReviewResponseSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    externalEvidenceReviewRequestSchema,
-    localSourceImportRequestSchema,
-    localSourceImportResponseSchema,
-    printableEvaluationReportResponseSchema,
-    queueResearchBackfillRequestSchema,
-    rawCaseInputSchema,
-    reportConversationRequestSchema,
-    reportConversationResponseSchema,
-    researchBackfillListResponseSchema,
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchReviewDetailSchema,
-    researchReviewListResponseSchema,
-    runResearchExtractionsRequestSchema,
-    runResearchExtractionsResponseSchema,
-    searchResearchPapersRequestSchema,
-    searchResearchPapersResponseSchema,
-    sourceArtifactSchema,
-    stageResearchPapersRequestSchema,
-    stageResearchPapersResponseSchema,
+  addResearchColumnRequestSchema,
+  caseHistoryWorkspaceResponseSchema,
+  createResearchEvidencePackRequestSchema,
+  createResearchReviewRequestSchema,
+  dashboardWorkspaceResponseSchema,
+  evaluationComparisonResponseSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationWorkspaceResponseSchema,
+  evidenceExplorerAssistantResponseSchema,
+  evidenceExplorerWorkspaceResponseSchema,
+  evidenceReviewWorkspaceResponseSchema,
+  externalEvidenceBulkReviewRequestSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  externalEvidenceReviewRequestSchema,
+  localSourceImportRequestSchema,
+  localSourceImportResponseSchema,
+  printableEvaluationReportResponseSchema,
+  queueResearchBackfillPresetRequestSchema,
+  queueResearchBackfillPresetResponseSchema,
+  queueResearchBackfillRequestSchema,
+  rawCaseInputSchema,
+  reportConversationRequestSchema,
+  reportConversationResponseSchema,
+  researchBackfillListResponseSchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchReviewDetailSchema,
+  researchReviewListResponseSchema,
+  researchWarehouseProgressResponseSchema,
+  runResearchExtractionsRequestSchema,
+  runResearchExtractionsResponseSchema,
+  searchResearchPapersRequestSchema,
+  searchResearchPapersResponseSchema,
+  sourceArtifactSchema,
+  stageResearchPapersRequestSchema,
+  stageResearchPapersResponseSchema,
 } from '@metrev/domain-contracts/browser';
 
 export type ExternalEvidenceSourceTypeFilter =
@@ -85,6 +91,14 @@ export type ExternalEvidenceSourceTypeFilter =
   | 'market_snapshot'
   | 'curated_manifest'
   | 'manual';
+
+export interface ExternalEvidenceTechnicalFilters {
+  componentType?: string;
+  decisionReady?: boolean;
+  material?: string;
+  metricType?: string;
+  systemType?: string;
+}
 
 export type EvaluationListConfidenceFilter = 'high' | 'medium' | 'low';
 export type EvaluationListSortKey =
@@ -102,8 +116,13 @@ type ContractParser<T> = {
 
 function buildExternalEvidenceSearchParams(input?: {
   status?: ExternalEvidenceReviewStatus;
+  componentType?: string;
+  decisionReady?: boolean;
+  material?: string;
+  metricType?: string;
   query?: string;
   sourceType?: ExternalEvidenceSourceTypeFilter;
+  systemType?: string;
   page?: number;
   pageSize?: number;
 }) {
@@ -119,6 +138,26 @@ function buildExternalEvidenceSearchParams(input?: {
 
   if (input?.sourceType) {
     searchParams.set('sourceType', input.sourceType);
+  }
+
+  if (input?.systemType?.trim()) {
+    searchParams.set('systemType', input.systemType.trim());
+  }
+
+  if (input?.componentType?.trim()) {
+    searchParams.set('componentType', input.componentType.trim());
+  }
+
+  if (input?.decisionReady !== undefined) {
+    searchParams.set('decisionReady', String(input.decisionReady));
+  }
+
+  if (input?.material?.trim()) {
+    searchParams.set('material', input.material.trim());
+  }
+
+  if (input?.metricType?.trim()) {
+    searchParams.set('metricType', input.metricType.trim());
   }
 
   if (input?.page) {
@@ -320,13 +359,15 @@ export async function fetchEvaluationComparison(
   );
 }
 
-export async function fetchExternalEvidenceCatalog(input?: {
-  status?: ExternalEvidenceReviewStatus;
-  query?: string;
-  sourceType?: ExternalEvidenceSourceTypeFilter;
-  page?: number;
-  pageSize?: number;
-}): Promise<ExternalEvidenceCatalogListResponse> {
+export async function fetchExternalEvidenceCatalog(
+  input?: {
+    status?: ExternalEvidenceReviewStatus;
+    query?: string;
+    sourceType?: ExternalEvidenceSourceTypeFilter;
+    page?: number;
+    pageSize?: number;
+  } & ExternalEvidenceTechnicalFilters,
+): Promise<ExternalEvidenceCatalogListResponse> {
   const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
@@ -344,13 +385,15 @@ export async function fetchExternalEvidenceCatalog(input?: {
   );
 }
 
-export async function fetchEvidenceReviewWorkspace(input?: {
-  status?: ExternalEvidenceReviewStatus;
-  query?: string;
-  sourceType?: ExternalEvidenceSourceTypeFilter;
-  page?: number;
-  pageSize?: number;
-}): Promise<EvidenceReviewWorkspaceResponse> {
+export async function fetchEvidenceReviewWorkspace(
+  input?: {
+    status?: ExternalEvidenceReviewStatus;
+    query?: string;
+    sourceType?: ExternalEvidenceSourceTypeFilter;
+    page?: number;
+    pageSize?: number;
+  } & ExternalEvidenceTechnicalFilters,
+): Promise<EvidenceReviewWorkspaceResponse> {
   const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
@@ -368,13 +411,15 @@ export async function fetchEvidenceReviewWorkspace(input?: {
   );
 }
 
-export async function fetchEvidenceExplorerWorkspace(input?: {
-  status?: ExternalEvidenceReviewStatus;
-  query?: string;
-  sourceType?: ExternalEvidenceSourceTypeFilter;
-  page?: number;
-  pageSize?: number;
-}): Promise<EvidenceExplorerWorkspaceResponse> {
+export async function fetchEvidenceExplorerWorkspace(
+  input?: {
+    status?: ExternalEvidenceReviewStatus;
+    query?: string;
+    sourceType?: ExternalEvidenceSourceTypeFilter;
+    page?: number;
+    pageSize?: number;
+  } & ExternalEvidenceTechnicalFilters,
+): Promise<EvidenceExplorerWorkspaceResponse> {
   const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
@@ -392,13 +437,15 @@ export async function fetchEvidenceExplorerWorkspace(input?: {
   );
 }
 
-export async function fetchEvidenceExplorerAssistant(input?: {
-  status?: ExternalEvidenceReviewStatus;
-  query?: string;
-  sourceType?: ExternalEvidenceSourceTypeFilter;
-  page?: number;
-  pageSize?: number;
-}): Promise<EvidenceExplorerAssistantResponse> {
+export async function fetchEvidenceExplorerAssistant(
+  input?: {
+    status?: ExternalEvidenceReviewStatus;
+    query?: string;
+    sourceType?: ExternalEvidenceSourceTypeFilter;
+    page?: number;
+    pageSize?: number;
+  } & ExternalEvidenceTechnicalFilters,
+): Promise<EvidenceExplorerAssistantResponse> {
   const searchParams = buildExternalEvidenceSearchParams(input);
   const queryString = searchParams.toString();
   const response = await fetch(
@@ -577,13 +624,15 @@ export async function fetchEvaluationCsvExport(evaluationId: string): Promise<{
   };
 }
 
-export async function fetchEvidenceExplorerCsvExport(input?: {
-  status?: ExternalEvidenceReviewStatus;
-  query?: string;
-  sourceType?: ExternalEvidenceSourceTypeFilter;
-  page?: number;
-  pageSize?: number;
-}): Promise<{
+export async function fetchEvidenceExplorerCsvExport(
+  input?: {
+    status?: ExternalEvidenceReviewStatus;
+    query?: string;
+    sourceType?: ExternalEvidenceSourceTypeFilter;
+    page?: number;
+    pageSize?: number;
+  } & ExternalEvidenceTechnicalFilters,
+): Promise<{
   content: string;
   metadata: Pick<
     ExportCsvResponseMetadata,
@@ -759,6 +808,41 @@ export async function queueResearchBackfill(
     response,
     researchBackfillListResponseSchema,
     'research backfill queue response',
+  );
+}
+
+export async function fetchResearchWarehouseProgress(): Promise<ResearchWarehouseProgressResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/research/warehouse-progress`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    researchWarehouseProgressResponseSchema,
+    'research warehouse progress response',
+  );
+}
+
+export async function queueResearchBackfillPreset(
+  payload: QueueResearchBackfillPresetRequest,
+): Promise<QueueResearchBackfillPresetResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/research/backfills/presets`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: toJsonBody(queueResearchBackfillPresetRequestSchema, payload),
+  });
+
+  return parseJson(
+    response,
+    queueResearchBackfillPresetResponseSchema,
+    'research backfill preset response',
   );
 }
 

@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    type EvaluationResponse,
-    type ExternalEvidenceCatalogItemDetail,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  type EvaluationResponse,
+  type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -879,6 +879,61 @@ describe('api runtime flow', () => {
     });
 
     await app.close();
+  });
+
+  it('supports technical evidence filters through the authenticated catalog API', async () => {
+    const mfcMaterialItem: ExternalEvidenceCatalogItemDetail = {
+      ...openAlexCatalogItem,
+      id: 'catalog-item-mfc-carbon-001',
+      title: 'MFC carbon felt anode benchmark',
+      summary: 'MFC power density benchmark using carbon felt anodes.',
+      applicability_scope: {
+        system_type: 'MFC',
+        component_type: 'anode',
+        material: 'carbon_felt',
+        metric_type: 'power_density',
+      },
+      payload: {
+        system_type: 'MFC',
+        component_type: 'anode',
+        material: 'carbon_felt',
+        metric_type: 'power_density',
+      },
+      tags: ['MFC', 'anode', 'carbon_felt', 'power_density'],
+    };
+    const repository = new MemoryEvaluationRepository({
+      externalEvidenceCatalogItems: [acceptedCatalogItem, mfcMaterialItem],
+    });
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/external-evidence?systemType=MFC&componentType=anode&material=carbon_felt&metricType=power_density&page=1&pageSize=25',
+      headers: {
+        cookie: sessionCookie('analyst-session'),
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        expect.objectContaining({
+          id: 'catalog-item-mfc-carbon-001',
+          title: 'MFC carbon felt anode benchmark',
+        }),
+      ],
+      summary: {
+        total: 2,
+        filtered_total: 1,
+        returned: 1,
+      },
+    });
+
+    await app.close();
+    await repository.disconnect();
   });
 
   it('marks rejected external evidence as reviewed after analyst review', async () => {

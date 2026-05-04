@@ -35,7 +35,7 @@ export function AppSidebar({
               {!collapsed ? <strong>METREV</strong> : null}
               {!collapsed ? (
                 <span className="app-sidebar__brand-note">
-                  Stack decisions, reports, and traceable audit
+                  Client inputs, decision outputs, and traceable audit
                 </span>
               ) : null}
             </div>

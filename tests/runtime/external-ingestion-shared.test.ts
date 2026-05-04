@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
     deduplicateEntries,
     extractClaimCandidates,
+    getEvidenceIngestionConfig,
     normalizeCuratedManifestRecord,
     normalizeEuropePmcWork,
     optionFlag,
@@ -11,6 +12,13 @@ import {
     parseScriptOptions,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 import { loadCuratedManifestRecords } from '../../packages/database/scripts/ingest-curated-manifest';
+import {
+    findOrCreateBulkRun,
+    recordBulkIngestionFailure,
+    resolveBulkRunFinalState,
+    runScientificEvidenceIngestion,
+    shouldTreatProviderHttpFailureAsExhaustedCursor,
+} from '../../packages/database/scripts/ingest-scientific-evidence';
 
 describe('external ingestion shared helpers', () => {
   it('parses CLI options with values and flags', () => {
@@ -197,6 +205,260 @@ describe('external ingestion shared helpers', () => {
 
     expect(deduplicated).toHaveLength(1);
     expect(deduplicated[0]).toBe(firstEntry);
+  });
+
+  it('deduplicates entries by normalized title, year, and first author when DOI is absent', () => {
+    const firstEntry = normalizeEuropePmcWork(
+      {
+        id: 'title-dedupe-1',
+        source: 'MED',
+        title: 'Microbial fuel cell power density in wastewater',
+        authorString: 'A. Researcher, B. Reviewer',
+        firstPublicationDate: '2024-01-01',
+        abstractText:
+          'Microbial fuel cell power density reached 2.1 W/m2 in wastewater operation.',
+      },
+      'microbial fuel cell wastewater',
+      '2026-05-03T12:00:00.000Z',
+    );
+    const duplicateEntry = normalizeEuropePmcWork(
+      {
+        id: 'title-dedupe-2',
+        source: 'MED',
+        title: 'Microbial fuel cell: power density in wastewater',
+        authorString: 'A. Researcher, C. Analyst',
+        firstPublicationDate: '2024-09-01',
+        abstractText:
+          'Microbial fuel cell power density reached 2.1 W/m2 in wastewater operation.',
+      },
+      'microbial fuel cell wastewater',
+      '2026-05-03T12:00:00.000Z',
+    );
+
+    const deduplicated = deduplicateEntries([firstEntry, duplicateEntry]);
+
+    expect(deduplicated).toHaveLength(1);
+    expect(deduplicated[0]).toBe(firstEntry);
+  });
+
+  it('system-accepts valid trusted scientific corpus records when auto accept is enabled', () => {
+    const normalized = normalizeEuropePmcWork(
+      {
+        id: 'auto-accept-001',
+        source: 'MED',
+        doi: '10.1000/auto-accept',
+        title: 'Microbial electrolysis cell hydrogen production benchmark',
+        authorString: 'A. Researcher, B. Reviewer',
+        journalTitle: 'Bioelectrochemical Systems',
+        firstPublicationDate: '2025-06-01',
+        abstractText:
+          'Microbial electrolysis cell hydrogen production improved at neutral pH and current density reached 1.4 A/m2.',
+      },
+      'microbial electrolysis hydrogen',
+      '2026-05-03T12:00:00.000Z',
+      {
+        autoAcceptTrustedCorpus: true,
+        ingestionMode: 'bulk',
+        ingestionBatchId: 'test-batch-001',
+      },
+    );
+
+    expect(normalized?.catalogItem).toMatchObject({
+      reviewStatus: 'ACCEPTED',
+      acceptedBy: 'system',
+      acceptancePolicy: 'auto_accept_trusted_scientific_corpus_v1',
+      reviewRequired: false,
+      ingestionMode: 'bulk',
+      ingestionBatchId: 'test-batch-001',
+      extractionStatus: 'heuristic_extracted',
+      normalizationStatus: 'normalized',
+    });
+  });
+
+  it('keeps malformed or low-provenance records in the exception queue even when auto accept is enabled', () => {
+    const normalized = normalizeCuratedManifestRecord(
+      {
+        sourceKey: 'supplier-auto-accept-blocked',
+        title: 'Supplier-only market claim',
+        sourceType: 'SUPPLIER_PROFILE',
+        summary:
+          'Supplier-only claims remain review exceptions unless separately validated.',
+      },
+      '2026-05-03T12:00:00.000Z',
+      'manifest.json',
+      { autoAcceptTrustedCorpus: true },
+    );
+
+    expect(normalized?.catalogItem.reviewStatus).toBe('PENDING');
+    expect(normalized?.catalogItem.reviewRequired).toBe(true);
+  });
+
+  it('reads the production-scale evidence ingestion defaults from CLI-style options', () => {
+    const config = getEvidenceIngestionConfig({
+      'target-total': '500000',
+      'batch-size': '1000',
+      'auto-accept': 'true',
+      'review-only-exceptions': 'true',
+    });
+
+    expect(config).toMatchObject({
+      targetTotal: 500000,
+      batchSize: 1000,
+      autoAcceptTrustedCorpus: true,
+      reviewOnlyExceptions: true,
+    });
+  });
+
+  it('plans the production-scale evidence ingestion command without mutating data in dry-run mode', async () => {
+    const result = await runScientificEvidenceIngestion({
+      dryRun: true,
+      'target-total': '500000',
+      'batch-size': '1000',
+      'auto-accept': 'true',
+      queryLimit: '1',
+    });
+
+    expect(result).toMatchObject({
+      dryRun: true,
+      command: 'evidence:ingest',
+      targetTotal: 500000,
+      batchSize: 1000,
+      autoAcceptTrustedCorpus: true,
+      acceptancePolicy: 'auto_accept_trusted_scientific_corpus_v1',
+    });
+  });
+
+  it('resumes an explicit bulk ingestion run by id instead of creating a duplicate run', async () => {
+    const existingRun = {
+      id: 'bulk-run-001',
+      triggerMode: 'bulk_scientific_corpus',
+      status: 'STARTED',
+    };
+    const prisma = {
+      ingestionRun: {
+        create: vi.fn(),
+        findFirst: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue(existingRun),
+      },
+    };
+
+    const run = await findOrCreateBulkRun({
+      autoAccept: true,
+      batchSize: 1000,
+      prisma: prisma as never,
+      resume: true,
+      resumeRunId: 'bulk-run-001',
+      targetTotal: 500000,
+    });
+
+    expect(run).toBe(existingRun);
+    expect(prisma.ingestionRun.findUnique).toHaveBeenCalledWith({
+      where: { id: 'bulk-run-001' },
+    });
+    expect(prisma.ingestionRun.findFirst).not.toHaveBeenCalled();
+    expect(prisma.ingestionRun.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects explicit resume for a completed bulk ingestion run', async () => {
+    const prisma = {
+      ingestionRun: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'bulk-run-completed',
+          triggerMode: 'bulk_scientific_corpus',
+          status: 'COMPLETED',
+        }),
+      },
+    };
+
+    await expect(
+      findOrCreateBulkRun({
+        autoAccept: true,
+        batchSize: 1000,
+        prisma: prisma as never,
+        resume: true,
+        resumeRunId: 'bulk-run-completed',
+        targetTotal: 500000,
+      }),
+    ).rejects.toThrow(
+      'Bulk ingestion run bulk-run-completed has status COMPLETED; only STARTED runs can be resumed.',
+    );
+  });
+
+  it('keeps a bulk run resumable when the operator page limit pauses before target', () => {
+    const finalState = resolveBulkRunFinalState({
+      catalogTotal: 32564,
+      exhaustedWithoutTarget: false,
+      maxProviderPages: 1,
+      pagesProcessed: 1,
+      targetTotal: 500000,
+    });
+
+    expect(finalState).toMatchObject({
+      pausedAfterPageLimit: true,
+      status: 'STARTED',
+    });
+    expect(finalState.warning).toContain('Resume the same run id to continue.');
+  });
+
+  it('records provider failures on the active bulk run instead of creating a duplicate failed run', async () => {
+    const prisma = {
+      ingestionRun: {
+        create: vi.fn(),
+        update: vi.fn().mockResolvedValue({ id: 'bulk-run-001' }),
+      },
+    };
+
+    await recordBulkIngestionFailure({
+      activeRunId: 'bulk-run-001',
+      config: {
+        autoAcceptTrustedCorpus: true,
+        batchSize: 1000,
+        targetTotal: 500000,
+      },
+      message: 'Crossref request failed with status 404',
+      prisma: prisma as never,
+      query: 'microbial fuel cell wastewater treatment',
+      sourceType: 'CROSSREF',
+    });
+
+    expect(prisma.ingestionRun.update).toHaveBeenCalledWith({
+      where: { id: 'bulk-run-001' },
+      data: expect.objectContaining({
+        query: 'microbial fuel cell wastewater treatment',
+        sourceType: 'CROSSREF',
+        recordsFailed: { increment: 1 },
+        failureDetail: expect.objectContaining({
+          message: 'Crossref request failed with status 404',
+          recoverable: true,
+          run_status_preserved: 'STARTED',
+        }),
+      }),
+    });
+    expect(prisma.ingestionRun.create).not.toHaveBeenCalled();
+  });
+
+  it('classifies stale Crossref cursor misses without hiding first-page failures', () => {
+    expect(
+      shouldTreatProviderHttpFailureAsExhaustedCursor({
+        cursor: 'DnF1ZXJ5VGhlbkZldGNoJAAAAAEJ_Gmf',
+        source: 'crossref',
+        status: 404,
+      }),
+    ).toBe(true);
+    expect(
+      shouldTreatProviderHttpFailureAsExhaustedCursor({
+        cursor: '*',
+        source: 'crossref',
+        status: 404,
+      }),
+    ).toBe(false);
+    expect(
+      shouldTreatProviderHttpFailureAsExhaustedCursor({
+        cursor: 'cursor',
+        source: 'openalex',
+        status: 404,
+      }),
+    ).toBe(false);
   });
 });
 

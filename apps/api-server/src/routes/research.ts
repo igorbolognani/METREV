@@ -4,11 +4,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
+    MFC_MEC_30000_PRESET_ID,
+    planResearchBackfillPreset,
+} from '@metrev/database';
+import {
     addResearchColumnRequestSchema,
     createResearchEvidencePackRequestSchema,
     createResearchReviewRequestSchema,
     localSourceImportRequestSchema,
+    queueResearchBackfillPresetRequestSchema,
+    queueResearchBackfillPresetResponseSchema,
     queueResearchBackfillRequestSchema,
+    researchWarehouseProgressResponseSchema,
     runResearchExtractionsRequestSchema,
     runResearchExtractionsResponseSchema,
     searchResearchPapersRequestSchema,
@@ -88,6 +95,97 @@ function requireAnalyst(
 
     throw error;
   }
+}
+
+function countBucketValue(
+  buckets: Array<{ count: number; value: string }>,
+  value: string,
+) {
+  return buckets.find((bucket) => bucket.value === value)?.count ?? 0;
+}
+
+function normalizeQueuedQuery(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function buildResearchWarehouseProgress(input: {
+  backfills: Awaited<
+    ReturnType<FastifyInstance['researchRepository']['listResearchBackfills']>
+  >['items'];
+  warehouse: Awaited<
+    ReturnType<
+      FastifyInstance['evaluationRepository']['listExternalEvidenceCatalog']
+    >
+  >;
+}) {
+  const targetRecords = input.backfills.reduce(
+    (total, backfill) => total + backfill.target_records,
+    0,
+  );
+  const fetchedRecords = input.backfills.reduce(
+    (total, backfill) => total + backfill.records_fetched,
+    0,
+  );
+  const storedRecords = input.warehouse.summary.total;
+  const lastUpdatedAt =
+    [...input.backfills]
+      .map((backfill) => backfill.updated_at)
+      .sort((left, right) => right.localeCompare(left))[0] ?? null;
+
+  return researchWarehouseProgressResponseSchema.parse({
+    target_records: targetRecords,
+    stored_records: storedRecords,
+    fetched_records: fetchedRecords,
+    records_remaining: Math.max(targetRecords - storedRecords, 0),
+    completion_ratio:
+      targetRecords > 0 ? Math.min(storedRecords / targetRecords, 1) : 0,
+    pending_records: input.warehouse.summary.pending,
+    accepted_records: input.warehouse.summary.accepted,
+    rejected_records: input.warehouse.summary.rejected,
+    high_quality_records: countBucketValue(
+      input.warehouse.warehouse_aggregate.facets.metadata_quality_levels,
+      'high',
+    ),
+    linked_document_records:
+      input.warehouse.warehouse_aggregate.snapshot.linked_source_count,
+    pdf_records: 0,
+    xml_records: 0,
+    queued_backfills: input.backfills.filter(
+      (backfill) => backfill.status === 'queued',
+    ).length,
+    running_backfills: input.backfills.filter(
+      (backfill) => backfill.status === 'running',
+    ).length,
+    completed_backfills: input.backfills.filter(
+      (backfill) => backfill.status === 'completed',
+    ).length,
+    failed_backfills: input.backfills.filter(
+      (backfill) => backfill.status === 'failed',
+    ).length,
+    source_breakdown:
+      input.warehouse.warehouse_aggregate.facets.source_types.map((bucket) => ({
+        key: bucket.value,
+        label: bucket.label,
+        count: bucket.count,
+      })),
+    metadata_quality_levels:
+      input.warehouse.warehouse_aggregate.facets.metadata_quality_levels.map(
+        (bucket) => ({
+          key: bucket.value,
+          label: bucket.label,
+          count: bucket.count,
+        }),
+      ),
+    veracity_levels:
+      input.warehouse.warehouse_aggregate.facets.veracity_levels.map(
+        (bucket) => ({
+          key: bucket.value,
+          label: bucket.label,
+          count: bucket.count,
+        }),
+      ),
+    last_updated_at: lastUpdatedAt,
+  });
 }
 
 export async function registerResearchRoutes(
@@ -229,6 +327,37 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
+  app.get('/warehouse-progress', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const [backfills, warehouse] = await Promise.all([
+      withSpan(
+        'research.backfills.list',
+        () => app.researchRepository.listResearchBackfills(),
+        { actor_id: actor.userId },
+      ),
+      withSpan(
+        'research.warehouse.summary',
+        () =>
+          app.evaluationRepository.listExternalEvidenceCatalog({
+            page: 1,
+            pageSize: 1,
+          }),
+        { actor_id: actor.userId },
+      ),
+    ]);
+
+    return reply.send(
+      buildResearchWarehouseProgress({
+        backfills: backfills.items,
+        warehouse,
+      }),
+    );
+  });
+
   app.post('/backfills', async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
@@ -243,7 +372,7 @@ export async function registerResearchRoutes(
       });
     }
 
-    const response = await withSpan(
+    await withSpan(
       'research.backfills.enqueue',
       () =>
         app.researchRepository.enqueueResearchBackfill({
@@ -256,7 +385,91 @@ export async function registerResearchRoutes(
       },
     );
 
+    const response = await withSpan(
+      'research.backfills.list',
+      () => app.researchRepository.listResearchBackfills(),
+      { actor_id: actor.userId },
+    );
+
     return reply.code(201).send(response);
+  });
+
+  app.post('/backfills/presets', async (request, reply) => {
+    const actor = requireAnalyst(request, reply);
+    if (!actor) {
+      return reply;
+    }
+
+    const parsed = queueResearchBackfillPresetRequestSchema.safeParse(
+      request.body ?? {},
+    );
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_input',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const plan = planResearchBackfillPreset({
+      presetId: MFC_MEC_30000_PRESET_ID,
+      targetRecords: parsed.data.target_records,
+    });
+    const existing = await withSpan(
+      'research.backfills.list',
+      () => app.researchRepository.listResearchBackfills(),
+      { actor_id: actor.userId },
+    );
+    const activeQueries = new Set(
+      existing.items
+        .filter(
+          (backfill) =>
+            backfill.status === 'queued' || backfill.status === 'running',
+        )
+        .map((backfill) => normalizeQueuedQuery(backfill.query)),
+    );
+    const skippedQueries: string[] = [];
+    let queuedRuns = 0;
+
+    for (const backfill of plan.plannedBackfills) {
+      const normalizedQuery = normalizeQueuedQuery(backfill.query);
+
+      if (activeQueries.has(normalizedQuery)) {
+        skippedQueries.push(backfill.query);
+        continue;
+      }
+
+      await withSpan(
+        'research.backfills.enqueue',
+        () =>
+          app.researchRepository.enqueueResearchBackfill({
+            ...backfill,
+            actorId: actor.userId,
+          }),
+        {
+          actor_id: actor.userId,
+          preset_id: parsed.data.preset_id,
+          query: backfill.query,
+        },
+      );
+      activeQueries.add(normalizedQuery);
+      queuedRuns += 1;
+    }
+
+    const backfills = await withSpan(
+      'research.backfills.list',
+      () => app.researchRepository.listResearchBackfills(),
+      { actor_id: actor.userId },
+    );
+
+    return reply.code(201).send(
+      queueResearchBackfillPresetResponseSchema.parse({
+        preset_id: parsed.data.preset_id,
+        target_records: plan.targetRecords,
+        queued_runs: queuedRuns,
+        skipped_queries: skippedQueries,
+        backfills: backfills.items,
+      }),
+    );
   });
 
   app.post('/reviews', async (request, reply) => {

@@ -5,19 +5,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-    addResearchColumn,
-    createResearchEvidencePack,
-    createResearchReview,
-    evaluateCase,
-    fetchEvaluationCsvExport,
-    fetchEvaluationList,
-    fetchEvidenceExplorerAssistant,
-    fetchEvidenceExplorerCsvExport,
-    fetchEvidenceExplorerWorkspace,
-    fetchResearchEvidencePackDecisionInput,
-    fetchResearchReview,
-    fetchResearchReviews,
-    runResearchExtractions,
+  addResearchColumn,
+  createResearchEvidencePack,
+  createResearchReview,
+  evaluateCase,
+  fetchEvaluationCsvExport,
+  fetchEvaluationList,
+  fetchEvidenceExplorerAssistant,
+  fetchEvidenceExplorerCsvExport,
+  fetchEvidenceExplorerWorkspace,
+  fetchExternalEvidenceCatalog,
+  fetchResearchEvidencePackDecisionInput,
+  fetchResearchReview,
+  fetchResearchReviews,
+  runResearchExtractions,
 } from '../../apps/web-ui/src/lib/api';
 import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 
@@ -186,6 +187,75 @@ describe('web API client helpers', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:4000/api/workspace/evidence/explorer?status=accepted&q=benchmark&sourceType=crossref&page=2&pageSize=50',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('passes technical evidence filters through catalog and explorer routes', async () => {
+    const fixtures = await getWorkspaceFixtures();
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: fixtures.evidenceExplorerWorkspace.items,
+          summary: fixtures.evidenceExplorerWorkspace.summary,
+          warehouse_aggregate: {
+            facets: fixtures.evidenceExplorerWorkspace.warehouse_facets,
+            snapshot: fixtures.evidenceExplorerWorkspace.warehouse_snapshot,
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(fixtures.evidenceExplorerWorkspace), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+
+    await fetchExternalEvidenceCatalog({
+      status: 'accepted',
+      query: ' carbon ',
+      sourceType: 'openalex',
+      systemType: 'MFC',
+      componentType: 'anode',
+      material: ' carbon felt ',
+      metricType: 'power_density',
+      page: 1,
+      pageSize: 25,
+    });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/external-evidence?status=accepted&q=carbon&sourceType=openalex&systemType=MFC&componentType=anode&material=carbon+felt&metricType=power_density&page=1&pageSize=25',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    await fetchEvidenceExplorerWorkspace({
+      status: 'accepted',
+      systemType: 'MEC',
+      componentType: 'cathode',
+      material: 'platinum',
+      metricType: 'hydrogen_production',
+      page: 2,
+      pageSize: 50,
+    });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/workspace/evidence/explorer?status=accepted&systemType=MEC&componentType=cathode&material=platinum&metricType=hydrogen_production&page=2&pageSize=50',
       expect.objectContaining({
         cache: 'no-store',
         credentials: 'include',

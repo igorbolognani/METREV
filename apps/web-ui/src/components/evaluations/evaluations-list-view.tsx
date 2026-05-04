@@ -12,22 +12,22 @@ import { EvaluationsFilters } from '@/components/evaluations/evaluations-filters
 import { EvaluationsTable } from '@/components/evaluations/evaluations-table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
+    WorkspaceStatCard,
 } from '@/components/workspace-chrome';
-import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchEvaluationList } from '@/lib/api';
 import {
-  useEvaluationsListQueryState,
-  type EvaluationConfidenceFilter,
+    useEvaluationsListQueryState,
+    type EvaluationConfidenceFilter,
 } from '@/lib/evaluations-list-query-state';
 import {
-  useEvaluationsViewTab,
-  type EvaluationsViewTab,
+    useEvaluationsViewTab,
+    type EvaluationsViewTab,
 } from '@/lib/evaluations-view-query-state';
 
 void React;
@@ -202,53 +202,106 @@ export function EvaluationsWorkspaceView({
   sortDirection: 'asc' | 'desc';
   sortKey: 'created_at' | 'confidence_level' | 'case_id';
 }) {
-  const summaryItems = [
+  const headerActions = (
+    <>
+      <Link className="button secondary" href="/dashboard">
+        Dashboard
+      </Link>
+      <Link className="button" href="/cases/new">
+        Configure stack
+      </Link>
+    </>
+  );
+
+  const summaryCards = [
     {
       detail:
-        'Rows returned on the current page for the active search and confidence state.',
-      key: 'returned',
+        'Rows currently visible on the returned page for the active filter state.',
       label: 'Visible rows',
       tone: 'accent' as const,
       value: summary.returned,
     },
     {
-      detail: 'Records matching the current server-side filter state.',
-      key: 'filtered',
+      detail:
+        'Records matching the current server-side search and confidence filters.',
       label: 'Filtered rows',
       tone: 'success' as const,
       value: summary.filtered_total,
     },
     {
       detail: 'All persisted evaluations currently saved in the runtime.',
-      key: 'total',
       label: 'Total rows',
       tone: 'default' as const,
       value: summary.total,
     },
     {
       detail: 'Server-owned page count for the current filter slice.',
-      key: 'pages',
       label: 'Pages',
       tone: 'warning' as const,
       value: summary.total_pages,
     },
   ];
 
+  if (summary.total === 0) {
+    return (
+      <div className="workspace-page">
+        <WorkspacePageHeader
+          actions={headerActions}
+          badge="Evaluations"
+          chips={[`0 saved outputs`, `0 pages`]}
+          description="The local evaluation registry is currently clean. New deterministic runs will appear here after stack submission."
+          title="Evaluation registry"
+        />
+
+        <div className="workspace-detail-grid">
+          {summaryCards.map((item) => (
+            <WorkspaceStatCard
+              detail={item.detail}
+              key={item.label}
+              label={item.label}
+              tone={item.tone}
+              value={item.value}
+            />
+          ))}
+        </div>
+
+        <WorkspaceSection
+          description="This clean state is expected after the local evaluation reset or before the first deterministic submission."
+          eyebrow="Clean workspace"
+          title="No saved evaluations yet"
+        >
+          <WorkspaceEmptyState
+            description="Configure a stack to generate the first deterministic run, then return here to search outputs, reports, and audit detail."
+            primaryHref="/cases/new"
+            primaryLabel="Configure stack"
+            title="The evaluation registry is empty"
+          />
+        </WorkspaceSection>
+      </div>
+    );
+  }
+
   return (
     <div className="workspace-page">
       <WorkspacePageHeader
-        actions={
-          <Link className="button" href="/cases/new">
-            Configure stack
-          </Link>
-        }
+        actions={headerActions}
         badge="Evaluations"
         chips={[`${summary.filtered_total} filtered`, `${summary.total} total`]}
         description="All saved evaluations remain searchable, sortable, and directly connected to case history."
-        title="All evaluations"
+        title="Evaluation registry"
       />
 
-      <SummaryRail items={summaryItems} label="Evaluations registry summary" />
+      <div className="workspace-detail-grid">
+        {summaryCards.map((item) => (
+          <WorkspaceStatCard
+            detail={item.detail}
+            key={item.label}
+            label={item.label}
+            tone={item.tone}
+            value={item.value}
+          />
+        ))}
+      </div>
 
       <WorkspaceTabShell
         activeTab={activeTab}

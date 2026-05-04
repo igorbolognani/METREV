@@ -429,8 +429,16 @@ export const stageResearchPapersResponseSchema = z.object({
 export const queueResearchBackfillRequestSchema = z.object({
   query: z.string().trim().min(3).max(500),
   providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(),
-  per_provider_limit: z.number().int().min(1).max(100).default(25),
-  max_pages: z.number().int().min(1).max(100).default(1),
+  per_provider_limit: z.number().int().min(1).max(1000).default(25),
+  max_pages: z.number().int().min(1).max(500).default(1),
+  target_records: z.number().int().min(1).max(300000).optional(),
+});
+
+export const queueResearchBackfillPresetSchema = z.enum(['mfc_mec_30000']);
+
+export const queueResearchBackfillPresetRequestSchema = z.object({
+  preset_id: queueResearchBackfillPresetSchema.default('mfc_mec_30000'),
+  target_records: z.number().int().min(1).max(300000).default(30000),
 });
 
 export const researchBackfillSummarySchema = z.object({
@@ -440,10 +448,13 @@ export const researchBackfillSummarySchema = z.object({
   providers: z.array(researchSearchProviderSchema).default([]),
   per_provider_limit: z.number().int().positive(),
   max_pages: z.number().int().positive(),
+  target_records: z.number().int().positive(),
   next_page: z.number().int().positive(),
   pages_completed: z.number().int().nonnegative(),
   records_fetched: z.number().int().nonnegative(),
   records_stored: z.number().int().nonnegative(),
+  records_remaining: z.number().int().nonnegative(),
+  completion_ratio: z.number().min(0).max(1),
   failed_providers: z.array(researchPaperSearchFailureSchema).default([]),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
@@ -453,6 +464,45 @@ export const researchBackfillSummarySchema = z.object({
 
 export const researchBackfillListResponseSchema = z.object({
   items: z.array(researchBackfillSummarySchema).default([]),
+});
+
+export const researchWarehouseProgressBucketSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  count: z.number().int().nonnegative(),
+});
+
+export const researchWarehouseProgressResponseSchema = z.object({
+  target_records: z.number().int().nonnegative(),
+  stored_records: z.number().int().nonnegative(),
+  fetched_records: z.number().int().nonnegative(),
+  records_remaining: z.number().int().nonnegative(),
+  completion_ratio: z.number().min(0).max(1),
+  pending_records: z.number().int().nonnegative(),
+  accepted_records: z.number().int().nonnegative(),
+  rejected_records: z.number().int().nonnegative(),
+  high_quality_records: z.number().int().nonnegative(),
+  linked_document_records: z.number().int().nonnegative(),
+  pdf_records: z.number().int().nonnegative(),
+  xml_records: z.number().int().nonnegative(),
+  queued_backfills: z.number().int().nonnegative(),
+  running_backfills: z.number().int().nonnegative(),
+  completed_backfills: z.number().int().nonnegative(),
+  failed_backfills: z.number().int().nonnegative(),
+  source_breakdown: z.array(researchWarehouseProgressBucketSchema).default([]),
+  metadata_quality_levels: z
+    .array(researchWarehouseProgressBucketSchema)
+    .default([]),
+  veracity_levels: z.array(researchWarehouseProgressBucketSchema).default([]),
+  last_updated_at: z.string().min(1).nullable().default(null),
+});
+
+export const queueResearchBackfillPresetResponseSchema = z.object({
+  preset_id: queueResearchBackfillPresetSchema,
+  target_records: z.number().int().positive(),
+  queued_runs: z.number().int().nonnegative(),
+  skipped_queries: z.array(z.string().min(1)).default([]),
+  backfills: z.array(researchBackfillSummarySchema).default([]),
 });
 
 export const addResearchColumnRequestSchema = researchColumnDefinitionSchema
@@ -555,11 +605,23 @@ export type StageResearchPapersResponse = z.infer<
 export type QueueResearchBackfillRequest = z.infer<
   typeof queueResearchBackfillRequestSchema
 >;
+export type QueueResearchBackfillPreset = z.infer<
+  typeof queueResearchBackfillPresetSchema
+>;
+export type QueueResearchBackfillPresetRequest = z.infer<
+  typeof queueResearchBackfillPresetRequestSchema
+>;
 export type ResearchBackfillSummary = z.infer<
   typeof researchBackfillSummarySchema
 >;
 export type ResearchBackfillListResponse = z.infer<
   typeof researchBackfillListResponseSchema
+>;
+export type ResearchWarehouseProgressResponse = z.infer<
+  typeof researchWarehouseProgressResponseSchema
+>;
+export type QueueResearchBackfillPresetResponse = z.infer<
+  typeof queueResearchBackfillPresetResponseSchema
 >;
 export type AddResearchColumnRequest = z.infer<
   typeof addResearchColumnRequestSchema

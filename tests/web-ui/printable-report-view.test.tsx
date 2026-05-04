@@ -41,6 +41,9 @@ describe('printable report view', () => {
       );
 
       expect(auditHtml).toContain('Defaults used');
+      expect(auditHtml).toContain('Explicit parameter state');
+      expect(auditHtml).toContain('Membrane presence');
+      expect(auditHtml).toContain('Startup protocol');
       expect(auditHtml).toContain('Evidence quality caveats');
       expect(auditHtml).toContain('Metadata High');
       expect(auditHtml).toContain('source-artifact-fixture-001');

@@ -81,6 +81,16 @@ export interface StructuredResearchExtractionResult {
   missingFields: string[];
 }
 
+export interface CanonicalEvidenceMeasurementCandidate {
+  canonicalKey: string;
+  confidence: number;
+  fieldKey: string;
+  rawUnit: string;
+  rawValue: string;
+  sourceLocator: string;
+  textSpan: string;
+}
+
 type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama';
 type CompletionProvider = 'ollama';
 
@@ -386,6 +396,153 @@ function parseStructuredExtractionPayload(
         )
       : [],
   };
+}
+
+function confidenceNumberFromUnknown(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  if (value === 'high') {
+    return 0.85;
+  }
+  if (value === 'medium') {
+    return 0.65;
+  }
+  if (value === 'low') {
+    return 0.45;
+  }
+
+  return 0.5;
+}
+
+function parseCanonicalEvidenceMeasurementPayload(
+  value: string,
+): CanonicalEvidenceMeasurementCandidate[] {
+  const parsed = JSON.parse(stripJsonCodeFence(value)) as {
+    measurements?: unknown;
+  };
+
+  if (!Array.isArray(parsed.measurements)) {
+    return [];
+  }
+
+  return parsed.measurements.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+
+    const candidate = entry as {
+      canonical_key?: unknown;
+      confidence?: unknown;
+      field_key?: unknown;
+      raw_unit?: unknown;
+      raw_value?: unknown;
+      source_locator?: unknown;
+      text_span?: unknown;
+    };
+
+    if (
+      typeof candidate.field_key !== 'string' ||
+      typeof candidate.canonical_key !== 'string' ||
+      typeof candidate.raw_value !== 'string' ||
+      typeof candidate.raw_unit !== 'string' ||
+      typeof candidate.text_span !== 'string'
+    ) {
+      return [];
+    }
+
+    const fieldKey = candidate.field_key.trim();
+    const canonicalKey = candidate.canonical_key.trim();
+    const rawValue = candidate.raw_value.trim();
+    const rawUnit = candidate.raw_unit.trim();
+    const textSpan = candidate.text_span.trim();
+
+    if (!fieldKey || !canonicalKey || !rawValue || !rawUnit || !textSpan) {
+      return [];
+    }
+
+    return [
+      {
+        canonicalKey,
+        confidence: confidenceNumberFromUnknown(candidate.confidence),
+        fieldKey,
+        rawUnit,
+        rawValue,
+        sourceLocator:
+          typeof candidate.source_locator === 'string' &&
+          candidate.source_locator.trim().length > 0
+            ? candidate.source_locator.trim()
+            : 'llm_schema_validated_measurement',
+        textSpan,
+      },
+    ];
+  });
+}
+
+function buildCanonicalEvidenceMeasurementMessages(input: {
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+  maxCandidates: number;
+}): Array<{ role: 'system' | 'user'; content: string }> {
+  return [
+    {
+      role: 'system',
+      content:
+        'You extract structured scientific measurements for METREV. Use only exact text present in source_text. Return JSON only with key measurements. Each measurement must include field_key, canonical_key, raw_value, raw_unit, text_span, source_locator, and confidence. text_span must be an exact substring copied from source_text. Allowed field_key/canonical_key pairs are: power_density/power_density_w_m2, current_density/current_density_a_m2, cod/cod_mg_l, hrt/hydraulic_retention_time_h, conductivity/conductivity_ms_cm, temperature/temperature_c, ph/ph, coulombic_efficiency/coulombic_efficiency_percent, hydrogen_production/hydrogen_production_ml_l_d, contaminant_removal_efficiency/contaminant_removal_efficiency_percent, energy_input/energy_input_kwh_m3, methane_biogas_relationship/methane_biogas_relationship, trl/trl, cost_indicator/cost_indicator_usd. Do not invent units, values, or spans.',
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        paper: {
+          paper_id: input.paper.paper_id,
+          source_document_id: input.paper.source_document_id,
+          title: input.paper.title,
+          doi: input.paper.doi,
+          year: input.paper.year,
+          source_type: input.paper.source_type,
+        },
+        max_candidates: input.maxCandidates,
+        source_text: truncateForPrompt(input.sourceText, 16000),
+      }),
+    },
+  ];
+}
+
+export async function generateCanonicalEvidenceMeasurementCandidates(input: {
+  maxCandidates?: number;
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+}): Promise<CanonicalEvidenceMeasurementCandidate[] | null> {
+  const { runtimeMode, unsupportedMode } = resolveNarrativeMode();
+  const provider = completionProviderForMode(runtimeMode);
+
+  if (provider !== 'ollama' || unsupportedMode) {
+    return null;
+  }
+
+  try {
+    const result = await requestChatCompletion({
+      provider,
+      promptVersion: 'canonical-evidence-measurements-ollama-v1',
+      messages: buildCanonicalEvidenceMeasurementMessages({
+        paper: input.paper,
+        sourceText: input.sourceText,
+        maxCandidates: Math.max(1, input.maxCandidates ?? 8),
+      }),
+    });
+
+    if (!result.narrative) {
+      return null;
+    }
+
+    const parsed = parseCanonicalEvidenceMeasurementPayload(result.narrative);
+    return parsed.length > 0
+      ? parsed.slice(0, Math.max(1, input.maxCandidates ?? 8))
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function buildStructuredResearchExtractionMessages(input: {

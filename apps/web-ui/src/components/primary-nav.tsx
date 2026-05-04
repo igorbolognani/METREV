@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import React from 'react';
 
 import { Tooltip } from '@/components/ui/tooltip';
 import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';
@@ -150,15 +151,15 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
 }
 
 export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/';
   const visibleItems = getNavItemsForRole(role);
   const sections = [
     {
-      label: 'Workspace',
+      label: 'Client workspace',
       items: visibleItems.filter((item) => item.section === 'primary'),
     },
     {
-      label: 'Advanced/Internal',
+      label: 'Admin intelligence',
       items: visibleItems.filter((item) => item.section === 'advanced'),
     },
   ].filter((section) => section.items.length > 0);
@@ -168,9 +169,7 @@ export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
       {sections.map((section) => (
         <div className="app-sidebar__nav-section" key={section.label}>
           {!collapsed ? (
-            <span className="app-sidebar__section-label">
-              {section.label}
-            </span>
+            <span className="app-sidebar__section-label">{section.label}</span>
           ) : null}
           {section.items.map((item) => {
             const isActive =

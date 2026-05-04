@@ -340,6 +340,43 @@ describe('workspace presenters', () => {
               ...workspace,
               evaluation: {
                 ...workspace.evaluation,
+                audit_record: {
+                  ...workspace.evaluation.audit_record,
+                  raw_input_snapshot: {
+                    ...workspace.evaluation.audit_record.raw_input_snapshot,
+                    parameter_state: {
+                      temperature_c: {
+                        included: true,
+                        value_source: 'client',
+                        value: 31,
+                        unit: 'C',
+                        confidence_impact: 'medium',
+                        evidence_refs: [],
+                        audit_note:
+                          'Temperature was captured directly in the current evaluation.',
+                      },
+                      membrane_presence: {
+                        included: true,
+                        value_source: 'system_default',
+                        value: 'unknown',
+                        default_rationale:
+                          'Membrane posture remains explicit when direct evidence is unavailable.',
+                        confidence_impact: 'medium',
+                        evidence_refs: [],
+                        audit_note:
+                          'Membrane presence uses the explicit default for this evaluation.',
+                      },
+                      startup_protocol: {
+                        included: false,
+                        value_source: 'unset',
+                        confidence_impact: 'medium',
+                        evidence_refs: [],
+                        audit_note:
+                          'Startup protocol was explicitly excluded in the current run.',
+                      },
+                    },
+                  },
+                },
                 source_usages: [
                   {
                     id: 'source-usage-001',
@@ -377,6 +414,9 @@ describe('workspace presenters', () => {
       );
 
       expect(auditHtml).toContain('Assumptions and defaults audit');
+      expect(auditHtml).toContain('Explicit parameter state');
+      expect(auditHtml).toContain('Membrane presence');
+      expect(auditHtml).toContain('Startup protocol');
       expect(auditHtml).toContain('Confidence and uncertainty summary');
       expect(auditHtml).toContain('Traceability payload');
       expect(auditHtml).toContain('View raw evaluation data');

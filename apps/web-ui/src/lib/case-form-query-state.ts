@@ -8,6 +8,7 @@ export const caseFormStepValues = [
   'anode-biofilm',
   'cathode-catalyst',
   'membrane-separator',
+  'electrical-interconnect',
   'balance-of-plant',
   'sensors-analytics',
   'biology-startup',
@@ -45,6 +46,12 @@ export const caseFormSteps = [
     description: 'Separator type, fouling exposure, and crossover control.',
     label: 'Membrane / Separator',
     value: 'membrane-separator',
+  },
+  {
+    description:
+      'Current collection, sealing, and corrosion-protection posture.',
+    label: 'Electrical Interconnect',
+    value: 'electrical-interconnect',
   },
   {
     description: 'Flow control, gas handling, dosing, and integration detail.',

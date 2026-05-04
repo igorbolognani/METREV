@@ -3,47 +3,47 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    caseHistoryResponseSchema,
-    evaluationClaimUsageSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evaluationSourceUsageSchema,
-    evidenceClaimSchema,
-    evidenceClaimTypeSchema,
-    evidenceExtractionMethodSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    evidenceVeracityScoreSchema,
-    externalEvidenceAccessStatusSchema,
-    externalEvidenceBulkReviewResponseSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    metadataQualityProfileSchema,
-    ontologyMappingSourceSchema,
-    reportConversationTurnSchema,
-    simulationEnrichmentSchema,
-    sourceArtifactSchema,
-    sourceDocumentRecordSchema,
-    supplierDocumentSchema,
-    supplierDocumentTypeSchema,
-    workspaceSnapshotRecordSchema,
-    type CaseHistoryResponse,
-    type ConfidenceLevel,
-    type EvaluationListResponse,
-    type EvaluationResponse,
-    type EvidenceClaim,
-    type ExternalEvidenceBulkReviewResponse,
-    type ExternalEvidenceCatalogItemDetail,
-    type ExternalEvidenceCatalogItemSummary,
-    type ExternalEvidenceCatalogListResponse,
-    type ExternalEvidenceReviewAction,
-    type ExternalEvidenceReviewStatus,
-    type ExternalEvidenceSourceType,
-    type NarrativeMetadata,
-    type ReportConversationCitation,
-    type ReportConversationGrounding,
-    type ReportConversationTurn,
-    type SourceArtifact
+  caseHistoryResponseSchema,
+  evaluationClaimUsageSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationSourceUsageSchema,
+  evidenceClaimSchema,
+  evidenceClaimTypeSchema,
+  evidenceExtractionMethodSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  evidenceVeracityScoreSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  metadataQualityProfileSchema,
+  ontologyMappingSourceSchema,
+  reportConversationTurnSchema,
+  simulationEnrichmentSchema,
+  sourceArtifactSchema,
+  sourceDocumentRecordSchema,
+  supplierDocumentSchema,
+  supplierDocumentTypeSchema,
+  workspaceSnapshotRecordSchema,
+  type CaseHistoryResponse,
+  type ConfidenceLevel,
+  type EvaluationListResponse,
+  type EvaluationResponse,
+  type EvidenceClaim,
+  type ExternalEvidenceBulkReviewResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type ExternalEvidenceCatalogItemSummary,
+  type ExternalEvidenceCatalogListResponse,
+  type ExternalEvidenceReviewAction,
+  type ExternalEvidenceReviewStatus,
+  type ExternalEvidenceSourceType,
+  type NarrativeMetadata,
+  type ReportConversationCitation,
+  type ReportConversationGrounding,
+  type ReportConversationTurn,
+  type SourceArtifact,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -57,26 +57,32 @@ const PRISMA_TRANSACTION_OPTIONS = {
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-    createResearchRepository,
-    MemoryResearchRepository,
-    PrismaResearchRepository,
-    type AddResearchReviewColumnInput,
-    type ClaimResearchExtractionJobsInput,
-    type CreateResearchEvidencePackInput,
-    type CreateResearchReviewInput,
-    type ResearchExtractionWorkItem,
-    type ResearchRepository,
-    type SaveResearchExtractionResultInput
+  MFC_MEC_30000_PRESET_ID,
+  planResearchBackfillPreset,
+  type PlannedResearchBackfill,
+  type PlannedResearchBackfillPreset,
+} from './research-backfill-presets';
+export {
+  createResearchRepository,
+  MemoryResearchRepository,
+  PrismaResearchRepository,
+  type AddResearchReviewColumnInput,
+  type ClaimResearchExtractionJobsInput,
+  type CreateResearchEvidencePackInput,
+  type CreateResearchReviewInput,
+  type ResearchExtractionWorkItem,
+  type ResearchRepository,
+  type SaveResearchExtractionResultInput,
 } from './research-repository';
 export {
-    buildEvidenceVeracityScore,
-    getSourceArtifactForSourceDocument,
-    importLocalPdfSources,
-    localSourceImportRequestToInput,
-    normalizeCliFiles,
-    resolveLocalSourceImportRequestToInput,
-    type LocalPdfImportFile,
-    type LocalPdfImportInput
+  buildEvidenceVeracityScore,
+  getSourceArtifactForSourceDocument,
+  importLocalPdfSources,
+  localSourceImportRequestToInput,
+  normalizeCliFiles,
+  resolveLocalSourceImportRequestToInput,
+  type LocalPdfImportFile,
+  type LocalPdfImportInput,
 } from './source-artifacts';
 
 export interface EvaluationRepository {
@@ -87,6 +93,9 @@ export interface EvaluationRepository {
   ): Promise<EvaluationResponse | null>;
   listEvaluations(input?: EvaluationListInput): Promise<EvaluationListResponse>;
   getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null>;
+  getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput,
+  ): Promise<EvidenceBenchmarkSlice>;
   listExternalEvidenceCatalog(
     input?: ExternalEvidenceCatalogListInput,
   ): Promise<ExternalEvidenceCatalogListResponse>;
@@ -109,11 +118,68 @@ export interface EvaluationRepository {
 }
 
 export interface ExternalEvidenceCatalogListInput {
+  componentType?: string;
+  decisionReady?: boolean;
+  material?: string;
+  metricType?: string;
   reviewStatus?: ExternalEvidenceReviewStatus;
   searchQuery?: string;
   sourceType?: ExternalEvidenceSourceType;
+  systemType?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface EvidenceBenchmarkSliceInput {
+  application?: string;
+  componentTypes?: string[];
+  limit?: number;
+  materials?: string[];
+  metricTypes?: string[];
+  systemType?: string;
+}
+
+export interface EvidenceBenchmarkSlice {
+  aggregates: Array<{
+    canonical_key: string;
+    metric_type: string;
+    normalized_unit: string;
+    system_type: string | null;
+    application: string | null;
+    component_type: string | null;
+    material: string | null;
+    publication_year: number | null;
+    evidence_quality: string | null;
+    record_count: number;
+    min_value: number | null;
+    p25_value: number | null;
+    median_value: number | null;
+    p75_value: number | null;
+    p90_value: number | null;
+    max_value: number | null;
+    mean_value: number | null;
+    confidence_coverage: number | null;
+  }>;
+  evidence: Array<{
+    catalog_item_id: string;
+    source_record_id: string;
+    title: string;
+    doi: string | null;
+    source_url: string | null;
+    canonical_key: string | null;
+    metric_type: string | null;
+    normalized_value: number | null;
+    normalized_unit: string | null;
+    material: string | null;
+    component_type: string | null;
+    confidence: number | null;
+    publication_year: number | null;
+  }>;
+  summary: {
+    aggregate_count: number;
+    evidence_count: number;
+    limited_to: number;
+  };
 }
 
 export interface EvaluationListInput {
@@ -515,6 +581,32 @@ function createExplorerFacetBuckets(
     });
 }
 
+function createExplorerFacetBucketsFromCounts(
+  values: Array<{ value: string | null | undefined; count: number }>,
+  formatLabel: (value: string) => string = titleCaseToken,
+): ExternalEvidenceCatalogListResponse['warehouse_aggregate']['facets']['source_types'] {
+  const counts = new Map<string, number>();
+
+  for (const entry of values) {
+    const value = entry.value?.trim() || 'not_stated';
+    counts.set(value, (counts.get(value) ?? 0) + entry.count);
+  }
+
+  return [...counts.entries()]
+    .map(([value, count]) => ({
+      value,
+      label: formatLabel(value),
+      count,
+    }))
+    .sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+}
+
 function buildExternalEvidenceWarehouseAggregate(
   rows: ExternalEvidenceAggregateRow[],
   returnedItemCount: number,
@@ -556,6 +648,50 @@ function buildExternalEvidenceWarehouseAggregate(
           .map((row) => row.publisher?.trim())
           .filter((value): value is string => Boolean(value)),
       ).size,
+    },
+  };
+}
+
+function buildExternalEvidenceWarehouseAggregateFromStats(input: {
+  sourceTypes: Array<{ value: string | null | undefined; count: number }>;
+  evidenceTypes: Array<{ value: string | null | undefined; count: number }>;
+  reviewStatuses: Array<{ value: string | null | undefined; count: number }>;
+  publishers: Array<{ value: string | null | undefined; count: number }>;
+  qualityLevels: Array<{ value: string | null | undefined; count: number }>;
+  filteredItemCount: number;
+  returnedItemCount: number;
+  claimCount: number;
+  reviewedClaimCount: number;
+  doiCount: number;
+  linkedSourceCount: number;
+  publisherCount: number;
+}): ExternalEvidenceCatalogListResponse['warehouse_aggregate'] {
+  return {
+    facets: {
+      source_types: createExplorerFacetBucketsFromCounts(input.sourceTypes),
+      evidence_types: createExplorerFacetBucketsFromCounts(input.evidenceTypes),
+      review_statuses: createExplorerFacetBucketsFromCounts(
+        input.reviewStatuses,
+      ),
+      publishers: createExplorerFacetBucketsFromCounts(
+        input.publishers,
+        (value) => (value === 'not_stated' ? 'Publisher not stated' : value),
+      ),
+      metadata_quality_levels: createExplorerFacetBucketsFromCounts(
+        input.qualityLevels,
+      ),
+      veracity_levels: createExplorerFacetBucketsFromCounts(
+        input.qualityLevels,
+      ),
+    },
+    snapshot: {
+      filtered_item_count: input.filteredItemCount,
+      returned_item_count: input.returnedItemCount,
+      claim_count: input.claimCount,
+      reviewed_claim_count: input.reviewedClaimCount,
+      doi_count: input.doiCount,
+      linked_source_count: input.linkedSourceCount,
+      publisher_count: input.publisherCount,
     },
   };
 }
@@ -682,6 +818,7 @@ function buildEvaluationListResponse(
 
 const catalogEvidenceIdPrefix = 'catalog:';
 const researchEvidenceIdPrefix = 'research:';
+const canonicalScientificFactLayer = 'canonical_scientific_fact_v1';
 const acceptedCatalogEvidenceUsageNote =
   'Accepted catalog evidence attached during intake selection.';
 const attachedResearchEvidenceUsageNote =
@@ -1245,6 +1382,15 @@ function createExternalEvidenceSummary(record: {
   extractedClaims: unknown;
   claimCount?: number;
   reviewedClaimCount?: number;
+  acceptedBy?: string | null;
+  acceptancePolicy?: string | null;
+  acceptedAt?: Date | null;
+  reviewRequired?: boolean;
+  ingestionMode?: string | null;
+  ingestionBatchId?: string | null;
+  extractionStatus?: string | null;
+  normalizationStatus?: string | null;
+  evidenceQuality?: string | null;
   tags: string[];
   payload?: unknown;
   createdAt: Date;
@@ -1285,6 +1431,15 @@ function createExternalEvidenceSummary(record: {
     provenance_note: record.provenanceNote,
     claim_count: record.claimCount ?? 0,
     reviewed_claim_count: record.reviewedClaimCount ?? 0,
+    accepted_by: record.acceptedBy ?? null,
+    acceptance_policy: record.acceptancePolicy ?? null,
+    accepted_at: record.acceptedAt?.toISOString() ?? null,
+    review_required: record.reviewRequired ?? true,
+    ingestion_mode: record.ingestionMode ?? 'manual',
+    ingestion_batch_id: record.ingestionBatchId ?? null,
+    extraction_status: record.extractionStatus ?? 'pending',
+    normalization_status: record.normalizationStatus ?? 'pending',
+    evidence_quality: record.evidenceQuality ?? null,
     applicability_scope:
       (record.applicabilityScope as Record<string, unknown>) ?? {},
     extracted_claims: Array.isArray(record.extractedClaims)
@@ -1329,6 +1484,15 @@ function createExternalEvidenceDetail(record: {
   extractedClaims: unknown;
   tags: string[];
   payload: unknown;
+  acceptedBy?: string | null;
+  acceptancePolicy?: string | null;
+  acceptedAt?: Date | null;
+  reviewRequired?: boolean;
+  ingestionMode?: string | null;
+  ingestionBatchId?: string | null;
+  extractionStatus?: string | null;
+  normalizationStatus?: string | null;
+  evidenceQuality?: string | null;
   createdAt: Date;
   updatedAt: Date;
   claims?: Array<{
@@ -1475,6 +1639,49 @@ function createExternalEvidenceDetail(record: {
     payload: record.payload,
     raw_payload: record.sourceRecord.rawPayload,
   };
+}
+
+function normalizeTechnicalFilter(value: string | undefined): string | null {
+  return value?.trim().toLowerCase() || null;
+}
+
+function stringifyForTechnicalFilter(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.toLowerCase();
+  }
+
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return JSON.stringify(value).toLowerCase();
+}
+
+function memoryCatalogItemMatchesTechnicalFilters(
+  item: ExternalEvidenceCatalogItemDetail,
+  input: ExternalEvidenceCatalogListInput,
+): boolean {
+  const systemType = normalizeTechnicalFilter(input.systemType);
+  const componentType = normalizeTechnicalFilter(input.componentType);
+  const material = normalizeTechnicalFilter(input.material);
+  const metricType = normalizeTechnicalFilter(input.metricType);
+
+  if (!systemType && !componentType && !material && !metricType) {
+    return true;
+  }
+
+  const searchable = stringifyForTechnicalFilter({
+    title: item.title,
+    summary: item.summary,
+    tags: item.tags,
+    applicability_scope: item.applicability_scope,
+    extracted_claims: item.extracted_claims,
+    payload: item.payload,
+  });
+
+  return [systemType, componentType, material, metricType].every(
+    (filter) => !filter || searchable.includes(filter),
+  );
 }
 
 function createSourceArtifactRecord(record: {
@@ -1717,6 +1924,20 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     return toCaseHistory(evaluations);
   }
 
+  async getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput = {},
+  ): Promise<EvidenceBenchmarkSlice> {
+    return {
+      aggregates: [],
+      evidence: [],
+      summary: {
+        aggregate_count: 0,
+        evidence_count: 0,
+        limited_to: input.limit ?? 0,
+      },
+    };
+  }
+
   async listExternalEvidenceCatalog(
     input: ExternalEvidenceCatalogListInput = {},
   ): Promise<ExternalEvidenceCatalogListResponse> {
@@ -1730,6 +1951,10 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
         }
 
         if (input.sourceType && item.source_type !== input.sourceType) {
+          return false;
+        }
+
+        if (!memoryCatalogItemMatchesTechnicalFilters(item, input)) {
           return false;
         }
 
@@ -1772,13 +1997,31 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
       items: pagedItems,
       summary: {
         total: allItems.length,
+        catalog_total: allItems.length,
         filtered_total: filteredTotal,
         pending: allItems.filter((item) => item.review_status === 'pending')
           .length,
+        pending_review: allItems.filter(
+          (item) => item.review_status === 'pending',
+        ).length,
         accepted: allItems.filter((item) => item.review_status === 'accepted')
           .length,
         rejected: allItems.filter((item) => item.review_status === 'rejected')
           .length,
+        failed_ingestion: 0,
+        duplicate_skipped: 0,
+        canonical_processed: 0,
+        canonical_extracted: 0,
+        canonical_insufficient_source: 0,
+        canonical_needs_full_text: 0,
+        canonical_needs_review: 0,
+        canonical_failed: 0,
+        canonical_facts: 0,
+        benchmark_ready_facts: 0,
+        benchmark_aggregates: 0,
+        last_ingestion_batch: null,
+        ingestion_progress: null,
+        canonicalization_progress: null,
         page,
         page_size: pageSize,
         total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
@@ -2589,6 +2832,128 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
     );
   }
 
+  async getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput = {},
+  ): Promise<EvidenceBenchmarkSlice> {
+    return withSpan(
+      'database.evidence_benchmark.slice',
+      async () => {
+        const limit = Math.min(50, Math.max(1, Math.trunc(input.limit ?? 12)));
+        const stringIn = (values: string[] | undefined) =>
+          values?.map((value) => value.trim()).filter(Boolean);
+        const metricTypes = stringIn(input.metricTypes);
+        const materials = stringIn(input.materials);
+        const componentTypes = stringIn(input.componentTypes);
+        const aggregateSystemType = input.systemType
+          ? { equals: input.systemType, mode: 'insensitive' as const }
+          : undefined;
+        const aggregateApplication = input.application
+          ? { equals: input.application, mode: 'insensitive' as const }
+          : undefined;
+        const aggregateMetricType =
+          metricTypes && metricTypes.length > 0
+            ? { in: metricTypes, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateMaterial =
+          materials && materials.length > 0
+            ? { in: materials, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateComponentType =
+          componentTypes && componentTypes.length > 0
+            ? { in: componentTypes, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateWhere: Prisma.EvidenceBenchmarkAggregateWhereInput = {
+          systemType: aggregateSystemType,
+          application: aggregateApplication,
+          metricType: aggregateMetricType,
+          material: aggregateMaterial,
+          componentType: aggregateComponentType,
+        };
+        const recordWhere: Prisma.EvidenceBenchmarkRecordWhereInput = {
+          decisionReady: true,
+          systemType: aggregateSystemType,
+          application: aggregateApplication,
+          metricType: aggregateMetricType,
+          material: aggregateMaterial,
+          componentType: aggregateComponentType,
+        };
+        const [aggregates, evidence] = await this.prisma.$transaction([
+          this.prisma.evidenceBenchmarkAggregate.findMany({
+            where: aggregateWhere,
+            orderBy: [{ recordCount: 'desc' }, { updatedAt: 'desc' }],
+            take: limit,
+          }),
+          this.prisma.evidenceBenchmarkRecord.findMany({
+            where: recordWhere,
+            include: {
+              catalogItem: {
+                select: {
+                  title: true,
+                },
+              },
+              sourceRecord: {
+                select: {
+                  doi: true,
+                  sourceUrl: true,
+                  publicationYear: true,
+                },
+              },
+            },
+            orderBy: [{ confidence: 'desc' }, { updatedAt: 'desc' }],
+            take: limit,
+          }),
+        ]);
+
+        return {
+          aggregates: aggregates.map((record) => ({
+            canonical_key: record.canonicalKey,
+            metric_type: record.metricType,
+            normalized_unit: record.normalizedUnit,
+            system_type: record.systemType,
+            application: record.application,
+            component_type: record.componentType,
+            material: record.material,
+            publication_year: record.publicationYear,
+            evidence_quality: record.evidenceQuality,
+            record_count: record.recordCount,
+            min_value: record.minValue,
+            p25_value: record.p25Value,
+            median_value: record.medianValue,
+            p75_value: record.p75Value,
+            p90_value: record.p90Value,
+            max_value: record.maxValue,
+            mean_value: record.meanValue,
+            confidence_coverage: record.confidenceCoverage,
+          })),
+          evidence: evidence.map((record) => ({
+            catalog_item_id: record.catalogItemId,
+            source_record_id: record.sourceRecordId,
+            title: record.catalogItem.title,
+            doi: record.sourceRecord.doi,
+            source_url: record.sourceRecord.sourceUrl,
+            canonical_key: record.canonicalKey,
+            metric_type: record.metricType,
+            normalized_value: record.normalizedValue,
+            normalized_unit: record.normalizedUnit,
+            material: record.material,
+            component_type: record.componentType,
+            confidence: record.confidence,
+            publication_year: record.sourceRecord.publicationYear,
+          })),
+          summary: {
+            aggregate_count: aggregates.length,
+            evidence_count: evidence.length,
+            limited_to: limit,
+          },
+        };
+      },
+      {
+        system_type: input.systemType ?? 'all',
+        application: input.application ?? 'all',
+      },
+    );
+  }
+
   async listExternalEvidenceCatalog(
     input: ExternalEvidenceCatalogListInput = {},
   ): Promise<ExternalEvidenceCatalogListResponse> {
@@ -2603,8 +2968,46 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           : undefined;
         const { page, pageSize, skip } = toCatalogPagination(input);
         const searchQuery = input.searchQuery?.trim();
+        const scientificFactFilters =
+          input.systemType ||
+          input.componentType ||
+          input.material ||
+          input.metricType ||
+          input.decisionReady !== undefined
+            ? {
+                some: {
+                  factLayer:
+                    input.decisionReady === true
+                      ? canonicalScientificFactLayer
+                      : undefined,
+                  decisionReady:
+                    input.decisionReady !== undefined
+                      ? input.decisionReady
+                      : undefined,
+                  systemType: input.systemType
+                    ? { equals: input.systemType, mode: 'insensitive' as const }
+                    : undefined,
+                  componentType: input.componentType
+                    ? {
+                        equals: input.componentType,
+                        mode: 'insensitive' as const,
+                      }
+                    : undefined,
+                  material: input.material
+                    ? { contains: input.material, mode: 'insensitive' as const }
+                    : undefined,
+                  metricType: input.metricType
+                    ? {
+                        equals: input.metricType,
+                        mode: 'insensitive' as const,
+                      }
+                    : undefined,
+                },
+              }
+            : undefined;
         const where: Prisma.ExternalEvidenceCatalogItemWhereInput = {
           reviewStatus,
+          scientificFacts: scientificFactFilters,
           sourceRecord: sourceType
             ? {
                 is: {
@@ -2640,15 +3043,50 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               ]
             : undefined,
         };
+        const sourceRecordFacetWhere: Prisma.ExternalSourceRecordWhereInput = {
+          catalogEvidenceItems: {
+            some: where,
+          },
+        };
+        const withSourceRecordCondition = (
+          sourceRecordWhere: Prisma.ExternalSourceRecordWhereInput,
+        ): Prisma.ExternalEvidenceCatalogItemWhereInput => ({
+          AND: [
+            where,
+            {
+              sourceRecord: {
+                is: sourceRecordWhere,
+              },
+            },
+          ],
+        });
 
         const [
           records,
-          aggregateRecords,
           total,
           filteredTotal,
           pendingTotal,
           acceptedTotal,
           rejectedTotal,
+          failedIngestionTotal,
+          duplicateSkippedTotal,
+          lastIngestionRun,
+          activeIngestionRun,
+          latestCanonicalizationRun,
+          activeCanonicalizationRun,
+          canonicalFactTotal,
+          benchmarkReadyFactTotal,
+          benchmarkAggregateTotal,
+          canonicalExtractionStatusGroups,
+          sourceTypeFacetGroups,
+          evidenceTypeFacetGroups,
+          reviewStatusFacetGroups,
+          publisherFacetGroups,
+          qualityFacetGroups,
+          claimCountAggregate,
+          reviewedClaimTotal,
+          doiTotal,
+          linkedSourceTotal,
         ] = await this.prisma.$transaction(
           async (tx) =>
             Promise.all([
@@ -2684,37 +3122,6 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                 skip,
                 take: pageSize,
               }),
-              tx.externalEvidenceCatalogItem.findMany({
-                where,
-                select: {
-                  evidenceType: true,
-                  payload: true,
-                  reviewStatus: true,
-                  claimCount: true,
-                  sourceRecord: {
-                    select: {
-                      sourceType: true,
-                      sourceUrl: true,
-                      doi: true,
-                      publisher: true,
-                    },
-                  },
-                  claims: {
-                    where: {
-                      reviews: {
-                        some: {
-                          status: {
-                            not: 'PENDING',
-                          },
-                        },
-                      },
-                    },
-                    select: {
-                      id: true,
-                    },
-                  },
-                },
-              }),
               tx.externalEvidenceCatalogItem.count(),
               tx.externalEvidenceCatalogItem.count({ where }),
               tx.externalEvidenceCatalogItem.count({
@@ -2726,33 +3133,210 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               tx.externalEvidenceCatalogItem.count({
                 where: { reviewStatus: 'REJECTED' },
               }),
+              tx.evidenceIngestionAudit.count({
+                where: { eventType: 'evidence_ingestion_failed' },
+              }),
+              tx.evidenceDuplicateDecision.count({
+                where: { decision: 'skipped_duplicate' },
+              }),
+              tx.ingestionRun.findFirst({
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsFetched: true,
+                  recordsStored: true,
+                  recordsFailed: true,
+                  duplicatesSkipped: true,
+                  status: true,
+                },
+              }),
+              tx.ingestionRun.findFirst({
+                where: { status: 'STARTED' },
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsFetched: true,
+                  recordsStored: true,
+                  recordsFailed: true,
+                  duplicatesSkipped: true,
+                },
+              }),
+              tx.evidenceCanonicalizationRun.findFirst({
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsProcessed: true,
+                  recordsCanonicalExtracted: true,
+                  recordsInsufficientSource: true,
+                  recordsNeedsFullText: true,
+                  recordsNeedsReview: true,
+                  recordsFailed: true,
+                  canonicalFactsStored: true,
+                  benchmarkRecordsStored: true,
+                  status: true,
+                },
+              }),
+              tx.evidenceCanonicalizationRun.findFirst({
+                where: { status: 'STARTED' },
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsProcessed: true,
+                  recordsCanonicalExtracted: true,
+                  recordsInsufficientSource: true,
+                  recordsNeedsFullText: true,
+                  recordsNeedsReview: true,
+                  recordsFailed: true,
+                  canonicalFactsStored: true,
+                  benchmarkRecordsStored: true,
+                },
+              }),
+              tx.scientificEvidenceFact.count({
+                where: { factLayer: canonicalScientificFactLayer },
+              }),
+              tx.scientificEvidenceFact.count({
+                where: {
+                  factLayer: canonicalScientificFactLayer,
+                  decisionReady: true,
+                },
+              }),
+              tx.evidenceBenchmarkAggregate.count(),
+              tx.externalEvidenceCatalogItem.groupBy({
+                by: ['extractionStatus'],
+                where: {
+                  extractionStatus: {
+                    in: [
+                      'canonical_extracted',
+                      'insufficient_source',
+                      'needs_full_text',
+                      'needs_review',
+                      'extraction_failed',
+                    ],
+                  },
+                },
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalSourceRecord.groupBy({
+                by: ['sourceType'],
+                where: sourceRecordFacetWhere,
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalEvidenceCatalogItem.groupBy({
+                by: ['evidenceType'],
+                where,
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalEvidenceCatalogItem.groupBy({
+                by: ['reviewStatus'],
+                where,
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalSourceRecord.groupBy({
+                by: ['publisher'],
+                where: sourceRecordFacetWhere,
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalEvidenceCatalogItem.groupBy({
+                by: ['evidenceQuality'],
+                where,
+                _count: {
+                  _all: true,
+                },
+              }),
+              tx.externalEvidenceCatalogItem.aggregate({
+                where,
+                _sum: {
+                  claimCount: true,
+                },
+              }),
+              tx.evidenceClaim.count({
+                where: {
+                  catalogItem: {
+                    is: where,
+                  },
+                  reviews: {
+                    some: {
+                      status: {
+                        not: 'PENDING',
+                      },
+                    },
+                  },
+                },
+              }),
+              tx.externalEvidenceCatalogItem.count({
+                where: withSourceRecordCondition({
+                  doi: {
+                    not: null,
+                  },
+                }),
+              }),
+              tx.externalEvidenceCatalogItem.count({
+                where: withSourceRecordCondition({
+                  sourceUrl: {
+                    not: null,
+                  },
+                }),
+              }),
             ]),
           PRISMA_TRANSACTION_OPTIONS,
         );
 
         const items = records;
-        const warehouseAggregate = buildExternalEvidenceWarehouseAggregate(
-          aggregateRecords.map((record) => ({
-            evidence_type: normalizeExternalEvidenceType(
-              record.evidenceType,
-              record.sourceRecord.sourceType,
-            ),
-            review_status: mapExternalEvidenceReviewStatus(record.reviewStatus),
-            source_type: mapExternalEvidenceSourceType(
-              record.sourceRecord.sourceType,
-            ),
-            publisher: record.sourceRecord.publisher,
-            doi: record.sourceRecord.doi,
-            source_url: record.sourceRecord.sourceUrl,
-            claim_count: record.claimCount,
-            metadata_quality_level:
-              metadataQualityFromPayload(record.payload)?.level ?? null,
-            reviewed_claim_count: record.claims.length,
-            veracity_level:
-              veracityScoreFromPayload(record.payload)?.level ?? null,
-          })),
-          items.length,
+        const canonicalStatusCounts = new Map(
+          canonicalExtractionStatusGroups.map((group) => [
+            group.extractionStatus,
+            group._count._all,
+          ]),
         );
+        const warehouseAggregate =
+          buildExternalEvidenceWarehouseAggregateFromStats({
+            sourceTypes: sourceTypeFacetGroups.map((group) => ({
+              value: mapExternalEvidenceSourceType(group.sourceType),
+              count: group._count._all,
+            })),
+            evidenceTypes: evidenceTypeFacetGroups.map((group) => ({
+              value: normalizeExternalEvidenceType(
+                group.evidenceType,
+                'MANUAL',
+              ),
+              count: group._count._all,
+            })),
+            reviewStatuses: reviewStatusFacetGroups.map((group) => ({
+              value: mapExternalEvidenceReviewStatus(group.reviewStatus),
+              count: group._count._all,
+            })),
+            publishers: publisherFacetGroups.map((group) => ({
+              value: group.publisher,
+              count: group._count._all,
+            })),
+            qualityLevels: qualityFacetGroups.map((group) => ({
+              value: group.evidenceQuality,
+              count: group._count._all,
+            })),
+            filteredItemCount: filteredTotal,
+            returnedItemCount: items.length,
+            claimCount: claimCountAggregate._sum.claimCount ?? 0,
+            reviewedClaimCount: reviewedClaimTotal,
+            doiCount: doiTotal,
+            linkedSourceCount: linkedSourceTotal,
+            publisherCount: publisherFacetGroups.filter((group) =>
+              Boolean(group.publisher?.trim()),
+            ).length,
+          });
 
         return externalEvidenceCatalogListResponseSchema.parse({
           items: items.map((record) =>
@@ -2764,10 +3348,124 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           ),
           summary: {
             total,
+            catalog_total: total,
             filtered_total: filteredTotal,
             pending: pendingTotal,
+            pending_review: pendingTotal,
             accepted: acceptedTotal,
             rejected: rejectedTotal,
+            failed_ingestion: failedIngestionTotal,
+            duplicate_skipped: duplicateSkippedTotal,
+            canonical_processed:
+              (canonicalStatusCounts.get('canonical_extracted') ?? 0) +
+              (canonicalStatusCounts.get('insufficient_source') ?? 0) +
+              (canonicalStatusCounts.get('needs_full_text') ?? 0) +
+              (canonicalStatusCounts.get('needs_review') ?? 0) +
+              (canonicalStatusCounts.get('extraction_failed') ?? 0),
+            canonical_extracted:
+              canonicalStatusCounts.get('canonical_extracted') ?? 0,
+            canonical_insufficient_source:
+              canonicalStatusCounts.get('insufficient_source') ?? 0,
+            canonical_needs_full_text:
+              canonicalStatusCounts.get('needs_full_text') ?? 0,
+            canonical_needs_review:
+              canonicalStatusCounts.get('needs_review') ?? 0,
+            canonical_failed:
+              canonicalStatusCounts.get('extraction_failed') ?? 0,
+            canonical_facts: canonicalFactTotal,
+            benchmark_ready_facts: benchmarkReadyFactTotal,
+            benchmark_aggregates: benchmarkAggregateTotal,
+            last_ingestion_batch: lastIngestionRun?.id ?? null,
+            ingestion_progress: activeIngestionRun
+              ? {
+                  active: true,
+                  run_id: activeIngestionRun.id,
+                  target_total: activeIngestionRun.targetTotal ?? total,
+                  current_total: total,
+                  records_remaining: Math.max(
+                    0,
+                    (activeIngestionRun.targetTotal ?? total) - total,
+                  ),
+                  completion_ratio:
+                    (activeIngestionRun.targetTotal ?? total) > 0
+                      ? Math.min(
+                          1,
+                          total / (activeIngestionRun.targetTotal ?? total),
+                        )
+                      : 1,
+                  records_fetched: activeIngestionRun.recordsFetched,
+                  records_stored: activeIngestionRun.recordsStored,
+                  records_failed: activeIngestionRun.recordsFailed,
+                  duplicates_skipped: activeIngestionRun.duplicatesSkipped,
+                }
+              : null,
+            canonicalization_progress: activeCanonicalizationRun
+              ? {
+                  active: true,
+                  run_id: activeCanonicalizationRun.id,
+                  target_total:
+                    activeCanonicalizationRun.targetTotal ?? acceptedTotal,
+                  processed_total:
+                    activeCanonicalizationRun.recordsProcessed,
+                  records_remaining: Math.max(
+                    0,
+                    (activeCanonicalizationRun.targetTotal ?? acceptedTotal) -
+                      activeCanonicalizationRun.recordsProcessed,
+                  ),
+                  completion_ratio:
+                    (activeCanonicalizationRun.targetTotal ?? acceptedTotal) > 0
+                      ? Math.min(
+                          1,
+                          activeCanonicalizationRun.recordsProcessed /
+                            (activeCanonicalizationRun.targetTotal ??
+                              acceptedTotal),
+                        )
+                      : 1,
+                  canonical_facts:
+                    activeCanonicalizationRun.canonicalFactsStored,
+                  benchmark_records:
+                    activeCanonicalizationRun.benchmarkRecordsStored,
+                  insufficient_source:
+                    activeCanonicalizationRun.recordsInsufficientSource,
+                  needs_full_text:
+                    activeCanonicalizationRun.recordsNeedsFullText,
+                  needs_review: activeCanonicalizationRun.recordsNeedsReview,
+                  failed: activeCanonicalizationRun.recordsFailed,
+                }
+              : latestCanonicalizationRun
+                ? {
+                    active: latestCanonicalizationRun.status === 'STARTED',
+                    run_id: latestCanonicalizationRun.id,
+                    target_total:
+                      latestCanonicalizationRun.targetTotal ?? acceptedTotal,
+                    processed_total: latestCanonicalizationRun.recordsProcessed,
+                    records_remaining: Math.max(
+                      0,
+                      (latestCanonicalizationRun.targetTotal ?? acceptedTotal) -
+                        latestCanonicalizationRun.recordsProcessed,
+                    ),
+                    completion_ratio:
+                      (latestCanonicalizationRun.targetTotal ?? acceptedTotal) >
+                      0
+                        ? Math.min(
+                            1,
+                            latestCanonicalizationRun.recordsProcessed /
+                              (latestCanonicalizationRun.targetTotal ??
+                                acceptedTotal),
+                          )
+                        : 1,
+                    canonical_facts:
+                      latestCanonicalizationRun.canonicalFactsStored,
+                    benchmark_records:
+                      latestCanonicalizationRun.benchmarkRecordsStored,
+                    insufficient_source:
+                      latestCanonicalizationRun.recordsInsufficientSource,
+                    needs_full_text:
+                      latestCanonicalizationRun.recordsNeedsFullText,
+                    needs_review: latestCanonicalizationRun.recordsNeedsReview,
+                    failed: latestCanonicalizationRun.recordsFailed,
+                  }
+                : null,
             page,
             page_size: pageSize,
             total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
@@ -2876,6 +3574,16 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             data: {
               reviewStatus: nextReviewStatus,
               sourceState: nextSourceState,
+              acceptedBy:
+                nextReviewStatus === 'ACCEPTED'
+                  ? (input.actorId ?? 'analyst')
+                  : null,
+              acceptancePolicy:
+                nextReviewStatus === 'ACCEPTED'
+                  ? 'manual_exception_review_acceptance'
+                  : null,
+              acceptedAt: nextReviewStatus === 'ACCEPTED' ? new Date() : null,
+              reviewRequired: nextReviewStatus === 'PENDING',
             },
             include: {
               sourceRecord: {

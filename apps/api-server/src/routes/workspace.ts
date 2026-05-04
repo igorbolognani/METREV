@@ -101,9 +101,34 @@ export async function registerWorkspaceRoutes(
       },
     );
 
+    const latestEvaluationId = evaluationList.items[0]?.evaluation_id;
+    const latestEvaluation = latestEvaluationId
+      ? await withSpan(
+          'workspace.dashboard.latest_evaluation',
+          () => app.evaluationRepository.getEvaluation(latestEvaluationId),
+          {
+            actor_id: actor.userId,
+            evaluation_id: latestEvaluationId,
+          },
+        )
+      : null;
+    const evidenceCatalog = await withSpan(
+      'workspace.dashboard.evidence_catalog',
+      () =>
+        app.evaluationRepository.listExternalEvidenceCatalog({
+          page: 1,
+          pageSize: 1,
+        }),
+      {
+        actor_id: actor.userId,
+      },
+    );
+
     return reply.send(
       buildDashboardWorkspace({
+        evidenceCatalogSummary: evidenceCatalog.summary,
         evaluationList,
+        latestEvaluation,
         versions: buildVersionsFromEvaluation(),
       }),
     );
@@ -266,6 +291,11 @@ export async function registerWorkspaceRoutes(
       status?: string;
       q?: string;
       sourceType?: string;
+      systemType?: string;
+      componentType?: string;
+      decisionReady?: string;
+      material?: string;
+      metricType?: string;
       page?: string;
       pageSize?: string;
     };
@@ -279,20 +309,26 @@ export async function registerWorkspaceRoutes(
     }
 
     const parsed = parsedQuery.value;
+    const reviewStatus = parsed.status ?? 'pending';
 
     const evidenceCatalog = await withSpan(
       'workspace.evidence_review',
       () =>
         app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus: parsed.status,
+          reviewStatus,
           searchQuery: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         }),
       {
         actor_id: actor.userId,
-        review_status: parsed.status ?? 'all',
+        review_status: reviewStatus,
         source_type: parsed.sourceType ?? 'all',
       },
     );
@@ -302,7 +338,7 @@ export async function registerWorkspaceRoutes(
         evidenceCatalog,
         versions: buildVersionsFromEvaluation(),
         filters: {
-          status: parsed.status,
+          status: reviewStatus,
           query: parsed.query,
         },
       }),
@@ -319,6 +355,11 @@ export async function registerWorkspaceRoutes(
       status?: string;
       q?: string;
       sourceType?: string;
+      systemType?: string;
+      componentType?: string;
+      decisionReady?: string;
+      material?: string;
+      metricType?: string;
       page?: string;
       pageSize?: string;
     };
@@ -339,6 +380,11 @@ export async function registerWorkspaceRoutes(
           reviewStatus: parsed.status,
           searchQuery: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         }),
@@ -357,6 +403,11 @@ export async function registerWorkspaceRoutes(
           status: parsed.status,
           query: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         },
@@ -374,6 +425,11 @@ export async function registerWorkspaceRoutes(
       status?: string;
       q?: string;
       sourceType?: string;
+      systemType?: string;
+      componentType?: string;
+      decisionReady?: string;
+      material?: string;
+      metricType?: string;
       page?: string;
       pageSize?: string;
     };
@@ -394,6 +450,11 @@ export async function registerWorkspaceRoutes(
           reviewStatus: parsed.status,
           searchQuery: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         }),
@@ -434,6 +495,11 @@ export async function registerWorkspaceRoutes(
           status: parsed.status,
           query: parsed.query,
           sourceType: parsed.sourceType,
+          systemType: parsed.systemType,
+          componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
+          material: parsed.material,
+          metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
         },

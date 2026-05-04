@@ -5,6 +5,7 @@ import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import {
   deduplicateEntries,
+  getEvidenceIngestionConfig,
   normalizeCuratedManifestRecord,
   optionFlag,
   optionValue,
@@ -71,6 +72,7 @@ export async function runCuratedManifestIngestion(overrides = {}) {
     '../data/curated-bigdata-manifest.json',
   );
   const dryRun = optionFlag(options, 'dryRun', false);
+  const evidenceConfig = getEvidenceIngestionConfig(options);
   const { manifest, records, shardCount } = loadCuratedManifestRecords(
     manifestPath,
     import.meta.url,
@@ -83,6 +85,10 @@ export async function runCuratedManifestIngestion(overrides = {}) {
           record,
           startedAt.toISOString(),
           manifestPath,
+          {
+            autoAcceptTrustedCorpus: evidenceConfig.autoAcceptTrustedCorpus,
+            ingestionMode: evidenceConfig.ingestionMode,
+          },
         ),
       )
       .filter(Boolean),
@@ -110,6 +116,9 @@ export async function runCuratedManifestIngestion(overrides = {}) {
       status: 'STARTED',
       recordsFetched: records.length,
       recordsStored: 0,
+      targetTotal: evidenceConfig.targetTotal,
+      batchSize: evidenceConfig.batchSize,
+      autoAccept: evidenceConfig.autoAcceptTrustedCorpus,
       summary: {
         manifest_path: manifestPath,
         manifest_version: manifest?.version ?? null,
@@ -122,6 +131,9 @@ export async function runCuratedManifestIngestion(overrides = {}) {
   try {
     const persisted = await persistNormalizedEntries(prisma, entries, {
       runId: run.id,
+      autoAcceptTrustedCorpus: evidenceConfig.autoAcceptTrustedCorpus,
+      ingestionBatchId: run.id,
+      ingestionMode: evidenceConfig.ingestionMode,
     });
 
     await prisma.ingestionRun.update({
@@ -129,6 +141,11 @@ export async function runCuratedManifestIngestion(overrides = {}) {
       data: {
         status: 'COMPLETED',
         recordsStored: persisted.recordsStored,
+        recordsAccepted: persisted.recordsAccepted,
+        recordsPendingReview: persisted.recordsPendingReview,
+        recordsRejected: persisted.recordsRejected,
+        recordsFailed: persisted.recordsFailed,
+        duplicatesSkipped: persisted.duplicatesSkipped,
         summary: {
           manifest_path: manifestPath,
           manifest_version: manifest?.version ?? null,

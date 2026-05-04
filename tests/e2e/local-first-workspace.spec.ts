@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 import {
-    analystEmail,
-    analystPassword,
-    playwrightApiBaseUrl,
-    seededEvidenceSummary,
-    seededEvidenceTitle,
+  analystEmail,
+  analystPassword,
+  playwrightApiBaseUrl,
+  seededEvidenceSummary,
+  seededEvidenceTitle,
 } from './support/local-runtime';
 
 async function signInAsAnalyst(page: import('@playwright/test').Page) {
@@ -105,6 +105,90 @@ async function createEvaluationViaApi(
 }
 
 test.describe('local-first professional workspace', () => {
+  test('lets analysts jump freely across all 11 cockpit flow points without losing draft context', async ({
+    page,
+  }) => {
+    const caseId = `PW-NAV-${Date.now()}`;
+    const cockpitSteps = [
+      {
+        label: /Context & Objective/,
+        step: 'context-objective',
+      },
+      {
+        label: /Reactor Architecture/,
+        step: 'reactor-architecture',
+      },
+      {
+        label: /Anode & Biofilm/,
+        step: 'anode-biofilm',
+      },
+      {
+        label: /Cathode & Catalyst/,
+        step: 'cathode-catalyst',
+      },
+      {
+        label: /Membrane \/ Separator/,
+        step: 'membrane-separator',
+      },
+      {
+        label: /Balance Of Plant/,
+        step: 'balance-of-plant',
+      },
+      {
+        label: /Sensors & Analytics/,
+        step: 'sensors-analytics',
+      },
+      {
+        label: /Biology & Startup/,
+        step: 'biology-startup',
+      },
+      {
+        label: /Operating Envelope/,
+        step: 'operating-envelope',
+      },
+      {
+        label: /Suppliers & Constraints/,
+        step: 'suppliers-constraints',
+      },
+      {
+        label: /Review & Submit/,
+        step: 'review-submit',
+      },
+    ] as const;
+
+    await signInAsAnalyst(page);
+
+    await page.goto('/cases/new');
+    await expect(page).toHaveURL(/\/cases\/new$/);
+
+    await page.getByLabel('Case identifier').fill(caseId);
+    await page.getByLabel('Current TRL').fill('pilot');
+    await page.getByLabel('Decision horizon').fill('12 months');
+    await page
+      .getByLabel('Deployment context')
+      .fill('free navigation regression check');
+
+    const stepper = page.getByLabel('Stack cockpit wizard steps');
+
+    for (const cockpitStep of cockpitSteps.slice(1)) {
+      await stepper.getByRole('button', { name: cockpitStep.label }).click();
+      await expect(page).toHaveURL(
+        new RegExp(`\/cases\/new\\?step=${cockpitStep.step}$`),
+      );
+    }
+
+    await expect(page.getByLabel('Working assumptions')).toBeVisible();
+
+    await stepper.getByRole('button', { name: cockpitSteps[0].label }).click();
+    await expect(page).toHaveURL(/\/cases\/new(?:\?step=context-objective)?$/);
+    await expect(page.getByLabel('Case identifier')).toHaveValue(caseId);
+    await expect(page.getByLabel('Current TRL')).toHaveValue('pilot');
+    await expect(page.getByLabel('Decision horizon')).toHaveValue('12 months');
+    await expect(page.getByLabel('Deployment context')).toHaveValue(
+      'free navigation regression check',
+    );
+  });
+
   test('covers review, intake, submitting, result, exports, report, history, and comparison', async ({
     page,
   }) => {
@@ -133,6 +217,8 @@ test.describe('local-first professional workspace', () => {
 
     await page.getByRole('link', { name: 'Open stack cockpit' }).click();
     await expect(page).toHaveURL(/\/cases\/new$/);
+
+    await page.getByRole('button', { name: /Preset library/ }).click();
 
     const wastewaterPreset = page
       .locator('article')

@@ -181,6 +181,18 @@ export const workspaceToneSchema = z.enum([
   'muted',
 ]);
 
+export const parameterValueSourceSchema = z.enum([
+  'client',
+  'system_default',
+  'unset',
+]);
+
+export const parameterConfidenceImpactSchema = z.enum([
+  'low',
+  'medium',
+  'high',
+]);
+
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 
 export const metadataQualityLevelSchema = z.enum(['low', 'medium', 'high']);
@@ -221,6 +233,17 @@ const scalarValueSchema = z.union([
   z.boolean(),
   z.null(),
 ]);
+
+export const parameterStateSchema = z.object({
+  included: z.boolean(),
+  value_source: parameterValueSourceSchema,
+  value: scalarValueSchema.optional(),
+  unit: z.string().min(1).optional(),
+  default_rationale: z.string().min(1).optional(),
+  confidence_impact: parameterConfidenceImpactSchema.optional(),
+  evidence_refs: z.array(z.string()).default([]),
+  audit_note: z.string().min(1).optional(),
+});
 
 export const supplierContextSchema = z
   .object({
@@ -405,6 +428,7 @@ export const rawCaseInputSchema = z.object({
   assumptions: z.array(z.string()).optional(),
   missing_data: z.array(z.string()).optional(),
   defaults_used: z.array(z.string()).optional(),
+  parameter_state: z.record(z.string(), parameterStateSchema).optional(),
   supplier_context: supplierContextSchema.optional(),
   normalization_status: flexibleObjectSchema.optional(),
 });
@@ -746,10 +770,56 @@ export const caseHistoryResponseSchema = z.object({
 
 export const externalEvidenceCatalogListSummarySchema = z.object({
   total: z.number().int().nonnegative(),
+  catalog_total: z.number().int().nonnegative().optional(),
   filtered_total: z.number().int().nonnegative().default(0),
   pending: z.number().int().nonnegative(),
+  pending_review: z.number().int().nonnegative().optional(),
   accepted: z.number().int().nonnegative(),
   rejected: z.number().int().nonnegative(),
+  failed_ingestion: z.number().int().nonnegative().default(0),
+  duplicate_skipped: z.number().int().nonnegative().default(0),
+  canonical_processed: z.number().int().nonnegative().default(0),
+  canonical_extracted: z.number().int().nonnegative().default(0),
+  canonical_insufficient_source: z.number().int().nonnegative().default(0),
+  canonical_needs_full_text: z.number().int().nonnegative().default(0),
+  canonical_needs_review: z.number().int().nonnegative().default(0),
+  canonical_failed: z.number().int().nonnegative().default(0),
+  canonical_facts: z.number().int().nonnegative().default(0),
+  benchmark_ready_facts: z.number().int().nonnegative().default(0),
+  benchmark_aggregates: z.number().int().nonnegative().default(0),
+  last_ingestion_batch: z.string().nullable().default(null),
+  ingestion_progress: z
+    .object({
+      active: z.boolean(),
+      run_id: z.string().nullable().default(null),
+      target_total: z.number().int().nonnegative(),
+      current_total: z.number().int().nonnegative(),
+      records_remaining: z.number().int().nonnegative(),
+      completion_ratio: z.number().min(0).max(1),
+      records_fetched: z.number().int().nonnegative(),
+      records_stored: z.number().int().nonnegative(),
+      records_failed: z.number().int().nonnegative(),
+      duplicates_skipped: z.number().int().nonnegative(),
+    })
+    .nullable()
+    .default(null),
+  canonicalization_progress: z
+    .object({
+      active: z.boolean(),
+      run_id: z.string().nullable().default(null),
+      target_total: z.number().int().nonnegative(),
+      processed_total: z.number().int().nonnegative(),
+      records_remaining: z.number().int().nonnegative(),
+      completion_ratio: z.number().min(0).max(1),
+      canonical_facts: z.number().int().nonnegative(),
+      benchmark_records: z.number().int().nonnegative(),
+      insufficient_source: z.number().int().nonnegative(),
+      needs_full_text: z.number().int().nonnegative(),
+      needs_review: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+    })
+    .nullable()
+    .default(null),
   page: z.number().int().positive().default(1),
   page_size: z.number().int().positive().default(25),
   total_pages: z.number().int().positive().default(1),
@@ -864,6 +934,54 @@ export const workspaceMetricRecordSchema = z.object({
   note: z.string().min(1),
 });
 
+export const parameterStateSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  client_values: z.number().int().nonnegative(),
+  system_defaults: z.number().int().nonnegative(),
+  excluded: z.number().int().nonnegative(),
+  unresolved: z.number().int().nonnegative(),
+});
+
+export const dashboardParameterSummarySchema = parameterStateSummarySchema;
+
+export const parameterStateAuditEntrySchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  included: z.boolean(),
+  value_source: parameterValueSourceSchema,
+  value_label: z.string().min(1),
+  unit: z.string().min(1).nullable(),
+  confidence_impact: parameterConfidenceImpactSchema.nullable(),
+  default_rationale: z.string().min(1).nullable(),
+  audit_note: z.string().min(1).nullable(),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+export const parameterStateAuditSchema = z.object({
+  summary: parameterStateSummarySchema,
+  entries: z.array(parameterStateAuditEntrySchema),
+});
+export const dashboardRunOutputStatusSchema = z.object({
+  report_available: z.boolean(),
+  narrative_available: z.boolean(),
+  modeled: z.boolean(),
+});
+
+export const dashboardLatestRunOverviewSchema = z.object({
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  assumptions_count: z.number().int().nonnegative(),
+  evidence_count: z.number().int().nonnegative(),
+  attention_count: z.number().int().nonnegative(),
+  parameter_summary: dashboardParameterSummarySchema,
+  brief_cards: z.array(workspaceBriefCardSchema),
+  attention_items: z.array(workspaceAttentionItemSchema),
+  lead_action: workspaceLeadActionSchema,
+  output_status: dashboardRunOutputStatusSchema,
+});
+
 export const dashboardWorkspaceResponseSchema = z.object({
   meta: workspaceMetaSchema,
   presentation: workspacePresentationSchema.optional(),
@@ -873,6 +991,7 @@ export const dashboardWorkspaceResponseSchema = z.object({
     high_confidence_runs: z.number().int().nonnegative(),
     modeled_runs: z.number().int().nonnegative(),
   }),
+  evidence_catalog: externalEvidenceCatalogListSummarySchema,
   hero: z.object({
     title: z.string().min(1),
     subtitle: z.string().min(1),
@@ -889,6 +1008,7 @@ export const dashboardWorkspaceResponseSchema = z.object({
     latest_evaluation_href: z.string().nullable(),
     latest_case_history_href: z.string().nullable(),
   }),
+  latest_run_overview: dashboardLatestRunOverviewSchema.nullable(),
   recent_evaluations: z.array(evaluationSummarySchema),
   recent_reports: z.array(dashboardReportSummarySchema),
 });
@@ -1035,6 +1155,11 @@ export const evidenceExplorerWorkspaceResponseSchema = z.object({
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
     search_query: z.string().optional(),
   }),
   summary: externalEvidenceCatalogListSummarySchema,
@@ -1057,6 +1182,11 @@ export const evidenceExplorerAssistantResponseSchema = z.object({
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
     search_query: z.string().optional(),
   }),
   warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,
@@ -1087,6 +1217,7 @@ export const printableEvaluationReportResponseSchema = z.object({
     supplier_shortlist: z.array(supplierShortlistEntrySchema),
     phased_roadmap: z.array(phasedRoadmapEntrySchema),
     assumptions_and_defaults_audit: assumptionsAndDefaultsAuditSchema,
+    parameter_state_audit: parameterStateAuditSchema,
     confidence_and_uncertainty_summary: confidenceAndUncertaintySummarySchema,
   }),
 });
@@ -1172,6 +1303,15 @@ export const externalEvidenceCatalogSummarySchema = z.object({
   provenance_note: z.string().min(1),
   claim_count: z.number().int().nonnegative().default(0),
   reviewed_claim_count: z.number().int().nonnegative().default(0),
+  accepted_by: z.string().nullable().default(null),
+  acceptance_policy: z.string().nullable().default(null),
+  accepted_at: z.string().nullable().default(null),
+  review_required: z.boolean().default(true),
+  ingestion_mode: z.string().min(1).default('manual'),
+  ingestion_batch_id: z.string().nullable().default(null),
+  extraction_status: z.string().min(1).default('pending'),
+  normalization_status: z.string().min(1).default('pending'),
+  evidence_quality: z.string().nullable().default(null),
   applicability_scope: flexibleObjectSchema.default({}),
   extracted_claims: z.array(z.unknown()).default([]),
   tags: z.array(z.string()).default([]),
@@ -1411,6 +1551,7 @@ export type WorkspaceLeadAction = z.infer<typeof workspaceLeadActionSchema>;
 export type WorkspaceRoadmapItem = z.infer<typeof workspaceRoadmapItemSchema>;
 export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
 export type WorkspaceMetricRecord = z.infer<typeof workspaceMetricRecordSchema>;
+export type ParameterStateAudit = z.infer<typeof parameterStateAuditSchema>;
 export type DashboardWorkspaceResponse = z.infer<
   typeof dashboardWorkspaceResponseSchema
 >;

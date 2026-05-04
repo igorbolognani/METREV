@@ -118,7 +118,7 @@ describe('evaluations list view', () => {
       }),
     );
 
-    expect(catalogHtml).toContain('All evaluations');
+    expect(catalogHtml).toContain('Evaluation registry');
     expect(catalogHtml).toContain('Registry layers');
     expect(catalogHtml).toContain('Catalog');
     expect(catalogHtml).toContain('Audit');
@@ -130,5 +130,40 @@ describe('evaluations list view', () => {
 
     expect(auditHtml).toContain('Current filter state');
     expect(auditHtml).toContain('Registry posture');
+  });
+
+  it('renders a clean empty state after the local registry is reset', () => {
+    const emptyHtml = renderToStaticMarkup(
+      React.createElement(EvaluationsWorkspaceView, {
+        activeTab: 'catalog',
+        confidenceFilter: 'all',
+        items: [],
+        onConfidenceFilterChange: vi.fn(),
+        onNextPage: vi.fn(),
+        onPageSizeChange: vi.fn(),
+        onPreviousPage: vi.fn(),
+        onSearchInputChange: vi.fn(),
+        onSortDirectionChange: vi.fn(),
+        onSortKeyChange: vi.fn(),
+        page: 1,
+        pageSize: 25,
+        searchInput: '',
+        summary: {
+          total: 0,
+          filtered_total: 0,
+          page: 1,
+          page_size: 25,
+          total_pages: 0,
+          returned: 0,
+        },
+        sortDirection: 'desc',
+        sortKey: 'created_at',
+      }),
+    );
+
+    expect(emptyHtml).toContain('No saved evaluations yet');
+    expect(emptyHtml).toContain('The evaluation registry is empty');
+    expect(emptyHtml).toContain('Configure stack');
+    expect(emptyHtml).toContain('Dashboard');
   });
 });

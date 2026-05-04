@@ -7,19 +7,19 @@ import { promisify } from 'node:util';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    evidenceVeracityScoreSchema,
-    externalEvidenceAccessStatusSchema,
-    localSourceImportResponseSchema,
-    metadataQualityProfileSchema,
-    researchPaperMetadataSchema,
-    sourceArtifactSchema,
-    type EvidenceVeracityScore,
-    type ExternalEvidenceAccessStatus,
-    type LocalSourceImportRequest,
-    type LocalSourceImportResponse,
-    type MetadataQualityProfile,
-    type ResearchPaperMetadata,
-    type SourceArtifact,
+  evidenceVeracityScoreSchema,
+  externalEvidenceAccessStatusSchema,
+  localSourceImportResponseSchema,
+  metadataQualityProfileSchema,
+  researchPaperMetadataSchema,
+  sourceArtifactSchema,
+  type EvidenceVeracityScore,
+  type ExternalEvidenceAccessStatus,
+  type LocalSourceImportRequest,
+  type LocalSourceImportResponse,
+  type MetadataQualityProfile,
+  type ResearchPaperMetadata,
+  type SourceArtifact,
 } from '@metrev/domain-contracts';
 
 const execFileAsync = promisify(execFile);
@@ -124,7 +124,7 @@ function levelFromScore(score: number): 'low' | 'medium' | 'high' {
   return 'low';
 }
 
-function metadataQualityFromFields(input: {
+export function buildMetadataQualityProfile(input: {
   accessStatus: ExternalEvidenceAccessStatus;
   doi: string | null;
   extractionMethod: string;
@@ -325,7 +325,7 @@ async function extractText(filePath: string): Promise<{
   }
 }
 
-function chunkPages(pages: string[]) {
+export function chunkTextPages(pages: string[]) {
   const chunks: Array<{
     charEnd: number;
     charStart: number;
@@ -380,7 +380,7 @@ function inferClaimType(sentence: string) {
   return 'APPLICABILITY' as const;
 }
 
-function extractClaimCandidates(chunks: ReturnType<typeof chunkPages>) {
+function extractClaimCandidates(chunks: ReturnType<typeof chunkTextPages>) {
   const seen = new Set<string>();
   const sentences = chunks.flatMap((chunk) =>
     chunk.text.split(/(?<=[.!?])\s+/).map((sentence) => ({
@@ -414,7 +414,7 @@ function extractClaimCandidates(chunks: ReturnType<typeof chunkPages>) {
     }));
 }
 
-function mapAccessStatusToDatabase(value: ExternalEvidenceAccessStatus) {
+export function mapAccessStatusToDatabase(value: ExternalEvidenceAccessStatus) {
   return value.toUpperCase() as
     | 'GOLD'
     | 'GREEN'
@@ -494,14 +494,14 @@ async function importOneLocalPdf(
   const pdfInfo = await extractPdfInfo(filePath);
   const extracted = await extractText(filePath);
   const title = pdfInfo.title ?? basename(filePath);
-  const chunks = chunkPages(extracted.pages);
+  const chunks = chunkTextPages(extracted.pages);
   const accessStatus = file.accessStatus ?? defaults.accessStatus;
   const license = file.license ?? defaults.license ?? null;
   const reviewStatus = file.reviewStatus ?? defaults.reviewStatus;
   const pageCount =
     pdfInfo.pageCount ??
     (extracted.pages.length > 0 ? extracted.pages.length : null);
-  const metadataQuality = metadataQualityFromFields({
+  const metadataQuality = buildMetadataQualityProfile({
     accessStatus,
     doi: pdfInfo.doi,
     extractionMethod: extracted.extractionMethod,
@@ -660,6 +660,17 @@ async function importOneLocalPdf(
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
         reviewStatus: mapReviewStatusToDatabase(reviewStatus),
         sourceState: 'PARSED',
+        acceptedBy: reviewStatus === 'accepted' ? 'system' : null,
+        acceptancePolicy:
+          reviewStatus === 'accepted'
+            ? 'local_source_import_accepted_input'
+            : null,
+        acceptedAt: reviewStatus === 'accepted' ? now : null,
+        reviewRequired: reviewStatus !== 'accepted',
+        ingestionMode: 'local_pdf',
+        extractionStatus: chunks.length > 0 ? 'heuristic_extracted' : 'failed',
+        normalizationStatus: 'parsed',
+        evidenceQuality: veracityScore.level,
         applicabilityScope: toPrismaJsonValue({
           source_artifact_id: artifact.id,
           metadata_quality_level: metadataQuality.level,
@@ -689,6 +700,17 @@ async function importOneLocalPdf(
           'Imported from local PDF. Full extracted text is stored locally with page/chunk locators; analyst review remains required before downstream use.',
         reviewStatus: mapReviewStatusToDatabase(reviewStatus),
         sourceState: 'PARSED',
+        acceptedBy: reviewStatus === 'accepted' ? 'system' : null,
+        acceptancePolicy:
+          reviewStatus === 'accepted'
+            ? 'local_source_import_accepted_input'
+            : null,
+        acceptedAt: reviewStatus === 'accepted' ? now : null,
+        reviewRequired: reviewStatus !== 'accepted',
+        ingestionMode: 'local_pdf',
+        extractionStatus: chunks.length > 0 ? 'heuristic_extracted' : 'failed',
+        normalizationStatus: 'parsed',
+        evidenceQuality: veracityScore.level,
         applicabilityScope: toPrismaJsonValue({
           source_artifact_id: artifact.id,
           metadata_quality_level: metadataQuality.level,

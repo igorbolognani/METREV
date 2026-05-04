@@ -9,6 +9,7 @@ import type {
     ReportConversationResponse,
 } from '@metrev/domain-contracts';
 
+import { ParameterStateAuditCard } from '@/components/parameter-state-audit-card';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -620,6 +621,10 @@ export function PrintableReportWorkspaceView({
                   )}
                 </ul>
               </WorkspaceDataCard>
+              <ParameterStateAuditCard
+                audit={report.sections.parameter_state_audit}
+                emptyMessage="No explicit parameter-state entries were stored in this printable report."
+              />
               <WorkspaceDataCard>
                 <h3>Evidence quality caveats</h3>
                 {listOrEmpty(

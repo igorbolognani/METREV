@@ -5,6 +5,7 @@ import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import {
   deduplicateEntries,
+  getEvidenceIngestionConfig,
   normalizeOpenAlexWork,
   optionFlag,
   optionNumber,
@@ -24,6 +25,7 @@ export async function runOpenAlexIngestion(overrides = {}) {
   };
 
   const query = optionValue(options, 'query', process.env.INGEST_QUERY?.trim());
+  const evidenceConfig = getEvidenceIngestionConfig(options);
   const limit = optionNumber(
     options,
     'limit',
@@ -111,7 +113,10 @@ export async function runOpenAlexIngestion(overrides = {}) {
     normalizedEntries.push(
       ...results
         .map((entry) =>
-          normalizeOpenAlexWork(entry, query, startedAt.toISOString()),
+          normalizeOpenAlexWork(entry, query, startedAt.toISOString(), {
+            autoAcceptTrustedCorpus: evidenceConfig.autoAcceptTrustedCorpus,
+            ingestionMode: evidenceConfig.ingestionMode,
+          }),
         )
         .filter(Boolean),
     );
@@ -153,6 +158,9 @@ export async function runOpenAlexIngestion(overrides = {}) {
       status: 'STARTED',
       recordsFetched: 0,
       recordsStored: 0,
+      targetTotal: evidenceConfig.targetTotal,
+      batchSize: evidenceConfig.batchSize,
+      autoAccept: evidenceConfig.autoAcceptTrustedCorpus,
       checkpoint: {
         cursor: initialCursor,
       },
@@ -168,6 +176,9 @@ export async function runOpenAlexIngestion(overrides = {}) {
   try {
     const persisted = await persistNormalizedEntries(prisma, entries, {
       runId: run.id,
+      autoAcceptTrustedCorpus: evidenceConfig.autoAcceptTrustedCorpus,
+      ingestionBatchId: run.id,
+      ingestionMode: evidenceConfig.ingestionMode,
     });
 
     await prisma.ingestionRun.update({
@@ -176,6 +187,11 @@ export async function runOpenAlexIngestion(overrides = {}) {
         status: 'COMPLETED',
         recordsFetched,
         recordsStored: persisted.recordsStored,
+        recordsAccepted: persisted.recordsAccepted,
+        recordsPendingReview: persisted.recordsPendingReview,
+        recordsRejected: persisted.recordsRejected,
+        recordsFailed: persisted.recordsFailed,
+        duplicatesSkipped: persisted.duplicatesSkipped,
         checkpoint: {
           cursor: nextCursor,
           pages_processed: pagesProcessed,
