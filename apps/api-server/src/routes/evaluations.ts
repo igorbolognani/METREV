@@ -4,6 +4,12 @@ import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import { confidenceLevelSchema } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 const evaluationSortKeyValues = [
   'created_at',
   'confidence_level',
@@ -53,7 +59,7 @@ function replyForAuthorizationError(
 export async function registerEvaluationRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/', async (request, reply) => {
+  app.get('/', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');
     } catch (error) {
@@ -148,7 +154,7 @@ export async function registerEvaluationRoutes(
     );
   });
 
-  app.get('/:id', async (request, reply) => {
+  app.get('/:id', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');
     } catch (error) {

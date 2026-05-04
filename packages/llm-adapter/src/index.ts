@@ -91,6 +91,23 @@ export interface CanonicalEvidenceMeasurementCandidate {
   textSpan: string;
 }
 
+export type CanonicalEvidenceQualitativeCategory =
+  | 'system_type'
+  | 'reactor_type'
+  | 'material'
+  | 'limitation'
+  | 'scientific_theory';
+
+export interface CanonicalEvidenceQualitativeCandidate {
+  canonicalValue: string;
+  category: CanonicalEvidenceQualitativeCategory;
+  componentType: string | null;
+  confidence: number;
+  fieldKey: string;
+  sourceLocator: string;
+  textSpan: string;
+}
+
 type SupportedNarrativeMode = 'disabled' | 'stub' | 'ollama';
 type CompletionProvider = 'ollama';
 
@@ -480,6 +497,89 @@ function parseCanonicalEvidenceMeasurementPayload(
   });
 }
 
+const canonicalEvidenceQualitativeCategories =
+  new Set<CanonicalEvidenceQualitativeCategory>([
+    'system_type',
+    'reactor_type',
+    'material',
+    'limitation',
+    'scientific_theory',
+  ]);
+
+function parseCanonicalEvidenceQualitativePayload(
+  value: string,
+): CanonicalEvidenceQualitativeCandidate[] {
+  const parsed = JSON.parse(stripJsonCodeFence(value)) as {
+    qualitative_facts?: unknown;
+  };
+
+  if (!Array.isArray(parsed.qualitative_facts)) {
+    return [];
+  }
+
+  return parsed.qualitative_facts.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+
+    const candidate = entry as {
+      canonical_value?: unknown;
+      category?: unknown;
+      component_type?: unknown;
+      confidence?: unknown;
+      field_key?: unknown;
+      source_locator?: unknown;
+      text_span?: unknown;
+    };
+
+    if (
+      typeof candidate.category !== 'string' ||
+      typeof candidate.field_key !== 'string' ||
+      typeof candidate.canonical_value !== 'string' ||
+      typeof candidate.text_span !== 'string'
+    ) {
+      return [];
+    }
+
+    const category = candidate.category.trim();
+    if (
+      !canonicalEvidenceQualitativeCategories.has(
+        category as CanonicalEvidenceQualitativeCategory,
+      )
+    ) {
+      return [];
+    }
+
+    const fieldKey = candidate.field_key.trim();
+    const canonicalValue = candidate.canonical_value.trim();
+    const textSpan = candidate.text_span.trim();
+
+    if (!fieldKey || !canonicalValue || !textSpan) {
+      return [];
+    }
+
+    return [
+      {
+        canonicalValue,
+        category: category as CanonicalEvidenceQualitativeCategory,
+        componentType:
+          typeof candidate.component_type === 'string' &&
+          candidate.component_type.trim().length > 0
+            ? candidate.component_type.trim()
+            : null,
+        confidence: confidenceNumberFromUnknown(candidate.confidence),
+        fieldKey,
+        sourceLocator:
+          typeof candidate.source_locator === 'string' &&
+          candidate.source_locator.trim().length > 0
+            ? candidate.source_locator.trim()
+            : 'llm_schema_validated_qualitative',
+        textSpan,
+      },
+    ];
+  });
+}
+
 function buildCanonicalEvidenceMeasurementMessages(input: {
   paper: ResearchPaperMetadata;
   sourceText: string;
@@ -489,7 +589,7 @@ function buildCanonicalEvidenceMeasurementMessages(input: {
     {
       role: 'system',
       content:
-        'You extract structured scientific measurements for METREV. Use only exact text present in source_text. Return JSON only with key measurements. Each measurement must include field_key, canonical_key, raw_value, raw_unit, text_span, source_locator, and confidence. text_span must be an exact substring copied from source_text. Allowed field_key/canonical_key pairs are: power_density/power_density_w_m2, current_density/current_density_a_m2, cod/cod_mg_l, hrt/hydraulic_retention_time_h, conductivity/conductivity_ms_cm, temperature/temperature_c, ph/ph, coulombic_efficiency/coulombic_efficiency_percent, hydrogen_production/hydrogen_production_ml_l_d, contaminant_removal_efficiency/contaminant_removal_efficiency_percent, energy_input/energy_input_kwh_m3, methane_biogas_relationship/methane_biogas_relationship, trl/trl, cost_indicator/cost_indicator_usd. Do not invent units, values, or spans.',
+        'You extract structured scientific measurements for METREV. Use only exact text present in source_text. Return JSON only with key measurements. Each measurement must include field_key, canonical_key, raw_value, raw_unit, text_span, source_locator, and confidence. text_span must be an exact substring copied from source_text. Allowed field_key/canonical_key pairs are: power_density/power_density_w_m2, current_density/current_density_a_m2, cod/cod_mg_l, hrt/hydraulic_retention_time_h, conductivity/conductivity_ms_cm, temperature/temperature_c, ph/ph, coulombic_efficiency/coulombic_efficiency_pct, hydrogen_production/hydrogen_production_ml_l_d, contaminant_removal_efficiency/contaminant_removal_efficiency_pct, energy_input/energy_input_kwh_m3, methane_biogas_relationship/methane_biogas_relationship, trl_maturity/trl, cost_indicators/cost_indicator_usd. Do not invent units, values, or spans.',
     },
     {
       role: 'user',
@@ -539,6 +639,71 @@ export async function generateCanonicalEvidenceMeasurementCandidates(input: {
     const parsed = parseCanonicalEvidenceMeasurementPayload(result.narrative);
     return parsed.length > 0
       ? parsed.slice(0, Math.max(1, input.maxCandidates ?? 8))
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildCanonicalEvidenceQualitativeMessages(input: {
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+  maxCandidates: number;
+}): Array<{ role: 'system' | 'user'; content: string }> {
+  return [
+    {
+      role: 'system',
+      content:
+        'You extract non-numeric canonical evidence facts for METREV bioelectrochemical systems. Use only exact text present in source_text and return JSON only with qualitative_facts. Each fact must include category, field_key, canonical_value, text_span, source_locator, confidence, and component_type when relevant. text_span must be an exact substring copied from source_text. Allowed categories: system_type, reactor_type, material, limitation, scientific_theory. Allowed system_type canonical_value values: MFC, MEC, MET, MDC, BES, bioelectrochemical_system. Allowed reactor_type canonical_value values: single_chamber, two_chamber, air_cathode, membrane_less, tubular, upflow, stacked. Allowed material field_key values: anode_material, cathode_material, membrane_separator, catalyst_material, current_collector_material, material. Allowed component_type values: anode, cathode, membrane_separator, catalyst, current_collector, material_unspecified. For limitations use field_key reported_limitations, operating_constraints, failure_modes, or reported_tradeoffs. For scientific_theory use field_key electron_transfer_mechanism, biofilm_mechanism, microbial_metabolism, ion_transport_mechanism, anode_reaction_mechanism, cathode_reaction_mechanism, mass_transport_mechanism, redox_mediator_mechanism, resource_recovery_mechanism, or electrochemical_model. Capture only explicit technical or scientific statements about the system; do not infer, generalize, or invent facts.',
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        paper: {
+          paper_id: input.paper.paper_id,
+          source_document_id: input.paper.source_document_id,
+          title: input.paper.title,
+          doi: input.paper.doi,
+          year: input.paper.year,
+          source_type: input.paper.source_type,
+        },
+        max_candidates: input.maxCandidates,
+        source_text: truncateForPrompt(input.sourceText, 16000),
+      }),
+    },
+  ];
+}
+
+export async function generateCanonicalEvidenceQualitativeCandidates(input: {
+  maxCandidates?: number;
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+}): Promise<CanonicalEvidenceQualitativeCandidate[] | null> {
+  const { runtimeMode, unsupportedMode } = resolveNarrativeMode();
+  const provider = completionProviderForMode(runtimeMode);
+
+  if (provider !== 'ollama' || unsupportedMode) {
+    return null;
+  }
+
+  try {
+    const result = await requestChatCompletion({
+      provider,
+      promptVersion: 'canonical-evidence-qualitative-ollama-v1',
+      messages: buildCanonicalEvidenceQualitativeMessages({
+        paper: input.paper,
+        sourceText: input.sourceText,
+        maxCandidates: Math.max(1, input.maxCandidates ?? 12),
+      }),
+    });
+
+    if (!result.narrative) {
+      return null;
+    }
+
+    const parsed = parseCanonicalEvidenceQualitativePayload(result.narrative);
+    return parsed.length > 0
+      ? parsed.slice(0, Math.max(1, input.maxCandidates ?? 12))
       : null;
   } catch {
     return null;

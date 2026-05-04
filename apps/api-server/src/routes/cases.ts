@@ -9,6 +9,12 @@ import {
   InvalidCatalogEvidenceSelectionError,
 } from '../services/case-evaluation';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 function replyForAuthorizationError(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -33,7 +39,7 @@ function replyForAuthorizationError(
 }
 
 export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/:id/history', async (request, reply) => {
+  app.get('/:id/history', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');
     } catch (error) {
@@ -64,7 +70,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(history);
   });
 
-  app.post('/evaluate', async (request, reply) => {
+  app.post('/evaluate', rateLimitedRouteOptions, async (request, reply) => {
     let actor;
 
     try {

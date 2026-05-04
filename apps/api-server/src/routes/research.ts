@@ -34,6 +34,12 @@ import { withSpan } from '@metrev/telemetry';
 
 import { buildRuntimeVersions } from '../presenters/workspace-presenters';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 const RESEARCH_EVIDENCE_PACK_PROMPT_VERSION = 'research-evidence-pack-v1';
 
 function collapseExtractorVersions(
@@ -191,7 +197,7 @@ function buildResearchWarehouseProgress(input: {
 export async function registerResearchRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.post('/search', async (request, reply) => {
+  app.post('/search', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -217,7 +223,7 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
-  app.post('/search/import', async (request, reply) => {
+  app.post('/search/import', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -244,7 +250,7 @@ export async function registerResearchRoutes(
     return reply.code(201).send(response);
   });
 
-  app.post('/source-artifacts/import', async (request, reply) => {
+  app.post('/source-artifacts/import', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -271,7 +277,7 @@ export async function registerResearchRoutes(
     return reply.code(201).send(response);
   });
 
-  app.get('/source-artifacts/:sourceDocumentId', async (request, reply) => {
+  app.get('/source-artifacts/:sourceDocumentId', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -297,7 +303,7 @@ export async function registerResearchRoutes(
     return reply.send(artifact);
   });
 
-  app.get('/reviews', async (request, reply) => {
+  app.get('/reviews', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -312,7 +318,7 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
-  app.get('/backfills', async (request, reply) => {
+  app.get('/backfills', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -327,7 +333,7 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
-  app.get('/warehouse-progress', async (request, reply) => {
+  app.get('/warehouse-progress', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -358,7 +364,7 @@ export async function registerResearchRoutes(
     );
   });
 
-  app.post('/backfills', async (request, reply) => {
+  app.post('/backfills', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -394,7 +400,7 @@ export async function registerResearchRoutes(
     return reply.code(201).send(response);
   });
 
-  app.post('/backfills/presets', async (request, reply) => {
+  app.post('/backfills/presets', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -472,7 +478,7 @@ export async function registerResearchRoutes(
     );
   });
 
-  app.post('/reviews', async (request, reply) => {
+  app.post('/reviews', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -504,7 +510,7 @@ export async function registerResearchRoutes(
     return reply.code(201).send(review);
   });
 
-  app.get('/reviews/:reviewId', async (request, reply) => {
+  app.get('/reviews/:reviewId', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -530,7 +536,7 @@ export async function registerResearchRoutes(
     return reply.send(review);
   });
 
-  app.post('/reviews/:reviewId/columns', async (request, reply) => {
+  app.post('/reviews/:reviewId/columns', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -570,7 +576,7 @@ export async function registerResearchRoutes(
     return reply.send(review);
   });
 
-  app.post('/reviews/:reviewId/extractions/run', async (request, reply) => {
+  app.post('/reviews/:reviewId/extractions/run', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -656,7 +662,7 @@ export async function registerResearchRoutes(
     );
   });
 
-  app.post('/reviews/:reviewId/evidence-pack', async (request, reply) => {
+  app.post('/reviews/:reviewId/evidence-pack', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -709,7 +715,7 @@ export async function registerResearchRoutes(
     return reply.code(201).send(savedPack);
   });
 
-  app.get('/evidence-packs/:packId/decision-input', async (request, reply) => {
+  app.get('/evidence-packs/:packId/decision-input', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;

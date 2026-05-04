@@ -133,12 +133,27 @@ function stripMarkup(value) {
     return null;
   }
 
-  return (
-    value
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim() || null
-  );
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    if (value[cursor] !== '<') {
+      output += value[cursor];
+      cursor += 1;
+      continue;
+    }
+
+    const tagEnd = value.indexOf('>', cursor + 1);
+    if (tagEnd === -1) {
+      output += value.slice(cursor);
+      break;
+    }
+
+    output += ' ';
+    cursor = tagEnd + 1;
+  }
+
+  return output.replace(/\s+/g, ' ').trim() || null;
 }
 function nonEmptyString(value) {
   const normalized = normalizeWhitespace(value);
@@ -764,7 +779,12 @@ function validateTrustedScientificEntry(input) {
     reasons.push('low_extraction_confidence');
   }
 
-  if (!isTrustedScientificSource(input.normalizedSourceType, 'literature_evidence')) {
+  if (
+    !isTrustedScientificSource(
+      input.normalizedSourceType,
+      'literature_evidence',
+    )
+  ) {
     reasons.push('untrusted_or_non_scientific_source');
   }
 
@@ -1546,7 +1566,8 @@ export function buildDeduplicationKeys(entry) {
   const normalizedDoi = normalizeDoi(sourceRecord.doi);
   const normalizedTitle = normalizeTitleForLookup(sourceRecord.title);
   const publicationYear =
-    sourceRecord.publicationYear ?? getPublicationYear(sourceRecord.publishedAt);
+    sourceRecord.publicationYear ??
+    getPublicationYear(sourceRecord.publishedAt);
   const firstAuthor =
     sourceRecord.firstAuthor ?? getFirstAuthor(sourceRecord.authors);
   const sourceUrl = normalizeUrl(sourceRecord.sourceUrl);
@@ -2132,10 +2153,7 @@ function inferSystemType(text) {
     return 'MEC';
   }
 
-  if (
-    normalized.includes('microbial fuel cell') ||
-    /\bmfc\b/i.test(text)
-  ) {
+  if (normalized.includes('microbial fuel cell') || /\bmfc\b/i.test(text)) {
     return 'MFC';
   }
 
@@ -2143,7 +2161,10 @@ function inferSystemType(text) {
     return 'MET';
   }
 
-  if (normalized.includes('bioelectrochemical system') || /\bbes\b/i.test(text)) {
+  if (
+    normalized.includes('bioelectrochemical system') ||
+    /\bbes\b/i.test(text)
+  ) {
     return 'BES';
   }
 
@@ -2246,7 +2267,9 @@ function buildFactRows({ catalogItem, claims, sourceRecordId, catalogItemId }) {
       fieldKey: fields.fieldKey,
       originalValue: claim.extractedValue ?? claim.content,
       originalUnit: claim.unit,
-      normalizedValue: Number.isFinite(normalizedValue) ? normalizedValue : null,
+      normalizedValue: Number.isFinite(normalizedValue)
+        ? normalizedValue
+        : null,
       normalizedText: claim.extractedValue ? null : claim.content,
       normalizedUnit: claim.unit,
       uncertainty:
@@ -2324,7 +2347,8 @@ async function syncScientificDecisionRecords(
         evidenceQuality: fact.evidenceQuality,
         scale: null,
         trl: null,
-        costIndicator: fact.factType === 'economic' ? fact.normalizedText : null,
+        costIndicator:
+          fact.factType === 'economic' ? fact.normalizedText : null,
         riskIndicator:
           fact.factType === 'limitation' ? fact.normalizedText : null,
         payload: {
@@ -2436,34 +2460,34 @@ export async function persistNormalizedEntries(
         }
 
         const sourceRecordData = {
-            sourceUrl: entry.sourceRecord.sourceUrl,
-            title: entry.sourceRecord.title,
-            sourceCategory: entry.sourceRecord.sourceCategory,
-            doi: entry.sourceRecord.doi,
-            publisher: entry.sourceRecord.publisher,
-            journal: entry.sourceRecord.journal,
-            authors: entry.sourceRecord.authors,
-            language: entry.sourceRecord.language,
-            license: entry.sourceRecord.license,
-            accessStatus: entry.sourceRecord.accessStatus,
-            publishedAt: entry.sourceRecord.publishedAt
-              ? new Date(entry.sourceRecord.publishedAt)
-              : null,
-            asOf: entry.sourceRecord.asOf
-              ? new Date(entry.sourceRecord.asOf)
-              : null,
-            pdfUrl: entry.sourceRecord.pdfUrl,
-            xmlUrl: entry.sourceRecord.xmlUrl,
-            hashDedup: entry.sourceRecord.hashDedup,
-            normalizedTitle: entry.sourceRecord.normalizedTitle,
-            publicationYear: entry.sourceRecord.publicationYear,
-            firstAuthor: entry.sourceRecord.firstAuthor,
-            sourceIdentifier: entry.sourceRecord.sourceIdentifier,
-            contentHash: entry.sourceRecord.contentHash,
-            metadataHash: entry.sourceRecord.metadataHash,
-            ingestionRunId: runId,
-            abstractText: entry.sourceRecord.abstractText,
-            rawPayload: entry.sourceRecord.rawPayload,
+          sourceUrl: entry.sourceRecord.sourceUrl,
+          title: entry.sourceRecord.title,
+          sourceCategory: entry.sourceRecord.sourceCategory,
+          doi: entry.sourceRecord.doi,
+          publisher: entry.sourceRecord.publisher,
+          journal: entry.sourceRecord.journal,
+          authors: entry.sourceRecord.authors,
+          language: entry.sourceRecord.language,
+          license: entry.sourceRecord.license,
+          accessStatus: entry.sourceRecord.accessStatus,
+          publishedAt: entry.sourceRecord.publishedAt
+            ? new Date(entry.sourceRecord.publishedAt)
+            : null,
+          asOf: entry.sourceRecord.asOf
+            ? new Date(entry.sourceRecord.asOf)
+            : null,
+          pdfUrl: entry.sourceRecord.pdfUrl,
+          xmlUrl: entry.sourceRecord.xmlUrl,
+          hashDedup: entry.sourceRecord.hashDedup,
+          normalizedTitle: entry.sourceRecord.normalizedTitle,
+          publicationYear: entry.sourceRecord.publicationYear,
+          firstAuthor: entry.sourceRecord.firstAuthor,
+          sourceIdentifier: entry.sourceRecord.sourceIdentifier,
+          contentHash: entry.sourceRecord.contentHash,
+          metadataHash: entry.sourceRecord.metadataHash,
+          ingestionRunId: runId,
+          abstractText: entry.sourceRecord.abstractText,
+          rawPayload: entry.sourceRecord.rawPayload,
         };
         const sourceRecord = existingSource?.record
           ? await transaction.externalSourceRecord.update({
@@ -2474,8 +2498,8 @@ export async function persistNormalizedEntries(
           : await transaction.externalSourceRecord.create({
               data: {
                 ...sourceRecordData,
-            sourceType: entry.sourceRecord.sourceType,
-            sourceKey: entry.sourceRecord.sourceKey,
+                sourceType: entry.sourceRecord.sourceType,
+                sourceKey: entry.sourceRecord.sourceKey,
               },
               select: { id: true },
             });
@@ -2501,7 +2525,8 @@ export async function persistNormalizedEntries(
           entry.catalogItem.sourceState,
         );
         const catalogItemWasCreated = !existingCatalogItem;
-        const autoAccept = autoAcceptTrustedCorpus &&
+        const autoAccept =
+          autoAcceptTrustedCorpus &&
           entry.catalogItem.reviewStatus === 'ACCEPTED';
         const acceptedAt =
           entry.catalogItem.acceptedAt ??

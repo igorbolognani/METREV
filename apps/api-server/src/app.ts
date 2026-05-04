@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance } from 'fastify';
 
@@ -13,8 +14,8 @@ import {
 
 import { authPlugin } from './plugins/auth';
 import { registerCaseRoutes } from './routes/cases';
-import { registerExportRoutes } from './routes/exports';
 import { registerEvaluationRoutes } from './routes/evaluations';
+import { registerExportRoutes } from './routes/exports';
 import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
 import { registerResearchRoutes } from './routes/research';
@@ -30,7 +31,16 @@ declare module 'fastify' {
 export interface BuildAppOptions {
   researchRepository?: ResearchRepository;
   repository?: EvaluationRepository;
+  rateLimit?: false;
   sessionResolver?: SessionResolver;
+}
+
+function parseRateLimitMax() {
+  const parsed = Number.parseInt(
+    process.env.METREV_API_RATE_LIMIT_MAX ?? '',
+    10,
+  );
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 300;
 }
 
 export async function buildApp(
@@ -40,7 +50,9 @@ export async function buildApp(
   const repository = options.repository ?? createEvaluationRepository();
   const researchRepository =
     options.researchRepository ??
-    (options.repository ? new MemoryResearchRepository() : createResearchRepository());
+    (options.repository
+      ? new MemoryResearchRepository()
+      : createResearchRepository());
 
   app.decorate('evaluationRepository', repository);
   app.decorate('researchRepository', researchRepository);
@@ -53,6 +65,14 @@ export async function buildApp(
   await authPlugin(app, {
     sessionResolver: options.sessionResolver,
   });
+  if (options.rateLimit !== false) {
+    await app.register(rateLimit, {
+      max: parseRateLimitMax(),
+      timeWindow:
+        process.env.METREV_API_RATE_LIMIT_WINDOW?.trim() || '1 minute',
+      keyGenerator: (request) => request.actor?.userId ?? request.ip,
+    });
+  }
   await registerHealthRoutes(app);
   await app.register(registerCaseRoutes, { prefix: '/api/cases' });
   await app.register(registerEvaluationRoutes, { prefix: '/api/evaluations' });

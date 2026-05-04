@@ -29,7 +29,7 @@ The current canonical decision layer is structurally in place, but a large porti
 - Harden the canonical evidence migration so it validates cleanly with PostgreSQL-oriented tooling.
 - Add a policy-aware `--full-text=hydrate` path that reuses the existing research full-text hydrator.
 - Persist hydrated text only when access status, license, and provenance policy allow it.
-- Add a local-only `--llm-mode=schema_validated` supplement path using Ollama with strict evidence-span validation.
+- Add a local-only `--llm-mode=schema_validated` supplement path using Ollama with strict evidence-span validation for measurements and whitelisted qualitative facts.
 - Add focused regression coverage for canonicalization, benchmark refresh, and hydration policy behavior.
 
 ### Out
@@ -44,15 +44,16 @@ The current canonical decision layer is structurally in place, but a large porti
 1. The canonicalizer MUST support a `hydrate` full-text mode that attempts external text retrieval only after deterministic local surfaces prove insufficient.
 2. Hydrated text MUST be persisted only when provenance and access policy permit; otherwise it may influence audit status only, not decision-ready benchmark facts.
 3. Schema-validated LLM extraction MUST operate as a supplement, not a replacement, and MUST reject outputs whose evidence spans cannot be verified against source text.
-4. Decision-ready benchmark records MUST remain limited to canonical facts with traceable source hashes, locators, normalization, and `no_fabrication=true` lineage.
-5. Benchmark aggregate refresh MUST ignore incomplete benchmark rows that cannot satisfy required aggregate dimensions.
+4. Qualitative schema-validated facts MUST be limited to approved system, reactor, material, limitation, and scientific-theory categories and MUST NOT create free-form benchmark dimensions.
+5. Decision-ready benchmark records MUST remain limited to canonical facts with traceable source hashes, locators, normalization, and `no_fabrication=true` lineage.
+6. Benchmark aggregate refresh MUST ignore incomplete benchmark rows that cannot satisfy required aggregate dimensions.
 
 ## Acceptance criteria
 
 - [x] The canonical evidence migration applies cleanly through `pnpm run db:migrate:deploy` in the current workspace configuration.
 - [x] `pnpm run evidence:canonicalize -- --full-text=hydrate` exists and keeps policy-blocked full text out of the decision-ready path.
 - [x] Hydrated allowed full text can move an accepted record from `needs_full_text` to canonical extracted when deterministic facts become available.
-- [x] `--llm-mode=schema_validated` works with Ollama only and rejects unverifiable evidence spans.
+- [x] `--llm-mode=schema_validated` works with Ollama only and rejects unverifiable measurement and qualitative evidence spans.
 - [x] Focused regression tests cover hydrate success, hydrate block/failure, LLM supplementation, and benchmark refresh filtering.
 
 ## Clarifications and open questions

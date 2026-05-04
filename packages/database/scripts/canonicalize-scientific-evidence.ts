@@ -15,8 +15,14 @@ import {
   type ExternalEvidenceAccessStatus,
   type ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
-import type { CanonicalEvidenceMeasurementCandidate } from '@metrev/llm-adapter';
-import { generateCanonicalEvidenceMeasurementCandidates } from '@metrev/llm-adapter';
+import type {
+  CanonicalEvidenceMeasurementCandidate,
+  CanonicalEvidenceQualitativeCandidate,
+} from '@metrev/llm-adapter';
+import {
+  generateCanonicalEvidenceMeasurementCandidates,
+  generateCanonicalEvidenceQualitativeCandidates,
+} from '@metrev/llm-adapter';
 import {
   hydrateResearchPaperText,
   type HydratedResearchPaperText,
@@ -25,6 +31,7 @@ import {
 import {
   CANONICAL_FACT_LAYER,
   CANONICALIZATION_STATUSES,
+  canonicalizeMaterial,
   canonicalizeScientificEvidenceRecord,
   normalizeScientificMeasurement,
 } from './canonical-scientific-evidence.mjs';
@@ -54,13 +61,56 @@ const ALLOWED_LLM_MEASUREMENT_FIELDS = new Map<string, string>([
   ['conductivity', 'conductivity_ms_cm'],
   ['temperature', 'temperature_c'],
   ['ph', 'ph'],
-  ['coulombic_efficiency', 'coulombic_efficiency_percent'],
+  ['coulombic_efficiency', 'coulombic_efficiency_pct'],
   ['hydrogen_production', 'hydrogen_production_ml_l_d'],
-  ['contaminant_removal_efficiency', 'contaminant_removal_efficiency_percent'],
+  ['contaminant_removal_efficiency', 'contaminant_removal_efficiency_pct'],
   ['energy_input', 'energy_input_kwh_m3'],
   ['methane_biogas_relationship', 'methane_biogas_relationship'],
-  ['trl', 'trl'],
-  ['cost_indicator', 'cost_indicator_usd'],
+  ['trl_maturity', 'trl'],
+  ['cost_indicators', 'cost_indicator_usd'],
+]);
+const ALLOWED_LLM_SYSTEM_TYPES = new Set([
+  'MFC',
+  'MEC',
+  'MET',
+  'MDC',
+  'BES',
+  'bioelectrochemical_system',
+]);
+const ALLOWED_LLM_REACTOR_TYPES = new Set([
+  'single_chamber',
+  'two_chamber',
+  'air_cathode',
+  'membrane_less',
+  'tubular',
+  'upflow',
+  'stacked',
+]);
+const ALLOWED_LLM_MATERIAL_FIELD_COMPONENTS = new Map<string, string>([
+  ['anode_material', 'anode'],
+  ['cathode_material', 'cathode'],
+  ['membrane_separator', 'membrane_separator'],
+  ['catalyst_material', 'catalyst'],
+  ['current_collector_material', 'current_collector'],
+  ['material', 'material_unspecified'],
+]);
+const ALLOWED_LLM_LIMITATION_FIELDS = new Set([
+  'reported_limitations',
+  'operating_constraints',
+  'failure_modes',
+  'reported_tradeoffs',
+]);
+const ALLOWED_LLM_THEORY_FIELDS = new Set([
+  'electron_transfer_mechanism',
+  'biofilm_mechanism',
+  'microbial_metabolism',
+  'ion_transport_mechanism',
+  'anode_reaction_mechanism',
+  'cathode_reaction_mechanism',
+  'mass_transport_mechanism',
+  'redox_mediator_mechanism',
+  'resource_recovery_mechanism',
+  'electrochemical_model',
 ]);
 
 type PrismaClientLike = ReturnType<typeof getPrismaClient>;
@@ -138,6 +188,12 @@ type MeasurementCandidateGenerator = (input: {
   paper: ResearchPaperMetadata;
   sourceText: string;
 }) => Promise<CanonicalEvidenceMeasurementCandidate[] | null>;
+
+type QualitativeCandidateGenerator = (input: {
+  maxCandidates?: number;
+  paper: ResearchPaperMetadata;
+  sourceText: string;
+}) => Promise<CanonicalEvidenceQualitativeCandidate[] | null>;
 
 interface CanonicalizationCounters {
   processed: number;
@@ -570,9 +626,211 @@ function buildSchemaValidatedMeasurementFacts(input: {
   };
 }
 
-async function applySchemaValidatedMeasurementSupplement(input: {
+function resolvedRequiredFieldsFromFacts(facts: any[]) {
+  const resolved = new Set<string>();
+
+  for (const fact of facts) {
+    if (typeof fact.fieldKey === 'string') {
+      resolved.add(fact.fieldKey);
+    }
+    if (fact.componentType === 'anode') {
+      resolved.add('anode_material');
+    }
+    if (fact.componentType === 'cathode') {
+      resolved.add('cathode_material');
+    }
+    if (fact.componentType === 'membrane_separator') {
+      resolved.add('membrane_separator');
+    }
+    if (fact.componentType === 'catalyst') {
+      resolved.add('catalyst');
+    }
+    if (fact.componentType === 'current_collector') {
+      resolved.add('current_collector');
+    }
+    if (fact.metricType === 'removal_efficiency') {
+      resolved.add('contaminant_removal_efficiency');
+    }
+    if (fact.metricType === 'hydraulic_retention_time') {
+      resolved.add('hrt');
+    }
+    if (fact.metricType === 'trl') {
+      resolved.add('trl_maturity');
+    }
+  }
+
+  return resolved;
+}
+
+function removeResolvedMissingFields(missingFields: string[], facts: any[]) {
+  const resolved = resolvedRequiredFieldsFromFacts(facts);
+  return missingFields.filter((field) => !resolved.has(field));
+}
+
+function buildSchemaValidatedQualitativeFacts(input: {
+  currentFacts: any[];
+  evidenceQuality: string;
+  candidates: CanonicalEvidenceQualitativeCandidate[];
+  record: any;
+  sourceText: string;
+}) {
+  const systemType = currentSystemTypeFromFacts(input.currentFacts);
+  const llmFacts: any[] = [];
+  const llmHashes: string[] = [];
+
+  for (const candidate of input.candidates) {
+    const normalizedSpan = normalizeSegmentText(candidate.textSpan);
+    if (!normalizedSpan || !input.sourceText.includes(normalizedSpan)) {
+      continue;
+    }
+
+    const sourceTextHash = hashSegmentText(normalizedSpan);
+    const boundedConfidence = Math.max(
+      0.55,
+      Math.min(0.82, candidate.confidence || 0.62),
+    );
+    const baseFact = {
+      id: randomUUID(),
+      sourceRecordId:
+        input.record.sourceRecordId ?? input.record.sourceRecord?.id,
+      catalogItemId: input.record.id,
+      claimId: null,
+      factLayer: CANONICAL_FACT_LAYER,
+      decisionReady: true,
+      extractionSource: 'llm_schema_validated_qualitative',
+      missingFields: [],
+      qualityFlags: ['llm_schema_validated_qualitative'],
+      sourceTextHash,
+      originalValue: normalizedSpan,
+      originalUnit: null,
+      normalizedValue: null,
+      normalizedUnit: null,
+      uncertainty: null,
+      confidence: boundedConfidence,
+      extractionStatus: 'canonical_extracted',
+      normalizationStatus: 'canonical_text',
+      systemType,
+      reactorType: null,
+      componentType: null,
+      material: null,
+      metricType: null,
+      operatingConditionKey: null,
+      evidenceQuality: input.evidenceQuality,
+      payload: {
+        source: CANONICAL_FACT_LAYER,
+        extractor_version: LLM_SCHEMA_VALIDATED_EXTRACTOR_VERSION,
+        extraction_source: 'llm_schema_validated_qualitative',
+        candidate_category: candidate.category,
+        locator: candidate.sourceLocator,
+        snippet: normalizedSpan.slice(0, 500),
+        no_fabrication: true,
+        llm_schema_validated: true,
+      },
+    };
+
+    if (candidate.category === 'system_type') {
+      const canonical = candidate.canonicalValue.trim();
+      if (!ALLOWED_LLM_SYSTEM_TYPES.has(canonical)) {
+        continue;
+      }
+      llmHashes.push(sourceTextHash);
+      llmFacts.push({
+        ...baseFact,
+        factType: 'technical_field',
+        fieldKey: 'system_type',
+        canonicalKey: `system_type:${canonical}`,
+        normalizationRuleId: 'ontology.system_type.bioelectrochemical_v1',
+        normalizedText: canonical,
+        systemType: canonical,
+      });
+      continue;
+    }
+
+    if (candidate.category === 'reactor_type') {
+      const canonical = candidate.canonicalValue
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+      if (!ALLOWED_LLM_REACTOR_TYPES.has(canonical)) {
+        continue;
+      }
+      llmHashes.push(sourceTextHash);
+      llmFacts.push({
+        ...baseFact,
+        factType: 'technical_field',
+        fieldKey: 'reactor_type',
+        canonicalKey: `reactor_type:${canonical}`,
+        normalizationRuleId: 'ontology.reactor_type.bioelectrochemical_v1',
+        normalizedText: canonical,
+        reactorType: canonical,
+      });
+      continue;
+    }
+
+    if (candidate.category === 'material') {
+      const componentType = ALLOWED_LLM_MATERIAL_FIELD_COMPONENTS.get(
+        candidate.fieldKey,
+      );
+      const material = canonicalizeMaterial(candidate.canonicalValue);
+      if (!componentType || !material) {
+        continue;
+      }
+      llmHashes.push(sourceTextHash);
+      llmFacts.push({
+        ...baseFact,
+        factType: 'technical_field',
+        fieldKey: candidate.fieldKey,
+        canonicalKey: `material:${material}`,
+        normalizationRuleId: 'ontology.material.bioelectrochemical_v1',
+        normalizedText: material,
+        componentType,
+        material,
+      });
+      continue;
+    }
+
+    if (candidate.category === 'limitation') {
+      if (!ALLOWED_LLM_LIMITATION_FIELDS.has(candidate.fieldKey)) {
+        continue;
+      }
+      llmHashes.push(sourceTextHash);
+      llmFacts.push({
+        ...baseFact,
+        factType: 'limitation',
+        fieldKey: candidate.fieldKey,
+        canonicalKey: `${candidate.fieldKey}:${sourceTextHash.slice(0, 16)}`,
+        normalizationRuleId: `ontology.${candidate.fieldKey}.text_v1`,
+        normalizedText: normalizedSpan,
+      });
+      continue;
+    }
+
+    if (candidate.category === 'scientific_theory') {
+      if (!ALLOWED_LLM_THEORY_FIELDS.has(candidate.fieldKey)) {
+        continue;
+      }
+      llmHashes.push(sourceTextHash);
+      llmFacts.push({
+        ...baseFact,
+        factType: 'scientific_theory',
+        fieldKey: candidate.fieldKey,
+        canonicalKey: `scientific_theory:${candidate.fieldKey}:${sourceTextHash.slice(0, 16)}`,
+        normalizationRuleId: `research_theory.${candidate.fieldKey}.span_v1`,
+        normalizedText: normalizedSpan,
+      });
+    }
+  }
+
+  return {
+    facts: llmFacts,
+    hashes: llmHashes,
+  };
+}
+
+async function applySchemaValidatedSupplement(input: {
   currentResult: CanonicalizationRecordResult;
   generateMeasurementCandidates?: MeasurementCandidateGenerator;
+  generateQualitativeCandidates?: QualitativeCandidateGenerator;
   llmMode: CanonicalizationCliConfig['llmMode'];
   record: any;
   sourceText: string | null;
@@ -592,34 +850,77 @@ async function applySchemaValidatedMeasurementSupplement(input: {
   const generator =
     input.generateMeasurementCandidates ??
     generateCanonicalEvidenceMeasurementCandidates;
-  const candidates = await generator({
-    maxCandidates: 8,
-    paper: buildResearchPaperMetadataForCanonicalization(input.record),
-    sourceText: normalizedSourceText,
-  }).catch(() => null);
+  const qualitativeGenerator =
+    input.generateQualitativeCandidates ??
+    generateCanonicalEvidenceQualitativeCandidates;
+  const paper = buildResearchPaperMetadataForCanonicalization(input.record);
+  const [measurementCandidates, qualitativeCandidates] = await Promise.all([
+    generator({
+      maxCandidates: 8,
+      paper,
+      sourceText: normalizedSourceText,
+    }).catch(() => null),
+    qualitativeGenerator({
+      maxCandidates: 12,
+      paper,
+      sourceText: normalizedSourceText,
+    }).catch(() => null),
+  ]);
 
-  if (!candidates || candidates.length === 0) {
+  if (
+    (!measurementCandidates || measurementCandidates.length === 0) &&
+    (!qualitativeCandidates || qualitativeCandidates.length === 0)
+  ) {
     return input.currentResult;
   }
 
-  const llmFacts = buildSchemaValidatedMeasurementFacts({
+  const measurementFacts = buildSchemaValidatedMeasurementFacts({
     currentFacts: input.currentResult.facts,
     evidenceQuality: input.record.evidenceQuality ?? 'unreviewed',
-    candidates,
+    candidates: measurementCandidates ?? [],
     record: input.record,
     sourceText: normalizedSourceText,
   });
+  const qualitativeFacts = buildSchemaValidatedQualitativeFacts({
+    currentFacts: input.currentResult.facts,
+    evidenceQuality: input.record.evidenceQuality ?? 'unreviewed',
+    candidates: qualitativeCandidates ?? [],
+    record: input.record,
+    sourceText: normalizedSourceText,
+  });
+  const llmFacts = {
+    facts: [...measurementFacts.facts, ...qualitativeFacts.facts],
+    hashes: [...measurementFacts.hashes, ...qualitativeFacts.hashes],
+  };
 
   if (llmFacts.facts.length === 0) {
     return input.currentResult;
   }
 
+  const mergedFacts = mergeCanonicalFacts(
+    input.currentResult.facts,
+    llmFacts.facts,
+  );
+  const qualityFlagAdditions = [
+    measurementFacts.facts.length > 0
+      ? 'llm_schema_validated_measurement'
+      : null,
+    qualitativeFacts.facts.length > 0
+      ? 'llm_schema_validated_qualitative'
+      : null,
+  ];
+
   return {
     ...input.currentResult,
-    facts: mergeCanonicalFacts(input.currentResult.facts, llmFacts.facts),
-    qualityFlags: appendUniqueValues(input.currentResult.qualityFlags, [
-      'llm_schema_validated_measurement',
-    ]),
+    facts: mergedFacts,
+    missingFields: removeResolvedMissingFields(
+      input.currentResult.missingFields,
+      mergedFacts,
+    ),
+    qualityFlags: appendUniqueValues(
+      input.currentResult.qualityFlags,
+      qualityFlagAdditions,
+    ),
     sourceTextHashes: appendUniqueValues(
       input.currentResult.sourceTextHashes,
       llmFacts.hashes,
@@ -659,6 +960,7 @@ export async function canonicalizeCatalogRecordWithRuntime(
     dryRun?: boolean;
     fullTextMode: CanonicalizationCliConfig['fullTextMode'];
     generateMeasurementCandidates?: MeasurementCandidateGenerator;
+    generateQualitativeCandidates?: QualitativeCandidateGenerator;
     hydratePaperText?: (
       paper: ResearchPaperMetadata,
     ) => Promise<HydratedResearchPaperText | null>;
@@ -692,9 +994,10 @@ export async function canonicalizeCatalogRecordWithRuntime(
       },
     };
 
-    return applySchemaValidatedMeasurementSupplement({
+    return applySchemaValidatedSupplement({
       currentResult: result,
       generateMeasurementCandidates: input.generateMeasurementCandidates,
+      generateQualitativeCandidates: input.generateQualitativeCandidates,
       llmMode: input.llmMode,
       record,
       sourceText: Array.isArray(record.sourceRecord?.sourceTextChunks)
@@ -810,9 +1113,10 @@ export async function canonicalizeCatalogRecordWithRuntime(
     },
   };
 
-  return applySchemaValidatedMeasurementSupplement({
+  return applySchemaValidatedSupplement({
     currentResult: hydratedCanonicalResult,
     generateMeasurementCandidates: input.generateMeasurementCandidates,
+    generateQualitativeCandidates: input.generateQualitativeCandidates,
     llmMode: input.llmMode,
     record: augmentedRecord,
     sourceText: hydrated.text,
@@ -1413,37 +1717,36 @@ export async function runCanonicalScientificEvidenceBackfill(
       break;
     }
 
-    const results: CanonicalizationRecordResult[] =
-      config.fullTextMode === 'hydrate'
-        ? await mapWithConcurrency(
-            batch,
-            config.fullTextConcurrency,
-            (record) =>
-              canonicalizeCatalogRecordWithRuntime(record, {
-                dryRun: config.dryRun,
-                fullTextMode: config.fullTextMode,
-                llmMode: config.llmMode,
-              }),
-          )
-        : batch.map((record) => ({
-            record,
-            ...canonicalizeScientificEvidenceRecord(record, {
-              fullTextMode: config.fullTextMode,
-              llmMode: config.llmMode,
-            }),
-            hydration: {
-              attempted: false,
-              blockedReason: null,
-              chunkCount: 0,
-              contentType: null,
-              fetched: false,
-              fetchedFrom: null,
-              persistence: null,
-              persisted: false,
-              policy: 'not_requested',
-              source: null,
-            },
-          }));
+    const useRuntimeCanonicalizer =
+      config.fullTextMode === 'hydrate' ||
+      config.llmMode === 'schema_validated';
+    const results: CanonicalizationRecordResult[] = useRuntimeCanonicalizer
+      ? await mapWithConcurrency(batch, config.fullTextConcurrency, (record) =>
+          canonicalizeCatalogRecordWithRuntime(record, {
+            dryRun: config.dryRun,
+            fullTextMode: config.fullTextMode,
+            llmMode: config.llmMode,
+          }),
+        )
+      : batch.map((record) => ({
+          record,
+          ...canonicalizeScientificEvidenceRecord(record, {
+            fullTextMode: config.fullTextMode,
+            llmMode: config.llmMode,
+          }),
+          hydration: {
+            attempted: false,
+            blockedReason: null,
+            chunkCount: 0,
+            contentType: null,
+            fetched: false,
+            fetchedFrom: null,
+            persistence: null,
+            persisted: false,
+            policy: 'not_requested',
+            source: null,
+          },
+        }));
     const batchCounters = emptyCounters();
     await persistCanonicalizationBatch({
       prisma,

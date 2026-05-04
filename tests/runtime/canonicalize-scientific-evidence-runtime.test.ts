@@ -181,4 +181,132 @@ describe('canonicalize scientific evidence runtime hydrate path', () => {
     );
     expect(result.qualityFlags).toContain('llm_schema_validated_measurement');
   });
+
+  it('uses schema-validated qualitative candidates for materials, architecture, limitations, and theory', async () => {
+    const record = buildCatalogRecord({
+      sourceRecord: buildSourceRecord({
+        sourceTextChunks: [
+          {
+            chunkIndex: 0,
+            pageNumber: null,
+            sourceLocator: 'chunk:0',
+            text: 'The reactor was configured as a two-chamber microbial electrolysis cell. The anode used carbon cloth as the biofilm support. The authors reported membrane fouling as the main limitation. The study attributed current generation to direct extracellular electron transfer through a mature electroactive biofilm.',
+          },
+        ],
+      }),
+    });
+
+    const result = await canonicalizeCatalogRecordWithRuntime(record, {
+      fullTextMode: 'existing',
+      llmMode: 'schema_validated',
+      generateQualitativeCandidates: async () => [
+        {
+          category: 'reactor_type',
+          fieldKey: 'reactor_type',
+          canonicalValue: 'two_chamber',
+          componentType: null,
+          textSpan: 'two-chamber microbial electrolysis cell',
+          sourceLocator: 'llm:qualitative:reactor',
+          confidence: 0.74,
+        },
+        {
+          category: 'material',
+          fieldKey: 'anode_material',
+          canonicalValue: 'carbon cloth',
+          componentType: 'anode',
+          textSpan: 'anode used carbon cloth as the biofilm support',
+          sourceLocator: 'llm:qualitative:material',
+          confidence: 0.78,
+        },
+        {
+          category: 'limitation',
+          fieldKey: 'reported_limitations',
+          canonicalValue: 'membrane fouling',
+          componentType: null,
+          textSpan: 'membrane fouling as the main limitation',
+          sourceLocator: 'llm:qualitative:limitation',
+          confidence: 0.7,
+        },
+        {
+          category: 'scientific_theory',
+          fieldKey: 'electron_transfer_mechanism',
+          canonicalValue: 'direct extracellular electron transfer',
+          componentType: null,
+          textSpan:
+            'direct extracellular electron transfer through a mature electroactive biofilm',
+          sourceLocator: 'llm:qualitative:theory',
+          confidence: 0.72,
+        },
+      ],
+    });
+
+    expect(result.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldKey: 'reactor_type',
+          extractionSource: 'llm_schema_validated_qualitative',
+          normalizedText: 'two_chamber',
+        }),
+        expect.objectContaining({
+          fieldKey: 'anode_material',
+          extractionSource: 'llm_schema_validated_qualitative',
+          material: 'carbon_cloth',
+        }),
+        expect.objectContaining({
+          fieldKey: 'reported_limitations',
+          extractionSource: 'llm_schema_validated_qualitative',
+          factType: 'limitation',
+        }),
+        expect.objectContaining({
+          fieldKey: 'electron_transfer_mechanism',
+          extractionSource: 'llm_schema_validated_qualitative',
+          factType: 'scientific_theory',
+        }),
+      ]),
+    );
+    expect(result.qualityFlags).toContain('llm_schema_validated_qualitative');
+    expect(result.missingFields).not.toContain('anode_material');
+  });
+
+  it('rejects schema-validated qualitative candidates without an exact source span', async () => {
+    const record = buildCatalogRecord({
+      sourceRecord: buildSourceRecord({
+        sourceTextChunks: [
+          {
+            chunkIndex: 0,
+            pageNumber: null,
+            sourceLocator: 'chunk:0',
+            text: 'The microbial fuel cell used acetate substrate during stable operation.',
+          },
+        ],
+      }),
+    });
+
+    const result = await canonicalizeCatalogRecordWithRuntime(record, {
+      fullTextMode: 'existing',
+      llmMode: 'schema_validated',
+      generateQualitativeCandidates: async () => [
+        {
+          category: 'material',
+          fieldKey: 'membrane_separator',
+          canonicalValue: 'Nafion',
+          componentType: 'membrane_separator',
+          textSpan: 'Nafion membrane reduced oxygen crossover',
+          sourceLocator: 'llm:qualitative:unverified',
+          confidence: 0.8,
+        },
+      ],
+    });
+
+    expect(result.facts).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          extractionSource: 'llm_schema_validated_qualitative',
+        }),
+      ]),
+    );
+    expect(result.qualityFlags).not.toContain(
+      'llm_schema_validated_qualitative',
+    );
+  });
 });

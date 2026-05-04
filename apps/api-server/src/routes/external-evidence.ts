@@ -9,6 +9,12 @@ import {
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 function parsePositiveInteger(
   value: string | undefined,
   fallback: number,
@@ -52,7 +58,7 @@ function replyForAuthorizationError(
 export async function registerExternalEvidenceRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/', async (request, reply) => {
+  app.get('/', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'ANALYST');
     } catch (error) {
@@ -142,7 +148,7 @@ export async function registerExternalEvidenceRoutes(
     return reply.send(response);
   });
 
-  app.post('/review/bulk', async (request, reply) => {
+  app.post('/review/bulk', rateLimitedRouteOptions, async (request, reply) => {
     let actor;
 
     try {
@@ -186,7 +192,7 @@ export async function registerExternalEvidenceRoutes(
     return reply.send(response);
   });
 
-  app.get('/:id', async (request, reply) => {
+  app.get('/:id', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'ANALYST');
     } catch (error) {
@@ -217,7 +223,7 @@ export async function registerExternalEvidenceRoutes(
     return reply.send(item);
   });
 
-  app.post('/:id/review', async (request, reply) => {
+  app.post('/:id/review', rateLimitedRouteOptions, async (request, reply) => {
     let actor;
 
     try {

@@ -12,6 +12,12 @@ import {
 } from '../presenters/workspace-presenters';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 function replyForAuthorizationError(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -48,7 +54,7 @@ function buildVersions(input?: {
 export async function registerExportRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/evaluations/:evaluationId/json', async (request, reply) => {
+  app.get('/evaluations/:evaluationId/json', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');
     } catch (error) {
@@ -99,7 +105,7 @@ export async function registerExportRoutes(
     return reply.send(workspace);
   });
 
-  app.get('/evaluations/:evaluationId/csv', async (request, reply) => {
+  app.get('/evaluations/:evaluationId/csv', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');
     } catch (error) {
@@ -151,7 +157,7 @@ export async function registerExportRoutes(
     return reply.send(content);
   });
 
-  app.get('/evidence/explorer/csv', async (request, reply) => {
+  app.get('/evidence/explorer/csv', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'ANALYST');
     } catch (error) {

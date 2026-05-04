@@ -25,14 +25,33 @@ function normalizeWhitespace(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function removeMarkupTags(value: string): string {
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    if (value[cursor] !== '<') {
+      output += value[cursor];
+      cursor += 1;
+      continue;
+    }
+
+    const tagEnd = value.indexOf('>', cursor + 1);
+    if (tagEnd === -1) {
+      output += value.slice(cursor);
+      break;
+    }
+
+    output += ' ';
+    cursor = tagEnd + 1;
+  }
+
+  return output;
+}
+
 function stripMarkup(value: string | null | undefined): string | null {
   const normalized = normalizeWhitespace(value);
-  return normalized
-    ? normalized
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-    : null;
+  return normalized ? normalizeWhitespace(removeMarkupTags(normalized)) : null;
 }
 
 function toAccessStatus(
@@ -61,7 +80,16 @@ function normalizeDoi(value: string | null | undefined): string | null {
 
 function normalizeSourceUrl(value: string | null | undefined): string | null {
   const normalized = normalizeWhitespace(value);
-  return normalized ? normalized.replace(/\/+$/, '') : null;
+  if (!normalized) {
+    return null;
+  }
+
+  let endIndex = normalized.length;
+  while (endIndex > 0 && normalized[endIndex - 1] === '/') {
+    endIndex -= 1;
+  }
+
+  return normalized.slice(0, endIndex);
 }
 
 function normalizeResearchTitle(
@@ -90,11 +118,12 @@ function firstAuthorFromMetadata(authors: unknown): string | null {
     return null;
   }
 
-  const name = (first as { name?: unknown; display_name?: unknown }).name ??
+  const name =
+    (first as { name?: unknown; display_name?: unknown }).name ??
     (first as { display_name?: unknown }).display_name;
 
   return typeof name === 'string'
-    ? normalizeWhitespace(name)?.toLowerCase() ?? null
+    ? (normalizeWhitespace(name)?.toLowerCase() ?? null)
     : null;
 }
 
@@ -997,8 +1026,7 @@ export async function stageResearchPapers(
       const nextSourceState = resolveCatalogSourceState(
         existingCatalogItem?.sourceState ?? null,
       );
-      const acceptedAt =
-        nextReviewStatus === 'ACCEPTED' ? new Date() : null;
+      const acceptedAt = nextReviewStatus === 'ACCEPTED' ? new Date() : null;
 
       await transaction.externalEvidenceCatalogItem.upsert({
         where: catalogKey,

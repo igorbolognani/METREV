@@ -66,8 +66,9 @@ pnpm run evidence:canonicalize -- --limit=5 --batch-size=5 --full-text=hydrate -
 ## Edge case
 
 1. If the source access status or license policy blocks persistence, hydrated text should remain outside the decision-ready benchmark path.
-2. If Ollama returns unverifiable candidates, those candidates should be discarded or pushed into review status rather than persisted as benchmarkable facts.
-3. Keep `--llm-mode=disabled` as the default operational path unless local Ollama validation is explicitly required.
+2. If Ollama returns unverifiable measurement or qualitative candidates, those candidates should be discarded rather than persisted as benchmarkable facts.
+3. Qualitative candidates are limited to approved system type, reactor architecture, material/component, limitation, and scientific-theory fields.
+4. Keep `--llm-mode=disabled` as the default operational path unless local Ollama validation is explicitly required.
 
 ## Verification commands and checks
 

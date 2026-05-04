@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer';
 import { inflateSync } from 'node:zlib';
 
 import type {
-    ResearchEvidenceTrace,
-    ResearchPaperMetadata,
+  ResearchEvidenceTrace,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface HydratedResearchPaperText {
@@ -20,25 +20,97 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function replaceCaseInsensitive(
+  value: string,
+  search: string,
+  replacement: string,
+): string {
+  const lowerValue = value.toLowerCase();
+  const lowerSearch = search.toLowerCase();
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    const index = lowerValue.indexOf(lowerSearch, cursor);
+    if (index === -1) {
+      output += value.slice(cursor);
+      break;
+    }
+
+    output += value.slice(cursor, index);
+    output += replacement;
+    cursor = index + search.length;
+  }
+
+  return output;
+}
+
 function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'");
+  return [
+    ['&nbsp;', ' '],
+    ['&amp;', '&'],
+    ['&lt;', '<'],
+    ['&gt;', '>'],
+    ['&quot;', '"'],
+    ['&#39;', "'"],
+  ].reduce(
+    (current, [search, replacement]) =>
+      replaceCaseInsensitive(current, search, replacement),
+    value,
+  );
+}
+
+function readTagName(value: string): string {
+  let cursor = 0;
+  while (cursor < value.length && /\s/.test(value[cursor])) {
+    cursor += 1;
+  }
+  if (value[cursor] === '/') {
+    cursor += 1;
+  }
+
+  const start = cursor;
+  while (cursor < value.length && /[a-zA-Z0-9:-]/.test(value[cursor])) {
+    cursor += 1;
+  }
+
+  return value.slice(start, cursor).toLowerCase();
 }
 
 function stripMarkup(value: string): string {
-  return normalizeWhitespace(
-    decodeHtmlEntities(
-      value
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<[^>]+>/g, ' '),
-    ),
-  );
+  let output = '';
+  let cursor = 0;
+  let ignoredTag: 'script' | 'style' | null = null;
+
+  while (cursor < value.length) {
+    if (value[cursor] !== '<') {
+      if (!ignoredTag) {
+        output += value[cursor];
+      }
+      cursor += 1;
+      continue;
+    }
+
+    const tagEnd = value.indexOf('>', cursor + 1);
+    if (tagEnd === -1) {
+      break;
+    }
+
+    const tagBody = value.slice(cursor + 1, tagEnd);
+    const tagName = readTagName(tagBody);
+    const closing = tagBody.trimStart().startsWith('/');
+
+    if (!ignoredTag && (tagName === 'script' || tagName === 'style')) {
+      ignoredTag = tagName;
+    } else if (ignoredTag && closing && tagName === ignoredTag) {
+      ignoredTag = null;
+    }
+
+    output += ' ';
+    cursor = tagEnd + 1;
+  }
+
+  return normalizeWhitespace(decodeHtmlEntities(output));
 }
 
 function truncate(value: string, maxLength: number): string {

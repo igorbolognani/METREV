@@ -93,6 +93,26 @@ function resolveLocalDatabaseUrl() {
   return `postgresql://${user}:${password}@localhost:${port}/${database}?schema=public`;
 }
 
+function redactUrlForLog(value) {
+  try {
+    const url = new URL(value);
+    if (url.username || url.password) {
+      url.username = url.username ? 'redacted' : '';
+      url.password = url.password ? 'redacted' : '';
+    }
+
+    return url.toString();
+  } catch {
+    return '[unprintable-url]';
+  }
+}
+
+function logValidationError() {
+  console.error(
+    'Local validation failed; sensitive runtime URLs were not logged.',
+  );
+}
+
 async function localRuntimeReachable(url) {
   try {
     const response = await fetch(`${url}/login`, {
@@ -141,11 +161,13 @@ async function assertLocalApiHealth(apiBaseUrl) {
 
 async function ensureLocalViewStack(url) {
   if (await localRuntimeReachable(url)) {
-    console.log(`Local-view runtime already reachable at ${url}.`);
+    console.log(
+      `Local-view runtime already reachable at ${redactUrlForLog(url)}.`,
+    );
     return false;
   }
 
-  console.log(`Starting local-view runtime at ${url}...`);
+  console.log(`Starting local-view runtime at ${redactUrlForLog(url)}...`);
   execPnpm(['run', 'local:view:up']);
   await waitForLocalRuntime(url);
   return true;
@@ -157,7 +179,7 @@ async function runLocalSmokeValidation({
   validationEnv,
 }) {
   console.log(
-    `Running local-view smoke validation against ${runtimeUrl} and ${apiBaseUrl}...`,
+    `Running local-view smoke validation against ${redactUrlForLog(runtimeUrl)} and ${redactUrlForLog(apiBaseUrl)}...`,
   );
 
   await assertLocalApiHealth(apiBaseUrl);
@@ -202,7 +224,9 @@ async function main() {
     return;
   }
 
-  console.log(`Using local validation database ${localDatabaseUrl}.`);
+  console.log(
+    `Using local validation database ${redactUrlForLog(localDatabaseUrl)}.`,
+  );
   execPnpm(['run', 'db:migrate:deploy'], validationEnv);
   execPnpm(['run', 'db:seed'], validationEnv);
   execPnpm(['run', 'test:db'], validationEnv);
@@ -216,6 +240,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  logValidationError(error);
   process.exitCode = 1;
 });

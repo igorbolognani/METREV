@@ -3,9 +3,9 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type {
-    QueueResearchBackfillPreset,
-    QueueResearchBackfillRequest,
-    ResearchSearchProvider
+  QueueResearchBackfillPreset,
+  QueueResearchBackfillRequest,
+  ResearchSearchProvider,
 } from '@metrev/domain-contracts';
 
 export const MFC_MEC_30000_PRESET_ID = 'mfc_mec_30000' as const;
@@ -52,16 +52,6 @@ function normalizeProvider(value: string): ResearchSearchProvider | null {
   }
 
   return null;
-}
-
-function uniqueProviders(
-  value: string[] | undefined,
-): ResearchSearchProvider[] {
-  const normalized = (value ?? [])
-    .map(normalizeProvider)
-    .filter((entry): entry is ResearchSearchProvider => Boolean(entry));
-
-  return [...new Set(normalized)];
 }
 
 function selectProviders(

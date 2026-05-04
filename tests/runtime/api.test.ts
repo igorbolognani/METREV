@@ -380,6 +380,36 @@ describe('api runtime flow', () => {
     await app.close();
   });
 
+  it('enforces the API rate limiter', async () => {
+    const previousMax = process.env.METREV_API_RATE_LIMIT_MAX;
+    process.env.METREV_API_RATE_LIMIT_MAX = '1';
+    const app = await buildApp({
+      repository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const firstResponse = await app.inject({
+        method: 'GET',
+        url: '/health',
+      });
+      const secondResponse = await app.inject({
+        method: 'GET',
+        url: '/health',
+      });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(429);
+    } finally {
+      if (previousMax === undefined) {
+        delete process.env.METREV_API_RATE_LIMIT_MAX;
+      } else {
+        process.env.METREV_API_RATE_LIMIT_MAX = previousMax;
+      }
+      await app.close();
+    }
+  });
+
   it('evaluates a case and fetches the persisted result', async () => {
     const app = await buildApp({
       repository,

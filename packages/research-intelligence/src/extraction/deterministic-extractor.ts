@@ -295,10 +295,59 @@ function detectFirst(text: string, values: string[]): string | null {
   );
 }
 
+function parseNumberBeforeIndex(text: string, index: number): number | null {
+  let end = index;
+  while (end > 0 && /\s/.test(text[end - 1])) {
+    end -= 1;
+  }
+
+  let start = end;
+  while (start > 0 && /[0-9.,]/.test(text[start - 1])) {
+    start -= 1;
+  }
+
+  if (start === end) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(text.slice(start, end).replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function detectTemperatureC(text: string): number | null {
+  const lower = text.toLowerCase();
+
+  for (const marker of [' degrees c', ' degree c', ' c']) {
+    let searchFrom = 0;
+
+    while (searchFrom < lower.length) {
+      const index = lower.indexOf(marker, searchFrom);
+      if (index === -1) {
+        break;
+      }
+
+      const afterMarker = lower[index + marker.length];
+      if (afterMarker && /[a-z0-9]/i.test(afterMarker)) {
+        searchFrom = index + marker.length;
+        continue;
+      }
+
+      const parsed = parseNumberBeforeIndex(text, index);
+      if (parsed !== null) {
+        return parsed;
+      }
+
+      searchFrom = index + marker.length;
+    }
+  }
+
+  return null;
+}
+
 function extractOperatingConditions(text: string): Record<string, unknown> {
   const conditions: Record<string, unknown> = {};
   const phMatch = text.match(/\bpH\s?(?:of|=|:)?\s?(\d+(?:\.\d+)?)/i);
-  const tempMatch = text.match(/(\d+(?:\.\d+)?)\s?(?:degrees?\s?C|C)/i);
+  const temperatureC = detectTemperatureC(text);
   const hrtMatch = text.match(
     /\bHRT\b\s?(?:of|=|:)?\s?(\d+(?:\.\d+)?)\s?(h|hr|hours?)/i,
   );
@@ -306,8 +355,8 @@ function extractOperatingConditions(text: string): Record<string, unknown> {
   if (phMatch) {
     conditions.pH = Number(phMatch[1]);
   }
-  if (tempMatch) {
-    conditions.temperature_c = Number(tempMatch[1]);
+  if (temperatureC !== null) {
+    conditions.temperature_c = temperatureC;
   }
   if (hrtMatch) {
     conditions.HRT_h = Number(hrtMatch[1]);

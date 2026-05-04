@@ -55,7 +55,7 @@ Continue the canonical evidence work by turning `needs_full_text` into a real, p
 3. Add a reusable full-text hydration policy and persistence helper for accepted evidence records.
 4. Extend canonicalization CLI/config to support `--full-text=hydrate` and bounded concurrency.
 5. Re-run deterministic extraction on hydrated allowed text and persist resulting canonical facts safely.
-6. Add Ollama-only schema-validated candidate extraction with exact evidence-span checks.
+6. Add Ollama-only schema-validated measurement and qualitative candidate extraction with exact evidence-span checks and whitelist gating.
 7. Tighten benchmark refresh filtering and add focused regression tests.
 8. Update README and quickstart commands, then run focused verification.
 

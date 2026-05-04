@@ -19,6 +19,12 @@ import {
 import { createPersistedReportConversation } from '../services/report-conversation';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
 
+const rateLimitedRouteOptions = {
+  config: {
+    rateLimit: {},
+  },
+};
+
 function replyForAuthorizationError(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -87,7 +93,7 @@ function buildVersionsFromEvaluation(input?: {
 export async function registerWorkspaceRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/dashboard', async (request, reply) => {
+  app.get('/dashboard', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireViewer(request, reply);
     if (!actor) {
       return reply;
@@ -134,7 +140,7 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/evaluations/:evaluationId', async (request, reply) => {
+  app.get('/evaluations/:evaluationId', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireViewer(request, reply);
     if (!actor) {
       return reply;
@@ -175,7 +181,7 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/cases/:caseId/history', async (request, reply) => {
+  app.get('/cases/:caseId/history', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireViewer(request, reply);
     if (!actor) {
       return reply;
@@ -226,8 +232,7 @@ export async function registerWorkspaceRoutes(
   });
 
   app.get(
-    '/evaluations/:evaluationId/compare/:baselineEvaluationId',
-    async (request, reply) => {
+    '/evaluations/:evaluationId/compare/:baselineEvaluationId', rateLimitedRouteOptions, async (request, reply) => {
       const actor = requireViewer(request, reply);
       if (!actor) {
         return reply;
@@ -281,7 +286,7 @@ export async function registerWorkspaceRoutes(
     },
   );
 
-  app.get('/evidence/review', async (request, reply) => {
+  app.get('/evidence/review', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -345,7 +350,7 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/evidence/explorer', async (request, reply) => {
+  app.get('/evidence/explorer', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -415,7 +420,7 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/evidence/explorer/assistant', async (request, reply) => {
+  app.get('/evidence/explorer/assistant', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
     if (!actor) {
       return reply;
@@ -507,7 +512,7 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/evaluations/:evaluationId/report', async (request, reply) => {
+  app.get('/evaluations/:evaluationId/report', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireViewer(request, reply);
     if (!actor) {
       return reply;
@@ -544,8 +549,7 @@ export async function registerWorkspaceRoutes(
   });
 
   app.post(
-    '/evaluations/:evaluationId/report/conversation',
-    async (request, reply) => {
+    '/evaluations/:evaluationId/report/conversation', rateLimitedRouteOptions, async (request, reply) => {
       const actor = requireViewer(request, reply);
       if (!actor) {
         return reply;
