@@ -3,23 +3,21 @@
 -- and placeholder benchmark rows are preserved as lineage but marked out of the
 -- decision-ready benchmark path until canonicalization backfills them.
 
-ALTER TABLE "ScientificEvidenceFact"
-ADD COLUMN "extractionRunId" TEXT,
-ADD COLUMN "canonicalKey" TEXT,
-ADD COLUMN "normalizationRuleId" TEXT,
-ADD COLUMN "decisionReady" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN "extractionSource" TEXT,
-ADD COLUMN "missingFields" JSONB,
-ADD COLUMN "qualityFlags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-ADD COLUMN "sourceTextHash" TEXT;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "extractionRunId" TEXT;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "canonicalKey" TEXT;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "normalizationRuleId" TEXT;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "decisionReady" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "extractionSource" TEXT;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "missingFields" JSONB;
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "qualityFlags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "ScientificEvidenceFact" ADD COLUMN "sourceTextHash" TEXT;
 
-ALTER TABLE "EvidenceBenchmarkRecord"
-ADD COLUMN "extractionRunId" TEXT,
-ADD COLUMN "canonicalKey" TEXT,
-ADD COLUMN "normalizationRuleId" TEXT,
-ADD COLUMN "decisionReady" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN "confidence" DOUBLE PRECISION,
-ADD COLUMN "sourceTextHash" TEXT;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "extractionRunId" TEXT;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "canonicalKey" TEXT;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "normalizationRuleId" TEXT;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "decisionReady" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "confidence" DOUBLE PRECISION;
+ALTER TABLE "EvidenceBenchmarkRecord" ADD COLUMN "sourceTextHash" TEXT;
 
 UPDATE "ScientificEvidenceFact"
 SET
@@ -29,7 +27,7 @@ WHERE "factLayer" = 'ingestion_claim_placeholder';
 
 UPDATE "EvidenceBenchmarkRecord"
 SET "decisionReady" = false
-WHERE "payload"->>'source' = 'ingestion_claim_placeholder';
+WHERE jsonb_extract_path_text("payload", 'source') = 'ingestion_claim_placeholder';
 
 CREATE TABLE "EvidenceCanonicalizationRun" (
   "id" TEXT NOT NULL,

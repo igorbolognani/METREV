@@ -75,6 +75,7 @@ export async function refreshCanonicalEvidenceBenchmarks(
         FROM "EvidenceBenchmarkRecord"
         WHERE
           "decisionReady" = true
+          AND "metricType" IS NOT NULL
           AND "normalizedValue" IS NOT NULL
           AND "canonicalKey" IS NOT NULL
           AND "normalizedUnit" IS NOT NULL

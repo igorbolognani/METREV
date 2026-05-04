@@ -47,18 +47,18 @@ For a resumable bounded probe against an existing active run, use the active run
 ```bash
 LOCAL_DB='postgresql://metrev:metrev@localhost:5436/metrev?schema=public'
 env DATABASE_URL="$LOCAL_DB" DIRECT_URL="$LOCAL_DB" \
-	EVIDENCE_TARGET_TOTAL=500000 \
-	EVIDENCE_BATCH_SIZE=1000 \
-	EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS=true \
-	EVIDENCE_REVIEW_ONLY_EXCEPTIONS=true \
-	EVIDENCE_MAX_RECORDS=500000 \
-	EVIDENCE_INGESTION_MODE=bulk \
-	pnpm run evidence:ingest -- \
-	--run-id=cmopywaft0000fqi0lyochpjg \
-	--target-total=500000 \
-	--batch-size=1000 \
-	--auto-accept=true \
-	--max-provider-pages=1
+ EVIDENCE_TARGET_TOTAL=500000 \
+ EVIDENCE_BATCH_SIZE=1000 \
+ EVIDENCE_AUTO_ACCEPT_TRUSTED_CORPUS=true \
+ EVIDENCE_REVIEW_ONLY_EXCEPTIONS=true \
+ EVIDENCE_MAX_RECORDS=500000 \
+ EVIDENCE_INGESTION_MODE=bulk \
+ pnpm run evidence:ingest -- \
+ --run-id=cmopywaft0000fqi0lyochpjg \
+ --target-total=500000 \
+ --batch-size=1000 \
+ --auto-accept=true \
+ --max-provider-pages=1
 ```
 
 The bounded probe should leave the run `STARTED` if the target is not reached, so the same run id can be resumed.
