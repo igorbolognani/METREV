@@ -2369,10 +2369,10 @@ export async function persistNormalizedEntries(
   {
     acceptancePolicy = TRUSTED_CORPUS_AUTO_ACCEPT_POLICY,
     autoAcceptTrustedCorpus = false,
+    runId = null,
     ingestionBatchId = runId,
     ingestionMode = 'bulk',
     maxNewCatalogItems = Number.MAX_SAFE_INTEGER,
-    runId = null,
   } = {},
 ) {
   let recordsStored = 0;
