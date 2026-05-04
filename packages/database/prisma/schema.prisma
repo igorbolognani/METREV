@@ -537,9 +537,17 @@ model ScientificEvidenceFact {
   sourceRecordId        String
   catalogItemId         String
   claimId               String?
+  extractionRunId       String?
   factLayer             String                      @default("extracted")
   factType              String
   fieldKey              String
+  canonicalKey          String?
+  normalizationRuleId   String?
+  decisionReady         Boolean                     @default(false)
+  extractionSource      String?
+  missingFields         Json?
+  qualityFlags          String[]                    @default([])
+  sourceTextHash        String?
   originalValue         String?                     @db.Text
   originalUnit          String?
   normalizedValue       Float?
@@ -562,11 +570,17 @@ model ScientificEvidenceFact {
   sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
   catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
   claim                 EvidenceClaim?              @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
   benchmarkRecords      EvidenceBenchmarkRecord[]
 
   @@index([sourceRecordId])
   @@index([catalogItemId, fieldKey])
   @@index([claimId])
+  @@index([extractionRunId])
+  @@index([canonicalKey])
+  @@index([decisionReady, metricType])
+  @@index([sourceTextHash])
+  @@index([confidence])
   @@index([systemType])
   @@index([reactorType])
   @@index([componentType, material])
@@ -582,6 +596,12 @@ model EvidenceBenchmarkRecord {
   sourceRecordId        String
   catalogItemId         String
   factId                String?
+  extractionRunId       String?
+  canonicalKey          String?
+  normalizationRuleId   String?
+  decisionReady         Boolean                     @default(false)
+  confidence            Float?
+  sourceTextHash        String?
   systemType            String?
   application           String?
   componentType         String?
@@ -603,14 +623,91 @@ model EvidenceBenchmarkRecord {
   sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
   catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
   fact                  ScientificEvidenceFact?     @relation(fields: [factId], references: [id], onDelete: SetNull)
+  canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
 
   @@index([sourceRecordId])
   @@index([catalogItemId])
   @@index([factId])
+  @@index([extractionRunId])
+  @@index([canonicalKey, normalizedUnit])
+  @@index([decisionReady, metricType])
+  @@index([sourceTextHash])
   @@index([systemType, application])
   @@index([componentType, material])
   @@index([membraneSeparator])
   @@index([operatingConditionKey])
+  @@index([metricType, normalizedUnit])
+  @@index([publicationYear])
+  @@index([evidenceQuality])
+  @@index([scale])
+  @@index([trl])
+}
+
+model EvidenceCanonicalizationRun {
+  id                         String                    @id @default(cuid())
+  triggerMode                String
+  status                     IngestionRunStatus
+  targetTotal                Int?
+  batchSize                  Int?
+  recordsProcessed           Int                       @default(0)
+  recordsCanonicalExtracted  Int                       @default(0)
+  recordsInsufficientSource  Int                       @default(0)
+  recordsNeedsFullText       Int                       @default(0)
+  recordsNeedsReview         Int                       @default(0)
+  recordsFailed              Int                       @default(0)
+  recordsSkipped             Int                       @default(0)
+  canonicalFactsStored       Int                       @default(0)
+  benchmarkRecordsStored     Int                       @default(0)
+  checkpoint                 Json?
+  summary                    Json
+  failureDetail              Json?
+  snapshotCutoff             DateTime?
+  startedAt                  DateTime
+  completedAt                DateTime?
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  scientificFacts            ScientificEvidenceFact[]
+  benchmarkRecords           EvidenceBenchmarkRecord[]
+  benchmarkAggregates        EvidenceBenchmarkAggregate[]
+
+  @@index([triggerMode, status, updatedAt])
+  @@index([status, updatedAt])
+  @@index([snapshotCutoff])
+}
+
+model EvidenceBenchmarkAggregate {
+  id                    String                       @id @default(cuid())
+  extractionRunId       String?
+  systemType            String?
+  application           String?
+  componentType         String?
+  material              String?
+  membraneSeparator     String?
+  operatingConditionKey String?
+  metricType            String
+  canonicalKey          String
+  normalizedUnit        String
+  publicationYear       Int?
+  evidenceQuality       String?
+  scale                 String?
+  trl                   Int?
+  recordCount           Int
+  minValue              Float?
+  p25Value              Float?
+  medianValue           Float?
+  p75Value              Float?
+  p90Value              Float?
+  maxValue              Float?
+  meanValue             Float?
+  confidenceCoverage    Float?
+  payload               Json
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
+
+  @@index([extractionRunId])
+  @@index([canonicalKey, normalizedUnit])
+  @@index([systemType, componentType, material])
   @@index([metricType, normalizedUnit])
   @@index([publicationYear])
   @@index([evidenceQuality])

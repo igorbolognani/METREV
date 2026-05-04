@@ -10,6 +10,7 @@ import {
   normalizeCaseInput,
   validateDecisionOutputContract,
   type DecisionOutputValidationIssue,
+  type DerivedObservation,
   type EvaluationResponse,
   type ExternalEvidenceCatalogItemDetail,
   type RawCaseInput,
@@ -37,6 +38,92 @@ export interface CreatePersistedCaseEvaluationInput {
 const catalogEvidenceIdPrefix = 'catalog:';
 const reviewedCatalogEvidenceNote =
   'Reviewed and accepted into the external evidence catalog before intake selection.';
+
+function systemTypeForTechnologyFamily(value: string): string {
+  switch (value) {
+    case 'microbial_fuel_cell':
+      return 'MFC';
+    case 'microbial_electrolysis_cell':
+      return 'MEC';
+    default:
+      return 'MET';
+  }
+}
+
+function canonicalMaterialToken(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+  if (normalized.includes('carbon_felt')) {
+    return 'carbon_felt';
+  }
+  if (normalized.includes('carbon_cloth')) {
+    return 'carbon_cloth';
+  }
+  if (normalized.includes('activated_carbon')) {
+    return 'activated_carbon';
+  }
+  if (normalized.includes('graphite')) {
+    return 'graphite';
+  }
+  if (normalized.includes('nafion')) {
+    return 'nafion';
+  }
+  if (normalized.includes('stainless_steel')) {
+    return 'stainless_steel';
+  }
+
+  return [
+    'unknown',
+    'needs_classification',
+    'present',
+    'absent',
+    'none',
+    'not_stated',
+  ].includes(normalized)
+    ? null
+    : normalized;
+}
+
+function metricTypesForObjective(value: string): string[] {
+  switch (value) {
+    case 'hydrogen_recovery':
+      return ['hydrogen_production', 'current_density', 'energy_input'];
+    case 'biogas_synergy':
+      return ['methane_biogas_relationship', 'removal_efficiency'];
+    case 'nitrogen_recovery':
+      return ['removal_efficiency', 'current_density'];
+    case 'low_power_generation':
+      return ['power_density', 'current_density'];
+    default:
+      return ['removal_efficiency', 'power_density', 'current_density'];
+  }
+}
+
+function evidenceBenchmarkObservation(input: {
+  aggregateCount: number;
+  evidenceCount: number;
+}): DerivedObservation {
+  return {
+    observation_id: `evidence-benchmark-slice-${randomUUID()}`,
+    key: 'evidence_benchmark_slice_count',
+    label: 'Decision evidence benchmark slice',
+    value: input.aggregateCount,
+    unit: null,
+    source_kind: 'measured',
+    confidence_level: input.aggregateCount > 0 ? 'medium' : 'low',
+    decision_relevance: 'informational',
+    provenance_note: `Database benchmark retrieval returned ${input.aggregateCount} aggregate range(s) and ${input.evidenceCount} top evidence record(s); the full corpus was not loaded or sent to the LLM.`,
+    assumptions: [],
+    missing_dependencies:
+      input.aggregateCount > 0
+        ? []
+        : ['canonical decision-ready benchmark aggregates'],
+  };
+}
 
 export class InvalidCatalogEvidenceSelectionError extends Error {
   readonly code = 'invalid_catalog_evidence';
@@ -253,6 +340,30 @@ export async function createPersistedCaseEvaluation(
         input.evaluationRepository,
       );
       const normalizedCase = normalizeCaseInput(sanitizedRawInput);
+      const stackBlocks = normalizedCase.stack_blocks as Record<
+        string,
+        Record<string, unknown>
+      >;
+      const anodeMaterial = canonicalMaterialToken(
+        stackBlocks.anode_biofilm_support?.material_family,
+      );
+      const cathodeMaterial = canonicalMaterialToken(
+        stackBlocks.cathode_catalyst_support?.catalyst_family ??
+          stackBlocks.cathode_catalyst_support?.material_family,
+      );
+      const membraneMaterial = canonicalMaterialToken(
+        stackBlocks.membrane_or_separator?.type,
+      );
+      const materials = dedupeStrings(
+        [anodeMaterial, cathodeMaterial, membraneMaterial].filter(
+          (value): value is string => Boolean(value),
+        ),
+      );
+      const componentTypes = dedupeStrings([
+        ...(anodeMaterial ? ['anode'] : []),
+        ...(cathodeMaterial ? ['cathode', 'catalyst'] : []),
+        ...(membraneMaterial ? ['membrane_separator'] : []),
+      ]);
       const simulationEnrichment = await withSpan(
         'case.evaluate.simulation_enrichment',
         () =>
@@ -267,8 +378,58 @@ export async function createPersistedCaseEvaluation(
           technology_family: normalizedCase.technology_family,
         },
       );
+      const benchmarkSlice = await withSpan(
+        'case.evaluate.evidence_benchmark_slice',
+        () =>
+          input.evaluationRepository.getEvidenceBenchmarkSlice({
+            application: normalizedCase.primary_objective,
+            componentTypes,
+            limit: 12,
+            materials,
+            metricTypes: metricTypesForObjective(
+              normalizedCase.primary_objective,
+            ),
+            systemType: systemTypeForTechnologyFamily(
+              normalizedCase.technology_family,
+            ),
+          }),
+        {
+          case_id: normalizedCase.case_id,
+          technology_family: normalizedCase.technology_family,
+          primary_objective: normalizedCase.primary_objective,
+        },
+      );
+      const evidenceBenchmarkObservations = [
+        evidenceBenchmarkObservation({
+          aggregateCount: benchmarkSlice.summary.aggregate_count,
+          evidenceCount: benchmarkSlice.summary.evidence_count,
+        }),
+      ];
+      const decisionDerivedObservations = [
+        ...simulationEnrichment.derived_observations,
+        ...evidenceBenchmarkObservations,
+      ];
+      const evaluationEnrichment = {
+        ...simulationEnrichment,
+        derived_observations: decisionDerivedObservations,
+        provenance: {
+          ...simulationEnrichment.provenance,
+          source_refs: dedupeStrings([
+            ...simulationEnrichment.provenance.source_refs,
+            ...benchmarkSlice.evidence.map(
+              (record) => `catalog:${record.catalog_item_id}`,
+            ),
+          ]),
+          note: [
+            simulationEnrichment.provenance.note,
+            `Evidence benchmark slice used ${benchmarkSlice.summary.aggregate_count} aggregate range(s), ${benchmarkSlice.summary.evidence_count} top record(s), and a limit of ${benchmarkSlice.summary.limited_to}.`,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        },
+      };
       const decisionOutput = runCaseEvaluation(normalizedCase, {
-        derivedObservations: simulationEnrichment.derived_observations,
+        derivedObservations: decisionDerivedObservations,
       });
       const validation = validateDecisionOutputContract({
         decisionOutput,
@@ -297,7 +458,7 @@ export async function createPersistedCaseEvaluation(
         decisionOutput: reviewedDecisionOutput,
         normalizedCase,
         rawInput: sanitizedRawInput,
-        simulationEnrichment,
+        simulationEnrichment: evaluationEnrichment,
         runtimeVersions,
         entrypoint: input.entrypoint ?? 'api',
         evaluationId,
@@ -312,7 +473,7 @@ export async function createPersistedCaseEvaluation(
         audit_record: auditRecord,
         narrative: narrativeResult.narrative,
         narrative_metadata: narrativeResult.narrativeMetadata,
-        simulation_enrichment: simulationEnrichment,
+        simulation_enrichment: evaluationEnrichment,
       });
     },
     {

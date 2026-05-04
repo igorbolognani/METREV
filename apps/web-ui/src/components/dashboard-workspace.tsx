@@ -84,8 +84,18 @@ export function DashboardWorkspaceView({
     rejected: 0,
     failed_ingestion: 0,
     duplicate_skipped: 0,
+    canonical_processed: 0,
+    canonical_extracted: 0,
+    canonical_insufficient_source: 0,
+    canonical_needs_full_text: 0,
+    canonical_needs_review: 0,
+    canonical_failed: 0,
+    canonical_facts: 0,
+    benchmark_ready_facts: 0,
+    benchmark_aggregates: 0,
     last_ingestion_batch: null,
     ingestion_progress: null,
+    canonicalization_progress: null,
     page: 1,
     page_size: 1,
     total_pages: 1,
@@ -213,10 +223,51 @@ export function DashboardWorkspaceView({
           value={evidenceCatalog.pending_review ?? evidenceCatalog.pending}
         />
         <WorkspaceStatCard
-          detail={`Last batch: ${evidenceCatalog.last_ingestion_batch ?? 'none'}; duplicates skipped are not counted as catalog rows.`}
+          detail={`${evidenceCatalog.canonical_facts} canonical fact(s); ${evidenceCatalog.benchmark_aggregates} benchmark aggregate range(s).`}
+          label="Decision-ready facts"
+          tone="default"
+          value={evidenceCatalog.benchmark_ready_facts}
+        />
+      </div>
+
+      <div className="workspace-detail-grid">
+        <WorkspaceStatCard
+          detail={`${evidenceCatalog.canonical_insufficient_source} insufficient source, ${evidenceCatalog.canonical_needs_full_text} needing full text.`}
+          label="Canonicalized articles"
+          tone="accent"
+          value={evidenceCatalog.canonical_processed}
+        />
+        <WorkspaceStatCard
+          detail={`${evidenceCatalog.canonical_needs_review} canonicalization exception(s); ${evidenceCatalog.canonical_failed} failed extraction(s).`}
+          label="Decision exceptions"
+          tone="warning"
+          value={
+            evidenceCatalog.canonical_needs_review +
+            evidenceCatalog.canonical_failed
+          }
+        />
+        <WorkspaceStatCard
+          detail={`Last ingestion batch: ${evidenceCatalog.last_ingestion_batch ?? 'none'}.`}
           label="Duplicate skipped"
           tone="default"
           value={evidenceCatalog.duplicate_skipped}
+        />
+        <WorkspaceStatCard
+          detail={
+            evidenceCatalog.canonicalization_progress
+              ? `${evidenceCatalog.canonicalization_progress.processed_total} processed of ${evidenceCatalog.canonicalization_progress.target_total}.`
+              : 'Canonicalization run status is loaded from persisted audit records.'
+          }
+          label="Canonicalization progress"
+          tone="success"
+          value={
+            evidenceCatalog.canonicalization_progress
+              ? Math.round(
+                  evidenceCatalog.canonicalization_progress.completion_ratio *
+                    100,
+                )
+              : 0
+          }
         />
       </div>
 

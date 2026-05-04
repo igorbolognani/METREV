@@ -45,10 +45,12 @@ const pageSizeOptions = [
 
 export interface EvidenceExplorerToolbarProps {
   componentType: string;
+  decisionReadyOnly: boolean;
   filter: EvidenceReviewFilter;
   material: string;
   metricType: string;
   onFilterChange: (nextFilter: EvidenceReviewFilter) => void;
+  onDecisionReadyOnlyChange: (enabled: boolean) => void;
   onNextPage: () => void;
   onPageSizeChange: (nextValue: number) => void;
   onPreviousPage: () => void;
@@ -110,10 +112,12 @@ const metricTypeOptions = [
 
 export function EvidenceExplorerToolbar({
   componentType,
+  decisionReadyOnly,
   filter,
   material,
   metricType,
   onFilterChange,
+  onDecisionReadyOnlyChange,
   onNextPage,
   onPageSizeChange,
   onPreviousPage,
@@ -199,6 +203,17 @@ export function EvidenceExplorerToolbar({
             }
             options={metricTypeOptions}
             value={metricType || 'all'}
+          />
+          <Select
+            label="Decision readiness"
+            onValueChange={(value) =>
+              onDecisionReadyOnlyChange(value === 'decision-ready')
+            }
+            options={[
+              { label: 'All canonical records', value: 'all' },
+              { label: 'Decision-ready only', value: 'decision-ready' },
+            ]}
+            value={decisionReadyOnly ? 'decision-ready' : 'all'}
           />
           <Input
             hint="Normalized or partial material name"

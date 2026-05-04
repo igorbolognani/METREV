@@ -94,6 +94,9 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run db:bootstrap`
 - `pnpm run db:bootstrap:bigdata:curated`
 - `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true`
+- `pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=existing --llm-mode=disabled`
+- `pnpm run evidence:benchmark:refresh`
+- `pnpm run evidence:quality-report`
 - `pnpm prisma:generate` after Prisma schema changes or when `postinstall` was skipped
 - `pnpm run db:migrate:deploy`
 - `pnpm run db:seed`
@@ -126,6 +129,9 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run validate:full` combines all promoted repository matrices in sequence: fast, advanced, and local.
 - `pnpm run db:bootstrap:bigdata:curated` persists only the committed curated snapshot into PostgreSQL. Use `pnpm run db:bootstrap:bigdata` when you explicitly want the broader bounded live-provider bootstrap.
 - `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true` runs the production-scale scientific corpus ingestion path. It processes OpenAlex, Crossref, and Europe PMC in batches, resumes from the latest bulk ingestion checkpoint, system-accepts trusted valid scientific records, sends exceptions to review, skips duplicates, and reports honestly if real providers do not yield enough records to reach the configured target.
+- `pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=existing --llm-mode=disabled` backfills accepted catalog rows into canonical scientific facts. It is resumable, deterministic-first, idempotent, and marks every processed article as `canonical_extracted`, `insufficient_source`, `needs_full_text`, `needs_review`, or `extraction_failed`.
+- `pnpm run evidence:benchmark:refresh` rebuilds benchmark percentile aggregates from `decisionReady` canonical facts only. Placeholder ingestion facts are excluded from decision benchmarks.
+- `pnpm run evidence:quality-report` prints persisted counts for catalog rows, claims, placeholder facts, canonical facts, benchmark rows, aggregates, duplicate decisions, and canonicalization run status.
 - `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
 
 ## Production-scale evidence ingestion
@@ -151,6 +157,32 @@ The target is total catalog size. If 4,678 accepted records already exist, the c
 Valid trusted scientific records flow through schema validation, normalization, deduplication, quality checks, audit logging, and automatic system acceptance with `accepted_by=system` and `acceptance_policy=auto_accept_trusted_scientific_corpus_v1`. Records with missing provenance, malformed shape, failed normalization, low extraction confidence, or unresolved duplicate conflicts remain in the Evidence Review Queue as exceptions.
 
 The database now separates raw article/source metadata, catalog acceptance state, ingestion audit events, duplicate decisions, extracted scientific fact placeholders, and benchmark-ready records. Evidence Explorer and Evidence Review use server-side pagination and counts; the Stack Cockpit continues to attach only accepted catalog evidence and can query accepted evidence slices through the catalog API without loading the full corpus into the browser or LLM context.
+
+## Canonical scientific decision layer
+
+After ingestion, run the canonicalization pass before using the corpus for stack diagnosis or benchmarking:
+
+```bash
+pnpm run db:migrate:deploy
+pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=existing --llm-mode=disabled
+pnpm run evidence:benchmark:refresh
+pnpm run evidence:quality-report
+```
+
+The canonicalizer reads accepted `ExternalEvidenceCatalogItem` rows, linked `ExternalSourceRecord` metadata, accepted claims, and existing `SourceTextChunkRecord` text when available. It never invents missing scientific facts. If title, abstract, claims, and local full-text chunks do not contain a technical field, the article is classified as `insufficient_source` or `needs_full_text` instead of being filled with synthetic values.
+
+Canonical facts use `factLayer=canonical_scientific_fact_v1` and carry `canonicalKey`, `normalizationRuleId`, `decisionReady`, `extractionSource`, `missingFields`, `qualityFlags`, `sourceTextHash`, and `extractionRunId`. The deterministic extractor currently covers system type, reactor type, anode/cathode/membrane/catalyst/current-collector materials, substrate, inoculum, pH, temperature, conductivity, COD, HRT, current density, power density, coulombic efficiency, hydrogen production, methane/biogas signals, removal efficiency, scale, TRL, cost indicators, limitations, failure modes, and trade-offs.
+
+Benchmark aggregates are rebuilt only from canonical `decisionReady` benchmark rows and include count, min, p25, median, p75, p90, max, mean, and confidence coverage by system type, application, component, material, membrane/separator, operating condition, metric, unit, year, scale, TRL, and evidence quality. Stack evaluation retrieves a limited benchmark slice from the database and records it as an evidence-derived observation; the full corpus is not loaded into memory or sent to the LLM.
+
+For the Docker local-view database, prefix the same commands with the local connection:
+
+```bash
+env DATABASE_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public DIRECT_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public pnpm run db:migrate:deploy
+env DATABASE_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public DIRECT_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=existing --llm-mode=disabled
+env DATABASE_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public DIRECT_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public pnpm run evidence:benchmark:refresh
+env DATABASE_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public DIRECT_URL=postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@localhost:${POSTGRES_PORT:-5436}/${POSTGRES_DB:-metrev}?schema=public pnpm run evidence:quality-report
+```
 
 ## Supabase-hosted Postgres
 

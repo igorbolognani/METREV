@@ -69,6 +69,7 @@ export async function registerExternalEvidenceRoutes(
       sourceType?: string;
       systemType?: string;
       componentType?: string;
+      decisionReady?: string;
       material?: string;
       metricType?: string;
       page?: string;
@@ -120,6 +121,12 @@ export async function registerExternalEvidenceRoutes(
             : undefined,
           systemType: query.systemType?.trim() || undefined,
           componentType: query.componentType?.trim() || undefined,
+          decisionReady:
+            query.decisionReady?.trim().toLowerCase() === 'true'
+              ? true
+              : query.decisionReady?.trim().toLowerCase() === 'false'
+                ? false
+                : undefined,
           material: query.material?.trim() || undefined,
           metricType: query.metricType?.trim() || undefined,
           page: parsedPage,

@@ -93,6 +93,9 @@ export interface EvaluationRepository {
   ): Promise<EvaluationResponse | null>;
   listEvaluations(input?: EvaluationListInput): Promise<EvaluationListResponse>;
   getCaseHistory(caseId: string): Promise<CaseHistoryResponse | null>;
+  getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput,
+  ): Promise<EvidenceBenchmarkSlice>;
   listExternalEvidenceCatalog(
     input?: ExternalEvidenceCatalogListInput,
   ): Promise<ExternalEvidenceCatalogListResponse>;
@@ -116,6 +119,7 @@ export interface EvaluationRepository {
 
 export interface ExternalEvidenceCatalogListInput {
   componentType?: string;
+  decisionReady?: boolean;
   material?: string;
   metricType?: string;
   reviewStatus?: ExternalEvidenceReviewStatus;
@@ -124,6 +128,58 @@ export interface ExternalEvidenceCatalogListInput {
   systemType?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface EvidenceBenchmarkSliceInput {
+  application?: string;
+  componentTypes?: string[];
+  limit?: number;
+  materials?: string[];
+  metricTypes?: string[];
+  systemType?: string;
+}
+
+export interface EvidenceBenchmarkSlice {
+  aggregates: Array<{
+    canonical_key: string;
+    metric_type: string;
+    normalized_unit: string;
+    system_type: string | null;
+    application: string | null;
+    component_type: string | null;
+    material: string | null;
+    publication_year: number | null;
+    evidence_quality: string | null;
+    record_count: number;
+    min_value: number | null;
+    p25_value: number | null;
+    median_value: number | null;
+    p75_value: number | null;
+    p90_value: number | null;
+    max_value: number | null;
+    mean_value: number | null;
+    confidence_coverage: number | null;
+  }>;
+  evidence: Array<{
+    catalog_item_id: string;
+    source_record_id: string;
+    title: string;
+    doi: string | null;
+    source_url: string | null;
+    canonical_key: string | null;
+    metric_type: string | null;
+    normalized_value: number | null;
+    normalized_unit: string | null;
+    material: string | null;
+    component_type: string | null;
+    confidence: number | null;
+    publication_year: number | null;
+  }>;
+  summary: {
+    aggregate_count: number;
+    evidence_count: number;
+    limited_to: number;
+  };
 }
 
 export interface EvaluationListInput {
@@ -762,6 +818,7 @@ function buildEvaluationListResponse(
 
 const catalogEvidenceIdPrefix = 'catalog:';
 const researchEvidenceIdPrefix = 'research:';
+const canonicalScientificFactLayer = 'canonical_scientific_fact_v1';
 const acceptedCatalogEvidenceUsageNote =
   'Accepted catalog evidence attached during intake selection.';
 const attachedResearchEvidenceUsageNote =
@@ -1867,6 +1924,20 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
     return toCaseHistory(evaluations);
   }
 
+  async getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput = {},
+  ): Promise<EvidenceBenchmarkSlice> {
+    return {
+      aggregates: [],
+      evidence: [],
+      summary: {
+        aggregate_count: 0,
+        evidence_count: 0,
+        limited_to: input.limit ?? 0,
+      },
+    };
+  }
+
   async listExternalEvidenceCatalog(
     input: ExternalEvidenceCatalogListInput = {},
   ): Promise<ExternalEvidenceCatalogListResponse> {
@@ -1939,8 +2010,18 @@ export class MemoryEvaluationRepository implements EvaluationRepository {
           .length,
         failed_ingestion: 0,
         duplicate_skipped: 0,
+        canonical_processed: 0,
+        canonical_extracted: 0,
+        canonical_insufficient_source: 0,
+        canonical_needs_full_text: 0,
+        canonical_needs_review: 0,
+        canonical_failed: 0,
+        canonical_facts: 0,
+        benchmark_ready_facts: 0,
+        benchmark_aggregates: 0,
         last_ingestion_batch: null,
         ingestion_progress: null,
+        canonicalization_progress: null,
         page,
         page_size: pageSize,
         total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),
@@ -2751,6 +2832,128 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
     );
   }
 
+  async getEvidenceBenchmarkSlice(
+    input: EvidenceBenchmarkSliceInput = {},
+  ): Promise<EvidenceBenchmarkSlice> {
+    return withSpan(
+      'database.evidence_benchmark.slice',
+      async () => {
+        const limit = Math.min(50, Math.max(1, Math.trunc(input.limit ?? 12)));
+        const stringIn = (values: string[] | undefined) =>
+          values?.map((value) => value.trim()).filter(Boolean);
+        const metricTypes = stringIn(input.metricTypes);
+        const materials = stringIn(input.materials);
+        const componentTypes = stringIn(input.componentTypes);
+        const aggregateSystemType = input.systemType
+          ? { equals: input.systemType, mode: 'insensitive' as const }
+          : undefined;
+        const aggregateApplication = input.application
+          ? { equals: input.application, mode: 'insensitive' as const }
+          : undefined;
+        const aggregateMetricType =
+          metricTypes && metricTypes.length > 0
+            ? { in: metricTypes, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateMaterial =
+          materials && materials.length > 0
+            ? { in: materials, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateComponentType =
+          componentTypes && componentTypes.length > 0
+            ? { in: componentTypes, mode: 'insensitive' as const }
+            : undefined;
+        const aggregateWhere: Prisma.EvidenceBenchmarkAggregateWhereInput = {
+          systemType: aggregateSystemType,
+          application: aggregateApplication,
+          metricType: aggregateMetricType,
+          material: aggregateMaterial,
+          componentType: aggregateComponentType,
+        };
+        const recordWhere: Prisma.EvidenceBenchmarkRecordWhereInput = {
+          decisionReady: true,
+          systemType: aggregateSystemType,
+          application: aggregateApplication,
+          metricType: aggregateMetricType,
+          material: aggregateMaterial,
+          componentType: aggregateComponentType,
+        };
+        const [aggregates, evidence] = await this.prisma.$transaction([
+          this.prisma.evidenceBenchmarkAggregate.findMany({
+            where: aggregateWhere,
+            orderBy: [{ recordCount: 'desc' }, { updatedAt: 'desc' }],
+            take: limit,
+          }),
+          this.prisma.evidenceBenchmarkRecord.findMany({
+            where: recordWhere,
+            include: {
+              catalogItem: {
+                select: {
+                  title: true,
+                },
+              },
+              sourceRecord: {
+                select: {
+                  doi: true,
+                  sourceUrl: true,
+                  publicationYear: true,
+                },
+              },
+            },
+            orderBy: [{ confidence: 'desc' }, { updatedAt: 'desc' }],
+            take: limit,
+          }),
+        ]);
+
+        return {
+          aggregates: aggregates.map((record) => ({
+            canonical_key: record.canonicalKey,
+            metric_type: record.metricType,
+            normalized_unit: record.normalizedUnit,
+            system_type: record.systemType,
+            application: record.application,
+            component_type: record.componentType,
+            material: record.material,
+            publication_year: record.publicationYear,
+            evidence_quality: record.evidenceQuality,
+            record_count: record.recordCount,
+            min_value: record.minValue,
+            p25_value: record.p25Value,
+            median_value: record.medianValue,
+            p75_value: record.p75Value,
+            p90_value: record.p90Value,
+            max_value: record.maxValue,
+            mean_value: record.meanValue,
+            confidence_coverage: record.confidenceCoverage,
+          })),
+          evidence: evidence.map((record) => ({
+            catalog_item_id: record.catalogItemId,
+            source_record_id: record.sourceRecordId,
+            title: record.catalogItem.title,
+            doi: record.sourceRecord.doi,
+            source_url: record.sourceRecord.sourceUrl,
+            canonical_key: record.canonicalKey,
+            metric_type: record.metricType,
+            normalized_value: record.normalizedValue,
+            normalized_unit: record.normalizedUnit,
+            material: record.material,
+            component_type: record.componentType,
+            confidence: record.confidence,
+            publication_year: record.sourceRecord.publicationYear,
+          })),
+          summary: {
+            aggregate_count: aggregates.length,
+            evidence_count: evidence.length,
+            limited_to: limit,
+          },
+        };
+      },
+      {
+        system_type: input.systemType ?? 'all',
+        application: input.application ?? 'all',
+      },
+    );
+  }
+
   async listExternalEvidenceCatalog(
     input: ExternalEvidenceCatalogListInput = {},
   ): Promise<ExternalEvidenceCatalogListResponse> {
@@ -2769,9 +2972,18 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           input.systemType ||
           input.componentType ||
           input.material ||
-          input.metricType
+          input.metricType ||
+          input.decisionReady !== undefined
             ? {
                 some: {
+                  factLayer:
+                    input.decisionReady === true
+                      ? canonicalScientificFactLayer
+                      : undefined,
+                  decisionReady:
+                    input.decisionReady !== undefined
+                      ? input.decisionReady
+                      : undefined,
                   systemType: input.systemType
                     ? { equals: input.systemType, mode: 'insensitive' as const }
                     : undefined,
@@ -2860,6 +3072,12 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           duplicateSkippedTotal,
           lastIngestionRun,
           activeIngestionRun,
+          latestCanonicalizationRun,
+          activeCanonicalizationRun,
+          canonicalFactTotal,
+          benchmarkReadyFactTotal,
+          benchmarkAggregateTotal,
+          canonicalExtractionStatusGroups,
           sourceTypeFacetGroups,
           evidenceTypeFacetGroups,
           reviewStatusFacetGroups,
@@ -2945,6 +3163,65 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                   duplicatesSkipped: true,
                 },
               }),
+              tx.evidenceCanonicalizationRun.findFirst({
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsProcessed: true,
+                  recordsCanonicalExtracted: true,
+                  recordsInsufficientSource: true,
+                  recordsNeedsFullText: true,
+                  recordsNeedsReview: true,
+                  recordsFailed: true,
+                  canonicalFactsStored: true,
+                  benchmarkRecordsStored: true,
+                  status: true,
+                },
+              }),
+              tx.evidenceCanonicalizationRun.findFirst({
+                where: { status: 'STARTED' },
+                orderBy: [{ updatedAt: 'desc' }],
+                select: {
+                  id: true,
+                  targetTotal: true,
+                  recordsProcessed: true,
+                  recordsCanonicalExtracted: true,
+                  recordsInsufficientSource: true,
+                  recordsNeedsFullText: true,
+                  recordsNeedsReview: true,
+                  recordsFailed: true,
+                  canonicalFactsStored: true,
+                  benchmarkRecordsStored: true,
+                },
+              }),
+              tx.scientificEvidenceFact.count({
+                where: { factLayer: canonicalScientificFactLayer },
+              }),
+              tx.scientificEvidenceFact.count({
+                where: {
+                  factLayer: canonicalScientificFactLayer,
+                  decisionReady: true,
+                },
+              }),
+              tx.evidenceBenchmarkAggregate.count(),
+              tx.externalEvidenceCatalogItem.groupBy({
+                by: ['extractionStatus'],
+                where: {
+                  extractionStatus: {
+                    in: [
+                      'canonical_extracted',
+                      'insufficient_source',
+                      'needs_full_text',
+                      'needs_review',
+                      'extraction_failed',
+                    ],
+                  },
+                },
+                _count: {
+                  _all: true,
+                },
+              }),
               tx.externalSourceRecord.groupBy({
                 by: ['sourceType'],
                 where: sourceRecordFacetWhere,
@@ -3019,6 +3296,12 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
         );
 
         const items = records;
+        const canonicalStatusCounts = new Map(
+          canonicalExtractionStatusGroups.map((group) => [
+            group.extractionStatus,
+            group._count._all,
+          ]),
+        );
         const warehouseAggregate =
           buildExternalEvidenceWarehouseAggregateFromStats({
             sourceTypes: sourceTypeFacetGroups.map((group) => ({
@@ -3073,6 +3356,25 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             rejected: rejectedTotal,
             failed_ingestion: failedIngestionTotal,
             duplicate_skipped: duplicateSkippedTotal,
+            canonical_processed:
+              (canonicalStatusCounts.get('canonical_extracted') ?? 0) +
+              (canonicalStatusCounts.get('insufficient_source') ?? 0) +
+              (canonicalStatusCounts.get('needs_full_text') ?? 0) +
+              (canonicalStatusCounts.get('needs_review') ?? 0) +
+              (canonicalStatusCounts.get('extraction_failed') ?? 0),
+            canonical_extracted:
+              canonicalStatusCounts.get('canonical_extracted') ?? 0,
+            canonical_insufficient_source:
+              canonicalStatusCounts.get('insufficient_source') ?? 0,
+            canonical_needs_full_text:
+              canonicalStatusCounts.get('needs_full_text') ?? 0,
+            canonical_needs_review:
+              canonicalStatusCounts.get('needs_review') ?? 0,
+            canonical_failed:
+              canonicalStatusCounts.get('extraction_failed') ?? 0,
+            canonical_facts: canonicalFactTotal,
+            benchmark_ready_facts: benchmarkReadyFactTotal,
+            benchmark_aggregates: benchmarkAggregateTotal,
             last_ingestion_batch: lastIngestionRun?.id ?? null,
             ingestion_progress: activeIngestionRun
               ? {
@@ -3097,6 +3399,73 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                   duplicates_skipped: activeIngestionRun.duplicatesSkipped,
                 }
               : null,
+            canonicalization_progress: activeCanonicalizationRun
+              ? {
+                  active: true,
+                  run_id: activeCanonicalizationRun.id,
+                  target_total:
+                    activeCanonicalizationRun.targetTotal ?? acceptedTotal,
+                  processed_total:
+                    activeCanonicalizationRun.recordsProcessed,
+                  records_remaining: Math.max(
+                    0,
+                    (activeCanonicalizationRun.targetTotal ?? acceptedTotal) -
+                      activeCanonicalizationRun.recordsProcessed,
+                  ),
+                  completion_ratio:
+                    (activeCanonicalizationRun.targetTotal ?? acceptedTotal) > 0
+                      ? Math.min(
+                          1,
+                          activeCanonicalizationRun.recordsProcessed /
+                            (activeCanonicalizationRun.targetTotal ??
+                              acceptedTotal),
+                        )
+                      : 1,
+                  canonical_facts:
+                    activeCanonicalizationRun.canonicalFactsStored,
+                  benchmark_records:
+                    activeCanonicalizationRun.benchmarkRecordsStored,
+                  insufficient_source:
+                    activeCanonicalizationRun.recordsInsufficientSource,
+                  needs_full_text:
+                    activeCanonicalizationRun.recordsNeedsFullText,
+                  needs_review: activeCanonicalizationRun.recordsNeedsReview,
+                  failed: activeCanonicalizationRun.recordsFailed,
+                }
+              : latestCanonicalizationRun
+                ? {
+                    active: latestCanonicalizationRun.status === 'STARTED',
+                    run_id: latestCanonicalizationRun.id,
+                    target_total:
+                      latestCanonicalizationRun.targetTotal ?? acceptedTotal,
+                    processed_total: latestCanonicalizationRun.recordsProcessed,
+                    records_remaining: Math.max(
+                      0,
+                      (latestCanonicalizationRun.targetTotal ?? acceptedTotal) -
+                        latestCanonicalizationRun.recordsProcessed,
+                    ),
+                    completion_ratio:
+                      (latestCanonicalizationRun.targetTotal ?? acceptedTotal) >
+                      0
+                        ? Math.min(
+                            1,
+                            latestCanonicalizationRun.recordsProcessed /
+                              (latestCanonicalizationRun.targetTotal ??
+                                acceptedTotal),
+                          )
+                        : 1,
+                    canonical_facts:
+                      latestCanonicalizationRun.canonicalFactsStored,
+                    benchmark_records:
+                      latestCanonicalizationRun.benchmarkRecordsStored,
+                    insufficient_source:
+                      latestCanonicalizationRun.recordsInsufficientSource,
+                    needs_full_text:
+                      latestCanonicalizationRun.recordsNeedsFullText,
+                    needs_review: latestCanonicalizationRun.recordsNeedsReview,
+                    failed: latestCanonicalizationRun.recordsFailed,
+                  }
+                : null,
             page,
             page_size: pageSize,
             total_pages: Math.max(1, Math.ceil(filteredTotal / pageSize)),

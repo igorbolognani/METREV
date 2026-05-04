@@ -112,6 +112,7 @@ export function ExternalEvidenceExplorer() {
     metricType: '',
     systemType: '',
   });
+  const [decisionReadyOnly, setDecisionReadyOnly] = React.useState(false);
   const deferredMaterial = useDeferredValue(technicalFilters.material);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
@@ -127,6 +128,7 @@ export function ExternalEvidenceExplorer() {
       deferredMaterial,
       technicalFilters.metricType,
       technicalFilters.systemType,
+      decisionReadyOnly,
       page,
       pageSize,
     ],
@@ -137,6 +139,7 @@ export function ExternalEvidenceExplorer() {
         sourceType: sourceType === 'all' ? undefined : sourceType,
         systemType: technicalFilters.systemType || undefined,
         componentType: technicalFilters.componentType || undefined,
+        decisionReady: decisionReadyOnly ? true : undefined,
         material: deferredMaterial || undefined,
         metricType: technicalFilters.metricType || undefined,
         page,
@@ -154,6 +157,7 @@ export function ExternalEvidenceExplorer() {
       deferredMaterial,
       technicalFilters.metricType,
       technicalFilters.systemType,
+      decisionReadyOnly,
       page,
       pageSize,
     ],
@@ -164,6 +168,7 @@ export function ExternalEvidenceExplorer() {
         sourceType: sourceType === 'all' ? undefined : sourceType,
         systemType: technicalFilters.systemType || undefined,
         componentType: technicalFilters.componentType || undefined,
+        decisionReady: decisionReadyOnly ? true : undefined,
         material: deferredMaterial || undefined,
         metricType: technicalFilters.metricType || undefined,
         page,
@@ -182,6 +187,7 @@ export function ExternalEvidenceExplorer() {
     deferredMaterial,
     technicalFilters.metricType,
     technicalFilters.systemType,
+    decisionReadyOnly,
     page,
     pageSize,
   ]);
@@ -214,6 +220,11 @@ export function ExternalEvidenceExplorer() {
   function handlePageSizeChange(nextValue: number) {
     setPage(1);
     setPageSize(nextValue);
+  }
+
+  function handleDecisionReadyOnlyChange(enabled: boolean) {
+    setPage(1);
+    setDecisionReadyOnly(enabled);
   }
 
   function handleTechnicalFilterChange(
@@ -270,6 +281,7 @@ export function ExternalEvidenceExplorer() {
     <EvidenceExplorerView
       filter={filter}
       onFilterChange={handleFilterChange}
+      onDecisionReadyOnlyChange={handleDecisionReadyOnlyChange}
       onNextPage={handleNextPage}
       onPageSizeChange={handlePageSizeChange}
       onPreviousPage={handlePreviousPage}
@@ -281,6 +293,7 @@ export function ExternalEvidenceExplorer() {
       pageSize={pageSize}
       searchInput={searchInput}
       sourceType={sourceType}
+      decisionReadyOnly={decisionReadyOnly}
       technicalFilters={{
         ...technicalFilters,
         material: deferredMaterial,
@@ -307,7 +320,9 @@ export function EvidenceExplorerView({
   assistantRequested,
   assistantRunning,
   filter,
+  decisionReadyOnly,
   onFilterChange,
+  onDecisionReadyOnlyChange,
   onNextPage,
   onPageSizeChange,
   onPreviousPage,
@@ -328,7 +343,9 @@ export function EvidenceExplorerView({
   assistantError: string | null;
   assistantRequested: boolean;
   assistantRunning: boolean;
+  decisionReadyOnly: boolean;
   filter: EvidenceReviewFilter;
+  onDecisionReadyOnlyChange: (enabled: boolean) => void;
   onFilterChange: (nextFilter: EvidenceReviewFilter) => void;
   onNextPage: () => void;
   onPageSizeChange: (nextValue: number) => void;
@@ -493,10 +510,12 @@ export function EvidenceExplorerView({
           >
             <EvidenceExplorerToolbar
               componentType={technicalFilters?.componentType ?? ''}
+              decisionReadyOnly={decisionReadyOnly}
               filter={filter}
               material={technicalFilters?.material ?? ''}
               metricType={technicalFilters?.metricType ?? ''}
               onFilterChange={onFilterChange}
+              onDecisionReadyOnlyChange={onDecisionReadyOnlyChange}
               onNextPage={onNextPage}
               onPageSizeChange={onPageSizeChange}
               onPreviousPage={onPreviousPage}

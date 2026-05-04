@@ -94,6 +94,7 @@ export type ExternalEvidenceSourceTypeFilter =
 
 export interface ExternalEvidenceTechnicalFilters {
   componentType?: string;
+  decisionReady?: boolean;
   material?: string;
   metricType?: string;
   systemType?: string;
@@ -116,6 +117,7 @@ type ContractParser<T> = {
 function buildExternalEvidenceSearchParams(input?: {
   status?: ExternalEvidenceReviewStatus;
   componentType?: string;
+  decisionReady?: boolean;
   material?: string;
   metricType?: string;
   query?: string;
@@ -144,6 +146,10 @@ function buildExternalEvidenceSearchParams(input?: {
 
   if (input?.componentType?.trim()) {
     searchParams.set('componentType', input.componentType.trim());
+  }
+
+  if (input?.decisionReady !== undefined) {
+    searchParams.set('decisionReady', String(input.decisionReady));
   }
 
   if (input?.material?.trim()) {

@@ -1680,6 +1680,7 @@ function toPublishedAtTimestamp(value: string | null | undefined): number {
 
 function buildEvidenceExplorerCsvHref(input?: {
   componentType?: string;
+  decisionReady?: boolean;
   material?: string;
   metricType?: string;
   page?: number;
@@ -1711,6 +1712,10 @@ function buildEvidenceExplorerCsvHref(input?: {
     searchParams.set('componentType', input.componentType.trim());
   }
 
+  if (input?.decisionReady !== undefined) {
+    searchParams.set('decisionReady', String(input.decisionReady));
+  }
+
   if (input?.material?.trim()) {
     searchParams.set('material', input.material.trim());
   }
@@ -1736,6 +1741,7 @@ export function buildEvidenceExplorerWorkspace(input: {
   versions: RuntimeVersion;
   filters?: {
     componentType?: string;
+    decisionReady?: boolean;
     material?: string;
     metricType?: string;
     page?: number;
@@ -1822,6 +1828,7 @@ export function buildEvidenceExplorerWorkspace(input: {
           input.filters?.sourceType?.trim() ||
           input.filters?.systemType?.trim() ||
           input.filters?.componentType?.trim() ||
+          input.filters?.decisionReady !== undefined ||
           input.filters?.material?.trim() ||
           input.filters?.metricType?.trim()
             ? 'Filters stay explicit in the workspace state and export links.'
@@ -1835,6 +1842,11 @@ export function buildEvidenceExplorerWorkspace(input: {
       active_source_type: input.filters?.sourceType as
         | EvidenceExplorerWorkspaceResponse['filters']['active_source_type']
         | undefined,
+      decision_ready: input.filters?.decisionReady,
+      system_type: input.filters?.systemType?.trim() || undefined,
+      component_type: input.filters?.componentType?.trim() || undefined,
+      material: input.filters?.material?.trim() || undefined,
+      metric_type: input.filters?.metricType?.trim() || undefined,
       search_query: input.filters?.query?.trim() || undefined,
     },
     summary: input.evidenceCatalog.summary,
@@ -1930,6 +1942,7 @@ export function buildEvidenceExplorerAssistantResponse(input: {
   narrativeMetadata: NarrativeMetadata;
   filters?: {
     componentType?: string;
+    decisionReady?: boolean;
     material?: string;
     metricType?: string;
     page?: number;
@@ -2011,6 +2024,11 @@ export function buildEvidenceExplorerAssistantResponse(input: {
       active_source_type: input.filters?.sourceType as
         | EvidenceExplorerAssistantResponse['filters']['active_source_type']
         | undefined,
+      decision_ready: input.filters?.decisionReady,
+      system_type: input.filters?.systemType?.trim() || undefined,
+      component_type: input.filters?.componentType?.trim() || undefined,
+      material: input.filters?.material?.trim() || undefined,
+      metric_type: input.filters?.metricType?.trim() || undefined,
       search_query: input.filters?.query?.trim() || undefined,
     },
     warehouse_snapshot: input.evidenceCatalog.warehouse_aggregate.snapshot,

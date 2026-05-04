@@ -164,6 +164,7 @@ export async function registerExportRoutes(
 
     const query = request.query as {
       componentType?: string;
+      decisionReady?: string;
       material?: string;
       metricType?: string;
       status?: string;
@@ -192,6 +193,7 @@ export async function registerExportRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,
@@ -213,6 +215,7 @@ export async function registerExportRoutes(
         sourceType: parsed.sourceType,
         systemType: parsed.systemType,
         componentType: parsed.componentType,
+        decisionReady: parsed.decisionReady,
         material: parsed.material,
         metricType: parsed.metricType,
         page: parsed.page,

@@ -778,6 +778,15 @@ export const externalEvidenceCatalogListSummarySchema = z.object({
   rejected: z.number().int().nonnegative(),
   failed_ingestion: z.number().int().nonnegative().default(0),
   duplicate_skipped: z.number().int().nonnegative().default(0),
+  canonical_processed: z.number().int().nonnegative().default(0),
+  canonical_extracted: z.number().int().nonnegative().default(0),
+  canonical_insufficient_source: z.number().int().nonnegative().default(0),
+  canonical_needs_full_text: z.number().int().nonnegative().default(0),
+  canonical_needs_review: z.number().int().nonnegative().default(0),
+  canonical_failed: z.number().int().nonnegative().default(0),
+  canonical_facts: z.number().int().nonnegative().default(0),
+  benchmark_ready_facts: z.number().int().nonnegative().default(0),
+  benchmark_aggregates: z.number().int().nonnegative().default(0),
   last_ingestion_batch: z.string().nullable().default(null),
   ingestion_progress: z
     .object({
@@ -791,6 +800,23 @@ export const externalEvidenceCatalogListSummarySchema = z.object({
       records_stored: z.number().int().nonnegative(),
       records_failed: z.number().int().nonnegative(),
       duplicates_skipped: z.number().int().nonnegative(),
+    })
+    .nullable()
+    .default(null),
+  canonicalization_progress: z
+    .object({
+      active: z.boolean(),
+      run_id: z.string().nullable().default(null),
+      target_total: z.number().int().nonnegative(),
+      processed_total: z.number().int().nonnegative(),
+      records_remaining: z.number().int().nonnegative(),
+      completion_ratio: z.number().min(0).max(1),
+      canonical_facts: z.number().int().nonnegative(),
+      benchmark_records: z.number().int().nonnegative(),
+      insufficient_source: z.number().int().nonnegative(),
+      needs_full_text: z.number().int().nonnegative(),
+      needs_review: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
     })
     .nullable()
     .default(null),
@@ -1129,6 +1155,11 @@ export const evidenceExplorerWorkspaceResponseSchema = z.object({
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
     search_query: z.string().optional(),
   }),
   summary: externalEvidenceCatalogListSummarySchema,
@@ -1151,6 +1182,11 @@ export const evidenceExplorerAssistantResponseSchema = z.object({
   filters: z.object({
     active_status: externalEvidenceReviewStatusSchema.optional(),
     active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
     search_query: z.string().optional(),
   }),
   warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,

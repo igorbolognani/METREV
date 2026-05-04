@@ -7,6 +7,7 @@ import {
 
 export interface ExternalEvidenceListQueryInput {
   componentType?: string;
+  decisionReady?: string;
   material?: string;
   metricType?: string;
   page?: string;
@@ -21,6 +22,7 @@ export interface ParsedExternalEvidenceListQuery {
   page: number;
   pageSize: number;
   componentType: string | undefined;
+  decisionReady: boolean | undefined;
   material: string | undefined;
   metricType: string | undefined;
   query: string | undefined;
@@ -102,6 +104,12 @@ export function parseExternalEvidenceListQuery(
       query: query.q?.trim() || undefined,
       systemType: query.systemType?.trim() || undefined,
       componentType: query.componentType?.trim() || undefined,
+      decisionReady:
+        query.decisionReady?.trim().toLowerCase() === 'true'
+          ? true
+          : query.decisionReady?.trim().toLowerCase() === 'false'
+            ? false
+            : undefined,
       material: query.material?.trim() || undefined,
       metricType: query.metricType?.trim() || undefined,
       page: parsedPage,

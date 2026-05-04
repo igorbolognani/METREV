@@ -293,6 +293,7 @@ export async function registerWorkspaceRoutes(
       sourceType?: string;
       systemType?: string;
       componentType?: string;
+      decisionReady?: string;
       material?: string;
       metricType?: string;
       page?: string;
@@ -319,6 +320,7 @@ export async function registerWorkspaceRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,
@@ -353,6 +355,11 @@ export async function registerWorkspaceRoutes(
       status?: string;
       q?: string;
       sourceType?: string;
+      systemType?: string;
+      componentType?: string;
+      decisionReady?: string;
+      material?: string;
+      metricType?: string;
       page?: string;
       pageSize?: string;
     };
@@ -375,6 +382,7 @@ export async function registerWorkspaceRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,
@@ -397,6 +405,7 @@ export async function registerWorkspaceRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,
@@ -418,6 +427,7 @@ export async function registerWorkspaceRoutes(
       sourceType?: string;
       systemType?: string;
       componentType?: string;
+      decisionReady?: string;
       material?: string;
       metricType?: string;
       page?: string;
@@ -442,6 +452,7 @@ export async function registerWorkspaceRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,
@@ -486,6 +497,7 @@ export async function registerWorkspaceRoutes(
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
+          decisionReady: parsed.decisionReady,
           material: parsed.material,
           metricType: parsed.metricType,
           page: parsed.page,

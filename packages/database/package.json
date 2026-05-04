@@ -20,6 +20,9 @@
     "ingest:manifest:curated": "tsx scripts/ingest-curated-manifest.ts",
     "ingest:local-pdf": "tsx scripts/ingest-local-pdf.ts",
     "evidence:ingest": "tsx scripts/ingest-scientific-evidence.ts",
+    "evidence:canonicalize": "tsx scripts/canonicalize-scientific-evidence.ts",
+    "evidence:benchmark:refresh": "tsx scripts/refresh-evidence-benchmarks.ts",
+    "evidence:quality-report": "tsx scripts/evidence-quality-report.ts",
     "bootstrap:bigdata": "tsx scripts/bootstrap-bigdata.ts",
     "queue:research:backfill-preset": "tsx scripts/queue-research-backfill-target.ts"
   },
