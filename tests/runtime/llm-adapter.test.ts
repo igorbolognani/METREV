@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   DecisionOutput,
+  EvidenceDecisionContext,
   ResearchColumnDefinition,
   ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
@@ -61,6 +62,85 @@ function buildDecisionOutput(): DecisionOutput {
       sensitivity_notes: [],
       next_measurements: [],
     },
+  };
+}
+
+function buildEvidenceDecisionContext(): EvidenceDecisionContext {
+  return {
+    case_id: 'CASE-001',
+    technology_family: 'microbial_fuel_cell',
+    system_type: 'MFC',
+    primary_objective: 'wastewater_treatment',
+    query: {
+      system_type: 'MFC',
+      application: 'wastewater_treatment',
+      component_types: ['anode'],
+      materials: ['carbon_felt'],
+      metric_types: ['power_density'],
+      limit: 12,
+      decision_ready_only: true,
+    },
+    benchmark_ranges: [
+      {
+        canonical_key: 'power_density_w_m2',
+        metric_type: 'power_density',
+        normalized_unit: 'W/m2',
+        system_type: 'MFC',
+        application: 'wastewater_treatment',
+        component_type: 'anode',
+        material: 'carbon_felt',
+        publication_year: 2026,
+        evidence_quality: 'high',
+        record_count: 4,
+        min_value: 0.8,
+        p25_value: 0.9,
+        median_value: 1,
+        p75_value: 1.1,
+        p90_value: 1.2,
+        max_value: 1.3,
+        mean_value: 1,
+        confidence_coverage: 0.9,
+      },
+    ],
+    matched_evidence: [
+      {
+        catalog_item_id: 'catalog-accepted-001',
+        source_record_id: 'source-accepted-001',
+        title: 'Accepted benchmark evidence',
+        review_status: 'accepted',
+        source_state: 'reviewed',
+        access_status: 'green',
+        doi: '10.5555/context-summary',
+        source_url: 'https://example.test/context-summary',
+        canonical_key: 'power_density_w_m2',
+        metric_type: 'power_density',
+        normalized_value: 1,
+        normalized_unit: 'W/m2',
+        material: 'carbon_felt',
+        component_type: 'anode',
+        evidence_quality: 'high',
+        confidence: 0.84,
+        source_text_hash: 'hash-context-summary',
+        source_locator: 'page:4:table:2',
+        publication_year: 2026,
+      },
+    ],
+    material_comparisons: [],
+    operating_window_signals: [],
+    failure_mode_signals: [],
+    cost_signals: [],
+    supplier_signals: [],
+    regulatory_social_signals: [],
+    uncertainty_summary: {
+      confidence_level: 'medium',
+      summary: 'Accepted benchmark context is available.',
+      missing_dependencies: ['cathode comparison coverage'],
+      excluded_evidence_reasons: ['supplier-only evidence excluded'],
+    },
+    excluded_evidence_summary: [],
+    provenance_note: 'Fixture context for narrative prompt summary.',
+    source_refs: ['catalog:catalog-accepted-001'],
+    builder_version: 'evidence_decision_context_builder.v1',
   };
 }
 
@@ -381,6 +461,58 @@ describe('llm adapter', () => {
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 45000);
     expect(result.narrative).toBe('Authenticated Ollama narrative.');
     setTimeoutSpy.mockRestore();
+  });
+
+  it('passes a bounded evidence decision context summary to case narrative prompts', async () => {
+    process.env.METREV_LLM_MODE = 'ollama';
+    process.env.METREV_LLM_MODEL = 'llama3.1';
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: 'Context-aware Ollama narrative.',
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rawInput = rawCaseInputSchema.parse(rawFixture);
+    const result = await generateNarrative({
+      normalizedCase: rawInput,
+      decisionOutput: buildDecisionOutput(),
+      evidenceContext: buildEvidenceDecisionContext(),
+    });
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body),
+    ) as { messages: Array<{ role: string; content: string }> };
+    const userPayload = JSON.parse(requestBody.messages[1].content) as {
+      evidence_decision_context: unknown;
+    };
+
+    expect(result.narrative).toBe('Context-aware Ollama narrative.');
+    expect(userPayload.evidence_decision_context).toEqual(
+      expect.objectContaining({
+        system_type: 'MFC',
+        builder_version: 'evidence_decision_context_builder.v1',
+        benchmark_range_count: 1,
+        matched_evidence_count: 1,
+        confidence_level: 'medium',
+        source_refs: ['catalog:catalog-accepted-001'],
+        missing_dependencies: ['cathode comparison coverage'],
+        excluded_evidence_reasons: ['supplier-only evidence excluded'],
+      }),
+    );
   });
 
   it('retries canonical evidence extraction with strict JSON instructions', async () => {

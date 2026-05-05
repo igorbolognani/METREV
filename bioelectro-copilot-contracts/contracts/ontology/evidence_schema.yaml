@@ -244,6 +244,28 @@ evidence_registry:
       - regulatory_social_signals
       - provenance_note
       - payload
+    matched_evidence_required_fields:
+      - catalog_item_id
+      - source_record_id
+      - title
+      - review_status
+      - source_state
+      - access_status
+      - canonical_key
+      - metric_type
+      - normalized_value
+      - normalized_unit
+      - evidence_quality
+      - source_text_hash
+      - source_locator
+    admissibility_required_state:
+      review_status: accepted
+      source_state: reviewed
+      access_status_excludes:
+        - closed
+      evidence_quality_excludes:
+        - low
+      supplier_claims: exclude_from_scoring_unless_independently_corroborated
 
   workspace_snapshot:
     required_fields:

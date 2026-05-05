@@ -2,14 +2,73 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvidenceBenchmarkSlice } from '@metrev/database';
 import {
-    evidenceDecisionContextSchema,
-    type DerivedObservation,
-    type EvidenceDecisionContext,
-    type NormalizedCaseInput,
+  evidenceDecisionContextSchema,
+  type DerivedObservation,
+  type EvidenceDecisionContext,
+  type NormalizedCaseInput,
 } from '@metrev/domain-contracts';
 
 function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function normalizeToken(value: string | null | undefined): string | null {
+  return value?.trim().toLowerCase() || null;
+}
+
+function hasDecisionReadyQuality(value: string | null | undefined): boolean {
+  return normalizeToken(value) !== 'low';
+}
+
+function hasRequiredText(value: string | null | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
+type BenchmarkEvidence = EvidenceBenchmarkSlice['evidence'][number];
+
+function evidenceAdmissionFailures(record: BenchmarkEvidence): string[] {
+  return dedupeStrings([
+    normalizeToken(record.review_status) === 'accepted'
+      ? ''
+      : 'catalog review is not accepted',
+    normalizeToken(record.source_state) === 'reviewed'
+      ? ''
+      : 'catalog source state is not reviewed',
+    normalizeToken(record.access_status) === 'closed'
+      ? 'source access is closed'
+      : '',
+    hasRequiredText(record.canonical_key) ? '' : 'canonical key is missing',
+    typeof record.normalized_value === 'number' &&
+    Number.isFinite(record.normalized_value)
+      ? ''
+      : 'normalized value is missing',
+    hasRequiredText(record.normalized_unit) ? '' : 'normalized unit is missing',
+    hasRequiredText(record.source_text_hash)
+      ? ''
+      : 'source text hash is missing',
+    hasRequiredText(record.source_locator) ? '' : 'source locator is missing',
+    hasDecisionReadyQuality(record.evidence_quality)
+      ? ''
+      : 'evidence quality is low',
+  ]).filter(Boolean);
+}
+
+function isAdmissibleEvidence(record: BenchmarkEvidence): boolean {
+  return evidenceAdmissionFailures(record).length === 0;
+}
+
+function isAdmissibleBenchmarkRange(
+  record: EvidenceBenchmarkSlice['aggregates'][number],
+): boolean {
+  return (
+    record.record_count > 0 &&
+    typeof record.median_value === 'number' &&
+    Number.isFinite(record.median_value) &&
+    hasRequiredText(record.canonical_key) &&
+    hasRequiredText(record.metric_type) &&
+    hasRequiredText(record.normalized_unit) &&
+    hasDecisionReadyQuality(record.evidence_quality)
+  );
 }
 
 export class EvidenceDecisionContextBuilder {
@@ -154,16 +213,28 @@ export class EvidenceDecisionContextBuilder {
     const systemType = evidenceDecisionContextSchema.shape.system_type.parse(
       input.systemType,
     );
-    const sourceRefs = dedupeStrings(
-      input.benchmarkSlice.evidence.map(
-        (record) => `catalog:${record.catalog_item_id}`,
-      ),
+    const benchmarkRanges = input.benchmarkSlice.aggregates.filter(
+      isAdmissibleBenchmarkRange,
     );
+    const matchedEvidence =
+      input.benchmarkSlice.evidence.filter(isAdmissibleEvidence);
+    const rejectedEvidence = input.benchmarkSlice.evidence.filter(
+      (record) => !isAdmissibleEvidence(record),
+    );
+    const sourceRefs = dedupeStrings(
+      matchedEvidence.map((record) => `catalog:${record.catalog_item_id}`),
+    );
+    const exclusionReasons = dedupeStrings([
+      ...(rejectedEvidence.length > 0
+        ? rejectedEvidence.flatMap(evidenceAdmissionFailures)
+        : []),
+      'Pending, rejected, supplier-only, closed-access, low-trace, low-quality, or non-normalized evidence was excluded from this decision context.',
+    ]);
     const missingDependencies = dedupeStrings([
-      ...(input.benchmarkSlice.summary.aggregate_count > 0
+      ...(benchmarkRanges.length > 0
         ? []
         : ['canonical decision-ready benchmark aggregates']),
-      ...(input.benchmarkSlice.summary.evidence_count > 0
+      ...(matchedEvidence.length > 0
         ? []
         : ['accepted decision-ready evidence records']),
     ]);
@@ -182,8 +253,8 @@ export class EvidenceDecisionContextBuilder {
         limit: input.benchmarkSlice.summary.limited_to,
         decision_ready_only: true,
       },
-      benchmark_ranges: input.benchmarkSlice.aggregates,
-      matched_evidence: input.benchmarkSlice.evidence,
+      benchmark_ranges: benchmarkRanges,
+      matched_evidence: matchedEvidence,
       material_comparisons: [],
       operating_window_signals: [],
       failure_mode_signals: [],
@@ -192,27 +263,31 @@ export class EvidenceDecisionContextBuilder {
       regulatory_social_signals: [],
       uncertainty_summary: {
         confidence_level:
-          input.benchmarkSlice.summary.aggregate_count > 0 ? 'medium' : 'low',
+          benchmarkRanges.length > 0 && matchedEvidence.length > 0
+            ? 'medium'
+            : 'low',
         summary:
-          input.benchmarkSlice.summary.aggregate_count > 0
-            ? `Retrieved ${input.benchmarkSlice.summary.aggregate_count} decision-ready benchmark aggregate range(s) and ${input.benchmarkSlice.summary.evidence_count} top evidence record(s) for this case.`
+          benchmarkRanges.length > 0
+            ? `Retrieved ${benchmarkRanges.length} admissible decision-ready benchmark aggregate range(s) and ${matchedEvidence.length} accepted traceable evidence record(s) for this case.`
             : 'No decision-ready benchmark aggregates matched the current case filters.',
         missing_dependencies: missingDependencies,
-        excluded_evidence_reasons: [
-          'Pending, rejected, supplier-only, or non-decision-ready evidence was excluded from this decision context.',
-        ],
+        excluded_evidence_reasons: exclusionReasons,
       },
       excluded_evidence_summary: [
         {
           key: 'non_decision_ready_evidence_excluded',
           label: 'Excluded non-decision-ready evidence',
           summary:
-            'Pending, rejected, supplier-only, low-trace, or non-normalized evidence was excluded before scoring.',
-          evidence_refs: [],
+            rejectedEvidence.length > 0
+              ? `${rejectedEvidence.length} benchmark evidence record(s) failed admission checks and were excluded before scoring.`
+              : 'Pending, rejected, supplier-only, low-trace, low-quality, closed-access, or non-normalized evidence was excluded before scoring.',
+          evidence_refs: rejectedEvidence.map(
+            (record) => `catalog:${record.catalog_item_id}`,
+          ),
         },
       ],
       provenance_note:
-        'EvidenceDecisionContext was built from decision-ready benchmark aggregates and accepted catalog evidence only; the full corpus was not loaded or sent to the LLM.',
+        'EvidenceDecisionContext was built from admissible decision-ready benchmark aggregates and accepted, reviewed, traceable catalog evidence only; the full corpus was not loaded or sent to the LLM.',
       source_refs: sourceRefs,
       builder_version: 'evidence_decision_context_builder.v1',
     };

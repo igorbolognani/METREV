@@ -6,14 +6,14 @@ import { createAuditRecord } from '@metrev/audit';
 import type { SessionActor } from '@metrev/auth';
 import type { EvaluationRepository } from '@metrev/database';
 import {
-    evaluationResponseSchema,
-    normalizeCaseInput,
-    validateDecisionOutputContract,
-    type DecisionOutputValidationIssue,
-    type EvaluationResponse,
-    type ExternalEvidenceCatalogItemDetail,
-    type RawCaseInput,
-    type RawEvidenceRecord,
+  evaluationResponseSchema,
+  normalizeCaseInput,
+  validateDecisionOutputContract,
+  type DecisionOutputValidationIssue,
+  type EvaluationResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type RawCaseInput,
+  type RawEvidenceRecord,
 } from '@metrev/domain-contracts';
 import { evaluateSimulationEnrichment } from '@metrev/electrochem-models';
 import { generateNarrative } from '@metrev/llm-adapter';
@@ -340,6 +340,7 @@ export async function createPersistedCaseEvaluation(
         validation.decisionOutput ?? decisionOutput;
       const narrativeResult = await generateNarrative({
         decisionOutput: reviewedDecisionOutput,
+        evidenceContext: evidenceDecisionContext,
         normalizedCase,
       });
       const evaluationId = randomUUID();

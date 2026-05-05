@@ -50,49 +50,59 @@ export async function refreshCanonicalEvidenceBenchmarks(
       )
       WITH grouped AS (
         SELECT
-          "systemType",
-          "application",
-          "componentType",
-          "material",
-          "membraneSeparator",
-          "operatingConditionKey",
-          "metricType",
-          "canonicalKey",
-          "normalizedUnit",
-          "publicationYear",
-          "evidenceQuality",
-          "scale",
-          "trl",
+          record."systemType",
+          record."application",
+          record."componentType",
+          record."material",
+          record."membraneSeparator",
+          record."operatingConditionKey",
+          record."metricType",
+          record."canonicalKey",
+          record."normalizedUnit",
+          record."publicationYear",
+          record."evidenceQuality",
+          record."scale",
+          record."trl",
           COUNT(*)::integer AS "recordCount",
-          MIN("normalizedValue")::double precision AS "minValue",
-          percentile_cont(0.25) WITHIN GROUP (ORDER BY "normalizedValue")::double precision AS "p25Value",
-          percentile_cont(0.5) WITHIN GROUP (ORDER BY "normalizedValue")::double precision AS "medianValue",
-          percentile_cont(0.75) WITHIN GROUP (ORDER BY "normalizedValue")::double precision AS "p75Value",
-          percentile_cont(0.9) WITHIN GROUP (ORDER BY "normalizedValue")::double precision AS "p90Value",
-          MAX("normalizedValue")::double precision AS "maxValue",
-          AVG("normalizedValue")::double precision AS "meanValue",
-          (COUNT("confidence")::double precision / NULLIF(COUNT(*)::double precision, 0))::double precision AS "confidenceCoverage"
-        FROM "EvidenceBenchmarkRecord"
+          MIN(record."normalizedValue")::double precision AS "minValue",
+          percentile_cont(0.25) WITHIN GROUP (ORDER BY record."normalizedValue")::double precision AS "p25Value",
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY record."normalizedValue")::double precision AS "medianValue",
+          percentile_cont(0.75) WITHIN GROUP (ORDER BY record."normalizedValue")::double precision AS "p75Value",
+          percentile_cont(0.9) WITHIN GROUP (ORDER BY record."normalizedValue")::double precision AS "p90Value",
+          MAX(record."normalizedValue")::double precision AS "maxValue",
+          AVG(record."normalizedValue")::double precision AS "meanValue",
+          (COUNT(record."confidence")::double precision / NULLIF(COUNT(*)::double precision, 0))::double precision AS "confidenceCoverage"
+        FROM "EvidenceBenchmarkRecord" record
+        JOIN "ExternalEvidenceCatalogItem" catalog
+          ON catalog."id" = record."catalogItemId"
+        JOIN "ExternalSourceRecord" source
+          ON source."id" = record."sourceRecordId"
         WHERE
-          "decisionReady" = true
-          AND "metricType" IS NOT NULL
-          AND "normalizedValue" IS NOT NULL
-          AND "canonicalKey" IS NOT NULL
-          AND "normalizedUnit" IS NOT NULL
+          record."decisionReady" = true
+          AND record."metricType" IS NOT NULL
+          AND record."normalizedValue" IS NOT NULL
+          AND record."canonicalKey" IS NOT NULL
+          AND record."normalizedUnit" IS NOT NULL
+          AND record."sourceTextHash" IS NOT NULL
+          AND LOWER(COALESCE(record."evidenceQuality", '')) <> 'low'
+          AND catalog."reviewStatus" = 'ACCEPTED'
+          AND catalog."sourceState" = 'REVIEWED'
+          AND LOWER(catalog."evidenceType") NOT LIKE '%supplier%'
+          AND source."accessStatus" <> 'CLOSED'
         GROUP BY
-          "systemType",
-          "application",
-          "componentType",
-          "material",
-          "membraneSeparator",
-          "operatingConditionKey",
-          "metricType",
-          "canonicalKey",
-          "normalizedUnit",
-          "publicationYear",
-          "evidenceQuality",
-          "scale",
-          "trl"
+          record."systemType",
+          record."application",
+          record."componentType",
+          record."material",
+          record."membraneSeparator",
+          record."operatingConditionKey",
+          record."metricType",
+          record."canonicalKey",
+          record."normalizedUnit",
+          record."publicationYear",
+          record."evidenceQuality",
+          record."scale",
+          record."trl"
       )
       SELECT
         'eba_' || md5(row_number() OVER ()::text || clock_timestamp()::text),

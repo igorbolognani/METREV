@@ -42,12 +42,14 @@ sed -n '1040,1105p' packages/rule-engine/src/index.ts
 1. Run the focused runtime tests:
 
 ```bash
-pnpm exec vitest run tests/runtime/rule-engine.test.ts tests/runtime/case-evaluation-service.test.ts
+pnpm exec vitest run tests/runtime/evidence-decision-context-builder.test.ts tests/runtime/refresh-evidence-benchmarks.test.ts tests/runtime/llm-adapter.test.ts tests/runtime/rule-engine.test.ts tests/web-ui/command-palette.test.tsx
 ```
 
-1. Confirm both test files pass and that the service test asserts `evaluation.evidence_decision_context` plus `audit_record.evidence_decision_context`.
+1. Confirm the focused tests pass and cover builder admission, benchmark refresh filters, LLM bounded context summaries, rule-engine confidence/scoring effects, and command-palette RBAC.
 
-1. Confirm the rule-engine test asserts that a context without benchmark ranges surfaces missing benchmark coverage in provenance notes and next-test guidance.
+1. Confirm the Postgres persistence test asserts `evidence_decision_context` on create/fetch and the dedicated `EvidenceDecisionContextRecord` relation.
+
+1. Confirm the web build route map contains `/admin/intelligence/...` evidence/research routes and does not contain legacy `/evidence/*` or `/research/*` pages.
 
 ## Failure path
 
@@ -80,7 +82,11 @@ pnpm exec vitest run tests/runtime/rule-engine.test.ts
 ## Verification commands and checks
 
 - `pnpm exec vitest run tests/runtime/rule-engine.test.ts tests/runtime/case-evaluation-service.test.ts`
+- `pnpm exec vitest run tests/runtime/evidence-decision-context-builder.test.ts tests/runtime/refresh-evidence-benchmarks.test.ts tests/runtime/llm-adapter.test.ts tests/web-ui/command-palette.test.tsx`
 - `pnpm run test:python`
 - `pnpm run test:db`
+- `pnpm run evidence:benchmark:refresh`
 - `pnpm run build`
 - `pnpm run validate:fast`
+- `pnpm run validate:advanced`
+- `PLAYWRIGHT_BASE_URL='http://localhost:3012' PLAYWRIGHT_API_BASE_URL='http://localhost:4012' pnpm exec playwright test tests/e2e/local-first-workspace.spec.ts --grep "covers review, intake, submitting, result, exports, report, history, and comparison"`

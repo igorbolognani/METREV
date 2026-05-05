@@ -651,6 +651,9 @@ export const evidenceDecisionMatchedEvidenceSchema = z.object({
   catalog_item_id: z.string().min(1),
   source_record_id: z.string().min(1),
   title: z.string().min(1),
+  review_status: z.string().nullable().default(null),
+  source_state: z.string().nullable().default(null),
+  access_status: z.string().nullable().default(null),
   doi: z.string().nullable().default(null),
   source_url: z.string().nullable().default(null),
   canonical_key: z.string().nullable().default(null),
@@ -659,7 +662,10 @@ export const evidenceDecisionMatchedEvidenceSchema = z.object({
   normalized_unit: z.string().nullable().default(null),
   material: z.string().nullable().default(null),
   component_type: z.string().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
   confidence: z.number().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
   publication_year: z.number().int().nullable().default(null),
 });
 

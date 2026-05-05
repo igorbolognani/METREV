@@ -60,20 +60,38 @@ evidence_decision_context:
     - cost_signals
     - supplier_signals
     - regulatory_social_signals
+  matched_evidence_trace_fields:
+    - catalog_item_id
+    - source_record_id
+    - review_status
+    - source_state
+    - access_status
+    - canonical_key
+    - metric_type
+    - normalized_value
+    - normalized_unit
+    - evidence_quality
+    - source_text_hash
+    - source_locator
   admissibility:
     admitted_when:
       - review_status_accepted
       - decision_ready_true
       - normalization_completed
+      - source_text_hash_present
       - source_locator_or_span_present
       - source_license_or_access_policy_allows_decision_use
+      - evidence_quality_not_low
       - supplier_claim_is_corroborated_or_kept_as_supplier_signal
     excluded_when:
       - review_status_pending_or_rejected
       - decision_ready_false
       - missing_required_unit_for_numeric_metric
+      - missing_source_text_hash
       - missing_source_locator_or_span
+      - closed_access_policy
       - low_trace_quality
+      - low_evidence_quality
       - supplier_claim_without_independent_corroboration
   rule_engine_use:
     - benchmark ranges may change recommendation priority, confidence, and validation actions when comparable context exists

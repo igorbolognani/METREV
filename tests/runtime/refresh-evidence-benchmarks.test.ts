@@ -24,11 +24,17 @@ describe('refresh canonical evidence benchmarks', () => {
     const sqlArg = executeRaw.mock.calls[0]?.[0] as { strings: string[] };
     const statement = sqlArg.strings.join(' ');
 
-    expect(statement).toContain('"decisionReady" = true');
-    expect(statement).toContain('"metricType" IS NOT NULL');
-    expect(statement).toContain('"normalizedValue" IS NOT NULL');
-    expect(statement).toContain('"canonicalKey" IS NOT NULL');
-    expect(statement).toContain('"normalizedUnit" IS NOT NULL');
+    expect(statement).toContain('record."decisionReady" = true');
+    expect(statement).toContain('record."metricType" IS NOT NULL');
+    expect(statement).toContain('record."normalizedValue" IS NOT NULL');
+    expect(statement).toContain('record."canonicalKey" IS NOT NULL');
+    expect(statement).toContain('record."normalizedUnit" IS NOT NULL');
+    expect(statement).toContain('record."sourceTextHash" IS NOT NULL');
+    expect(statement).toContain('record."publicationYear"');
+    expect(statement).toContain('catalog."reviewStatus" =');
+    expect(statement).toContain('catalog."sourceState" =');
+    expect(statement).toContain('source."accessStatus" <>');
+    expect(statement).toContain('NOT LIKE');
 
     consoleSpy.mockRestore();
   });

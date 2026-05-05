@@ -231,6 +231,14 @@ describe('postgres-backed persistence flow', () => {
 
       expect(createResponse.statusCode).toBe(201);
       const created = createResponse.json();
+      expect(created.evidence_decision_context).toEqual(
+        expect.objectContaining({
+          case_id: caseId,
+          builder_version: expect.any(String),
+          benchmark_ranges: expect.any(Array),
+          source_refs: expect.any(Array),
+        }),
+      );
 
       const fetchResponse = await app.inject({
         method: 'GET',
@@ -240,6 +248,13 @@ describe('postgres-backed persistence flow', () => {
         },
       });
       expect(fetchResponse.statusCode).toBe(200);
+      const fetched = fetchResponse.json();
+      expect(fetched.evidence_decision_context).toEqual(
+        expect.objectContaining({
+          case_id: caseId,
+          builder_version: created.evidence_decision_context.builder_version,
+        }),
+      );
 
       const listResponse = await app.inject({
         method: 'GET',
@@ -277,6 +292,7 @@ describe('postgres-backed persistence flow', () => {
       const evaluation = await prisma.evaluationRecord.findUnique({
         where: { id: created.evaluation_id },
         include: {
+          evidenceDecisionContext: true,
           simulationArtifact: true,
           supplierShortlistItems: {
             include: { supplier: true },
@@ -296,6 +312,19 @@ describe('postgres-backed persistence flow', () => {
       });
 
       expect(evaluation).not.toBeNull();
+      expect(evaluation?.evidenceDecisionContext).toEqual(
+        expect.objectContaining({
+          evaluationId: created.evaluation_id,
+          caseId,
+          builderVersion: created.evidence_decision_context.builder_version,
+          systemType: created.evidence_decision_context.system_type,
+          primaryObjective: created.evidence_decision_context.primary_objective,
+          payload: expect.objectContaining({
+            case_id: caseId,
+            builder_version: created.evidence_decision_context.builder_version,
+          }),
+        }),
+      );
       expect(evaluation?.simulationArtifact).toEqual(
         expect.objectContaining({
           status: 'completed',

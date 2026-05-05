@@ -87,4 +87,4 @@ Use vertical slices that end in executable validation. The complete slice is imp
 
 - The current runtime slice is additive: omitting `evidence_decision_context` in legacy payloads still parses because the schema defaults to `null`.
 - If the new context becomes unstable, evaluation can temporarily fall back to the previous benchmark observation path without deleting existing audit snapshots.
-- UI route refactors should prefer redirects or staged re-housing for analyst bookmarks until internal/admin paths settle.
+- UI route refactors have removed legacy client-facing evidence/research pages after the internal/admin paths settled; rollback would restore only the deleted redirect stubs, not duplicate client-facing evidence tooling.

@@ -174,6 +174,36 @@ def test_output_contract_recommendation_metadata_covers_runtime_trace_fields() -
     }.issubset(optional_fields)
 
 
+def test_evidence_decision_context_contract_carries_admission_trace_fields() -> None:
+    contract = _load_yaml(ONTOLOGY_ROOT / "evidence_schema.yaml")
+    domain = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "evidence-schema.yml")
+    context_contract = (
+        ((contract.get("evidence_registry") or {}).get("evidence_decision_context"))
+        or {}
+    )
+    contract_fields = set(
+        context_contract.get("matched_evidence_required_fields") or []
+    )
+    domain_fields = set(
+        (domain.get("evidence_decision_context") or {}).get(
+            "matched_evidence_trace_fields"
+        )
+        or []
+    )
+
+    required_trace_fields = {
+        "review_status",
+        "source_state",
+        "access_status",
+        "source_text_hash",
+        "source_locator",
+        "evidence_quality",
+    }
+
+    assert required_trace_fields.issubset(contract_fields)
+    assert required_trace_fields.issubset(domain_fields)
+
+
 def test_domain_property_dictionary_declares_control_metadata_for_core_fields() -> None:
     property_dictionary = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "property-dictionary.yml")
     properties = property_dictionary.get("properties") or {}

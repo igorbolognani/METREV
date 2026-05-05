@@ -1,20 +1,20 @@
 import {
-    canonicalOutputSections,
-    confidenceLevelSchema,
-    decisionOutputSchema,
-    loadContractCompatibilityDefinition,
-    loadContractDiagnosticsDefinition,
-    loadContractImprovementsDefinition,
-    loadContractOutputDefinition,
-    loadContractScoringModel,
-    loadContractSensitivityPolicy,
-    type ConfidenceLevel,
-    type DecisionOutput,
-    type DerivedObservation,
-    type EvidenceDecisionContext,
-    type EvidenceRecord,
-    type NormalizedCaseInput,
-    type RecommendationRecord,
+  canonicalOutputSections,
+  confidenceLevelSchema,
+  decisionOutputSchema,
+  loadContractCompatibilityDefinition,
+  loadContractDiagnosticsDefinition,
+  loadContractImprovementsDefinition,
+  loadContractOutputDefinition,
+  loadContractScoringModel,
+  loadContractSensitivityPolicy,
+  type ConfidenceLevel,
+  type DecisionOutput,
+  type DerivedObservation,
+  type EvidenceDecisionContext,
+  type EvidenceRecord,
+  type NormalizedCaseInput,
+  type RecommendationRecord,
 } from '@metrev/domain-contracts';
 import { dedupeStrings, isNonEmptyString } from '@metrev/utils';
 
@@ -652,6 +652,74 @@ function reduceConfidence(
   return confidenceFromRank(Math.max(0, confidenceRank(level) - amount));
 }
 
+function evidenceContextGapDrivers(
+  evidenceContext: EvidenceDecisionContext,
+): string[] {
+  return dedupeStrings([
+    ...evidenceContext.uncertainty_summary.missing_dependencies,
+    ...evidenceContext.uncertainty_summary.excluded_evidence_reasons,
+  ]);
+}
+
+function hasLowConfidenceEvidenceContextGap(
+  evidenceContext?: EvidenceDecisionContext | null,
+): boolean {
+  if (
+    !evidenceContext ||
+    evidenceContext.uncertainty_summary.confidence_level !== 'low'
+  ) {
+    return false;
+  }
+
+  return (
+    evidenceContext.benchmark_ranges.length === 0 ||
+    evidenceContextGapDrivers(evidenceContext).length > 0
+  );
+}
+
+function buildEvidenceContextGapNote(
+  evidenceContext?: EvidenceDecisionContext | null,
+): string | undefined {
+  if (
+    !hasLowConfidenceEvidenceContextGap(evidenceContext) ||
+    !evidenceContext
+  ) {
+    return undefined;
+  }
+
+  const drivers = evidenceContextGapDrivers(evidenceContext);
+
+  if (drivers.length === 0) {
+    return 'Evidence decision context remained low-confidence and reduced recommendation certainty.';
+  }
+
+  return `Evidence decision context remained low-confidence due to ${drivers.join('; ')}.`;
+}
+
+function buildEvidenceContextNextTest(
+  evidenceContext?: EvidenceDecisionContext | null,
+): string | undefined {
+  if (!evidenceContext) {
+    return undefined;
+  }
+
+  if (evidenceContext.benchmark_ranges.length === 0) {
+    return 'Expand decision-ready benchmark coverage for comparable materials, components, and operating windows before committing to a benchmark-backed redesign.';
+  }
+
+  if (!hasLowConfidenceEvidenceContextGap(evidenceContext)) {
+    return undefined;
+  }
+
+  const drivers = evidenceContextGapDrivers(evidenceContext);
+
+  if (drivers.length === 0) {
+    return 'Resolve low-confidence evidence-context gaps before treating benchmark deltas as decision-grade.';
+  }
+
+  return `Close evidence-context gaps before treating benchmark deltas as decision-grade: ${drivers.join('; ')}.`;
+}
+
 function normalizeMaterialToken(value: unknown): string | null {
   if (typeof value !== 'string' || !value.trim()) {
     return null;
@@ -945,12 +1013,11 @@ export function runCaseEvaluation(
     tracePenaltyEvidenceCount,
     nonAcceptedEvidenceCount,
   });
-  const confidenceLevel =
-    input.evidenceContext &&
-    input.evidenceContext.uncertainty_summary.confidence_level === 'low' &&
-    input.evidenceContext.benchmark_ranges.length === 0
-      ? reduceConfidence(baseConfidenceLevel, 1)
-      : baseConfidenceLevel;
+  const confidenceLevel = hasLowConfidenceEvidenceContextGap(
+    input.evidenceContext,
+  )
+    ? reduceConfidence(baseConfidenceLevel, 1)
+    : baseConfidenceLevel;
 
   const blockFindings = Object.entries(resolvedCase.stack_blocks).map(
     ([blockName, value]) =>
@@ -1190,11 +1257,12 @@ export function runCaseEvaluation(
       ? `Evidence decision context contributed ${input.evidenceContext.benchmark_ranges.length} benchmark range(s) across ${input.evidenceContext.matched_evidence.length} matched evidence record(s).`
       : 'Evidence decision context found no decision-ready benchmark ranges for the current case filters.'
     : undefined;
-  const evidenceContextNextTest = input.evidenceContext
-    ? input.evidenceContext.benchmark_ranges.length > 0
-      ? undefined
-      : 'Expand decision-ready benchmark coverage for comparable materials, components, and operating windows before committing to a benchmark-backed redesign.'
-    : undefined;
+  const evidenceContextGapNote = buildEvidenceContextGapNote(
+    input.evidenceContext,
+  );
+  const evidenceContextNextTest = buildEvidenceContextNextTest(
+    input.evidenceContext,
+  );
   const provenanceNotes = dedupeStrings([
     `${typedEvidence.length} typed evidence records were processed in deterministic evaluation mode.`,
     resolvedCase.cross_cutting_layers.evidence_and_provenance
@@ -1218,6 +1286,7 @@ export function runCaseEvaluation(
         ? 'Recommendation ranking is directionally stable but still depends on a few assumption-sensitive factors.'
         : 'Recommendation ranking is relatively stable under the currently tracked sensitivity factors.',
     evidenceContextCoverageNote,
+    evidenceContextGapNote,
   ]);
 
   const phasedRoadmap = ['Phase 1', 'Phase 2', 'Phase 3'].map((phase) => ({

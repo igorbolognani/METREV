@@ -1,5 +1,9 @@
 # Contract Note - EvidenceDecisionContext
 
+## Status
+
+Retired. The planning bridge has been promoted into runtime schemas, hardened contract YAML, domain ontology, persistence, rule-engine consumption, and regression tests.
+
 ## Purpose
 
 Record the temporary planning bridge between the runtime introduction of `EvidenceDecisionContext` and its promotion into the canonical owner files in the domain kit and hardened contract boundary.
@@ -11,13 +15,12 @@ Record the temporary planning bridge between the runtime introduction of `Eviden
 - `packages/rule-engine/src/index.ts`
 - `packages/audit/src/index.ts`
 
-## Canonical owner files to update
+## Canonical owner files promoted in this feature
 
 - `bioelectrochem_agent_kit/domain/ontology/evidence-schema.yml`
-- `bioelectrochem_agent_kit/domain/ontology/research-taxonomy.yml`
 - `bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml`
-- `bioelectro-copilot-contracts/contracts/research/evidence-pack.schema.yaml`
-- `bioelectro-copilot-contracts/contracts/rules/evidence_score.yaml`
+
+Adjacent research-pack and evidence-score contracts remain canonical for their own surfaces; this note does not override them.
 
 ## Runtime shape introduced in this batch
 
@@ -40,8 +43,8 @@ Record the temporary planning bridge between the runtime introduction of `Eviden
 
 ## Admissibility rule in current runtime slice
 
-The initial builder only admits decision-ready benchmark aggregates and accepted catalog evidence references derived from the existing benchmark slice query. Pending, rejected, supplier-only, or otherwise non-decision-ready evidence remains excluded and is represented only through the uncertainty/exclusion summary.
+The current builder only admits decision-ready benchmark aggregates and accepted, reviewed, traceable catalog evidence derived from the benchmark slice query. Pending, rejected, supplier-only, closed-access, low-quality, untraceable, or otherwise non-decision-ready evidence remains excluded and is represented only through uncertainty and exclusion summaries.
 
 ## Promotion rule
 
-This note must be retired once the owner files above define the same shape or the approved canonical equivalent and the runtime loaders/tests are aligned. Runtime code must not become the long-term source of truth for evidence-decision semantics.
+This note is retained only as historical planning context. Runtime code is not the long-term source of truth for evidence-decision semantics; the active semantics are now carried by the domain ontology and hardened contract boundary, with runtime schemas/tests aligned to those owners.

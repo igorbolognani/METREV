@@ -1,16 +1,17 @@
 import type {
-    ConfidenceLevel,
-    DecisionOutput,
-    EvidenceExplorerWarehouseSnapshot,
-    ExternalEvidenceCatalogItemSummary,
-    NarrativeMetadata,
-    NormalizedCaseInput,
-    PrintableEvaluationReportResponse,
-    ReportConversationCitation,
-    ReportConversationGrounding,
-    ResearchColumnDefinition,
-    ResearchEvidenceTrace,
-    ResearchPaperMetadata,
+  ConfidenceLevel,
+  DecisionOutput,
+  EvidenceDecisionContext,
+  EvidenceExplorerWarehouseSnapshot,
+  ExternalEvidenceCatalogItemSummary,
+  NarrativeMetadata,
+  NormalizedCaseInput,
+  PrintableEvaluationReportResponse,
+  ReportConversationCitation,
+  ReportConversationGrounding,
+  ResearchColumnDefinition,
+  ResearchEvidenceTrace,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
@@ -842,29 +843,57 @@ export async function generateStructuredResearchExtraction(input: {
 
 function buildStubNarrative(input: {
   decisionOutput: DecisionOutput;
+  evidenceContext?: EvidenceDecisionContext | null;
   normalizedCase: NormalizedCaseInput;
 }): string {
   const topRecommendation =
     input.decisionOutput.prioritized_improvement_options[0];
   const confidenceLevel =
     input.decisionOutput.confidence_and_uncertainty_summary.confidence_level;
+  const evidenceContextSummary = input.evidenceContext
+    ? ` Evidence context contributed ${input.evidenceContext.benchmark_ranges.length} benchmark range(s), ${input.evidenceContext.matched_evidence.length} traceable evidence record(s), and ${input.evidenceContext.uncertainty_summary.confidence_level} evidence-context confidence.`
+    : '';
 
   if (!topRecommendation) {
-    return `Case ${input.normalizedCase.case_id} is currently framed as ${input.normalizedCase.primary_objective} on ${input.normalizedCase.technology_family}. No single deterministic intervention dominated this run, so the result emphasizes baseline validation, evidence quality, and continued monitoring.`;
+    return `Case ${input.normalizedCase.case_id} is currently framed as ${input.normalizedCase.primary_objective} on ${input.normalizedCase.technology_family}. No single deterministic intervention dominated this run, so the result emphasizes baseline validation, evidence quality, and continued monitoring.${evidenceContextSummary}`;
   }
 
   if (confidenceLevel === 'low') {
     return `Case ${input.normalizedCase.case_id} is currently framed as ${input.normalizedCase.primary_objective} on ${input.normalizedCase.technology_family}. The recommendation set remains exploratory because confidence is low; the current leading options are ${input.decisionOutput.prioritized_improvement_options
       .slice(0, 2)
       .map((recommendation) => recommendation.recommendation_id)
-      .join(' and ')}, pending additional measurements and evidence closure.`;
+      .join(
+        ' and ',
+      )}, pending additional measurements and evidence closure.${evidenceContextSummary}`;
   }
 
-  return `Case ${input.normalizedCase.case_id} is currently framed as ${input.normalizedCase.primary_objective} on ${input.normalizedCase.technology_family}. The leading recommendation is ${topRecommendation.recommendation_id}, justified by ${topRecommendation.rationale.toLowerCase()}`;
+  return `Case ${input.normalizedCase.case_id} is currently framed as ${input.normalizedCase.primary_objective} on ${input.normalizedCase.technology_family}. The leading recommendation is ${topRecommendation.recommendation_id}, justified by ${topRecommendation.rationale.toLowerCase()}.${evidenceContextSummary}`;
+}
+
+function buildEvidenceDecisionContextSummary(
+  evidenceContext?: EvidenceDecisionContext | null,
+) {
+  if (!evidenceContext) {
+    return null;
+  }
+
+  return {
+    system_type: evidenceContext.system_type,
+    builder_version: evidenceContext.builder_version,
+    benchmark_range_count: evidenceContext.benchmark_ranges.length,
+    matched_evidence_count: evidenceContext.matched_evidence.length,
+    source_refs: evidenceContext.source_refs.slice(0, 8),
+    confidence_level: evidenceContext.uncertainty_summary.confidence_level,
+    missing_dependencies:
+      evidenceContext.uncertainty_summary.missing_dependencies.slice(0, 8),
+    excluded_evidence_reasons:
+      evidenceContext.uncertainty_summary.excluded_evidence_reasons.slice(0, 8),
+  };
 }
 
 function buildCaseNarrativeMessages(input: {
   decisionOutput: DecisionOutput;
+  evidenceContext?: EvidenceDecisionContext | null;
   normalizedCase: NormalizedCaseInput;
 }) {
   return [
@@ -896,6 +925,9 @@ function buildCaseNarrativeMessages(input: {
           input.decisionOutput.assumptions_and_defaults_audit.missing_data,
         defaults_used:
           input.decisionOutput.assumptions_and_defaults_audit.defaults_used,
+        evidence_decision_context: buildEvidenceDecisionContextSummary(
+          input.evidenceContext,
+        ),
       }),
     },
   ];
@@ -987,6 +1019,7 @@ export async function generateEvidenceAssistantBrief(input: {
 
 export async function generateNarrative(input: {
   decisionOutput: DecisionOutput;
+  evidenceContext?: EvidenceDecisionContext | null;
   normalizedCase: NormalizedCaseInput;
 }): Promise<NarrativeResult> {
   return generateNarrativeWithRuntime({

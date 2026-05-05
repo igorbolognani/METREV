@@ -20,6 +20,25 @@ interface PaletteItem {
   onSelect: () => void;
 }
 
+export function buildNavigationPaletteItems(input: {
+  onSelectHref: (href: string) => void;
+  role?: string;
+}): PaletteItem[] {
+  return getNavItemsForRole(input.role).map((item) => ({
+    disabled: item.disabled,
+    group: 'Navigation',
+    hint: item.href,
+    id: item.id,
+    keywords: [item.label, item.href],
+    label: item.label,
+    onSelect: () => {
+      if (!item.disabled) {
+        input.onSelectHref(item.href);
+      }
+    },
+  }));
+}
+
 export function CommandPalette({ role }: { role?: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -53,19 +72,12 @@ export function CommandPalette({ role }: { role?: string }) {
   }, [recentEvaluations]);
 
   const items = React.useMemo<PaletteItem[]>(() => {
-    const navigationItems = getNavItemsForRole(role).map((item) => ({
-      disabled: item.disabled,
-      group: 'Navigation',
-      hint: item.href,
-      id: item.id,
-      keywords: [item.label, item.href],
-      label: item.label,
-      onSelect: () => {
-        if (!item.disabled) {
-          router.push(item.href);
-        }
+    const navigationItems = buildNavigationPaletteItems({
+      role,
+      onSelectHref: (href) => {
+        router.push(href);
       },
-    }));
+    });
 
     const evaluationItems = recentEvaluations.map((item) => ({
       group: 'Recent Evaluations',

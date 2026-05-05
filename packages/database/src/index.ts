@@ -3,47 +3,47 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    caseHistoryResponseSchema,
-    evaluationClaimUsageSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evaluationSourceUsageSchema,
-    evidenceClaimSchema,
-    evidenceClaimTypeSchema,
-    evidenceExtractionMethodSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    evidenceVeracityScoreSchema,
-    externalEvidenceAccessStatusSchema,
-    externalEvidenceBulkReviewResponseSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    metadataQualityProfileSchema,
-    ontologyMappingSourceSchema,
-    reportConversationTurnSchema,
-    simulationEnrichmentSchema,
-    sourceArtifactSchema,
-    sourceDocumentRecordSchema,
-    supplierDocumentSchema,
-    supplierDocumentTypeSchema,
-    workspaceSnapshotRecordSchema,
-    type CaseHistoryResponse,
-    type ConfidenceLevel,
-    type EvaluationListResponse,
-    type EvaluationResponse,
-    type EvidenceClaim,
-    type ExternalEvidenceBulkReviewResponse,
-    type ExternalEvidenceCatalogItemDetail,
-    type ExternalEvidenceCatalogItemSummary,
-    type ExternalEvidenceCatalogListResponse,
-    type ExternalEvidenceReviewAction,
-    type ExternalEvidenceReviewStatus,
-    type ExternalEvidenceSourceType,
-    type NarrativeMetadata,
-    type ReportConversationCitation,
-    type ReportConversationGrounding,
-    type ReportConversationTurn,
-    type SourceArtifact,
+  caseHistoryResponseSchema,
+  evaluationClaimUsageSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationSourceUsageSchema,
+  evidenceClaimSchema,
+  evidenceClaimTypeSchema,
+  evidenceExtractionMethodSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  evidenceVeracityScoreSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  metadataQualityProfileSchema,
+  ontologyMappingSourceSchema,
+  reportConversationTurnSchema,
+  simulationEnrichmentSchema,
+  sourceArtifactSchema,
+  sourceDocumentRecordSchema,
+  supplierDocumentSchema,
+  supplierDocumentTypeSchema,
+  workspaceSnapshotRecordSchema,
+  type CaseHistoryResponse,
+  type ConfidenceLevel,
+  type EvaluationListResponse,
+  type EvaluationResponse,
+  type EvidenceClaim,
+  type ExternalEvidenceBulkReviewResponse,
+  type ExternalEvidenceCatalogItemDetail,
+  type ExternalEvidenceCatalogItemSummary,
+  type ExternalEvidenceCatalogListResponse,
+  type ExternalEvidenceReviewAction,
+  type ExternalEvidenceReviewStatus,
+  type ExternalEvidenceSourceType,
+  type NarrativeMetadata,
+  type ReportConversationCitation,
+  type ReportConversationGrounding,
+  type ReportConversationTurn,
+  type SourceArtifact,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -57,32 +57,32 @@ const PRISMA_TRANSACTION_OPTIONS = {
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-    MFC_MEC_30000_PRESET_ID,
-    planResearchBackfillPreset,
-    type PlannedResearchBackfill,
-    type PlannedResearchBackfillPreset
+  MFC_MEC_30000_PRESET_ID,
+  planResearchBackfillPreset,
+  type PlannedResearchBackfill,
+  type PlannedResearchBackfillPreset,
 } from './research-backfill-presets';
 export {
-    createResearchRepository,
-    MemoryResearchRepository,
-    PrismaResearchRepository,
-    type AddResearchReviewColumnInput,
-    type ClaimResearchExtractionJobsInput,
-    type CreateResearchEvidencePackInput,
-    type CreateResearchReviewInput,
-    type ResearchExtractionWorkItem,
-    type ResearchRepository,
-    type SaveResearchExtractionResultInput
+  createResearchRepository,
+  MemoryResearchRepository,
+  PrismaResearchRepository,
+  type AddResearchReviewColumnInput,
+  type ClaimResearchExtractionJobsInput,
+  type CreateResearchEvidencePackInput,
+  type CreateResearchReviewInput,
+  type ResearchExtractionWorkItem,
+  type ResearchRepository,
+  type SaveResearchExtractionResultInput,
 } from './research-repository';
 export {
-    buildEvidenceVeracityScore,
-    getSourceArtifactForSourceDocument,
-    importLocalPdfSources,
-    localSourceImportRequestToInput,
-    normalizeCliFiles,
-    resolveLocalSourceImportRequestToInput,
-    type LocalPdfImportFile,
-    type LocalPdfImportInput
+  buildEvidenceVeracityScore,
+  getSourceArtifactForSourceDocument,
+  importLocalPdfSources,
+  localSourceImportRequestToInput,
+  normalizeCliFiles,
+  resolveLocalSourceImportRequestToInput,
+  type LocalPdfImportFile,
+  type LocalPdfImportInput,
 } from './source-artifacts';
 
 export interface EvaluationRepository {
@@ -164,6 +164,9 @@ export interface EvidenceBenchmarkSlice {
     catalog_item_id: string;
     source_record_id: string;
     title: string;
+    review_status: string | null;
+    source_state: string | null;
+    access_status: string | null;
     doi: string | null;
     source_url: string | null;
     canonical_key: string | null;
@@ -172,7 +175,10 @@ export interface EvidenceBenchmarkSlice {
     normalized_unit: string | null;
     material: string | null;
     component_type: string | null;
+    evidence_quality: string | null;
     confidence: number | null;
+    source_text_hash: string | null;
+    source_locator: string | null;
     publication_year: number | null;
   }>;
   summary: {
@@ -321,6 +327,15 @@ function toPrismaJsonObject(
 
 function toRequiredPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return toPrismaJsonValue(value) as Prisma.InputJsonValue;
+}
+
+function readJsonStringField(value: unknown, key: string): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const entry = (value as Record<string, unknown>)[key];
+  return typeof entry === 'string' && entry.trim() ? entry : null;
 }
 
 function toEvaluationSummary(
@@ -2950,14 +2965,53 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           metricType: aggregateMetricType,
           material: aggregateMaterial,
           componentType: aggregateComponentType,
+          recordCount: { gt: 0 },
+          medianValue: { not: null },
+          NOT: [
+            {
+              evidenceQuality: {
+                equals: 'low',
+                mode: 'insensitive' as const,
+              },
+            },
+          ],
         };
         const recordWhere: Prisma.EvidenceBenchmarkRecordWhereInput = {
           decisionReady: true,
+          canonicalKey: { not: null },
+          normalizedValue: { not: null },
+          normalizedUnit: { not: null },
+          sourceTextHash: { not: null },
           systemType: aggregateSystemType,
           application: aggregateApplication,
           metricType: aggregateMetricType,
           material: aggregateMaterial,
           componentType: aggregateComponentType,
+          NOT: [
+            {
+              evidenceQuality: {
+                equals: 'low',
+                mode: 'insensitive' as const,
+              },
+            },
+          ],
+          catalogItem: {
+            is: {
+              reviewStatus: 'ACCEPTED',
+              sourceState: 'REVIEWED',
+              evidenceType: {
+                not: {
+                  contains: 'supplier',
+                },
+                mode: 'insensitive' as const,
+              },
+            },
+          },
+          sourceRecord: {
+            is: {
+              accessStatus: { not: 'CLOSED' },
+            },
+          },
         };
         const [aggregates, evidence] = await this.prisma.$transaction([
           this.prisma.evidenceBenchmarkAggregate.findMany({
@@ -2970,12 +3024,18 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             include: {
               catalogItem: {
                 select: {
+                  evidenceQuality: true,
+                  evidenceType: true,
+                  reviewStatus: true,
+                  sourceState: true,
                   title: true,
                 },
               },
               sourceRecord: {
                 select: {
+                  accessStatus: true,
                   doi: true,
+                  license: true,
                   sourceUrl: true,
                   publicationYear: true,
                 },
@@ -3011,6 +3071,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             catalog_item_id: record.catalogItemId,
             source_record_id: record.sourceRecordId,
             title: record.catalogItem.title,
+            review_status: record.catalogItem.reviewStatus.toLowerCase(),
+            source_state: record.catalogItem.sourceState.toLowerCase(),
+            access_status: record.sourceRecord.accessStatus.toLowerCase(),
             doi: record.sourceRecord.doi,
             source_url: record.sourceRecord.sourceUrl,
             canonical_key: record.canonicalKey,
@@ -3019,7 +3082,11 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             normalized_unit: record.normalizedUnit,
             material: record.material,
             component_type: record.componentType,
+            evidence_quality:
+              record.evidenceQuality ?? record.catalogItem.evidenceQuality,
             confidence: record.confidence,
+            source_text_hash: record.sourceTextHash,
+            source_locator: readJsonStringField(record.payload, 'locator'),
             publication_year: record.sourceRecord.publicationYear,
           })),
           summary: {
