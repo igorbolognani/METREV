@@ -195,6 +195,7 @@ def test_evidence_decision_context_contract_carries_admission_trace_fields() -> 
         "review_status",
         "source_state",
         "access_status",
+        "source_license",
         "source_text_hash",
         "source_locator",
         "evidence_quality",

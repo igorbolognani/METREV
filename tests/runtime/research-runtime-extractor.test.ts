@@ -54,6 +54,28 @@ describe('research runtime extractor', () => {
       column,
       claims: [],
       fetchPaperText: async (paper) => ({
+        blocks: [
+          {
+            kind: 'section',
+            text: 'Methods The reactor used carbon felt anodes.',
+            sourceLocator: 'html:https://example.org/full-text:block:0',
+            pageNumber: null,
+            sectionLabel: 'Methods',
+            tableLabel: null,
+            cellLocator: null,
+            caption: null,
+          },
+          {
+            kind: 'table',
+            text: 'Table 1 reports power density of 950 mW/m2.',
+            sourceLocator: 'html:https://example.org/full-text:block:1',
+            pageNumber: null,
+            sectionLabel: 'Results',
+            tableLabel: 'Table 1',
+            cellLocator: 'Table 1:block:1',
+            caption: 'Table 1 reports power density of 950 mW/m2.',
+          },
+        ],
         contentType: 'text/html',
         fetchedFrom: `${paper.source_url ?? 'https://example.org'}/full-text`,
         source: 'html',
@@ -78,7 +100,11 @@ describe('research runtime extractor', () => {
     expect(result.normalized_payload).toEqual(
       expect.objectContaining({
         full_text: expect.objectContaining({
+          block_count: 2,
+          caption_count: 1,
+          section_count: 2,
           source: 'html',
+          table_count: 1,
         }),
       }),
     );

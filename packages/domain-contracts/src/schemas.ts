@@ -654,6 +654,7 @@ export const evidenceDecisionMatchedEvidenceSchema = z.object({
   review_status: z.string().nullable().default(null),
   source_state: z.string().nullable().default(null),
   access_status: z.string().nullable().default(null),
+  source_license: z.string().nullable().default(null),
   doi: z.string().nullable().default(null),
   source_url: z.string().nullable().default(null),
   canonical_key: z.string().nullable().default(null),

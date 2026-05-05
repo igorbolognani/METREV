@@ -114,6 +114,45 @@ function normalizeQueuedQuery(value: string) {
   return value.trim().toLowerCase();
 }
 
+async function reconcileDefaultColumns(
+  app: FastifyInstance,
+  review: Awaited<
+    ReturnType<FastifyInstance['researchRepository']['getResearchReview']>
+  >,
+) {
+  if (!review) {
+    return null;
+  }
+
+  const currentColumnIds = new Set(
+    review.columns.map((column) => column.column_id),
+  );
+  const missingDefaults = getDefaultResearchColumns()
+    .filter((column) => !currentColumnIds.has(column.column_id))
+    .sort((left, right) => left.position - right.position);
+
+  if (missingDefaults.length === 0) {
+    return review;
+  }
+
+  let currentReview = review;
+  for (const column of missingDefaults) {
+    const updated = await app.researchRepository.addResearchReviewColumn({
+      reviewId: currentReview.review_id,
+      column,
+      extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    });
+
+    if (!updated) {
+      break;
+    }
+
+    currentReview = updated;
+  }
+
+  return currentReview;
+}
+
 function buildResearchWarehouseProgress(input: {
   backfills: Awaited<
     ReturnType<FastifyInstance['researchRepository']['listResearchBackfills']>
@@ -223,85 +262,99 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
-  app.post('/search/import', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.post(
+    '/search/import',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const parsed = stageResearchPapersRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
+      const parsed = stageResearchPapersRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
 
-    const response = await withSpan(
-      'research.search.import',
-      () => app.researchRepository.stageResearchPapers(parsed.data),
-      {
-        actor_id: actor.userId,
-        item_count: parsed.data.items.length,
-        ...(parsed.data.query ? { query: parsed.data.query } : {}),
-      },
-    );
+      const response = await withSpan(
+        'research.search.import',
+        () => app.researchRepository.stageResearchPapers(parsed.data),
+        {
+          actor_id: actor.userId,
+          item_count: parsed.data.items.length,
+          ...(parsed.data.query ? { query: parsed.data.query } : {}),
+        },
+      );
 
-    return reply.code(201).send(response);
-  });
+      return reply.code(201).send(response);
+    },
+  );
 
-  app.post('/source-artifacts/import', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.post(
+    '/source-artifacts/import',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const parsed = localSourceImportRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
+      const parsed = localSourceImportRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
 
-    const response = await withSpan(
-      'research.source_artifacts.import',
-      () => app.researchRepository.importLocalSources(parsed.data),
-      {
-        actor_id: actor.userId,
-        file_count: parsed.data.files.length,
-        manifest_path: parsed.data.manifest_path ?? '',
-      },
-    );
+      const response = await withSpan(
+        'research.source_artifacts.import',
+        () => app.researchRepository.importLocalSources(parsed.data),
+        {
+          actor_id: actor.userId,
+          file_count: parsed.data.files.length,
+          manifest_path: parsed.data.manifest_path ?? '',
+        },
+      );
 
-    return reply.code(201).send(response);
-  });
+      return reply.code(201).send(response);
+    },
+  );
 
-  app.get('/source-artifacts/:sourceDocumentId', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.get(
+    '/source-artifacts/:sourceDocumentId',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const { sourceDocumentId } = request.params as { sourceDocumentId: string };
-    const artifact = await withSpan(
-      'research.source_artifacts.get',
-      () => app.researchRepository.getSourceArtifact(sourceDocumentId),
-      {
-        actor_id: actor.userId,
-        source_document_id: sourceDocumentId,
-      },
-    );
+      const { sourceDocumentId } = request.params as {
+        sourceDocumentId: string;
+      };
+      const artifact = await withSpan(
+        'research.source_artifacts.get',
+        () => app.researchRepository.getSourceArtifact(sourceDocumentId),
+        {
+          actor_id: actor.userId,
+          source_document_id: sourceDocumentId,
+        },
+      );
 
-    if (!artifact) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Source artifact for ${sourceDocumentId} was not found.`,
-      });
-    }
+      if (!artifact) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Source artifact for ${sourceDocumentId} was not found.`,
+        });
+      }
 
-    return reply.send(artifact);
-  });
+      return reply.send(artifact);
+    },
+  );
 
   app.get('/reviews', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
@@ -333,36 +386,40 @@ export async function registerResearchRoutes(
     return reply.send(response);
   });
 
-  app.get('/warehouse-progress', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.get(
+    '/warehouse-progress',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const [backfills, warehouse] = await Promise.all([
-      withSpan(
-        'research.backfills.list',
-        () => app.researchRepository.listResearchBackfills(),
-        { actor_id: actor.userId },
-      ),
-      withSpan(
-        'research.warehouse.summary',
-        () =>
-          app.evaluationRepository.listExternalEvidenceCatalog({
-            page: 1,
-            pageSize: 1,
-          }),
-        { actor_id: actor.userId },
-      ),
-    ]);
+      const [backfills, warehouse] = await Promise.all([
+        withSpan(
+          'research.backfills.list',
+          () => app.researchRepository.listResearchBackfills(),
+          { actor_id: actor.userId },
+        ),
+        withSpan(
+          'research.warehouse.summary',
+          () =>
+            app.evaluationRepository.listExternalEvidenceCatalog({
+              page: 1,
+              pageSize: 1,
+            }),
+          { actor_id: actor.userId },
+        ),
+      ]);
 
-    return reply.send(
-      buildResearchWarehouseProgress({
-        backfills: backfills.items,
-        warehouse,
-      }),
-    );
-  });
+      return reply.send(
+        buildResearchWarehouseProgress({
+          backfills: backfills.items,
+          warehouse,
+        }),
+      );
+    },
+  );
 
   app.post('/backfills', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
@@ -400,83 +457,87 @@ export async function registerResearchRoutes(
     return reply.code(201).send(response);
   });
 
-  app.post('/backfills/presets', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const parsed = queueResearchBackfillPresetRequestSchema.safeParse(
-      request.body ?? {},
-    );
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
-
-    const plan = planResearchBackfillPreset({
-      presetId: MFC_MEC_30000_PRESET_ID,
-      targetRecords: parsed.data.target_records,
-    });
-    const existing = await withSpan(
-      'research.backfills.list',
-      () => app.researchRepository.listResearchBackfills(),
-      { actor_id: actor.userId },
-    );
-    const activeQueries = new Set(
-      existing.items
-        .filter(
-          (backfill) =>
-            backfill.status === 'queued' || backfill.status === 'running',
-        )
-        .map((backfill) => normalizeQueuedQuery(backfill.query)),
-    );
-    const skippedQueries: string[] = [];
-    let queuedRuns = 0;
-
-    for (const backfill of plan.plannedBackfills) {
-      const normalizedQuery = normalizeQueuedQuery(backfill.query);
-
-      if (activeQueries.has(normalizedQuery)) {
-        skippedQueries.push(backfill.query);
-        continue;
+  app.post(
+    '/backfills/presets',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
       }
 
-      await withSpan(
-        'research.backfills.enqueue',
-        () =>
-          app.researchRepository.enqueueResearchBackfill({
-            ...backfill,
-            actorId: actor.userId,
-          }),
-        {
-          actor_id: actor.userId,
-          preset_id: parsed.data.preset_id,
-          query: backfill.query,
-        },
+      const parsed = queueResearchBackfillPresetRequestSchema.safeParse(
+        request.body ?? {},
       );
-      activeQueries.add(normalizedQuery);
-      queuedRuns += 1;
-    }
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
 
-    const backfills = await withSpan(
-      'research.backfills.list',
-      () => app.researchRepository.listResearchBackfills(),
-      { actor_id: actor.userId },
-    );
+      const plan = planResearchBackfillPreset({
+        presetId: MFC_MEC_30000_PRESET_ID,
+        targetRecords: parsed.data.target_records,
+      });
+      const existing = await withSpan(
+        'research.backfills.list',
+        () => app.researchRepository.listResearchBackfills(),
+        { actor_id: actor.userId },
+      );
+      const activeQueries = new Set(
+        existing.items
+          .filter(
+            (backfill) =>
+              backfill.status === 'queued' || backfill.status === 'running',
+          )
+          .map((backfill) => normalizeQueuedQuery(backfill.query)),
+      );
+      const skippedQueries: string[] = [];
+      let queuedRuns = 0;
 
-    return reply.code(201).send(
-      queueResearchBackfillPresetResponseSchema.parse({
-        preset_id: parsed.data.preset_id,
-        target_records: plan.targetRecords,
-        queued_runs: queuedRuns,
-        skipped_queries: skippedQueries,
-        backfills: backfills.items,
-      }),
-    );
-  });
+      for (const backfill of plan.plannedBackfills) {
+        const normalizedQuery = normalizeQueuedQuery(backfill.query);
+
+        if (activeQueries.has(normalizedQuery)) {
+          skippedQueries.push(backfill.query);
+          continue;
+        }
+
+        await withSpan(
+          'research.backfills.enqueue',
+          () =>
+            app.researchRepository.enqueueResearchBackfill({
+              ...backfill,
+              actorId: actor.userId,
+            }),
+          {
+            actor_id: actor.userId,
+            preset_id: parsed.data.preset_id,
+            query: backfill.query,
+          },
+        );
+        activeQueries.add(normalizedQuery);
+        queuedRuns += 1;
+      }
+
+      const backfills = await withSpan(
+        'research.backfills.list',
+        () => app.researchRepository.listResearchBackfills(),
+        { actor_id: actor.userId },
+      );
+
+      return reply.code(201).send(
+        queueResearchBackfillPresetResponseSchema.parse({
+          preset_id: parsed.data.preset_id,
+          target_records: plan.targetRecords,
+          queued_runs: queuedRuns,
+          skipped_queries: skippedQueries,
+          backfills: backfills.items,
+        }),
+      );
+    },
+  );
 
   app.post('/reviews', rateLimitedRouteOptions, async (request, reply) => {
     const actor = requireAnalyst(request, reply);
@@ -510,228 +571,261 @@ export async function registerResearchRoutes(
     return reply.code(201).send(review);
   });
 
-  app.get('/reviews/:reviewId', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const { reviewId } = request.params as { reviewId: string };
-    const review = await withSpan(
-      'research.reviews.get',
-      () => app.researchRepository.getResearchReview(reviewId),
-      {
-        actor_id: actor.userId,
-        review_id: reviewId,
-      },
-    );
-
-    if (!review) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Research review ${reviewId} was not found.`,
-      });
-    }
-
-    return reply.send(review);
-  });
-
-  app.post('/reviews/:reviewId/columns', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const parsed = addResearchColumnRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
-
-    const { reviewId } = request.params as { reviewId: string };
-    const review = await withSpan(
-      'research.reviews.add_column',
-      () =>
-        app.researchRepository.addResearchReviewColumn({
-          reviewId,
-          column: parsed.data,
-          extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-        }),
-      {
-        actor_id: actor.userId,
-        review_id: reviewId,
-        column_id: parsed.data.column_id,
-      },
-    );
-
-    if (!review) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Research review ${reviewId} was not found.`,
-      });
-    }
-
-    return reply.send(review);
-  });
-
-  app.post('/reviews/:reviewId/extractions/run', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const parsed = runResearchExtractionsRequestSchema.safeParse(
-      request.body ?? {},
-    );
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
-
-    const { reviewId } = request.params as { reviewId: string };
-    const review = await app.researchRepository.getResearchReview(reviewId);
-    if (!review) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Research review ${reviewId} was not found.`,
-      });
-    }
-
-    const jobs = await withSpan(
-      'research.extractions.claim',
-      () =>
-        app.researchRepository.claimQueuedResearchExtractionJobs({
-          reviewId,
-          limit: parsed.data.limit,
-          columnIds: parsed.data.column_ids,
-          paperIds: parsed.data.paper_ids,
-        }),
-      {
-        actor_id: actor.userId,
-        review_id: reviewId,
-      },
-    );
-    const results = [];
-    let completed = 0;
-    let failed = 0;
-    const paperTextCache = new Map<
-      string,
-      Promise<HydratedResearchPaperText | null>
-    >();
-
-    for (const job of jobs) {
-      const result = await executeResearchExtraction({
-        reviewId,
-        paper: job.paper,
-        column: job.column,
-        claims: job.claims,
-        fetchPaperText: (paper) => {
-          let cached = paperTextCache.get(paper.paper_id);
-          if (!cached) {
-            cached = hydrateResearchPaperText(paper);
-            paperTextCache.set(paper.paper_id, cached);
-          }
-
-          return cached;
-        },
-      });
-      const saved = await app.researchRepository.saveResearchExtractionResult({
-        jobId: job.job.job_id,
-        result,
-      });
-      results.push(saved);
-      if (saved.status === 'valid') {
-        completed += 1;
-      } else {
-        failed += 1;
+  app.get(
+    '/reviews/:reviewId',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
       }
-    }
 
-    return reply.send(
-      runResearchExtractionsResponseSchema.parse({
-        review_id: reviewId,
-        attempted: jobs.length,
-        completed,
-        failed,
-        results,
-      }),
-    );
-  });
+      const { reviewId } = request.params as { reviewId: string };
+      const review = await withSpan(
+        'research.reviews.get',
+        () => app.researchRepository.getResearchReview(reviewId),
+        {
+          actor_id: actor.userId,
+          review_id: reviewId,
+        },
+      );
 
-  app.post('/reviews/:reviewId/evidence-pack', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+      if (!review) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Research review ${reviewId} was not found.`,
+        });
+      }
 
-    const parsed = createResearchEvidencePackRequestSchema.safeParse(
-      request.body ?? {},
-    );
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
+      const reconciledReview = await withSpan(
+        'research.reviews.reconcile_defaults',
+        () => reconcileDefaultColumns(app, review),
+        {
+          actor_id: actor.userId,
+          review_id: reviewId,
+        },
+      );
 
-    const { reviewId } = request.params as { reviewId: string };
-    const review = await app.researchRepository.getResearchReview(reviewId);
-    if (!review) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Research review ${reviewId} was not found.`,
-      });
-    }
+      return reply.send(reconciledReview ?? review);
+    },
+  );
 
-    const packRuntimeVersions = buildRuntimeVersions({
-      promptVersion: RESEARCH_EVIDENCE_PACK_PROMPT_VERSION,
-      modelVersion: collapseExtractorVersions(review.extraction_results),
-    });
-    const pack = buildResearchEvidencePack({
-      packId: randomUUID(),
-      review,
-      title: parsed.data.title,
-      status: parsed.data.status,
-      versions: packRuntimeVersions,
-    });
-    const decisionInput = buildDecisionIngestionPreview(pack);
-    const savedPack = await withSpan(
-      'research.evidence_pack.create',
-      () =>
-        app.researchRepository.createResearchEvidencePack({
-          pack,
-          decisionInput,
+  app.post(
+    '/reviews/:reviewId/columns',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const parsed = addResearchColumnRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const { reviewId } = request.params as { reviewId: string };
+      const review = await withSpan(
+        'research.reviews.add_column',
+        () =>
+          app.researchRepository.addResearchReviewColumn({
+            reviewId,
+            column: parsed.data,
+            extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+          }),
+        {
+          actor_id: actor.userId,
+          review_id: reviewId,
+          column_id: parsed.data.column_id,
+        },
+      );
+
+      if (!review) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Research review ${reviewId} was not found.`,
+        });
+      }
+
+      return reply.send(review);
+    },
+  );
+
+  app.post(
+    '/reviews/:reviewId/extractions/run',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const parsed = runResearchExtractionsRequestSchema.safeParse(
+        request.body ?? {},
+      );
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const { reviewId } = request.params as { reviewId: string };
+      const review = await app.researchRepository.getResearchReview(reviewId);
+      if (!review) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Research review ${reviewId} was not found.`,
+        });
+      }
+
+      const jobs = await withSpan(
+        'research.extractions.claim',
+        () =>
+          app.researchRepository.claimQueuedResearchExtractionJobs({
+            reviewId,
+            limit: parsed.data.limit,
+            columnIds: parsed.data.column_ids,
+            paperIds: parsed.data.paper_ids,
+          }),
+        {
+          actor_id: actor.userId,
+          review_id: reviewId,
+        },
+      );
+      const results = [];
+      let completed = 0;
+      let failed = 0;
+      const paperTextCache = new Map<
+        string,
+        Promise<HydratedResearchPaperText | null>
+      >();
+
+      for (const job of jobs) {
+        const result = await executeResearchExtraction({
+          reviewId,
+          paper: job.paper,
+          column: job.column,
+          claims: job.claims,
+          fetchPaperText: (paper) => {
+            let cached = paperTextCache.get(paper.paper_id);
+            if (!cached) {
+              cached = hydrateResearchPaperText(paper);
+              paperTextCache.set(paper.paper_id, cached);
+            }
+
+            return cached;
+          },
+        });
+        const saved = await app.researchRepository.saveResearchExtractionResult(
+          {
+            jobId: job.job.job_id,
+            result,
+          },
+        );
+        results.push(saved);
+        if (saved.status === 'valid') {
+          completed += 1;
+        } else {
+          failed += 1;
+        }
+      }
+
+      return reply.send(
+        runResearchExtractionsResponseSchema.parse({
+          review_id: reviewId,
+          attempted: jobs.length,
+          completed,
+          failed,
+          results,
         }),
-      {
-        actor_id: actor.userId,
-        review_id: reviewId,
-      },
-    );
+      );
+    },
+  );
 
-    return reply.code(201).send(savedPack);
-  });
+  app.post(
+    '/reviews/:reviewId/evidence-pack',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-  app.get('/evidence-packs/:packId/decision-input', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+      const parsed = createResearchEvidencePackRequestSchema.safeParse(
+        request.body ?? {},
+      );
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
 
-    const { packId } = request.params as { packId: string };
-    const decisionInput =
-      await app.researchRepository.getResearchEvidencePackDecisionInput(packId);
+      const { reviewId } = request.params as { reviewId: string };
+      const review = await app.researchRepository.getResearchReview(reviewId);
+      if (!review) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Research review ${reviewId} was not found.`,
+        });
+      }
 
-    if (!decisionInput) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Research evidence pack ${packId} was not found.`,
+      const packRuntimeVersions = buildRuntimeVersions({
+        promptVersion: RESEARCH_EVIDENCE_PACK_PROMPT_VERSION,
+        modelVersion: collapseExtractorVersions(review.extraction_results),
       });
-    }
+      const pack = buildResearchEvidencePack({
+        packId: randomUUID(),
+        review,
+        title: parsed.data.title,
+        status: parsed.data.status,
+        versions: packRuntimeVersions,
+      });
+      const decisionInput = buildDecisionIngestionPreview(pack);
+      const savedPack = await withSpan(
+        'research.evidence_pack.create',
+        () =>
+          app.researchRepository.createResearchEvidencePack({
+            pack,
+            decisionInput,
+          }),
+        {
+          actor_id: actor.userId,
+          review_id: reviewId,
+        },
+      );
 
-    return reply.send(decisionInput);
-  });
+      return reply.code(201).send(savedPack);
+    },
+  );
+
+  app.get(
+    '/evidence-packs/:packId/decision-input',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const { packId } = request.params as { packId: string };
+      const decisionInput =
+        await app.researchRepository.getResearchEvidencePackDecisionInput(
+          packId,
+        );
+
+      if (!decisionInput) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Research evidence pack ${packId} was not found.`,
+        });
+      }
+
+      return reply.send(decisionInput);
+    },
+  );
 }

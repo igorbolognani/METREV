@@ -40,6 +40,203 @@ function resultKey(paperId: string, columnId: string) {
   return `${paperId}:${columnId}`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function collectStringList(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? [value.trim()] : [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectStringList(entry));
+  }
+
+  return [];
+}
+
+function formatNumber(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+
+  if (Math.abs(value) >= 100) {
+    return value.toFixed(1).replace(/\.0$/, '');
+  }
+
+  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function renderChipList(items: string[], emptyLabel = 'Not reported') {
+  if (items.length === 0) {
+    return <span className="muted">{emptyLabel}</span>;
+  }
+
+  return (
+    <div className="workspace-chip-list compact">
+      {items.map((item) => (
+        <span className="meta-chip" key={item}>
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function metricLabel(metric: unknown): string | null {
+  const record = asRecord(metric);
+  if (!record) {
+    return null;
+  }
+
+  const metricKey = readString(record.metric_key);
+  const originalValue = readNumber(record.original_value);
+  const normalizedValue = readNumber(record.normalized_value);
+  const originalUnit = readString(record.original_unit);
+  const normalizedUnit = readString(record.normalized_unit);
+  const value = normalizedValue ?? originalValue;
+  const unit = normalizedUnit ?? originalUnit;
+
+  if (!metricKey || value === null) {
+    return null;
+  }
+
+  return `${formatToken(metricKey)} ${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
+}
+
+function summarizeOperatingConditions(answer: Record<string, unknown>) {
+  const operatingConditions = asRecord(answer.operating_conditions);
+  const substrateFeedstock = collectStringList(answer.substrate_feedstock).map(
+    (value) => `substrate ${value}`,
+  );
+
+  const conditionChips = operatingConditions
+    ? Object.entries(operatingConditions).flatMap(([key, value]) => {
+        const stringValue = readString(value);
+        if (stringValue) {
+          return [`${formatToken(key)} ${stringValue}`];
+        }
+
+        const numericValue = readNumber(value);
+        return numericValue === null
+          ? []
+          : [`${formatToken(key)} ${formatNumber(numericValue)}`];
+      })
+    : [];
+
+  return [...substrateFeedstock, ...conditionChips];
+}
+
+function summarizeDesignParameters(answer: Record<string, unknown>) {
+  const reactor = asRecord(answer.reactor_architecture);
+  if (!reactor) {
+    return [];
+  }
+
+  return [
+    readString(reactor.type),
+    readNumber(reactor.useful_volume_ml) !== null
+      ? `volume ${formatNumber(readNumber(reactor.useful_volume_ml)!)} mL`
+      : null,
+    readNumber(reactor.electrode_area_cm2) !== null
+      ? `electrode area ${formatNumber(readNumber(reactor.electrode_area_cm2)!)} cm2`
+      : null,
+    readNumber(reactor.electrode_spacing_cm) !== null
+      ? `spacing ${formatNumber(readNumber(reactor.electrode_spacing_cm)!)} cm`
+      : null,
+    readString(reactor.geometry)
+      ? `geometry ${readString(reactor.geometry)}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+}
+
+function summarizeMaterialProperties(answer: Record<string, unknown>) {
+  const anode = asRecord(answer.anode);
+  const cathode = asRecord(answer.cathode);
+  const membrane = asRecord(answer.membrane_or_separator);
+
+  return [
+    readString(anode?.material) ? `anode ${readString(anode?.material)}` : null,
+    readString(anode?.modification)
+      ? `anode mod ${readString(anode?.modification)}`
+      : null,
+    ...collectStringList(anode?.properties).map((value) => `anode ${value}`),
+    readString(cathode?.material)
+      ? `cathode ${readString(cathode?.material)}`
+      : null,
+    readString(cathode?.catalyst)
+      ? `catalyst ${readString(cathode?.catalyst)}`
+      : null,
+    readNumber(cathode?.loading_mg_cm2) !== null
+      ? `loading ${formatNumber(readNumber(cathode?.loading_mg_cm2)!)} mg/cm2`
+      : null,
+    ...collectStringList(cathode?.properties).map(
+      (value) => `cathode ${value}`,
+    ),
+    readString(membrane?.type)
+      ? `separator ${readString(membrane?.type)}`
+      : null,
+    ...collectStringList(membrane?.properties).map(
+      (value) => `separator ${value}`,
+    ),
+  ].filter((value): value is string => Boolean(value));
+}
+
+function summarizeImplementationFactors(answer: Record<string, unknown>) {
+  return [
+    ...collectStringList(answer.scale_up_barriers),
+    ...collectStringList(answer.economic_barriers),
+    ...collectStringList(answer.durability_issues),
+    ...collectStringList(answer.maturity_signals),
+    ...collectStringList(answer.implementation_dependencies),
+  ];
+}
+
+function summarizeLimitations(answer: Record<string, unknown>) {
+  return [
+    ...collectStringList(answer.implementation_limitations),
+    ...collectStringList(answer.performance_limitations),
+    ...collectStringList(answer.electrode_limitations),
+    ...collectStringList(answer.membrane_limitations),
+    ...collectStringList(answer.biofilm_limitations),
+    ...collectStringList(answer.data_gaps),
+  ];
+}
+
+function renderPaperCell(paper: ResearchPaperMetadata) {
+  const paperChips = [
+    paper.year ? `Year ${paper.year}` : null,
+    paper.doi ? `DOI ${paper.doi}` : null,
+    formatToken(paper.source_type),
+  ].filter((value): value is string => Boolean(value));
+
+  return (
+    <div>
+      <strong>{paper.title}</strong>
+      <div className="workspace-chip-list compact">
+        {paperChips.map((item) => (
+          <span className="meta-chip" key={item}>
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function resultMap(review: ResearchReviewDetail) {
   return new Map(
     review.extraction_results.map((result) => [
@@ -49,7 +246,10 @@ function resultMap(review: ResearchReviewDetail) {
   );
 }
 
-function renderCell(result: ResearchExtractionResult | undefined) {
+function renderCell(
+  column: ResearchColumnDefinition,
+  result: ResearchExtractionResult | undefined,
+) {
   if (!result) {
     return <span className="muted">Queued</span>;
   }
@@ -60,20 +260,106 @@ function renderCell(result: ResearchExtractionResult | undefined) {
 
   if (typeof result.answer === 'object' && result.answer !== null) {
     const answer = result.answer as Record<string, unknown>;
-    if (typeof answer.summary === 'string') {
-      return answer.summary;
+    if (column.column_id === 'summary') {
+      return (
+        readString(answer.summary) ?? (
+          <span className="muted">Not reported</span>
+        )
+      );
     }
-    if (Array.isArray(answer.technology_class)) {
-      return answer.technology_class.join(', ');
+
+    if (column.column_id === 'technology_application') {
+      const technology = collectStringList(answer.technology_class);
+      const application = readString(answer.application);
+      const scale = readString(answer.scale);
+      return renderChipList(
+        [
+          ...technology,
+          application ? `application ${application}` : null,
+          scale ? `scale ${scale}` : null,
+        ].filter((value): value is string => Boolean(value)),
+      );
     }
-    if (Array.isArray(answer.electrochemical_metrics)) {
-      return `${answer.electrochemical_metrics.length} metric(s)`;
+
+    if (column.column_id === 'design_parameters') {
+      return renderChipList(summarizeDesignParameters(answer));
     }
-    if (Array.isArray(answer.performance_limitations)) {
-      return `${answer.performance_limitations.length} limitation(s)`;
+
+    if (column.column_id === 'material_properties') {
+      return renderChipList(summarizeMaterialProperties(answer));
     }
+
+    if (column.column_id === 'operating_conditions') {
+      return renderChipList(summarizeOperatingConditions(answer));
+    }
+
+    if (column.column_id === 'performance_metrics') {
+      const metrics = collectStringList(
+        (Array.isArray(answer.electrochemical_metrics)
+          ? answer.electrochemical_metrics
+          : []
+        ).map((metric) => metricLabel(metric)),
+      ).concat(
+        collectStringList(
+          (Array.isArray(answer.treatment_metrics)
+            ? answer.treatment_metrics
+            : []
+          ).map((metric) => metricLabel(metric)),
+        ),
+      );
+
+      return renderChipList(metrics);
+    }
+
+    if (column.column_id === 'product_outputs') {
+      return renderChipList(
+        collectStringList(
+          (Array.isArray(answer.product_outputs)
+            ? answer.product_outputs
+            : []
+          ).map((metric) => metricLabel(metric)),
+        ),
+      );
+    }
+
+    if (column.column_id === 'limitations') {
+      const items = summarizeLimitations(answer).concat(
+        collectStringList(answer.items),
+      );
+      return renderChipList(items);
+    }
+
+    if (column.column_id === 'implementation_factors') {
+      return renderChipList(summarizeImplementationFactors(answer));
+    }
+
+    if (column.column_id === 'data_metadata_readiness') {
+      const summary = readString(answer.summary);
+      const decisionReadiness = readString(answer.decision_use_readiness);
+      const blockingGaps = collectStringList(answer.blocking_gaps);
+
+      return (
+        <div>
+          {summary ? <div>{summary}</div> : null}
+          {renderChipList(
+            [
+              decisionReadiness
+                ? `decision use ${formatToken(decisionReadiness)}`
+                : null,
+              ...blockingGaps.map((gap) => `gap ${formatToken(gap)}`),
+            ].filter((value): value is string => Boolean(value)),
+            summary ? 'No readiness tags' : 'Not reported',
+          )}
+        </div>
+      );
+    }
+
     if (Array.isArray(answer.items)) {
       return answer.items.join('; ') || 'Not reported';
+    }
+
+    if (typeof answer.summary === 'string') {
+      return answer.summary;
     }
   }
 
@@ -153,12 +439,21 @@ function AddColumnPanel({
 }
 
 function PaperDetailsPanel({
+  columns,
   paper,
   results,
 }: {
+  columns: ResearchColumnDefinition[];
   paper: ResearchPaperMetadata;
   results: ResearchExtractionResult[];
 }) {
+  const visibleResultRows = columns
+    .filter((column) => column.column_id !== 'paper')
+    .map((column) => ({
+      column,
+      result: results.find((result) => result.column_id === column.column_id),
+    }));
+
   return (
     <WorkspaceDataCard>
       <h3>{paper.title}</h3>
@@ -168,14 +463,30 @@ function PaperDetailsPanel({
         <span className="meta-chip">Year {paper.year ?? 'not stated'}</span>
         <span className="meta-chip">{formatToken(paper.source_type)}</span>
       </div>
-      <ul className="list-block">
-        {results.slice(0, 6).map((result) => (
-          <li key={`${result.paper_id}-${result.column_id}`}>
-            {formatToken(result.column_id)}: {result.confidence} confidence,{' '}
-            {result.evidence_trace.length} trace(s)
-          </li>
-        ))}
-      </ul>
+      <div className="evidence-review-table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Details</th>
+              <th>Confidence</th>
+              <th>Trace</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleResultRows.map(({ column, result }) => (
+              <tr key={`${paper.paper_id}-${column.column_id}`}>
+                <td>
+                  <strong>{column.name}</strong>
+                </td>
+                <td>{renderCell(column, result)}</td>
+                <td>{result?.confidence ?? 'queued'}</td>
+                <td>{result?.evidence_trace.length ?? 0} trace(s)</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </WorkspaceDataCard>
   );
 }
@@ -447,15 +758,14 @@ export function ResearchReviewDetailWorkspace({
                     <tr key={paper.paper_id}>
                       {columns.map((column) => (
                         <td key={`${paper.paper_id}-${column.column_id}`}>
-                          {column.column_id === 'paper' ? (
-                            <strong>{paper.title}</strong>
-                          ) : (
-                            renderCell(
-                              cells.get(
-                                resultKey(paper.paper_id, column.column_id),
-                              ),
-                            )
-                          )}
+                          {column.column_id === 'paper'
+                            ? renderPaperCell(paper)
+                            : renderCell(
+                                column,
+                                cells.get(
+                                  resultKey(paper.paper_id, column.column_id),
+                                ),
+                              )}
                         </td>
                       ))}
                     </tr>
@@ -491,8 +801,9 @@ export function ResearchReviewDetailWorkspace({
         <TabsContent value="papers">
           <WorkspaceSection title="Paper details" eyebrow="Evidence trace">
             <div className="workspace-card-list">
-              {review.papers.slice(0, 3).map((paper) => (
+              {review.papers.map((paper) => (
                 <PaperDetailsPanel
+                  columns={columns}
                   key={paper.paper_id}
                   paper={paper}
                   results={review.extraction_results.filter(

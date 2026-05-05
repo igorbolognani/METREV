@@ -5,6 +5,7 @@
 - [x] T1 Create the `033` feature pack and record the product direction, scope, and safety boundaries.
 - [x] T2 Record the initial repository findings and validated runtime slice in `research.md`.
 - [x] T3 Add and retire planning-only contract notes as owner-file promotion decisions are made.
+- [x] T3A Add the `002` through `033` integration audit and record how legacy evidence/research route specs are superseded.
 
 ## Workstream 2 - Runtime implementation
 
@@ -50,4 +51,5 @@
 
 - [x] `spec.md`, `plan.md`, `tasks.md`, and `quickstart.md` are consistent
 - [x] `research.md` findings are reflected or marked not needed
+- [x] `integration-audit.md` reconciles specs `002` through `033`
 - [x] planning-only contract notes are promoted, retired, or marked not needed

@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvidenceBenchmarkSlice } from '@metrev/database';
 import {
-  evidenceDecisionContextSchema,
-  type DerivedObservation,
-  type EvidenceDecisionContext,
-  type NormalizedCaseInput,
+    evidenceDecisionContextSchema,
+    type DerivedObservation,
+    type EvidenceDecisionContext,
+    type NormalizedCaseInput,
 } from '@metrev/domain-contracts';
 
 function dedupeStrings(values: string[]): string[] {
@@ -36,6 +36,10 @@ function evidenceAdmissionFailures(record: BenchmarkEvidence): string[] {
       : 'catalog source state is not reviewed',
     normalizeToken(record.access_status) === 'closed'
       ? 'source access is closed'
+      : '',
+    normalizeToken(record.access_status) === 'unknown' &&
+    !hasRequiredText(record.source_license)
+      ? 'source license or access policy is missing'
       : '',
     hasRequiredText(record.canonical_key) ? '' : 'canonical key is missing',
     typeof record.normalized_value === 'number' &&

@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { EvidenceBenchmarkSlice } from '@metrev/database';
 import {
-  normalizeCaseInput,
-  rawCaseInputSchema,
+    normalizeCaseInput,
+    rawCaseInputSchema,
 } from '@metrev/domain-contracts';
 import { EvidenceDecisionContextBuilder } from '../../apps/api-server/src/services/evidence-decision-context-builder';
 
@@ -70,6 +70,7 @@ function buildBenchmarkSlice(): EvidenceBenchmarkSlice {
         review_status: 'accepted',
         source_state: 'reviewed',
         access_status: 'green',
+        source_license: 'CC-BY-4.0',
         doi: '10.5555/accepted-traceable',
         source_url: 'https://example.test/accepted-traceable',
         canonical_key: 'power_density_w_m2',
@@ -91,6 +92,7 @@ function buildBenchmarkSlice(): EvidenceBenchmarkSlice {
         review_status: 'pending',
         source_state: 'parsed',
         access_status: 'closed',
+        source_license: null,
         doi: null,
         source_url: null,
         canonical_key: 'power_density_w_m2',
@@ -137,6 +139,7 @@ describe('EvidenceDecisionContextBuilder', () => {
         catalog_item_id: 'accepted-traceable-001',
         review_status: 'accepted',
         source_state: 'reviewed',
+        source_license: 'CC-BY-4.0',
         source_text_hash: 'hash-accepted-traceable-001',
         source_locator: 'page:4:table:2',
       }),
@@ -174,5 +177,34 @@ describe('EvidenceDecisionContextBuilder', () => {
       'current_density',
       'energy_input',
     ]);
+  });
+
+  it('excludes unknown-access evidence when no license policy is available', () => {
+    const builder = new EvidenceDecisionContextBuilder();
+    const normalizedCase = buildNormalizedCase({
+      case_id: 'CASE-BUILDER-LICENSE-001',
+    });
+    const filters = builder.deriveStackFilters(normalizedCase);
+    const benchmarkSlice = buildBenchmarkSlice();
+
+    benchmarkSlice.evidence[0] = {
+      ...benchmarkSlice.evidence[0],
+      access_status: 'unknown',
+      source_license: null,
+    };
+
+    const context = builder.build({
+      benchmarkSlice,
+      componentTypes: filters.componentTypes,
+      materials: filters.materials,
+      metricTypes: filters.metricTypes,
+      normalizedCase,
+      systemType: filters.systemType,
+    });
+
+    expect(context.matched_evidence).toHaveLength(0);
+    expect(context.uncertainty_summary.excluded_evidence_reasons).toContain(
+      'source license or access policy is missing',
+    );
   });
 });

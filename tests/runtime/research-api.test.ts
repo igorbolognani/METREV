@@ -10,6 +10,7 @@ import {
     MemoryEvaluationRepository,
     MemoryResearchRepository,
 } from '@metrev/database';
+import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
 
 const sessions: Record<string, SessionActor> = {
@@ -542,6 +543,65 @@ describe('research API flow', () => {
       });
       expect(updatedProgressResponse.json().queued_backfills).toBeGreaterThan(
         10,
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('reconciles missing default research columns when loading a legacy review detail', async () => {
+    const app = await buildApp({
+      repository: evaluationRepository,
+      researchRepository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const search = await researchRepository.searchResearchPapers({
+        query: 'microbial fuel cell wastewater',
+        limit: 1,
+        page: 1,
+      });
+      const staged = await researchRepository.stageResearchPapers({
+        query: 'microbial fuel cell wastewater',
+        items: search.items.slice(0, 1),
+      });
+      const legacyColumns = getDefaultResearchColumns().filter(
+        (column) => column.column_id !== 'data_metadata_readiness',
+      );
+      const created = await researchRepository.createResearchReview({
+        actorId: sessions['research-analyst-session'].userId,
+        title: 'Legacy MFC fixture review',
+        query: 'microbial fuel cell wastewater',
+        limit: 1,
+        source_document_ids: staged.source_document_ids,
+        columns: legacyColumns,
+        extractorVersion: 'fixture-v1',
+      });
+
+      expect(created.column_count).toBe(legacyColumns.length);
+
+      const detailResponse = await app.inject({
+        method: 'GET',
+        url: `/api/research/reviews/${created.review_id}`,
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(detailResponse.statusCode).toBe(200);
+      const detail = detailResponse.json();
+      expect(detail.column_count).toBe(getDefaultResearchColumns().length);
+      expect(
+        detail.columns.map((column: { column_id: string }) => column.column_id),
+      ).toContain('data_metadata_readiness');
+      expect(detail.extraction_jobs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            column_id: 'data_metadata_readiness',
+            status: 'queued',
+          }),
+        ]),
       );
     } finally {
       await app.close();

@@ -396,6 +396,38 @@ function buildResearchPaperMetadataForCanonicalization(
 }
 
 function buildHydratedSourceChunks(hydrated: HydratedResearchPaperText) {
+  if ((hydrated.blocks?.length ?? 0) > 0) {
+    return hydrated.blocks!.map((block, chunkIndex) => {
+      const blockTrace =
+        hydrated.trace.find(
+          (trace) => trace.source_locator === block.sourceLocator,
+        ) ?? null;
+
+      return {
+        charEnd: block.text.length,
+        charStart: 0,
+        chunkIndex,
+        metadata: toPrismaJsonObject({
+          caption: blockTrace?.caption ?? block.caption,
+          cell_locator: blockTrace?.cell_locator ?? block.cellLocator,
+          content_type: hydrated.contentType,
+          extraction_method: HYDRATED_FULL_TEXT_EXTRACTOR_VERSION,
+          fetched_from: hydrated.fetchedFrom,
+          page_number: blockTrace?.page_number ?? block.pageNumber,
+          section_label: blockTrace?.section_label ?? block.sectionLabel,
+          source: hydrated.source,
+          source_locator: blockTrace?.source_locator ?? block.sourceLocator,
+          table_label: blockTrace?.table_label ?? block.tableLabel,
+          text_span: block.text,
+          trace: blockTrace ? [blockTrace] : hydrated.trace,
+        }),
+        pageNumber: blockTrace?.page_number ?? block.pageNumber,
+        sourceLocator: blockTrace?.source_locator ?? block.sourceLocator,
+        text: block.text,
+      };
+    });
+  }
+
   const trace = hydrated.trace[0] ?? null;
 
   return chunkTextPages([hydrated.text]).map((chunk) => {
@@ -452,13 +484,23 @@ function buildHydratedSourcePersistence(input: {
     .digest('hex');
   const reviewStatus =
     record.reviewStatus === 'ACCEPTED' ? 'accepted' : 'pending';
+  const derivedPageCount = new Set(
+    (hydrated.blocks ?? [])
+      .map((block) => block.pageNumber)
+      .filter((pageNumber): pageNumber is number =>
+        Number.isFinite(pageNumber),
+      ),
+  ).size;
   const metadataQuality = buildMetadataQualityProfile({
     accessStatus,
     doi: sourceRecord.doi ?? null,
     extractionMethod,
     fileHash,
     license: sourceRecord.license ?? null,
-    pageCount: hydrated.source === 'pdf' ? 1 : null,
+    pageCount:
+      hydrated.source === 'pdf'
+        ? Math.max(derivedPageCount, 1)
+        : derivedPageCount || null,
     reviewStatus,
     title: sourceRecord.title ?? record.title ?? null,
   });
@@ -493,7 +535,10 @@ function buildHydratedSourcePersistence(input: {
         : hydrated.source === 'pdf'
           ? 'application/pdf'
           : 'text/html'),
-    pageCount: hydrated.source === 'pdf' ? 1 : null,
+    pageCount:
+      hydrated.source === 'pdf'
+        ? Math.max(derivedPageCount, 1)
+        : derivedPageCount || null,
     source: hydrated.source,
     veracityScore: toPrismaJsonObject(veracityScore),
   };

@@ -62,6 +62,7 @@ The current repository already contains a serious evidence warehouse, research w
 - Runtime contracts, hardened contract YAML, and domain owner files are aligned around `EvidenceDecisionContext` and evidence admissibility.
 - Persistence uses a dedicated `EvidenceDecisionContextRecord` model linked one-to-one with `EvaluationRecord`, while audit snapshots still carry the same context for replay.
 - Admin route migration uses analyst-gated `/admin/intelligence/...` pages as the only evidence/research UI routes; legacy `/evidence/*` and `/research/*` pages were removed and now resolve as 404s in the rebuilt local stack.
+- Specs `002` through `033` are consolidated in `integration-audit.md`; historical route mentions in older specs are superseded by this feature rather than treated as active route requirements.
 
 ## Risks / unknowns
 

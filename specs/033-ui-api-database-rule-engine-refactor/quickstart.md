@@ -37,6 +37,12 @@ sed -n '360,520p' apps/api-server/src/services/case-evaluation.ts
 sed -n '1040,1105p' packages/rule-engine/src/index.ts
 ```
 
+1. Optional: inspect the cross-spec consolidation audit:
+
+```bash
+sed -n '1,220p' specs/033-ui-api-database-rule-engine-refactor/integration-audit.md
+```
+
 ## Happy path
 
 1. Run the focused runtime tests:
@@ -89,4 +95,5 @@ pnpm exec vitest run tests/runtime/rule-engine.test.ts
 - `pnpm run build`
 - `pnpm run validate:fast`
 - `pnpm run validate:advanced`
+- `pnpm exec vitest run tests/runtime/workflow-assets.test.ts`
 - `PLAYWRIGHT_BASE_URL='http://localhost:3012' PLAYWRIGHT_API_BASE_URL='http://localhost:4012' pnpm exec playwright test tests/e2e/local-first-workspace.spec.ts --grep "covers review, intake, submitting, result, exports, report, history, and comparison"`

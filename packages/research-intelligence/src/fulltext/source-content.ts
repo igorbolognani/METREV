@@ -6,7 +6,19 @@ import type {
     ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
+export interface HydratedResearchTextBlock {
+  caption: string | null;
+  cellLocator: string | null;
+  kind: 'section' | 'paragraph' | 'table' | 'figure';
+  pageNumber: number | null;
+  sectionLabel: string | null;
+  sourceLocator: string;
+  tableLabel: string | null;
+  text: string;
+}
+
 export interface HydratedResearchPaperText {
+  blocks?: HydratedResearchTextBlock[];
   contentType: string | null;
   fetchedFrom: string;
   source: 'xml' | 'html' | 'pdf';
@@ -15,6 +27,18 @@ export interface HydratedResearchPaperText {
 }
 
 const DEFAULT_FULL_TEXT_FETCH_TIMEOUT_MS = 1000;
+const MAX_FULL_TEXT_BLOCK_LENGTH = 900;
+const SCIENTIFIC_SECTION_LABELS = [
+  'Abstract',
+  'Introduction',
+  'Background',
+  'Methods',
+  'Materials and Methods',
+  'Results',
+  'Discussion',
+  'Conclusion',
+  'Conclusions',
+];
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
@@ -118,6 +142,110 @@ function truncate(value: string, maxLength: number): string {
   return normalized.length <= maxLength
     ? normalized
     : `${normalized.slice(0, maxLength).trimEnd()}...`;
+}
+
+function detectScientificSection(text: string): string | null {
+  const normalized = normalizeWhitespace(text);
+
+  for (const label of SCIENTIFIC_SECTION_LABELS) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`(?:^|\\b)${escaped}(?:\\b|:)`, 'i');
+    if (pattern.test(normalized)) {
+      return label;
+    }
+  }
+
+  return null;
+}
+
+function splitStructuredSegments(text: string): string[] {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => normalizeWhitespace(sentence))
+    .filter(Boolean);
+  const segments: string[] = [];
+  let current = '';
+
+  for (const sentence of sentences) {
+    const startsBoundary =
+      detectScientificSection(sentence) !== null ||
+      /\bTable\s+[A-Za-z0-9.-]+\b/i.test(sentence) ||
+      /\b(?:Figure|Fig\.)\s+[A-Za-z0-9.-]+\b/i.test(sentence);
+
+    if (
+      current.length > 0 &&
+      (startsBoundary ||
+        current.length + sentence.length > MAX_FULL_TEXT_BLOCK_LENGTH)
+    ) {
+      segments.push(current);
+      current = sentence;
+      continue;
+    }
+
+    current = current.length > 0 ? `${current} ${sentence}` : sentence;
+  }
+
+  if (current.length > 0) {
+    segments.push(current);
+  }
+
+  return segments;
+}
+
+function buildStructuredBlocks(input: {
+  fetchedFrom: string;
+  source: 'xml' | 'html' | 'pdf';
+  text: string;
+}): HydratedResearchTextBlock[] {
+  const segments = splitStructuredSegments(input.text);
+  let activeSection: string | null = null;
+
+  return segments.map((segment, index) => {
+    const explicitSection = detectScientificSection(segment);
+    if (explicitSection) {
+      activeSection = explicitSection;
+    }
+
+    const tableLabel =
+      segment.match(/\bTable\s+[A-Za-z0-9.-]+\b/i)?.[0] ?? null;
+    const figureLabel =
+      segment.match(/\b(?:Figure|Fig\.)\s+[A-Za-z0-9.-]+\b/i)?.[0] ?? null;
+    const caption = tableLabel || figureLabel ? truncate(segment, 260) : null;
+
+    return {
+      caption,
+      cellLocator: tableLabel ? `${tableLabel}:block:${index}` : null,
+      kind: tableLabel
+        ? 'table'
+        : figureLabel
+          ? 'figure'
+          : explicitSection
+            ? 'section'
+            : 'paragraph',
+      pageNumber: input.source === 'pdf' ? 1 : null,
+      sectionLabel: explicitSection ?? activeSection,
+      sourceLocator: `${input.source}:${input.fetchedFrom}:block:${index}`,
+      tableLabel: tableLabel ?? figureLabel,
+      text: segment,
+    };
+  });
+}
+
+function buildTraceFromBlocks(
+  blocks: HydratedResearchTextBlock[],
+  sourceDocumentId: string,
+): ResearchEvidenceTrace[] {
+  return blocks.slice(0, 6).map((block) => ({
+    source: 'full_text',
+    source_document_id: sourceDocumentId,
+    text_span: truncate(block.text, 520),
+    source_locator: block.sourceLocator,
+    page_number: block.pageNumber,
+    section_label: block.sectionLabel,
+    table_label: block.tableLabel,
+    cell_locator: block.cellLocator,
+    caption: block.caption,
+  }));
 }
 
 function decodePdfLiteralString(value: string): string {
@@ -253,33 +381,45 @@ export async function hydrateResearchPaperText(
 
       const contentType = response.headers.get('content-type');
       const source = sourceKindFromUrl(candidate, contentType);
-      const text =
+      const rawContent =
         source === 'pdf'
           ? extractPdfText(await response.arrayBuffer())
-          : stripMarkup(await response.text());
+          : await response.text();
+      const text = source === 'pdf' ? rawContent : stripMarkup(rawContent);
 
       if (text.length < 80) {
         continue;
       }
 
+      const blocks = buildStructuredBlocks({
+        fetchedFrom: candidate,
+        source,
+        text,
+      });
+      const trace =
+        blocks.length > 0
+          ? buildTraceFromBlocks(blocks, paper.source_document_id)
+          : [
+              {
+                source: 'full_text',
+                source_document_id: paper.source_document_id,
+                text_span: truncate(text, 520),
+                source_locator: `${source}:${candidate}`,
+                page_number: source === 'pdf' ? 1 : null,
+                section_label: null,
+                table_label: null,
+                cell_locator: null,
+                caption: null,
+              },
+            ];
+
       return {
+        blocks,
         contentType,
         fetchedFrom: candidate,
         source,
         text,
-        trace: [
-          {
-            source: 'full_text',
-            source_document_id: paper.source_document_id,
-            text_span: truncate(text, 520),
-            source_locator: `${source}:${candidate}`,
-            page_number: source === 'pdf' ? 1 : null,
-            section_label: null,
-            table_label: null,
-            cell_locator: null,
-            caption: null,
-          },
-        ],
+        trace,
       };
     } catch {
       continue;

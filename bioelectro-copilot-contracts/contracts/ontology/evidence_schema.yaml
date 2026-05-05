@@ -251,6 +251,7 @@ evidence_registry:
       - review_status
       - source_state
       - access_status
+      - source_license
       - canonical_key
       - metric_type
       - normalized_value

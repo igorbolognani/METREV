@@ -26,7 +26,15 @@ export interface ExecuteResearchExtractionInput extends DeterministicExtractionI
 function buildSupplementalText(
   source: HydratedResearchPaperText | null,
 ): string[] {
-  return source ? [source.text] : [];
+  if (!source) {
+    return [];
+  }
+
+  if ((source.blocks?.length ?? 0) > 0) {
+    return source.blocks!.map((block) => block.text);
+  }
+
+  return [source.text];
 }
 
 function fullTextSummary(source: HydratedResearchPaperText | null) {
@@ -34,11 +42,28 @@ function fullTextSummary(source: HydratedResearchPaperText | null) {
     return null;
   }
 
+  const blocks = source.blocks ?? [];
+  const sectionCount = new Set(
+    blocks
+      .map((block) => block.sectionLabel)
+      .filter((label): label is string => Boolean(label)),
+  ).size;
+  const tableCount = blocks.filter(
+    (block) => block.kind === 'table' || block.tableLabel !== null,
+  ).length;
+  const figureCount = blocks.filter((block) => block.kind === 'figure').length;
+  const captionCount = blocks.filter((block) => block.caption !== null).length;
+
   return {
+    block_count: blocks.length,
+    caption_count: captionCount,
     content_type: source.contentType,
     fetched_from: source.fetchedFrom,
+    figure_count: figureCount,
     length: source.text.length,
+    section_count: sectionCount,
     source: source.source,
+    table_count: tableCount,
   };
 }
 

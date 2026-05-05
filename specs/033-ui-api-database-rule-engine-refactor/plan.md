@@ -32,6 +32,7 @@ Refactor METREV so the signed-in product centers on configuration, evaluation, r
 - `tasks.md`: tracks implementation and validation state.
 - `quickstart.md`: records reproducible validation and inspection steps.
 - `research.md`: records repo inspection findings and validated runtime observations.
+- `integration-audit.md`: records how specs `002` through `033` are consolidated and where `033` supersedes legacy evidence/research route placement.
 - `contracts/`: records temporary planning notes for the contract-promotion path.
 
 ## Research inputs
@@ -42,6 +43,7 @@ Refactor METREV so the signed-in product centers on configuration, evaluation, r
 - `specs/030-client-dashboard-research-intelligence/`
 - `specs/031-production-scale-evidence-ingestion/`
 - `specs/032-canonical-evidence-fulltext-hardening/`
+- `specs/033-ui-api-database-rule-engine-refactor/integration-audit.md`
 
 ## Contracts and canonical owner files
 

@@ -51,6 +51,29 @@ describe('canonicalize scientific evidence runtime hydrate path', () => {
         fullTextMode: 'hydrate',
         llmMode: 'disabled',
         hydratePaperText: async () => ({
+          blocks: [
+            {
+              kind: 'section',
+              text: 'Methods The microbial fuel cell used a carbon felt anode.',
+              sourceLocator: 'html:https://example.org/full-text:block:0',
+              pageNumber: null,
+              sectionLabel: 'Methods',
+              tableLabel: null,
+              cellLocator: null,
+              caption: null,
+            },
+            {
+              kind: 'table',
+              text: 'Table 1 reports power density of 900 mW/m2 with COD removal of 81%.',
+              sourceLocator: 'html:https://example.org/full-text:block:1',
+              pageNumber: null,
+              sectionLabel: 'Results',
+              tableLabel: 'Table 1',
+              cellLocator: 'Table 1:block:1',
+              caption:
+                'Table 1 reports power density of 900 mW/m2 with COD removal of 81%.',
+            },
+          ],
           contentType: 'text/html',
           fetchedFrom: 'https://example.org/full-text',
           source: 'html',
@@ -72,6 +95,17 @@ describe('canonicalize scientific evidence runtime hydrate path', () => {
     expect(result.status).toBe(CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED);
     expect(result.hydration.fetched).toBe(true);
     expect(result.hydration.persistence).not.toBeNull();
+    expect(result.hydration.persistence?.chunks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceLocator: 'html:https://example.org/full-text:block:1',
+          metadata: expect.objectContaining({
+            section_label: 'Results',
+            table_label: 'Table 1',
+          }),
+        }),
+      ]),
+    );
     expect(result.facts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

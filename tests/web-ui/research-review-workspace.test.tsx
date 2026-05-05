@@ -76,6 +76,160 @@ function renderWithClient(element: React.ReactElement, client: QueryClient) {
 function buildReviewFixture() {
   const paper = researchPaperMetadataSchema.parse(mfcPaperFixture);
   const columns = getDefaultResearchColumns();
+  const systemPerformanceAnswer = {
+    technology_class: ['MFC'],
+    reactor_architecture: {
+      type: 'dual chamber',
+      useful_volume_ml: 125,
+      electrode_area_cm2: 24,
+      electrode_spacing_cm: 3.2,
+      geometry: 'rectangular lab reactor',
+    },
+    anode: {
+      material: 'carbon felt',
+      material_class: 'carbonaceous electrode',
+      surface_area_m2_g: null,
+      modification: 'heat treated',
+      properties: ['high porosity'],
+    },
+    cathode: {
+      material: 'carbon cloth',
+      catalyst: 'Pt/C',
+      loading_mg_cm2: 0.5,
+      properties: ['air cathode'],
+    },
+    membrane_or_separator: {
+      type: 'Nafion',
+      properties: ['cation exchange membrane'],
+    },
+    substrate_feedstock: ['acetate wastewater'],
+    operating_conditions: {
+      pH: 7,
+      temperature_c: 30,
+      HRT_h: 24,
+      conductivity_ms_cm: 5.1,
+    },
+    electrochemical_metrics: [
+      {
+        metric_key: 'power_density_w_m2',
+        original_value: 850,
+        original_unit: 'mW/m2',
+        normalized_value: 0.85,
+        normalized_unit: 'W/m2',
+        normalization_rule_id: 'research_metric.power_density.mw_m2_to_w_m2',
+        evidence_trace: {
+          source: 'abstract',
+          source_document_id: paper.source_document_id,
+          text_span: paper.abstract_text,
+          source_locator: 'abstract',
+          page_number: null,
+        },
+      },
+      {
+        metric_key: 'current_density_a_m2',
+        original_value: 1.2,
+        original_unit: 'A/m2',
+        normalized_value: 1.2,
+        normalized_unit: 'A/m2',
+        normalization_rule_id: 'research_metric.current_density.a_m2_identity',
+        evidence_trace: {
+          source: 'abstract',
+          source_document_id: paper.source_document_id,
+          text_span: paper.abstract_text,
+          source_locator: 'abstract',
+          page_number: null,
+        },
+      },
+    ],
+    treatment_metrics: [
+      {
+        metric_key: 'cod_removal_pct',
+        original_value: 82,
+        original_unit: '%',
+        normalized_value: 82,
+        normalized_unit: '%',
+        normalization_rule_id: 'research_metric.cod_removal.percent_identity',
+        evidence_trace: {
+          source: 'abstract',
+          source_document_id: paper.source_document_id,
+          text_span: paper.abstract_text,
+          source_locator: 'abstract',
+          page_number: null,
+        },
+      },
+    ],
+    product_outputs: [],
+    scale: 'pilot',
+    implementation_limitations: ['Membrane fouling'],
+    missing_fields: [],
+    evidence_trace: [
+      {
+        source: 'abstract',
+        source_document_id: paper.source_document_id,
+        text_span: paper.abstract_text,
+        source_locator: 'abstract',
+        page_number: null,
+      },
+    ],
+    confidence: 'medium',
+  };
+  const implementationFactorsAnswer = {
+    performance_limitations: ['Power density remains sensitive to fouling.'],
+    internal_resistance_issues: [],
+    electrode_limitations: ['Carbon felt cost and maintenance.'],
+    cathode_limitations: [],
+    membrane_limitations: ['Membrane fouling during pilot runs.'],
+    biofilm_limitations: [],
+    substrate_limitations: [],
+    fouling_and_scaling: ['Observed membrane fouling.'],
+    operational_risks: ['Pilot cleaning downtime.'],
+    scale_up_barriers: ['Scale-up maintenance remained challenging.'],
+    economic_barriers: ['Pt/C catalyst cost pressure.'],
+    durability_issues: [],
+    reproducibility_issues: [],
+    data_gaps: [],
+    maturity_signals: ['pilot'],
+    implementation_dependencies: ['Periodic cleaning protocol'],
+    supplier_relevance: [],
+    environmental_safety_factors: [],
+    missing_fields: [],
+    evidence_trace: [
+      {
+        source: 'abstract',
+        source_document_id: paper.source_document_id,
+        text_span: paper.abstract_text,
+        source_locator: 'abstract',
+        page_number: null,
+      },
+    ],
+    confidence: 'medium',
+  };
+  const dataReadinessAnswer = {
+    summary: 'Access and traceability are adequate for reviewed extraction.',
+    metadata_categories: {
+      signal_generation: ['timestamp_origin'],
+      signal_quality: ['calibration_context'],
+      contextual_annotations: ['maintenance_and_cleaning'],
+      data_lineage: ['provenance_and_traceability'],
+      access_and_licensing: ['doi_available'],
+      review_state: ['analyst_review_required'],
+    },
+    training_and_extraction_applicability: ['traceable_extraction_ready'],
+    decision_use_readiness: 'ready_with_review',
+    blocking_gaps: [],
+    recommended_uses: ['reviewed_decision_support_intake'],
+    missing_fields: [],
+    evidence_trace: [
+      {
+        source: 'abstract',
+        source_document_id: paper.source_document_id,
+        text_span: paper.abstract_text,
+        source_locator: 'abstract',
+        page_number: null,
+      },
+    ],
+    confidence: 'medium',
+  };
   const summaryResult = researchExtractionResultSchema.parse({
     result_id: 'result-summary-001',
     review_id: 'review-001',
@@ -105,6 +259,127 @@ function buildReviewFixture() {
     created_at: now,
     updated_at: now,
   });
+  const technologyResult = researchExtractionResultSchema.parse({
+    result_id: 'result-technology-001',
+    review_id: 'review-001',
+    paper_id: paper.paper_id,
+    column_id: 'technology_application',
+    status: 'valid',
+    answer: {
+      technology_class: ['MFC'],
+      application: 'wastewater treatment',
+      scale: 'pilot',
+      evidence_span: paper.abstract_text,
+    },
+    evidence_trace: [
+      {
+        source: 'abstract',
+        source_document_id: paper.source_document_id,
+        text_span: paper.abstract_text,
+        source_locator: 'abstract',
+        page_number: null,
+      },
+    ],
+    confidence: 'medium',
+    missing_fields: [],
+    validation_errors: [],
+    normalized_payload: {},
+    extractor_version: 'fixture-v1',
+    created_at: now,
+    updated_at: now,
+  });
+
+  const systemPerformanceResultIds = [
+    'design_parameters',
+    'material_properties',
+    'operating_conditions',
+    'performance_metrics',
+    'product_outputs',
+  ] as const;
+
+  const systemPerformanceResults = systemPerformanceResultIds.map((columnId) =>
+    researchExtractionResultSchema.parse({
+      result_id: `result-${columnId}-001`,
+      review_id: 'review-001',
+      paper_id: paper.paper_id,
+      column_id: columnId,
+      status: 'valid',
+      answer: systemPerformanceAnswer,
+      evidence_trace: systemPerformanceAnswer.evidence_trace,
+      confidence: 'medium',
+      missing_fields: [],
+      validation_errors: [],
+      normalized_payload: {
+        metrics: [
+          ...systemPerformanceAnswer.electrochemical_metrics,
+          ...systemPerformanceAnswer.treatment_metrics,
+        ],
+      },
+      extractor_version: 'fixture-v1',
+      created_at: now,
+      updated_at: now,
+    }),
+  );
+
+  const limitationsResult = researchExtractionResultSchema.parse({
+    result_id: 'result-limitations-001',
+    review_id: 'review-001',
+    paper_id: paper.paper_id,
+    column_id: 'limitations',
+    status: 'valid',
+    answer: implementationFactorsAnswer,
+    evidence_trace: implementationFactorsAnswer.evidence_trace,
+    confidence: 'medium',
+    missing_fields: [],
+    validation_errors: [],
+    normalized_payload: {},
+    extractor_version: 'fixture-v1',
+    created_at: now,
+    updated_at: now,
+  });
+
+  const implementationFactorsResult = researchExtractionResultSchema.parse({
+    result_id: 'result-implementation-factors-001',
+    review_id: 'review-001',
+    paper_id: paper.paper_id,
+    column_id: 'implementation_factors',
+    status: 'valid',
+    answer: implementationFactorsAnswer,
+    evidence_trace: implementationFactorsAnswer.evidence_trace,
+    confidence: 'medium',
+    missing_fields: [],
+    validation_errors: [],
+    normalized_payload: {},
+    extractor_version: 'fixture-v1',
+    created_at: now,
+    updated_at: now,
+  });
+
+  const dataReadinessResult = researchExtractionResultSchema.parse({
+    result_id: 'result-data-readiness-001',
+    review_id: 'review-001',
+    paper_id: paper.paper_id,
+    column_id: 'data_metadata_readiness',
+    status: 'valid',
+    answer: dataReadinessAnswer,
+    evidence_trace: dataReadinessAnswer.evidence_trace,
+    confidence: 'medium',
+    missing_fields: [],
+    validation_errors: [],
+    normalized_payload: {},
+    extractor_version: 'fixture-v1',
+    created_at: now,
+    updated_at: now,
+  });
+
+  const extractionResults = [
+    summaryResult,
+    technologyResult,
+    ...systemPerformanceResults,
+    limitationsResult,
+    implementationFactorsResult,
+    dataReadinessResult,
+  ];
 
   return researchReviewDetailSchema.parse({
     review_id: 'review-001',
@@ -114,7 +389,7 @@ function buildReviewFixture() {
     version: 1,
     paper_count: 1,
     column_count: columns.length,
-    completed_result_count: 1,
+    completed_result_count: extractionResults.length,
     papers: [paper],
     columns,
     extraction_jobs: [
@@ -130,10 +405,21 @@ function buildReviewFixture() {
         updated_at: now,
       },
     ],
-    extraction_results: [summaryResult],
+    extraction_results: extractionResults,
     evidence_packs: [],
     created_at: now,
     updated_at: now,
+  });
+}
+
+function clonePaperFixture(index: number) {
+  return researchPaperMetadataSchema.parse({
+    ...mfcPaperFixture,
+    paper_id: `fixture-paper-mfc-00${index}`,
+    source_document_id: `fixture-source-mfc-00${index}`,
+    title: `Dual chamber microbial fuel cell wastewater treatment fixture ${index}`,
+    doi: `10.1000/mfc-fixture-${index}`,
+    year: 2020 + index,
   });
 }
 
@@ -478,11 +764,49 @@ describe('research review workspace UI', () => {
     expect(tableHtml).toContain('MFC fixture review');
     expect(tableHtml).toContain('Dual chamber microbial fuel cell');
     expect(tableHtml).toContain('A microbial fuel cell fixture reports');
+    expect(tableHtml).toContain('dual chamber');
+    expect(tableHtml).toContain('anode carbon felt');
+    expect(tableHtml).toContain('separator Nafion');
+    expect(tableHtml).toContain('0.85 W/m2');
+    expect(tableHtml).toContain('substrate acetate wastewater');
+    expect(tableHtml).toContain('Scale-up maintenance remained challenging.');
     expect(columnsHtml).toContain('Add structured column');
     expect(columnsHtml).toContain('Visible columns');
     expect(papersHtml).toContain('Paper details');
+    expect(papersHtml).toContain(
+      'Access and traceability are adequate for reviewed extraction.',
+    );
+    expect(papersHtml).toContain('dual chamber');
+    expect(papersHtml).toContain('0.85 W/m2');
     expect(packHtml).toContain('Evidence pack');
     expect(packHtml).toContain('No evidence pack selected');
+  });
+
+  it('renders every paper card in the papers tab instead of truncating after three items', async () => {
+    const { ResearchReviewDetailWorkspace } =
+      await import('../../apps/web-ui/src/components/research/research-review-detail');
+    const client = createQueryClient();
+    const review = buildReviewFixture();
+    const papers = [1, 2, 3, 4].map((index) => clonePaperFixture(index));
+
+    client.setQueryData(['research-review', 'review-001'], {
+      ...review,
+      paper_count: papers.length,
+      papers,
+    });
+
+    const papersHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'papers',
+        reviewId: 'review-001',
+      }),
+      client,
+    );
+
+    expect(papersHtml).toContain('fixture 1');
+    expect(papersHtml).toContain('fixture 2');
+    expect(papersHtml).toContain('fixture 3');
+    expect(papersHtml).toContain('fixture 4');
   });
 
   it('renders persisted evidence-pack decision preview data from cached queries', async () => {

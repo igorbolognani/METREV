@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-  DecisionOutput,
-  EvidenceDecisionContext,
-  ResearchColumnDefinition,
-  ResearchPaperMetadata,
+    DecisionOutput,
+    EvidenceDecisionContext,
+    ResearchColumnDefinition,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-  generateCanonicalEvidenceMeasurementCandidates,
-  generateEvidenceAssistantBrief,
-  generateNarrative,
-  generateReportConversationAnswer,
-  generateStructuredResearchExtraction,
-  type ReportConversationContextPackage,
+    generateCanonicalEvidenceMeasurementCandidates,
+    generateEvidenceAssistantBrief,
+    generateNarrative,
+    generateReportConversationAnswer,
+    generateStructuredResearchExtraction,
+    type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
 
@@ -110,6 +110,7 @@ function buildEvidenceDecisionContext(): EvidenceDecisionContext {
         review_status: 'accepted',
         source_state: 'reviewed',
         access_status: 'green',
+        source_license: 'CC-BY-4.0',
         doi: '10.5555/context-summary',
         source_url: 'https://example.test/context-summary',
         canonical_key: 'power_density_w_m2',
