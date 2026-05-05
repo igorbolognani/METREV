@@ -15,6 +15,7 @@
 - Case evaluation already consumes database-limited benchmark slices, so hydrate and LLM work do not need a new UI or route shape to become useful.
 - Benchmark aggregate refresh currently relies on `decisionReady`, `canonicalKey`, `normalizedUnit`, and `normalizedValue`; adding a `metricType` guard is a safe robustness improvement because the aggregate model requires it.
 - The broadened `schema_validated` path should remain whitelist-based: numeric candidates need deterministic unit normalization, while qualitative candidates are limited to exact-span system, reactor, material, limitation, and scientific-theory categories.
+- Live Ollama Cloud scans showed that `ministral-3:3b`, `gemma3:4b`, and `ministral-3:8b` returned zero parsed canonical-evidence candidates in this prompt shape, while `gpt-oss:20b` was the smallest tested model that produced both measurement and qualitative candidates.
 
 ## Design constraints
 
@@ -35,4 +36,4 @@
 - PASS local Docker DB `pnpm run evidence:canonicalize -- --limit=5 --batch-size=5 --replace-placeholders=true --full-text=hydrate --llm-mode=disabled`: 5 processed, 5 canonical extracted, 23 canonical facts, 7 benchmark records.
 - PASS local Docker DB `pnpm run evidence:benchmark:refresh`: 2247 aggregate rows inserted.
 - PASS local Docker DB `pnpm run evidence:quality-report`: latest canonicalization run completed with integrity flags true.
-- INFO local Ollama endpoint `http://127.0.0.1:11434/v1/models` was unavailable, so live `schema_validated` provider validation was not executed in this batch; focused tests cover measurement and qualitative acceptance/rejection behavior.
+- PASS live Ollama Cloud validation with `METREV_LLM_MODE=ollama`, `METREV_LLM_BASE_URL=https://ollama.com/v1`, `METREV_LLM_MODEL=gpt-oss:20b`, and an API key provided through the shell environment: the runtime produced 1 schema-validated measurement candidate, 5 qualitative candidates, and 6 accepted `llm_schema_validated_*` facts after exact-span verification.

@@ -1,16 +1,16 @@
 import type {
-    ConfidenceLevel,
-    DecisionOutput,
-    EvidenceExplorerWarehouseSnapshot,
-    ExternalEvidenceCatalogItemSummary,
-    NarrativeMetadata,
-    NormalizedCaseInput,
-    PrintableEvaluationReportResponse,
-    ReportConversationCitation,
-    ReportConversationGrounding,
-    ResearchColumnDefinition,
-    ResearchEvidenceTrace,
-    ResearchPaperMetadata,
+  ConfidenceLevel,
+  DecisionOutput,
+  EvidenceExplorerWarehouseSnapshot,
+  ExternalEvidenceCatalogItemSummary,
+  NarrativeMetadata,
+  NormalizedCaseInput,
+  PrintableEvaluationReportResponse,
+  ReportConversationCitation,
+  ReportConversationGrounding,
+  ResearchColumnDefinition,
+  ResearchEvidenceTrace,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
@@ -170,7 +170,7 @@ function getOllamaTimeoutMs(): number {
     return 4000;
   }
 
-  return Math.min(20000, Math.max(500, parsed));
+  return Math.min(60000, Math.max(500, parsed));
 }
 
 function completionProviderForMode(

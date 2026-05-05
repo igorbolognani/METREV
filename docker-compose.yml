@@ -44,6 +44,12 @@ services:
       HOST: 0.0.0.0
       PORT: 4000
       METREV_STORAGE_MODE: postgres
+      METREV_LLM_MODE: ${METREV_LLM_MODE:-stub}
+      METREV_LLM_BASE_URL: ${METREV_LLM_BASE_URL:-https://ollama.com/v1}
+      METREV_LLM_MODEL: ${METREV_LLM_MODEL:-gpt-oss:20b}
+      METREV_LLM_TIMEOUT_MS: ${METREV_LLM_TIMEOUT_MS:-45000}
+      METREV_LLM_API_KEY: ${METREV_LLM_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       AUTH_SECRET: ${AUTH_SECRET:-metrev-local-dev-auth-secret-change-me-now}
       METREV_OTEL_ENABLED: ${METREV_OTEL_ENABLED:-true}
       DATABASE_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
@@ -99,6 +105,12 @@ services:
     environment:
       NODE_ENV: production
       METREV_STORAGE_MODE: postgres
+      METREV_LLM_MODE: ${METREV_LLM_MODE:-stub}
+      METREV_LLM_BASE_URL: ${METREV_LLM_BASE_URL:-https://ollama.com/v1}
+      METREV_LLM_MODEL: ${METREV_LLM_MODEL:-gpt-oss:20b}
+      METREV_LLM_TIMEOUT_MS: ${METREV_LLM_TIMEOUT_MS:-45000}
+      METREV_LLM_API_KEY: ${METREV_LLM_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       DATABASE_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
       DIRECT_URL: postgresql://${POSTGRES_USER:-metrev}:${POSTGRES_PASSWORD:-metrev}@postgres:5432/${POSTGRES_DB:-metrev}?schema=public
       METREV_OTEL_ENABLED: ${METREV_OTEL_ENABLED:-true}

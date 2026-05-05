@@ -95,7 +95,7 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run db:bootstrap:bigdata:curated`
 - `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true`
 - `pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=disabled`
-- `METREV_LLM_MODE=ollama pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=schema_validated`
+- `METREV_LLM_MODE=ollama METREV_LLM_BASE_URL=https://ollama.com/v1 METREV_LLM_MODEL=gpt-oss:20b pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=schema_validated`
 - `pnpm run evidence:benchmark:refresh`
 - `pnpm run evidence:quality-report`
 - `pnpm prisma:generate` after Prisma schema changes or when `postinstall` was skipped
@@ -131,7 +131,7 @@ The staged/manual path remains available through the clarify, start-feature, and
 - `pnpm run db:bootstrap:bigdata:curated` persists only the committed curated snapshot into PostgreSQL. Use `pnpm run db:bootstrap:bigdata` when you explicitly want the broader bounded live-provider bootstrap.
 - `pnpm run evidence:ingest -- --target-total=500000 --batch-size=1000 --auto-accept=true` runs the production-scale scientific corpus ingestion path. It processes OpenAlex, Crossref, and Europe PMC in batches, resumes from the latest bulk ingestion checkpoint, system-accepts trusted valid scientific records, sends exceptions to review, skips duplicates, and reports honestly if real providers do not yield enough records to reach the configured target.
 - `pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=disabled` backfills accepted catalog rows into canonical scientific facts. It is resumable, deterministic-first, idempotent, reuses policy-allowed external full-text hydration when local text is insufficient, and marks every processed article as `canonical_extracted`, `insufficient_source`, `needs_full_text`, `needs_review`, or `extraction_failed`.
-- `METREV_LLM_MODE=ollama pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=schema_validated` enables a local-only supplement where Ollama can propose structured measurement and qualitative candidates. Measurements are accepted only when their evidence spans are exact substrings of the hydrated text and their units normalize deterministically. Qualitative candidates for system type, reactor architecture, materials, limitations, and scientific theory are accepted only when their spans are exact substrings and their field/category values pass the repository whitelist.
+- `METREV_LLM_MODE=ollama METREV_LLM_BASE_URL=https://ollama.com/v1 METREV_LLM_MODEL=gpt-oss:20b pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=schema_validated` enables an Ollama-only supplement through a compatible local or cloud endpoint. Measurements are accepted only when their evidence spans are exact substrings of the hydrated text and their units normalize deterministically. Qualitative candidates for system type, reactor architecture, materials, limitations, and scientific theory are accepted only when their spans are exact substrings and their field/category values pass the repository whitelist. Export `METREV_LLM_API_KEY` or `OLLAMA_API_KEY` in the shell when the endpoint requires authentication.
 - `pnpm run evidence:benchmark:refresh` rebuilds benchmark percentile aggregates from `decisionReady` canonical facts only. Placeholder ingestion facts are excluded from decision benchmarks.
 - `pnpm run evidence:quality-report` prints persisted counts for catalog rows, claims, placeholder facts, canonical facts, benchmark rows, aggregates, duplicate decisions, and canonicalization run status.
 - `pnpm run test:db` and `pnpm run test:e2e` remain focused low-level commands when you intentionally want only the Postgres slice or only the Playwright slice.
@@ -171,9 +171,23 @@ pnpm run evidence:benchmark:refresh
 pnpm run evidence:quality-report
 ```
 
+To enable the Ollama-backed supplement without storing a secret in versioned files, keep the API key in your shell environment or a local secret manager and export the runtime settings before running the canonicalizer or starting `local:view`:
+
+```bash
+export METREV_LLM_MODE=ollama
+export METREV_LLM_BASE_URL=https://ollama.com/v1
+export METREV_LLM_MODEL=gpt-oss:20b
+export METREV_LLM_TIMEOUT_MS=45000
+export METREV_LLM_API_KEY=your_ollama_api_key
+
+pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true --full-text=hydrate --llm-mode=schema_validated
+```
+
+`docker compose` and the `local:view:*` wrappers forward the same `METREV_LLM_*` and `OLLAMA_API_KEY` environment variables to the API and research-worker services. Keep the real key out of `.env.example`, `docker-compose.yml`, and committed docs.
+
 The canonicalizer reads accepted `ExternalEvidenceCatalogItem` rows, linked `ExternalSourceRecord` metadata, accepted claims, and persisted `SourceTextChunkRecord` text when available. With `--full-text=hydrate`, it also attempts external XML, HTML, or PDF hydration through the shared research full-text runtime when local text is insufficient. It never invents missing scientific facts. If title, abstract, claims, existing chunks, and policy-allowed hydrated text still do not contain a technical field, the article is classified as `insufficient_source` or `needs_full_text` instead of being filled with synthetic values.
 
-Canonical facts use `factLayer=canonical_scientific_fact_v1` and carry `canonicalKey`, `normalizationRuleId`, `decisionReady`, `extractionSource`, `missingFields`, `qualityFlags`, `sourceTextHash`, and `extractionRunId`. The deterministic extractor currently covers system type, reactor type, anode/cathode/membrane/catalyst/current-collector materials, substrate, inoculum, pH, temperature, conductivity, COD, HRT, current density, power density, coulombic efficiency, hydrogen production, methane/biogas signals, removal efficiency, scale, TRL, cost indicators, limitations, failure modes, and trade-offs. When `--llm-mode=schema_validated` is combined with `METREV_LLM_MODE=ollama`, the runtime also accepts local structured measurement candidates after exact-span verification and deterministic normalization, plus whitelisted qualitative candidates for materials, reactor architecture, limitations, and scientific theory after exact-span verification.
+Canonical facts use `factLayer=canonical_scientific_fact_v1` and carry `canonicalKey`, `normalizationRuleId`, `decisionReady`, `extractionSource`, `missingFields`, `qualityFlags`, `sourceTextHash`, and `extractionRunId`. The deterministic extractor currently covers system type, reactor type, anode/cathode/membrane/catalyst/current-collector materials, substrate, inoculum, pH, temperature, conductivity, COD, HRT, current density, power density, coulombic efficiency, hydrogen production, methane/biogas signals, removal efficiency, scale, TRL, cost indicators, limitations, failure modes, and trade-offs. When `--llm-mode=schema_validated` is combined with `METREV_LLM_MODE=ollama`, the runtime also accepts Ollama-compatible structured measurement candidates from a local or cloud endpoint after exact-span verification and deterministic normalization, plus whitelisted qualitative candidates for materials, reactor architecture, limitations, and scientific theory after exact-span verification.
 
 Hydrated full text is only persisted when the source access status or explicit license is compatible with the repository policy. Policy-blocked or fetch-failed full text remains outside the decision-ready benchmark path.
 

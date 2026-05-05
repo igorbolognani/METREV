@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-    DecisionOutput,
-    ResearchColumnDefinition,
-    ResearchPaperMetadata,
+  DecisionOutput,
+  ResearchColumnDefinition,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-    generateCanonicalEvidenceMeasurementCandidates,
-    generateEvidenceAssistantBrief,
-    generateNarrative,
-    generateReportConversationAnswer,
-    generateStructuredResearchExtraction,
-    type ReportConversationContextPackage,
+  generateCanonicalEvidenceMeasurementCandidates,
+  generateEvidenceAssistantBrief,
+  generateNarrative,
+  generateReportConversationAnswer,
+  generateStructuredResearchExtraction,
+  type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
 
@@ -340,6 +340,8 @@ describe('llm adapter', () => {
     process.env.METREV_LLM_MODEL = 'gemma3:4b';
     process.env.METREV_LLM_BASE_URL = 'https://ollama.com/v1';
     process.env.METREV_LLM_API_KEY = 'test-api-key';
+    process.env.METREV_LLM_TIMEOUT_MS = '45000';
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
 
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -376,7 +378,9 @@ describe('llm adapter', () => {
         }),
       }),
     );
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 45000);
     expect(result.narrative).toBe('Authenticated Ollama narrative.');
+    setTimeoutSpy.mockRestore();
   });
 
   it('retries canonical evidence extraction with strict JSON instructions', async () => {
