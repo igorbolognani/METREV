@@ -596,7 +596,7 @@ export function ResearchReviewListView({
                       </div>
                       <Link
                         className="button secondary"
-                        href={`/research/reviews/${review.review_id}`}
+                        href={`/admin/intelligence/research/reviews/${review.review_id}`}
                       >
                         Open table
                       </Link>
@@ -728,7 +728,7 @@ export function ResearchReviewListWorkspace() {
       }),
     onSuccess: async (review) => {
       await queryClient.invalidateQueries({ queryKey: ['research-reviews'] });
-      router.push(`/research/reviews/${review.review_id}`);
+      router.push(`/admin/intelligence/research/reviews/${review.review_id}`);
     },
   });
   const backfillMutation = useMutation({

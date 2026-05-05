@@ -33,8 +33,18 @@ enum ExternalSourceType {
   OPENALEX
   CROSSREF
   EUROPE_PMC
+  PAPER
+  REVIEW
+  PATENT
+  DATASHEET
+  MANUAL_SOP
+  TECHNICAL_REPORT
+  SUPPLIER_DOCUMENT
   SUPPLIER_PROFILE
+  CASE_STUDY
+  MARKET_REPORT
   MARKET_SNAPSHOT
+  REGULATORY_REPORT
   CURATED_MANIFEST
   MANUAL
 }
@@ -239,12 +249,44 @@ model EvaluationRecord {
   createdAt              DateTime                    @default(now())
   case                   CaseRecord                  @relation(fields: [caseId], references: [id], onDelete: Cascade)
   simulationArtifact     SimulationArtifactRecord?
+  evidenceDecisionContext EvidenceDecisionContextRecord?
   supplierShortlistItems SupplierShortlistItem[]
   sourceUsages           EvaluationSourceUsage[]
   claimUsages            EvaluationClaimUsage[]
   workspaceSnapshots     WorkspaceSnapshotRecord[]
   auditEvents            AuditEvent[]
   reportConversations    ReportConversationSession[]
+}
+
+model EvidenceDecisionContextRecord {
+  id                      String           @id @default(cuid())
+  evaluationId            String           @unique
+  caseId                  String
+  contextVersion          String
+  builderVersion          String
+  systemType              String
+  primaryObjective        String
+  query                   Json
+  benchmarkRanges         Json
+  matchedEvidence         Json
+  materialComparisons     Json
+  operatingWindowSignals  Json
+  failureModeSignals      Json
+  costSignals             Json
+  supplierSignals         Json
+  regulatorySocialSignals Json
+  uncertaintySummary      Json
+  excludedEvidenceSummary Json
+  sourceRefs              String[]
+  provenanceNote          String           @db.Text
+  payload                 Json
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  evaluation              EvaluationRecord @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([systemType, primaryObjective])
+  @@index([builderVersion])
 }
 
 model SimulationArtifactRecord {

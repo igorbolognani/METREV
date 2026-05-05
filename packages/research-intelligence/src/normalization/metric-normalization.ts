@@ -1,6 +1,6 @@
 import type {
-  ResearchEvidenceTrace,
-  ResearchMetricMeasurement,
+    ResearchEvidenceTrace,
+    ResearchMetricMeasurement,
 } from '@metrev/domain-contracts';
 
 interface MetricRule {
@@ -211,11 +211,17 @@ function inferRule(text: string, unit: string): MetricRule | null {
   const normalizedUnit = normalizeUnit(unit);
 
   if (normalizedUnit === 'mw/m2' || normalizedUnit === 'w/m2') {
-    return metricRules.find((rule) => rule.metricKey === 'power_density_w_m2') ?? null;
+    return (
+      metricRules.find((rule) => rule.metricKey === 'power_density_w_m2') ??
+      null
+    );
   }
 
   if (normalizedUnit === 'a/m2' || normalizedUnit === 'ma/cm2') {
-    return metricRules.find((rule) => rule.metricKey === 'current_density_a_m2') ?? null;
+    return (
+      metricRules.find((rule) => rule.metricKey === 'current_density_a_m2') ??
+      null
+    );
   }
 
   if (normalizedUnit === 'v' || normalizedUnit === 'mv') {
@@ -247,7 +253,11 @@ function inferRule(text: string, unit: string): MetricRule | null {
   }
 
   if (normalizedUnit === 'ohm' || normalizedUnit === 'ohms') {
-    return metricRules.find((rule) => rule.metricKey === 'internal_resistance_ohm') ?? null;
+    return (
+      metricRules.find(
+        (rule) => rule.metricKey === 'internal_resistance_ohm',
+      ) ?? null
+    );
   }
 
   if (normalizedUnit === '%') {
@@ -296,13 +306,17 @@ function inferRule(text: string, unit: string): MetricRule | null {
     if (
       includesAny(normalizedText, ['cod removal', 'chemical oxygen demand'])
     ) {
-      return metricRules.find((rule) => rule.metricKey === 'cod_removal_pct') ?? null;
+      return (
+        metricRules.find((rule) => rule.metricKey === 'cod_removal_pct') ?? null
+      );
     }
 
     if (includesAny(normalizedText, ['coulombic efficiency', ' ce '])) {
-      return metricRules.find(
-        (rule) => rule.metricKey === 'coulombic_efficiency_pct',
-      ) ?? null;
+      return (
+        metricRules.find(
+          (rule) => rule.metricKey === 'coulombic_efficiency_pct',
+        ) ?? null
+      );
     }
 
     return null;
@@ -358,7 +372,10 @@ export function extractMetricMeasurements(input: {
     const value = Number(match[1]);
     const unit = match[2];
     const start = Math.max(0, (match.index ?? 0) - 100);
-    const end = Math.min(text.length, (match.index ?? 0) + match[0].length + 100);
+    const end = Math.min(
+      text.length,
+      (match.index ?? 0) + match[0].length + 100,
+    );
     const classificationStart = Math.max(0, (match.index ?? 0) - 80);
     const classificationText = text
       .slice(classificationStart, (match.index ?? 0) + match[0].length)
@@ -380,6 +397,10 @@ export function extractMetricMeasurements(input: {
           text_span: span || match[0],
           source_locator: input.source,
           page_number: null,
+          section_label: null,
+          table_label: null,
+          cell_locator: null,
+          caption: null,
         },
       }),
     );

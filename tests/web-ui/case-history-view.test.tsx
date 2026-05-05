@@ -67,8 +67,9 @@ describe('case history view', () => {
         'Accepted benchmark record for industrial sidestream treatment.',
       );
       expect(evidenceHtml).toContain(
-        '/evidence/review/catalog-item-accepted-001',
+        'Traceable through audit record catalog:catalog-item-accepted-001',
       );
+      expect(evidenceHtml).not.toContain('/evidence/review/');
 
       const auditHtml = renderToStaticMarkup(
         React.createElement(CaseHistoryWorkspaceView, {

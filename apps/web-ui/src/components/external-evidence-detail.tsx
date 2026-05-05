@@ -135,7 +135,7 @@ export function ExternalEvidenceDetail({
     return (
       <WorkspaceEmptyState
         description="The requested catalog item does not exist anymore."
-        primaryHref="/evidence/review"
+        primaryHref="/admin/intelligence/evidence/review"
         primaryLabel="Back to review queue"
         title="Record not found"
       />
@@ -311,10 +311,14 @@ export function ExternalEvidenceDetailView({
         actions={
           <>
             <Button asChild size="sm" variant="outline">
-              <Link href="/evidence/explorer">Open explorer</Link>
+              <Link href="/admin/intelligence/evidence/explorer">
+                Open explorer
+              </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
-              <Link href="/evidence/review">Back to queue</Link>
+              <Link href="/admin/intelligence/evidence/review">
+                Back to queue
+              </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link href="/cases/new">Open stack cockpit</Link>
@@ -570,15 +574,14 @@ export function ExternalEvidenceDetailView({
                           <li>
                             Extraction {formatToken(artifact.extraction_method)}
                           </li>
-                          <li>
-                            Access {formatToken(artifact.access_status)}
-                          </li>
+                          <li>Access {formatToken(artifact.access_status)}</li>
                           <li>
                             Metadata quality{' '}
                             {formatToken(artifact.metadata_quality.level)}
                           </li>
                           <li>
-                            Veracity {formatToken(artifact.veracity_score.level)}
+                            Veracity{' '}
+                            {formatToken(artifact.veracity_score.level)}
                           </li>
                           <li>{artifact.chunks.length} preview chunk(s)</li>
                         </ul>
@@ -586,7 +589,8 @@ export function ExternalEvidenceDetailView({
                           <ul className="list-block">
                             {artifact.chunks.slice(0, 3).map((chunk) => (
                               <li key={chunk.chunk_id}>
-                                {chunk.source_locator}: {chunk.text.slice(0, 160)}
+                                {chunk.source_locator}:{' '}
+                                {chunk.text.slice(0, 160)}
                               </li>
                             ))}
                           </ul>

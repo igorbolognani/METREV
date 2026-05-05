@@ -50,18 +50,18 @@ The current repository already contains a serious evidence warehouse, research w
 
 ## Acceptance criteria
 
-- [ ] `EvidenceDecisionContext` is defined in runtime contracts and promoted to the hardened contract boundary and aligned domain owner files.
-- [ ] `createPersistedCaseEvaluation` builds, persists, and returns the decision context for new evaluations.
-- [ ] `runCaseEvaluation` uses the decision context to alter confidence, next-test guidance, and at least one recommendation/scoring pathway under test.
-- [ ] Viewer/client routes no longer expose evidence/research tools or evidence-operation metrics as primary workflow surfaces.
-- [ ] Analyst/admin users retain access to internal evidence tooling through explicit internal/admin navigation.
-- [ ] Focused tests prove that non-decision-ready evidence is excluded and that benchmark context changes user-visible decision output.
+- [x] `EvidenceDecisionContext` is defined in runtime contracts and promoted to the hardened contract boundary and aligned domain owner files.
+- [x] `createPersistedCaseEvaluation` builds, persists, and returns the decision context for new evaluations.
+- [x] `runCaseEvaluation` uses the decision context to alter confidence, next-test guidance, and at least one recommendation/scoring pathway under test.
+- [x] Viewer/client routes no longer expose evidence/research tools or evidence-operation metrics as primary workflow surfaces.
+- [x] Analyst/admin users retain access to internal evidence tooling through explicit internal/admin navigation.
+- [x] Focused tests prove that non-decision-ready evidence is excluded and that benchmark context changes user-visible decision output.
 
-## Clarifications and open questions
+## Resolved implementation decisions
 
-- The runtime slice starts in `packages/domain-contracts/src/schemas.ts`, but canonical promotion to YAML/domain owners is still required in this feature before completion.
-- The long-term persistence shape may graduate from audit-snapshot-only storage to a dedicated Prisma model if replay/diff/query needs justify it.
-- Admin route migration may use redirect or hard route replacement; the UX policy should be decided while refactoring the signed-in navigation.
+- Runtime contracts, hardened contract YAML, and domain owner files are aligned around `EvidenceDecisionContext` and evidence admissibility.
+- Persistence uses a dedicated `EvidenceDecisionContextRecord` model linked one-to-one with `EvaluationRecord`, while audit snapshots still carry the same context for replay.
+- Admin route migration uses analyst-gated `/admin/intelligence/...` pages plus legacy redirects for analyst bookmarks and viewer denial panels.
 
 ## Risks / unknowns
 

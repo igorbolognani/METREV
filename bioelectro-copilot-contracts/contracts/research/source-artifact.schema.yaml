@@ -33,6 +33,10 @@ source_text_chunk:
     - source_locator
   optional_fields:
     - page_number
+    - section_label
+    - table_label
+    - cell_locator
+    - caption
     - char_start
     - char_end
     - metadata
@@ -41,4 +45,5 @@ rules:
   - Source artifacts are linked to ExternalSourceRecord and do not replace it.
   - File hash is the primary local-artifact dedupe key.
   - Text chunks must include source locators suitable for evidence traces.
+  - When available, chunks must preserve section_label, table_label, cell_locator, caption, page_number, text, and source_locator together rather than flattening them into untraceable prose.
   - Metadata-rich context references may inform readiness and methodology review, but they do not replace reviewed performance evidence.

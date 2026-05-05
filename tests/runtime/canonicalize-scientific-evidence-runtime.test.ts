@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CANONICALIZATION_STATUSES } from '../../packages/database/scripts/canonical-scientific-evidence.mjs';
 import {
-  canPersistHydratedSourceText,
-  canonicalizeCatalogRecordWithRuntime,
+    canPersistHydratedSourceText,
+    canonicalizeCatalogRecordWithRuntime,
 } from '../../packages/database/scripts/canonicalize-scientific-evidence';
 
 function buildSourceRecord(overrides: Record<string, unknown> = {}) {
@@ -180,6 +180,47 @@ describe('canonicalize scientific evidence runtime hydrate path', () => {
       ]),
     );
     expect(result.qualityFlags).toContain('llm_schema_validated_measurement');
+  });
+
+  it('keeps schema-validated facts out of decision-ready use when the locator is missing', async () => {
+    const record = buildCatalogRecord({
+      sourceRecord: buildSourceRecord({
+        sourceTextChunks: [
+          {
+            chunkIndex: 0,
+            pageNumber: null,
+            sourceLocator: 'chunk:0',
+            text: 'The microbial fuel cell reached a power density of nine hundred milliwatts per square meter during stable operation.',
+          },
+        ],
+      }),
+    });
+
+    const result = await canonicalizeCatalogRecordWithRuntime(record, {
+      fullTextMode: 'existing',
+      llmMode: 'schema_validated',
+      generateMeasurementCandidates: async () => [
+        {
+          fieldKey: 'power_density',
+          canonicalKey: 'power_density_w_m2',
+          rawValue: '900',
+          rawUnit: 'mW/m2',
+          textSpan: 'power density of nine hundred milliwatts per square meter',
+          sourceLocator: '',
+          confidence: 0.76,
+        },
+      ],
+    });
+
+    expect(result.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          extractionSource: 'llm_schema_validated_measurement',
+          decisionReady: false,
+          qualityFlags: expect.arrayContaining(['untraceable_source_span']),
+        }),
+      ]),
+    );
   });
 
   it('uses schema-validated qualitative candidates for materials, architecture, limitations, and theory', async () => {

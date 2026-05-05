@@ -74,6 +74,10 @@ export const researchEvidenceTraceSchema = z.object({
   claim_id: z.string().min(1).optional(),
   source_locator: z.string().min(1).nullable().default(null),
   page_number: z.number().int().positive().nullable().default(null),
+  section_label: z.string().min(1).nullable().default(null),
+  table_label: z.string().min(1).nullable().default(null),
+  cell_locator: z.string().min(1).nullable().default(null),
+  caption: z.string().min(1).nullable().default(null),
 });
 
 export const researchMetricMeasurementSchema = z.object({

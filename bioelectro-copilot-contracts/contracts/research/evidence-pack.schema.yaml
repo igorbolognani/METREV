@@ -28,5 +28,7 @@ decision_ingestion_preview:
 rules:
   - Evidence packs may include only schema-valid extraction results.
   - Decision ingestion must adapt packs into existing RawEvidenceRecord-shaped evidence rather than coupling review UI to decision internals.
+  - Evidence packs may inform EvidenceDecisionContext only through API/database admissibility checks for accepted, decision-ready, traceable evidence.
   - When a research pack is created at runtime, its decision-ingestion preview should preserve the same runtime_versions lineage when available.
   - Literature and supplier claims must remain explicitly typed.
+  - Supplier claims remain supplier signals unless independently corroborated by accepted scientific, technical, or benchmark evidence.

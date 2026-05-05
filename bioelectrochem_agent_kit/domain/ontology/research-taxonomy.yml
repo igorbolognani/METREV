@@ -10,6 +10,22 @@ scope:
     - hybrid_system
   source_role: literature_review_and_evidence_pack_generation
   downstream_boundary: bioelectrochemical_decision_support
+  supported_source_types:
+    literature:
+      - paper
+      - review
+      - thesis_or_dissertation
+    intellectual_property:
+      - patent
+    technical_documentation:
+      - datasheet
+      - manual_sop
+      - technical_report
+      - supplier_document
+    deployment_and_market:
+      - case_study
+      - market_report
+      - regulatory_report
   research_lenses:
     - electroactive_biology
     - redox_reactor_engineering
@@ -112,8 +128,11 @@ metrev_research_lens_mapping:
 
 rules:
   - Research extraction must preserve source text spans for every non-null claim.
+  - Table and figure-derived claims must preserve block type, source locator, table or figure id, and row or caption context when available.
+  - Evidence traces must preserve text span, page, section, table or figure label, cell locator, caption, and source locator together when those fields are available.
   - Numerical values must retain original unit, normalized unit, source span, and normalization rule id when converted.
   - Missing fields remain explicit and must not be filled through LLM inference.
   - Evidence packs are decision-support inputs only after schema validation and analyst-visible confidence review.
+  - EvidenceDecisionContext is built by the API/database decision layer, not by review UI state, and may admit only decision-ready evidence.
   - Context or methodology references may inform vocabulary, metadata organization, and evidence targeting but must not be treated as validated stack performance evidence.
   - Metadata quality and evidence veracity are distinct review dimensions and both must remain audit-visible.

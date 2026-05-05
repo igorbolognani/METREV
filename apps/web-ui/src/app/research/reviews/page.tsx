@@ -1,7 +1,7 @@
+import { redirect } from 'next/navigation';
 import * as React from 'react';
 
 import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
-import { ResearchReviewListWorkspace } from '@/components/research/research-review-list';
 import { requireRoleSession } from '@/lib/require-session';
 
 void React;
@@ -16,9 +16,5 @@ export default async function ResearchReviewsPage() {
     return <AnalystRoleRequiredPanel email={session.user.email} />;
   }
 
-  return (
-    <main>
-      <ResearchReviewListWorkspace />
-    </main>
-  );
+  redirect('/admin/intelligence/research/reviews');
 }

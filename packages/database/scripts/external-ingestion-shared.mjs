@@ -593,6 +593,18 @@ function normalizeExplicitClaim(claim, sourceType, fallbackLocator) {
     : sourceType === 'CURATED_MANIFEST' || sourceType === 'SUPPLIER_PROFILE'
       ? MANIFEST_EXTRACTOR_VERSION
       : CLAIM_EXTRACTOR_VERSION;
+  const sourceLocator =
+    nonEmptyString(claim.sourceLocator) ??
+    (fallbackLocator ? `${fallbackLocator}` : null);
+  const pageNumber =
+    typeof claim.pageNumber === 'number' && Number.isFinite(claim.pageNumber)
+      ? claim.pageNumber
+      : null;
+  const sectionLabel = nonEmptyString(claim.sectionLabel);
+  const tableLabel = nonEmptyString(claim.tableLabel);
+  const cellLocator = nonEmptyString(claim.cellLocator);
+  const caption = nonEmptyString(claim.caption);
+  const sourceSnippet = truncateText(claim.sourceSnippet ?? content, 560);
 
   return {
     claimType,
@@ -611,15 +623,19 @@ function normalizeExplicitClaim(claim, sourceType, fallbackLocator) {
         : 'REGEX',
     ),
     extractorVersion,
-    sourceSnippet: truncateText(claim.sourceSnippet ?? content, 560),
-    sourceLocator:
-      nonEmptyString(claim.sourceLocator) ??
-      (fallbackLocator ? `${fallbackLocator}` : null),
-    pageNumber:
-      typeof claim.pageNumber === 'number' && Number.isFinite(claim.pageNumber)
-        ? claim.pageNumber
-        : null,
-    metadata: claim.metadata ?? {},
+    sourceSnippet,
+    sourceLocator,
+    pageNumber,
+    metadata: {
+      ...(claim.metadata ?? {}),
+      caption,
+      cell_locator: cellLocator,
+      page_number: pageNumber,
+      section_label: sectionLabel,
+      source_locator: sourceLocator,
+      table_label: tableLabel,
+      text_span: sourceSnippet,
+    },
     ontologyMappings: Array.isArray(claim.ontologyMappings)
       ? claim.ontologyMappings
           .map((mapping) => {
@@ -1023,7 +1039,21 @@ function buildCatalogEntry({
           ? applicabilityScope
           : {}),
       },
-      extractedClaims: claims.map((claim) => claim.content),
+      extractedClaims: claims.map((claim) => ({
+        content: claim.content,
+        claim_type: claim.claimType.toLowerCase(),
+        page_number: claim.pageNumber,
+        source_locator: claim.sourceLocator,
+        source_snippet: claim.sourceSnippet,
+        ...(claim.metadata && typeof claim.metadata === 'object'
+          ? {
+              caption: claim.metadata.caption ?? null,
+              cell_locator: claim.metadata.cell_locator ?? null,
+              section_label: claim.metadata.section_label ?? null,
+              table_label: claim.metadata.table_label ?? null,
+            }
+          : {}),
+      })),
       tags: normalizedTags,
       payload: {
         source_url: sourceUrl,

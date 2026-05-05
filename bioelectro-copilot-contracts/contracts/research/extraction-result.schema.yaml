@@ -22,6 +22,7 @@ enums:
     allowed: [low, medium, high]
 rules:
   - Valid extraction results with non-null answers require at least one evidence trace.
+  - Evidence traces must preserve source_locator, text_span, page_number, section_label, table_label, cell_locator, and caption when those locators are available from the source artifact or extracted claim.
   - Invalid extraction results must preserve validation_errors for audit.
   - Missing reported values must be represented as null and listed in missing_fields.
   - Normalized numerical metrics must preserve original values, original units, normalized values, normalized units, and rule ids.

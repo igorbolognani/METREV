@@ -44,6 +44,22 @@ describe('navigation registry', () => {
       'evaluations',
       'reports',
     ]);
+
+    expect(
+      getNavItemsForRole('VIEWER').some((item) =>
+        item.href.startsWith('/admin/intelligence'),
+      ),
+    ).toBe(false);
+
+    expect(
+      getNavItemsForRole('ANALYST')
+        .filter((item) => item.section === 'advanced')
+        .map((item) => item.href),
+    ).toEqual([
+      '/admin/intelligence/evidence/explorer',
+      '/admin/intelligence/evidence/review',
+      '/admin/intelligence/research/reviews',
+    ]);
   });
 
   it('builds breadcrumbs for all required route patterns', () => {
@@ -69,17 +85,23 @@ describe('navigation registry', () => {
       { href: '/dashboard', label: 'Dashboard' },
     ]);
 
-    expect(buildBreadcrumbs('/evidence/explorer', {})).toEqual([
+    expect(
+      buildBreadcrumbs('/admin/intelligence/evidence/explorer', {}),
+    ).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
+      { label: 'Admin Intelligence' },
     ]);
 
     expect(
-      buildBreadcrumbs('/evidence/explorer/evidence-001', {
+      buildBreadcrumbs('/admin/intelligence/evidence/explorer/evidence-001', {
         id: 'evidence-001',
       }),
     ).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/evidence/explorer', label: 'Evidence Explorer' },
+      {
+        href: '/admin/intelligence/evidence/explorer',
+        label: 'Evidence Explorer',
+      },
       { label: '#evidence-001' },
     ]);
 
@@ -112,27 +134,43 @@ describe('navigation registry', () => {
       { label: 'Compare' },
     ]);
 
-    expect(buildBreadcrumbs('/evidence/review', {})).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
-    ]);
+    expect(buildBreadcrumbs('/admin/intelligence/evidence/review', {})).toEqual(
+      [
+        { href: '/dashboard', label: 'Dashboard' },
+        { label: 'Admin Intelligence' },
+      ],
+    );
 
-    expect(buildBreadcrumbs('/research/reviews', {})).toEqual([
+    expect(
+      buildBreadcrumbs('/admin/intelligence/research/reviews', {}),
+    ).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
+      { label: 'Admin Intelligence' },
     ]);
 
     expect(
-      buildBreadcrumbs('/research/reviews/review-001', { id: 'review-001' }),
+      buildBreadcrumbs('/admin/intelligence/research/reviews/review-001', {
+        id: 'review-001',
+      }),
     ).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/research/reviews', label: 'Research Tables' },
+      {
+        href: '/admin/intelligence/research/reviews',
+        label: 'Research Tables',
+      },
       { label: '#review-001' },
     ]);
 
     expect(
-      buildBreadcrumbs('/evidence/review/evidence-001', { id: 'evidence-001' }),
+      buildBreadcrumbs('/admin/intelligence/evidence/review/evidence-001', {
+        id: 'evidence-001',
+      }),
     ).toEqual([
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/evidence/review', label: 'Evidence Review' },
+      {
+        href: '/admin/intelligence/evidence/review',
+        label: 'Evidence Review',
+      },
       { label: '#evidence-001' },
     ]);
   });

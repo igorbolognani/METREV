@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  CANONICAL_FACT_LAYER,
-  CANONICALIZATION_STATUSES,
-  canonicalizeScientificEvidenceRecord,
-  normalizeScientificMeasurement,
+    CANONICAL_FACT_LAYER,
+    CANONICALIZATION_STATUSES,
+    canonicalizeScientificEvidenceRecord,
+    normalizeScientificMeasurement,
 } from '../../packages/database/scripts/canonical-scientific-evidence.mjs';
 
 function buildRecord(overrides: Record<string, unknown> = {}) {
@@ -27,7 +27,15 @@ function buildRecord(overrides: Record<string, unknown> = {}) {
         {
           id: 'chunk-001',
           chunkIndex: 0,
+          pageNumber: 1,
           sourceLocator: 'p1',
+          metadata: {
+            caption: 'Table 2. BES performance by electrode material.',
+            cell_locator: 'Table 2:row:carbon-felt',
+            page_number: 1,
+            section_label: 'Results',
+            table_label: 'Table 2',
+          },
           text: 'A two-chamber bioelectrochemical system included an air-cathode reactor and mixed culture inoculum fed with acetate wastewater. TRL 4 was reported.',
         },
       ],
@@ -53,12 +61,11 @@ describe('canonical scientific evidence extractor', () => {
       llmMode: 'disabled',
     });
 
-    expect(result.status).toBe(
-      CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED,
-    );
+    expect(result.status).toBe(CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED);
     expect(result.facts.length).toBeGreaterThan(10);
-    expect(result.facts.every((fact) => fact.factLayer === CANONICAL_FACT_LAYER))
-      .toBe(true);
+    expect(
+      result.facts.every((fact) => fact.factLayer === CANONICAL_FACT_LAYER),
+    ).toBe(true);
 
     expect(result.facts).toEqual(
       expect.arrayContaining([
@@ -118,8 +125,7 @@ describe('canonical scientific evidence extractor', () => {
     ).toMatchObject({
       normalizedValue: 2.5,
       normalizedUnit: 'mS/cm',
-      normalizationRuleId:
-        'research_metric.conductivity_ms_cm.us_cm_to_ms_cm',
+      normalizationRuleId: 'research_metric.conductivity_ms_cm.us_cm_to_ms_cm',
     });
     expect(
       normalizeScientificMeasurement({
@@ -138,6 +144,33 @@ describe('canonical scientific evidence extractor', () => {
       normalizedValue: 1200,
       normalizedUnit: 'mg/L',
     });
+  });
+
+  it('preserves full-text locator details on canonical facts', () => {
+    const result = canonicalizeScientificEvidenceRecord(buildRecord(), {
+      fullTextMode: 'existing',
+      llmMode: 'disabled',
+    });
+
+    expect(result.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          extractionSource: 'full_text_chunk',
+          payload: expect.objectContaining({
+            locator_details: expect.objectContaining({
+              caption: 'Table 2. BES performance by electrode material.',
+              cell_locator: 'Table 2:row:carbon-felt',
+              page_number: 1,
+              section_label: 'Results',
+              source_locator: 'p1',
+              table_label: 'Table 2',
+              text_span: expect.stringContaining('two-chamber'),
+            }),
+          }),
+          qualityFlags: expect.not.arrayContaining(['untraceable_source_span']),
+        }),
+      ]),
+    );
   });
 
   it('does not fabricate facts when title, abstract, claims, and local chunks lack technical detail', () => {

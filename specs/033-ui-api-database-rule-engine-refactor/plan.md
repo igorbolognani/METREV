@@ -2,7 +2,7 @@
 
 ## Summary
 
-Refactor METREV so the signed-in product centers on configuration, evaluation, recommendations, roadmap, and reports, while canonical evidence becomes a first-class decision input through `EvidenceDecisionContext`. The implementation starts by introducing the runtime contract and wiring it through evaluation, audit, and uncertainty framing, then expands into rule-engine scoring, persistence hardening, and client/admin route separation.
+Refactor METREV so the signed-in product centers on configuration, evaluation, recommendations, roadmap, and reports, while canonical evidence becomes a first-class decision input through `EvidenceDecisionContext`. The implementation introduces the runtime contract, wires it through evaluation, audit, rule-engine scoring, persistence, and client/admin route separation, and validates the full slice with repository checks.
 
 ## Source-of-truth files
 
@@ -45,34 +45,35 @@ Refactor METREV so the signed-in product centers on configuration, evaluation, r
 
 ## Contracts and canonical owner files
 
-- contracts affected: runtime `packages/domain-contracts/src/schemas.ts` now includes `EvidenceDecisionContext`; hardened YAML and domain-owner promotion remain pending.
+- contracts affected: runtime `packages/domain-contracts/src/schemas.ts`, hardened YAML contracts, and domain-owner ontology files now include `EvidenceDecisionContext`, expanded source types, admissibility rules, and traceability preservation requirements.
 - canonical owner files: domain evidence ontology and hardened contract YAML files listed above.
 - planning-only notes under `specs/<feature>/contracts/`: `contracts/evidence-decision-context.md`
 
 ## Data model or boundary changes
 
-- Current implementation batch stores `evidence_decision_context` in `EvaluationResponse` and `AuditRecord` as validated runtime JSON.
-- The first runtime slice builds context from the existing benchmark slice query and accepted catalog evidence references only.
-- Future batches may add a dedicated Prisma model or indexed JSON persistence once replay, diff, and admin query paths are defined.
+- The implementation stores `evidence_decision_context` in `EvaluationResponse`, `AuditRecord`, and a dedicated Prisma `EvidenceDecisionContextRecord` linked to each persisted evaluation.
+- The evaluation service builds context from the benchmark slice query and accepted decision-ready catalog evidence references only.
+- The database layer hydrates current and idempotent evaluation reads from the dedicated record with an audit fallback for legacy rows.
 
 ## Implementation steps
 
 1. Create the feature pack and record the initial cross-layer direction.
 2. Introduce runtime `EvidenceDecisionContext` schemas and attach them to evaluation/audit surfaces.
-3. Build the first evaluation-service adapter from `getEvidenceBenchmarkSlice(...)` into a structured context.
+3. Build the evaluation-service adapter from `getEvidenceBenchmarkSlice(...)` into a structured context.
 4. Pass the context into `runCaseEvaluation` and consume it for uncertainty framing.
 5. Promote the contract to hardened YAML/domain owners and align runtime loaders/tests.
 6. Expand rule-engine use from uncertainty notes into recommendation and score changes backed by focused tests.
 7. Refactor signed-in UI navigation and routes so evidence/research tooling becomes internal/admin only.
 8. Harden persistence and replay/debug paths for the decision context.
-9. Run focused runtime, contract, UI, and build validation.
+9. Preserve structured full-text and claim locators so decision-ready canonical facts require traceable source spans.
+10. Run focused runtime, contract, UI, DB, lint, build, and fast repository validation.
 
 ## Validation strategy
 
-- unit: `tests/runtime/rule-engine.test.ts`, `tests/runtime/case-evaluation-service.test.ts`
-- integration: API/runtime evaluation tests plus persistence tests once database storage expands
-- e2e/manual: signed-in navigation verification and local-view smoke after UI/admin route changes
-- docs/contracts: this feature pack plus owner-file promotion and contract drift checks
+- unit: `tests/runtime/rule-engine.test.ts`, `tests/runtime/case-evaluation-service.test.ts`, canonicalization and source-artifact regression tests
+- integration: API/runtime evaluation tests and PostgreSQL persistence tests covering the dedicated decision-context record
+- UI/RBAC: signed-in navigation, advanced route pages, dashboard, case history, evaluation workbench, evidence selector, explorer, and research review tests
+- docs/contracts: this feature pack plus owner-file promotion and Python contract checks
 
 ## Critique summary
 
@@ -80,7 +81,7 @@ The main failure mode would be a purely cosmetic UI cleanup that leaves the evid
 
 ## Refined final plan
 
-Use vertical slices that end in executable validation. The first slice is now complete in runtime: `EvidenceDecisionContext` exists, is returned and audited, and is consumed by the rule engine for uncertainty coverage notes. The next slices should promote owner contracts, deepen rule-engine impact, and then remove evidence tooling from client-facing navigation and dashboards.
+Use vertical slices that end in executable validation. The complete slice is implemented: `EvidenceDecisionContext` exists, is returned, audited, persisted, consumed by the rule engine for uncertainty and benchmark-backed material recommendations, promoted to owner files, and reflected in client/admin UI separation.
 
 ## Rollback / safety
 

@@ -202,15 +202,27 @@ function toPrismaJsonObject(
   return toPrismaNestedJsonValue(value) as Prisma.InputJsonObject;
 }
 
+type DatabaseResearchSourceType =
+  | 'OPENALEX'
+  | 'CROSSREF'
+  | 'EUROPE_PMC'
+  | 'PAPER'
+  | 'REVIEW'
+  | 'PATENT'
+  | 'DATASHEET'
+  | 'MANUAL_SOP'
+  | 'TECHNICAL_REPORT'
+  | 'SUPPLIER_DOCUMENT'
+  | 'SUPPLIER_PROFILE'
+  | 'CASE_STUDY'
+  | 'MARKET_REPORT'
+  | 'MARKET_SNAPSHOT'
+  | 'REGULATORY_REPORT'
+  | 'CURATED_MANIFEST'
+  | 'MANUAL';
+
 function sourceTypeToContract(
-  value:
-    | 'OPENALEX'
-    | 'CROSSREF'
-    | 'EUROPE_PMC'
-    | 'SUPPLIER_PROFILE'
-    | 'MARKET_SNAPSHOT'
-    | 'CURATED_MANIFEST'
-    | 'MANUAL',
+  value: DatabaseResearchSourceType,
 ): ResearchPaperMetadata['source_type'] {
   switch (value) {
     case 'OPENALEX':
@@ -219,10 +231,30 @@ function sourceTypeToContract(
       return 'crossref';
     case 'EUROPE_PMC':
       return 'europe_pmc';
+    case 'PAPER':
+      return 'paper';
+    case 'REVIEW':
+      return 'review';
+    case 'PATENT':
+      return 'patent';
+    case 'DATASHEET':
+      return 'datasheet';
+    case 'MANUAL_SOP':
+      return 'manual_sop';
+    case 'TECHNICAL_REPORT':
+      return 'technical_report';
+    case 'SUPPLIER_DOCUMENT':
+      return 'supplier_document';
     case 'SUPPLIER_PROFILE':
       return 'supplier_profile';
+    case 'CASE_STUDY':
+      return 'case_study';
+    case 'MARKET_REPORT':
+      return 'market_report';
     case 'MARKET_SNAPSHOT':
       return 'market_snapshot';
+    case 'REGULATORY_REPORT':
+      return 'regulatory_report';
     case 'CURATED_MANIFEST':
       return 'curated_manifest';
     default:
@@ -286,14 +318,7 @@ function paperMetadataFromSource(input: {
     publishedAt: Date | null;
     publisher: string | null;
     rawPayload: unknown;
-    sourceType:
-      | 'OPENALEX'
-      | 'CROSSREF'
-      | 'EUROPE_PMC'
-      | 'SUPPLIER_PROFILE'
-      | 'MARKET_SNAPSHOT'
-      | 'CURATED_MANIFEST'
-      | 'MANUAL';
+    sourceType: DatabaseResearchSourceType;
     sourceUrl: string | null;
     title: string;
   };
@@ -334,14 +359,7 @@ function paperMetadataFromSnapshot(input: {
     publishedAt: Date | null;
     publisher: string | null;
     rawPayload: unknown;
-    sourceType:
-      | 'OPENALEX'
-      | 'CROSSREF'
-      | 'EUROPE_PMC'
-      | 'SUPPLIER_PROFILE'
-      | 'MARKET_SNAPSHOT'
-      | 'CURATED_MANIFEST'
-      | 'MANUAL';
+    sourceType: DatabaseResearchSourceType;
     sourceUrl: string | null;
     title: string;
   };

@@ -6,15 +6,15 @@ import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-  buildCaseHistoryWorkspace,
-  buildDashboardWorkspace,
-  buildEvaluationComparison,
-  buildEvaluationWorkspace,
-  buildEvidenceExplorerAssistantResponse,
-  buildEvidenceExplorerWorkspace,
-  buildEvidenceReviewWorkspace,
-  buildPrintableEvaluationReport,
-  buildRuntimeVersions,
+    buildCaseHistoryWorkspace,
+    buildDashboardWorkspace,
+    buildEvaluationComparison,
+    buildEvaluationWorkspace,
+    buildEvidenceExplorerAssistantResponse,
+    buildEvidenceExplorerWorkspace,
+    buildEvidenceReviewWorkspace,
+    buildPrintableEvaluationReport,
+    buildRuntimeVersions,
 } from '../presenters/workspace-presenters';
 import { createPersistedReportConversation } from '../services/report-conversation';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
@@ -118,21 +118,8 @@ export async function registerWorkspaceRoutes(
           },
         )
       : null;
-    const evidenceCatalog = await withSpan(
-      'workspace.dashboard.evidence_catalog',
-      () =>
-        app.evaluationRepository.listExternalEvidenceCatalog({
-          page: 1,
-          pageSize: 1,
-        }),
-      {
-        actor_id: actor.userId,
-      },
-    );
-
     return reply.send(
       buildDashboardWorkspace({
-        evidenceCatalogSummary: evidenceCatalog.summary,
         evaluationList,
         latestEvaluation,
         versions: buildVersionsFromEvaluation(),
@@ -140,99 +127,110 @@ export async function registerWorkspaceRoutes(
     );
   });
 
-  app.get('/evaluations/:evaluationId', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireViewer(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.get(
+    '/evaluations/:evaluationId',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireViewer(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const { evaluationId } = request.params as { evaluationId: string };
-    const evaluation = await withSpan(
-      'workspace.evaluation.get',
-      () => app.evaluationRepository.getEvaluation(evaluationId),
-      {
-        evaluation_id: evaluationId,
-        actor_id: actor.userId,
-      },
-    );
+      const { evaluationId } = request.params as { evaluationId: string };
+      const evaluation = await withSpan(
+        'workspace.evaluation.get',
+        () => app.evaluationRepository.getEvaluation(evaluationId),
+        {
+          evaluation_id: evaluationId,
+          actor_id: actor.userId,
+        },
+      );
 
-    if (!evaluation) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Evaluation ${evaluationId} was not found.`,
-      });
-    }
+      if (!evaluation) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Evaluation ${evaluationId} was not found.`,
+        });
+      }
 
-    const history = await app.evaluationRepository.getCaseHistory(
-      evaluation.case_id,
-    );
+      const history = await app.evaluationRepository.getCaseHistory(
+        evaluation.case_id,
+      );
 
-    return reply.send(
-      buildEvaluationWorkspace({
-        evaluation,
-        history,
-        versions: buildVersionsFromEvaluation({
-          narrativePromptVersion: evaluation.narrative_metadata.prompt_version,
-          modelVersion:
-            evaluation.simulation_enrichment?.model_version ??
-            evaluation.narrative_metadata.model,
+      return reply.send(
+        buildEvaluationWorkspace({
+          evaluation,
+          history,
+          versions: buildVersionsFromEvaluation({
+            narrativePromptVersion:
+              evaluation.narrative_metadata.prompt_version,
+            modelVersion:
+              evaluation.simulation_enrichment?.model_version ??
+              evaluation.narrative_metadata.model,
+          }),
         }),
-      }),
-    );
-  });
-
-  app.get('/cases/:caseId/history', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireViewer(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const { caseId } = request.params as { caseId: string };
-    const history = await withSpan(
-      'workspace.case_history.get',
-      () => app.evaluationRepository.getCaseHistory(caseId),
-      {
-        case_id: caseId,
-        actor_id: actor.userId,
-      },
-    );
-
-    if (!history) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Case ${caseId} was not found.`,
-      });
-    }
-
-    const latestEvaluation = history.evaluations
-      .slice()
-      .sort((left, right) =>
-        right.created_at.localeCompare(left.created_at),
-      )[0];
-    const currentEvaluation = latestEvaluation
-      ? await app.evaluationRepository.getEvaluation(
-          latestEvaluation.evaluation_id,
-        )
-      : null;
-
-    return reply.send(
-      buildCaseHistoryWorkspace({
-        history,
-        currentEvaluation,
-        currentEvaluationId: currentEvaluation?.evaluation_id,
-        versions: buildVersionsFromEvaluation({
-          narrativePromptVersion:
-            currentEvaluation?.narrative_metadata.prompt_version,
-          modelVersion:
-            currentEvaluation?.simulation_enrichment?.model_version ??
-            currentEvaluation?.narrative_metadata.model,
-        }),
-      }),
-    );
-  });
+      );
+    },
+  );
 
   app.get(
-    '/evaluations/:evaluationId/compare/:baselineEvaluationId', rateLimitedRouteOptions, async (request, reply) => {
+    '/cases/:caseId/history',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireViewer(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const { caseId } = request.params as { caseId: string };
+      const history = await withSpan(
+        'workspace.case_history.get',
+        () => app.evaluationRepository.getCaseHistory(caseId),
+        {
+          case_id: caseId,
+          actor_id: actor.userId,
+        },
+      );
+
+      if (!history) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Case ${caseId} was not found.`,
+        });
+      }
+
+      const latestEvaluation = history.evaluations
+        .slice()
+        .sort((left, right) =>
+          right.created_at.localeCompare(left.created_at),
+        )[0];
+      const currentEvaluation = latestEvaluation
+        ? await app.evaluationRepository.getEvaluation(
+            latestEvaluation.evaluation_id,
+          )
+        : null;
+
+      return reply.send(
+        buildCaseHistoryWorkspace({
+          history,
+          currentEvaluation,
+          currentEvaluationId: currentEvaluation?.evaluation_id,
+          versions: buildVersionsFromEvaluation({
+            narrativePromptVersion:
+              currentEvaluation?.narrative_metadata.prompt_version,
+            modelVersion:
+              currentEvaluation?.simulation_enrichment?.model_version ??
+              currentEvaluation?.narrative_metadata.model,
+          }),
+        }),
+      );
+    },
+  );
+
+  app.get(
+    '/evaluations/:evaluationId/compare/:baselineEvaluationId',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
       const actor = requireViewer(request, reply);
       if (!actor) {
         return reply;
@@ -286,270 +284,289 @@ export async function registerWorkspaceRoutes(
     },
   );
 
-  app.get('/evidence/review', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
+  app.get(
+    '/evidence/review',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    const query = request.query as {
-      status?: string;
-      q?: string;
-      sourceType?: string;
-      systemType?: string;
-      componentType?: string;
-      decisionReady?: string;
-      material?: string;
-      metricType?: string;
-      page?: string;
-      pageSize?: string;
-    };
-    const parsedQuery = parseExternalEvidenceListQuery(query);
+      const query = request.query as {
+        status?: string;
+        q?: string;
+        sourceType?: string;
+        systemType?: string;
+        componentType?: string;
+        decisionReady?: string;
+        material?: string;
+        metricType?: string;
+        page?: string;
+        pageSize?: string;
+      };
+      const parsedQuery = parseExternalEvidenceListQuery(query);
 
-    if (!parsedQuery.success) {
-      return reply.code(400).send({
-        error: 'invalid_query',
-        details: parsedQuery.details,
-      });
-    }
+      if (!parsedQuery.success) {
+        return reply.code(400).send({
+          error: 'invalid_query',
+          details: parsedQuery.details,
+        });
+      }
 
-    const parsed = parsedQuery.value;
-    const reviewStatus = parsed.status ?? 'pending';
+      const parsed = parsedQuery.value;
+      const reviewStatus = parsed.status ?? 'pending';
 
-    const evidenceCatalog = await withSpan(
-      'workspace.evidence_review',
-      () =>
-        app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus,
-          searchQuery: parsed.query,
-          sourceType: parsed.sourceType,
-          systemType: parsed.systemType,
-          componentType: parsed.componentType,
-          decisionReady: parsed.decisionReady,
-          material: parsed.material,
-          metricType: parsed.metricType,
-          page: parsed.page,
-          pageSize: parsed.pageSize,
-        }),
-      {
-        actor_id: actor.userId,
-        review_status: reviewStatus,
-        source_type: parsed.sourceType ?? 'all',
-      },
-    );
-
-    return reply.send(
-      buildEvidenceReviewWorkspace({
-        evidenceCatalog,
-        versions: buildVersionsFromEvaluation(),
-        filters: {
-          status: reviewStatus,
-          query: parsed.query,
+      const evidenceCatalog = await withSpan(
+        'workspace.evidence_review',
+        () =>
+          app.evaluationRepository.listExternalEvidenceCatalog({
+            reviewStatus,
+            searchQuery: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          }),
+        {
+          actor_id: actor.userId,
+          review_status: reviewStatus,
+          source_type: parsed.sourceType ?? 'all',
         },
-      }),
-    );
-  });
+      );
 
-  app.get('/evidence/explorer', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const query = request.query as {
-      status?: string;
-      q?: string;
-      sourceType?: string;
-      systemType?: string;
-      componentType?: string;
-      decisionReady?: string;
-      material?: string;
-      metricType?: string;
-      page?: string;
-      pageSize?: string;
-    };
-    const parsedQuery = parseExternalEvidenceListQuery(query);
-
-    if (!parsedQuery.success) {
-      return reply.code(400).send({
-        error: 'invalid_query',
-        details: parsedQuery.details,
-      });
-    }
-
-    const parsed = parsedQuery.value;
-    const evidenceCatalog = await withSpan(
-      'workspace.evidence_explorer',
-      () =>
-        app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus: parsed.status,
-          searchQuery: parsed.query,
-          sourceType: parsed.sourceType,
-          systemType: parsed.systemType,
-          componentType: parsed.componentType,
-          decisionReady: parsed.decisionReady,
-          material: parsed.material,
-          metricType: parsed.metricType,
-          page: parsed.page,
-          pageSize: parsed.pageSize,
+      return reply.send(
+        buildEvidenceReviewWorkspace({
+          evidenceCatalog,
+          versions: buildVersionsFromEvaluation(),
+          filters: {
+            status: reviewStatus,
+            query: parsed.query,
+          },
         }),
-      {
-        actor_id: actor.userId,
-        review_status: parsed.status ?? 'all',
-        source_type: parsed.sourceType ?? 'all',
-      },
-    );
+      );
+    },
+  );
 
-    return reply.send(
-      buildEvidenceExplorerWorkspace({
-        evidenceCatalog,
-        versions: buildVersionsFromEvaluation(),
-        filters: {
-          status: parsed.status,
-          query: parsed.query,
-          sourceType: parsed.sourceType,
-          systemType: parsed.systemType,
-          componentType: parsed.componentType,
-          decisionReady: parsed.decisionReady,
-          material: parsed.material,
-          metricType: parsed.metricType,
-          page: parsed.page,
-          pageSize: parsed.pageSize,
+  app.get(
+    '/evidence/explorer',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const query = request.query as {
+        status?: string;
+        q?: string;
+        sourceType?: string;
+        systemType?: string;
+        componentType?: string;
+        decisionReady?: string;
+        material?: string;
+        metricType?: string;
+        page?: string;
+        pageSize?: string;
+      };
+      const parsedQuery = parseExternalEvidenceListQuery(query);
+
+      if (!parsedQuery.success) {
+        return reply.code(400).send({
+          error: 'invalid_query',
+          details: parsedQuery.details,
+        });
+      }
+
+      const parsed = parsedQuery.value;
+      const evidenceCatalog = await withSpan(
+        'workspace.evidence_explorer',
+        () =>
+          app.evaluationRepository.listExternalEvidenceCatalog({
+            reviewStatus: parsed.status,
+            searchQuery: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          }),
+        {
+          actor_id: actor.userId,
+          review_status: parsed.status ?? 'all',
+          source_type: parsed.sourceType ?? 'all',
         },
-      }),
-    );
-  });
+      );
 
-  app.get('/evidence/explorer/assistant', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireAnalyst(request, reply);
-    if (!actor) {
-      return reply;
-    }
-
-    const query = request.query as {
-      status?: string;
-      q?: string;
-      sourceType?: string;
-      systemType?: string;
-      componentType?: string;
-      decisionReady?: string;
-      material?: string;
-      metricType?: string;
-      page?: string;
-      pageSize?: string;
-    };
-    const parsedQuery = parseExternalEvidenceListQuery(query);
-
-    if (!parsedQuery.success) {
-      return reply.code(400).send({
-        error: 'invalid_query',
-        details: parsedQuery.details,
-      });
-    }
-
-    const parsed = parsedQuery.value;
-    const evidenceCatalog = await withSpan(
-      'workspace.evidence_explorer_assistant.catalog',
-      () =>
-        app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus: parsed.status,
-          searchQuery: parsed.query,
-          sourceType: parsed.sourceType,
-          systemType: parsed.systemType,
-          componentType: parsed.componentType,
-          decisionReady: parsed.decisionReady,
-          material: parsed.material,
-          metricType: parsed.metricType,
-          page: parsed.page,
-          pageSize: parsed.pageSize,
+      return reply.send(
+        buildEvidenceExplorerWorkspace({
+          evidenceCatalog,
+          versions: buildVersionsFromEvaluation(),
+          filters: {
+            status: parsed.status,
+            query: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          },
         }),
-      {
-        actor_id: actor.userId,
-        review_status: parsed.status ?? 'all',
-        source_type: parsed.sourceType ?? 'all',
-      },
-    );
+      );
+    },
+  );
 
-    const assistantResult = await withSpan(
-      'workspace.evidence_explorer_assistant.generate',
-      () =>
-        generateEvidenceAssistantBrief({
-          reviewStatus: parsed.status,
-          searchQuery: parsed.query,
-          sourceType: parsed.sourceType,
-          warehouseSnapshot: evidenceCatalog.warehouse_aggregate.snapshot,
-          spotlight: evidenceCatalog.items.slice(0, 3),
-        }),
-      {
-        actor_id: actor.userId,
-        filtered_total: evidenceCatalog.summary.filtered_total,
-      },
-    );
+  app.get(
+    '/evidence/explorer/assistant',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
 
-    return reply.send(
-      buildEvidenceExplorerAssistantResponse({
-        evidenceCatalog,
-        narrative: assistantResult.narrative,
-        narrativeMetadata: assistantResult.narrativeMetadata,
-        versions: buildVersionsFromEvaluation({
-          narrativePromptVersion:
-            assistantResult.narrativeMetadata.prompt_version,
-          modelVersion: assistantResult.narrativeMetadata.model,
-        }),
-        filters: {
-          status: parsed.status,
-          query: parsed.query,
-          sourceType: parsed.sourceType,
-          systemType: parsed.systemType,
-          componentType: parsed.componentType,
-          decisionReady: parsed.decisionReady,
-          material: parsed.material,
-          metricType: parsed.metricType,
-          page: parsed.page,
-          pageSize: parsed.pageSize,
+      const query = request.query as {
+        status?: string;
+        q?: string;
+        sourceType?: string;
+        systemType?: string;
+        componentType?: string;
+        decisionReady?: string;
+        material?: string;
+        metricType?: string;
+        page?: string;
+        pageSize?: string;
+      };
+      const parsedQuery = parseExternalEvidenceListQuery(query);
+
+      if (!parsedQuery.success) {
+        return reply.code(400).send({
+          error: 'invalid_query',
+          details: parsedQuery.details,
+        });
+      }
+
+      const parsed = parsedQuery.value;
+      const evidenceCatalog = await withSpan(
+        'workspace.evidence_explorer_assistant.catalog',
+        () =>
+          app.evaluationRepository.listExternalEvidenceCatalog({
+            reviewStatus: parsed.status,
+            searchQuery: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          }),
+        {
+          actor_id: actor.userId,
+          review_status: parsed.status ?? 'all',
+          source_type: parsed.sourceType ?? 'all',
         },
-      }),
-    );
-  });
+      );
 
-  app.get('/evaluations/:evaluationId/report', rateLimitedRouteOptions, async (request, reply) => {
-    const actor = requireViewer(request, reply);
-    if (!actor) {
-      return reply;
-    }
+      const assistantResult = await withSpan(
+        'workspace.evidence_explorer_assistant.generate',
+        () =>
+          generateEvidenceAssistantBrief({
+            reviewStatus: parsed.status,
+            searchQuery: parsed.query,
+            sourceType: parsed.sourceType,
+            warehouseSnapshot: evidenceCatalog.warehouse_aggregate.snapshot,
+            spotlight: evidenceCatalog.items.slice(0, 3),
+          }),
+        {
+          actor_id: actor.userId,
+          filtered_total: evidenceCatalog.summary.filtered_total,
+        },
+      );
 
-    const { evaluationId } = request.params as { evaluationId: string };
-    const evaluation = await withSpan(
-      'workspace.report.get',
-      () => app.evaluationRepository.getEvaluation(evaluationId),
-      {
-        evaluation_id: evaluationId,
-        actor_id: actor.userId,
-      },
-    );
-
-    if (!evaluation) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Evaluation ${evaluationId} was not found.`,
-      });
-    }
-
-    return reply.send(
-      buildPrintableEvaluationReport({
-        evaluation,
-        versions: buildVersionsFromEvaluation({
-          narrativePromptVersion: evaluation.narrative_metadata.prompt_version,
-          modelVersion:
-            evaluation.simulation_enrichment?.model_version ??
-            evaluation.narrative_metadata.model,
+      return reply.send(
+        buildEvidenceExplorerAssistantResponse({
+          evidenceCatalog,
+          narrative: assistantResult.narrative,
+          narrativeMetadata: assistantResult.narrativeMetadata,
+          versions: buildVersionsFromEvaluation({
+            narrativePromptVersion:
+              assistantResult.narrativeMetadata.prompt_version,
+            modelVersion: assistantResult.narrativeMetadata.model,
+          }),
+          filters: {
+            status: parsed.status,
+            query: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          },
         }),
-      }),
-    );
-  });
+      );
+    },
+  );
+
+  app.get(
+    '/evaluations/:evaluationId/report',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireViewer(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const { evaluationId } = request.params as { evaluationId: string };
+      const evaluation = await withSpan(
+        'workspace.report.get',
+        () => app.evaluationRepository.getEvaluation(evaluationId),
+        {
+          evaluation_id: evaluationId,
+          actor_id: actor.userId,
+        },
+      );
+
+      if (!evaluation) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Evaluation ${evaluationId} was not found.`,
+        });
+      }
+
+      return reply.send(
+        buildPrintableEvaluationReport({
+          evaluation,
+          versions: buildVersionsFromEvaluation({
+            narrativePromptVersion:
+              evaluation.narrative_metadata.prompt_version,
+            modelVersion:
+              evaluation.simulation_enrichment?.model_version ??
+              evaluation.narrative_metadata.model,
+          }),
+        }),
+      );
+    },
+  );
 
   app.post(
-    '/evaluations/:evaluationId/report/conversation', rateLimitedRouteOptions, async (request, reply) => {
+    '/evaluations/:evaluationId/report/conversation',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
       const actor = requireViewer(request, reply);
       if (!actor) {
         return reply;

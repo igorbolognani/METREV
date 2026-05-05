@@ -7,19 +7,19 @@ import { promisify } from 'node:util';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  evidenceVeracityScoreSchema,
-  externalEvidenceAccessStatusSchema,
-  localSourceImportResponseSchema,
-  metadataQualityProfileSchema,
-  researchPaperMetadataSchema,
-  sourceArtifactSchema,
-  type EvidenceVeracityScore,
-  type ExternalEvidenceAccessStatus,
-  type LocalSourceImportRequest,
-  type LocalSourceImportResponse,
-  type MetadataQualityProfile,
-  type ResearchPaperMetadata,
-  type SourceArtifact,
+    evidenceVeracityScoreSchema,
+    externalEvidenceAccessStatusSchema,
+    localSourceImportResponseSchema,
+    metadataQualityProfileSchema,
+    researchPaperMetadataSchema,
+    sourceArtifactSchema,
+    type EvidenceVeracityScore,
+    type ExternalEvidenceAccessStatus,
+    type LocalSourceImportRequest,
+    type LocalSourceImportResponse,
+    type MetadataQualityProfile,
+    type ResearchPaperMetadata,
+    type SourceArtifact,
 } from '@metrev/domain-contracts';
 
 const execFileAsync = promisify(execFile);
@@ -327,25 +327,67 @@ async function extractText(filePath: string): Promise<{
 
 export function chunkTextPages(pages: string[]) {
   const chunks: Array<{
+    caption: string | null;
     charEnd: number;
     charStart: number;
+    cellLocator: string | null;
     chunkIndex: number;
     pageNumber: number;
+    sectionLabel: string | null;
     sourceLocator: string;
+    tableLabel: string | null;
     text: string;
   }> = [];
+
+  const inferLocatorContext = (
+    pageText: string,
+    text: string,
+    offset: number,
+  ) => {
+    const priorText = pageText.slice(0, offset + text.length);
+    const sectionLabel =
+      [
+        ...priorText.matchAll(
+          /(?:^|\n)\s*((?:abstract|introduction|methods?|materials and methods|results?|discussion|conclusions?)\b[^\n]*)/gi,
+        ),
+      ]
+        .map((match) => normalizeWhitespace(match[1] ?? ''))
+        .filter(Boolean)
+        .at(-1) ?? null;
+    const tableMatch = text.match(/\b(Table\s+[A-Za-z0-9.-]+)\b/i);
+    const figureMatch = text.match(
+      /\b(Figure\s+[A-Za-z0-9.-]+|Fig\.\s*[A-Za-z0-9.-]+)\b/i,
+    );
+    const captionLine = text
+      .split(/\n+/)
+      .map(normalizeWhitespace)
+      .find((line) => /\b(Table|Figure|Fig\.)\s+[A-Za-z0-9.-]+\b/i.test(line));
+    const tableLabel = tableMatch?.[1] ?? null;
+
+    return {
+      caption: captionLine ?? null,
+      cellLocator: tableLabel ? `${tableLabel}:chunk:${chunks.length}` : null,
+      sectionLabel,
+      tableLabel: tableLabel ?? figureMatch?.[1] ?? null,
+    };
+  };
 
   pages.forEach((pageText, pageIndex) => {
     let offset = 0;
     while (offset < pageText.length) {
       const text = pageText.slice(offset, offset + MAX_CHUNK_LENGTH).trim();
       if (text) {
+        const locatorContext = inferLocatorContext(pageText, text, offset);
         chunks.push({
+          caption: locatorContext.caption,
           charEnd: offset + text.length,
           charStart: offset,
+          cellLocator: locatorContext.cellLocator,
           chunkIndex: chunks.length,
           pageNumber: pageIndex + 1,
+          sectionLabel: locatorContext.sectionLabel,
           sourceLocator: `page:${pageIndex + 1}:chunk:${chunks.length}`,
+          tableLabel: locatorContext.tableLabel,
           text,
         });
       }
@@ -407,10 +449,14 @@ function extractClaimCandidates(chunks: ReturnType<typeof chunkTextPages>) {
     .slice(0, MAX_CLAIM_CANDIDATES)
     .map(({ chunk, sentence }) => ({
       claimType: inferClaimType(sentence),
+      caption: chunk.caption,
+      cellLocator: chunk.cellLocator,
       content: sentence,
+      sectionLabel: chunk.sectionLabel,
       sourceSnippet: truncate(sentence, 320),
       sourceLocator: chunk.sourceLocator,
       pageNumber: chunk.pageNumber,
+      tableLabel: chunk.tableLabel,
     }));
 }
 
@@ -637,7 +683,14 @@ async function importOneLocalPdf(
           charStart: chunk.charStart,
           charEnd: chunk.charEnd,
           metadata: toPrismaJsonValue({
+            caption: chunk.caption,
+            cell_locator: chunk.cellLocator,
             extraction_method: extracted.extractionMethod,
+            page_number: chunk.pageNumber,
+            section_label: chunk.sectionLabel,
+            source_locator: chunk.sourceLocator,
+            table_label: chunk.tableLabel,
+            text_span: chunk.text,
           }) as Prisma.InputJsonObject,
         })),
       });
@@ -758,7 +811,14 @@ async function importOneLocalPdf(
           sourceLocator: claim.sourceLocator,
           pageNumber: claim.pageNumber,
           metadata: toPrismaJsonValue({
+            caption: claim.caption,
+            cell_locator: claim.cellLocator,
             metadata_quality: metadataQuality,
+            page_number: claim.pageNumber,
+            section_label: claim.sectionLabel,
+            source_locator: claim.sourceLocator,
+            table_label: claim.tableLabel,
+            text_span: claim.sourceSnippet,
             veracity_score: veracityScore,
             source_artifact_id: artifact.id,
           }) as Prisma.InputJsonObject,
@@ -774,7 +834,13 @@ async function importOneLocalPdf(
           claims.map((claim) => ({
             content: claim.content,
             claim_type: claim.claimType.toLowerCase(),
+            caption: claim.caption,
+            cell_locator: claim.cellLocator,
+            page_number: claim.pageNumber,
+            section_label: claim.sectionLabel,
             source_locator: claim.sourceLocator,
+            source_snippet: claim.sourceSnippet,
+            table_label: claim.tableLabel,
           })),
         ),
       },

@@ -1,20 +1,20 @@
 import {
-  canonicalOutputSections,
-  confidenceLevelSchema,
-  decisionOutputSchema,
-  loadContractCompatibilityDefinition,
-  loadContractDiagnosticsDefinition,
-  loadContractImprovementsDefinition,
-  loadContractOutputDefinition,
-  loadContractScoringModel,
-  loadContractSensitivityPolicy,
-  type ConfidenceLevel,
-  type DecisionOutput,
-  type DerivedObservation,
-  type EvidenceDecisionContext,
-  type EvidenceRecord,
-  type NormalizedCaseInput,
-  type RecommendationRecord,
+    canonicalOutputSections,
+    confidenceLevelSchema,
+    decisionOutputSchema,
+    loadContractCompatibilityDefinition,
+    loadContractDiagnosticsDefinition,
+    loadContractImprovementsDefinition,
+    loadContractOutputDefinition,
+    loadContractScoringModel,
+    loadContractSensitivityPolicy,
+    type ConfidenceLevel,
+    type DecisionOutput,
+    type DerivedObservation,
+    type EvidenceDecisionContext,
+    type EvidenceRecord,
+    type NormalizedCaseInput,
+    type RecommendationRecord,
 } from '@metrev/domain-contracts';
 import { dedupeStrings, isNonEmptyString } from '@metrev/utils';
 
@@ -629,6 +629,176 @@ function buildRecommendation(input: {
   };
 }
 
+function confidenceRank(level: ConfidenceLevel): number {
+  return level === 'high' ? 2 : level === 'medium' ? 1 : 0;
+}
+
+function confidenceFromRank(rank: number): ConfidenceLevel {
+  if (rank >= 2) {
+    return 'high';
+  }
+
+  if (rank >= 1) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+function reduceConfidence(
+  level: ConfidenceLevel,
+  amount: number,
+): ConfidenceLevel {
+  return confidenceFromRank(Math.max(0, confidenceRank(level) - amount));
+}
+
+function normalizeMaterialToken(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
+
+function currentMaterialTokens(
+  normalizedCase: NormalizedCaseInput,
+): Array<{ componentType: string; material: string }> {
+  const stackBlocks = normalizedCase.stack_blocks as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const candidates = [
+    {
+      componentType: 'anode',
+      material: normalizeMaterialToken(
+        stackBlocks.anode_biofilm_support?.material_family,
+      ),
+    },
+    {
+      componentType: 'cathode',
+      material: normalizeMaterialToken(
+        stackBlocks.cathode_catalyst_support?.catalyst_family ??
+          stackBlocks.cathode_catalyst_support?.material_family,
+      ),
+    },
+    {
+      componentType: 'membrane_separator',
+      material: normalizeMaterialToken(stackBlocks.membrane_or_separator?.type),
+    },
+  ];
+
+  return candidates.filter(
+    (candidate): candidate is { componentType: string; material: string } => {
+      const material = candidate.material;
+      if (!material) {
+        return false;
+      }
+
+      return !['unknown', 'not_stated', 'needs_classification'].includes(
+        material,
+      );
+    },
+  );
+}
+
+function isDecisionReadyBenchmarkQuality(value: string | null): boolean {
+  return value?.toLowerCase() !== 'low';
+}
+
+function buildEvidenceBackedMaterialRecommendation(input: {
+  evidenceContext?: EvidenceDecisionContext | null;
+  normalizedCase: NormalizedCaseInput;
+  confidenceLevel: ConfidenceLevel;
+  missingData: string[];
+  assumptions: string[];
+  supplierCandidates: string[];
+}): RecommendationRecord | null {
+  const evidenceContext = input.evidenceContext;
+
+  if (!evidenceContext) {
+    return null;
+  }
+
+  const currentMaterials = currentMaterialTokens(input.normalizedCase);
+
+  for (const current of currentMaterials) {
+    const currentRange = evidenceContext.benchmark_ranges.find(
+      (range) =>
+        normalizeMaterialToken(range.material) === current.material &&
+        range.component_type === current.componentType &&
+        typeof range.median_value === 'number' &&
+        Number.isFinite(range.median_value),
+    );
+
+    const currentMedian = currentRange?.median_value;
+
+    if (
+      !currentRange ||
+      typeof currentMedian !== 'number' ||
+      !Number.isFinite(currentMedian)
+    ) {
+      continue;
+    }
+
+    const alternative = evidenceContext.benchmark_ranges
+      .filter(
+        (range) =>
+          range.component_type === currentRange.component_type &&
+          range.metric_type === currentRange.metric_type &&
+          range.normalized_unit === currentRange.normalized_unit &&
+          normalizeMaterialToken(range.material) !== current.material &&
+          typeof range.median_value === 'number' &&
+          Number.isFinite(range.median_value) &&
+          range.median_value >= currentMedian * 1.15 &&
+          range.record_count >= 3 &&
+          isDecisionReadyBenchmarkQuality(range.evidence_quality),
+      )
+      .sort(
+        (left, right) => (right.median_value ?? 0) - (left.median_value ?? 0),
+      )[0];
+
+    if (!alternative?.material || alternative.median_value === null) {
+      continue;
+    }
+
+    const uplift = Math.round(
+      ((alternative.median_value - currentMedian) / currentMedian) * 100,
+    );
+
+    return buildRecommendation({
+      recommendationId: `rec-evidence-material-${alternative.component_type ?? current.componentType}-${normalizeMaterialToken(alternative.material)}`,
+      linkedDiagnosis: 'Benchmark-backed material optimization',
+      rationale: `Evaluate ${alternative.material} as a replacement or controlled comparison for ${currentRange.material ?? current.material} in the ${alternative.component_type ?? current.componentType} path.`,
+      expectedBenefit: `Decision-ready benchmarks show a median ${alternative.metric_type} uplift of about ${uplift}% (${alternative.median_value} ${alternative.normalized_unit} versus ${currentMedian} ${currentRange.normalized_unit}) across ${alternative.record_count} comparable record(s).`,
+      confidenceLevel: input.confidenceLevel,
+      missingDataDependencies: dedupeStrings([
+        ...input.missingData.slice(0, 2),
+        'side-by-side validation under the measured operating envelope',
+      ]),
+      assumptions: input.assumptions,
+      ruleRefs: [
+        'evidence_decision_context.material_alternative_recommendation',
+      ],
+      evidenceRefs: evidenceContext.source_refs,
+      supplierCandidates: input.supplierCandidates,
+      phaseAssignment: 'Phase 2',
+      implementationEffort: 'medium',
+      economicPlausibility: 'medium',
+      riskLevel: 'medium',
+      maturityLevel: 'medium',
+      evidenceStrengthSummary: `Benchmark-backed recommendation from ${alternative.record_count} decision-ready record(s); evidence quality is ${alternative.evidence_quality ?? 'unspecified but not low'}.`,
+      provenanceNotes: [
+        `Alternative selected by EvidenceDecisionContext because median ${alternative.metric_type} was at least 15% above the current material benchmark and record_count >= 3.`,
+      ],
+    });
+  }
+
+  return null;
+}
+
 function buildSupplierShortlist(
   normalizedCase: NormalizedCaseInput,
   recommendations: RecommendationRecord[],
@@ -759,7 +929,7 @@ export function runCaseEvaluation(
       expectedEffects: rule.expected_effects ?? [],
     }));
 
-  const confidenceLevel = toConfidenceLevel({
+  const baseConfidenceLevel = toConfidenceLevel({
     missingCount: missingData.length,
     defaultsCount: defaultsUsed.length,
     evidenceCount: typedEvidence.length,
@@ -775,6 +945,12 @@ export function runCaseEvaluation(
     tracePenaltyEvidenceCount,
     nonAcceptedEvidenceCount,
   });
+  const confidenceLevel =
+    input.evidenceContext &&
+    input.evidenceContext.uncertainty_summary.confidence_level === 'low' &&
+    input.evidenceContext.benchmark_ranges.length === 0
+      ? reduceConfidence(baseConfidenceLevel, 1)
+      : baseConfidenceLevel;
 
   const blockFindings = Object.entries(resolvedCase.stack_blocks).map(
     ([blockName, value]) =>
@@ -912,6 +1088,20 @@ export function runCaseEvaluation(
         ],
       }),
     );
+  }
+
+  const evidenceMaterialRecommendation =
+    buildEvidenceBackedMaterialRecommendation({
+      evidenceContext: input.evidenceContext,
+      normalizedCase: resolvedCase,
+      confidenceLevel,
+      missingData,
+      assumptions: resolvedCase.assumptions,
+      supplierCandidates,
+    });
+
+  if (evidenceMaterialRecommendation) {
+    recommendations.push(evidenceMaterialRecommendation);
   }
 
   if (

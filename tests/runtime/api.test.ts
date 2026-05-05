@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  getSessionTokenFromCookie,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    getSessionTokenFromCookie,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  type EvaluationResponse,
-  type ExternalEvidenceCatalogItemDetail,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    type EvaluationResponse,
+    type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 
@@ -1141,12 +1141,18 @@ describe('api runtime flow', () => {
       summary: expect.objectContaining({
         total_runs: 1,
       }),
+      evidence_traceability: expect.objectContaining({
+        accepted_refs_count: expect.any(Number),
+        decision_context_available: true,
+        source_refs_count: expect.any(Number),
+      }),
       recent_reports: [
         expect.objectContaining({
           report_href: `/evaluations/${created.evaluation_id}/report`,
         }),
       ],
     });
+    expect(dashboardResponse.json()).not.toHaveProperty('evidence_catalog');
     expect(dashboardResponse.json()).not.toHaveProperty('evidence_backlog');
     expect(dashboardResponse.json().summary).not.toHaveProperty(
       'pending_evidence',

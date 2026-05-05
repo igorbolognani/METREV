@@ -1,7 +1,7 @@
+import { redirect } from 'next/navigation';
 import * as React from 'react';
 
 import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
-import { ExternalEvidenceDetail } from '@/components/evidence-detail/external-evidence-detail';
 import { requireRoleSession } from '@/lib/require-session';
 
 void React;
@@ -21,9 +21,5 @@ export default async function ExternalEvidenceExplorerDetailPage({
     return <AnalystRoleRequiredPanel email={session.user.email} />;
   }
 
-  return (
-    <main>
-      <ExternalEvidenceDetail catalogItemId={id} canReview />
-    </main>
-  );
+  redirect(`/admin/intelligence/evidence/explorer/${id}`);
 }

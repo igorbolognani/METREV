@@ -5,30 +5,30 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  ResearchColumnDefinition,
-  ResearchDecisionIngestionPreview,
-  ResearchEvidencePack,
-  ResearchExtractionResult,
-  ResearchPaperMetadata,
-  ResearchReviewDetail,
+    ResearchColumnDefinition,
+    ResearchDecisionIngestionPreview,
+    ResearchEvidencePack,
+    ResearchExtractionResult,
+    ResearchPaperMetadata,
+    ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
 import { TabsContent } from '@/components/ui/tabs';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-  addResearchColumn,
-  createResearchEvidencePack,
-  fetchResearchEvidencePackDecisionInput,
-  fetchResearchReview,
-  runResearchExtractions,
+    addResearchColumn,
+    createResearchEvidencePack,
+    fetchResearchEvidencePackDecisionInput,
+    fetchResearchReview,
+    runResearchExtractions,
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 
@@ -314,7 +314,7 @@ export function ResearchReviewDetailWorkspace({
     return (
       <WorkspaceEmptyState
         description="The requested research review does not exist."
-        primaryHref="/research/reviews"
+        primaryHref="/admin/intelligence/research/reviews"
         primaryLabel="Back to reviews"
         title="Review not found"
       />
@@ -358,7 +358,10 @@ export function ResearchReviewDetailWorkspace({
       <WorkspacePageHeader
         actions={
           <>
-            <Link className="button secondary" href="/research/reviews">
+            <Link
+              className="button secondary"
+              href="/admin/intelligence/research/reviews"
+            >
               All reviews
             </Link>
             <button

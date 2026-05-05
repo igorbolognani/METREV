@@ -200,6 +200,10 @@ function baseTrace(
         text_span: truncate(input.paper.abstract_text, 520),
         source_locator: 'abstract',
         page_number: null,
+        section_label: null,
+        table_label: null,
+        cell_locator: null,
+        caption: null,
       },
     ];
   }
@@ -211,6 +215,10 @@ function baseTrace(
       text_span: input.paper.title,
       source_locator: 'title',
       page_number: null,
+      section_label: null,
+      table_label: null,
+      cell_locator: null,
+      caption: null,
     },
   ];
 }
@@ -223,6 +231,22 @@ function claimTrace(claim: EvidenceClaim): ResearchEvidenceTrace {
     text_span: claim.source_snippet || claim.content,
     source_locator: claim.source_locator,
     page_number: claim.page_number,
+    section_label:
+      typeof claim.metadata?.section_label === 'string'
+        ? claim.metadata.section_label
+        : null,
+    table_label:
+      typeof claim.metadata?.table_label === 'string'
+        ? claim.metadata.table_label
+        : null,
+    cell_locator:
+      typeof claim.metadata?.cell_locator === 'string'
+        ? claim.metadata.cell_locator
+        : null,
+    caption:
+      typeof claim.metadata?.caption === 'string'
+        ? claim.metadata.caption
+        : null,
   };
 }
 

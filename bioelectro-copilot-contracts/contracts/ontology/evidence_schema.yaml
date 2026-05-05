@@ -221,6 +221,30 @@ evidence_registry:
       - note
       - runtime_versions
 
+  evidence_decision_context:
+    required_fields:
+      - id
+      - evaluation_id
+      - case_id
+      - context_version
+      - builder_version
+      - query
+      - benchmark_ranges
+      - matched_evidence
+      - material_comparisons
+      - operating_window_signals
+      - failure_mode_signals
+      - cost_signals
+      - supplier_signals
+      - uncertainty_summary
+      - source_refs
+      - excluded_evidence_summary
+      - created_at
+    optional_fields:
+      - regulatory_social_signals
+      - provenance_note
+      - payload
+
   workspace_snapshot:
     required_fields:
       - id
@@ -329,8 +353,18 @@ enums:
       - openalex
       - crossref
       - europe_pmc
+      - paper
+      - review
+      - patent
+      - datasheet
+      - manual_sop
+      - technical_report
+      - supplier_document
       - supplier_profile
+      - case_study
+      - market_report
       - market_snapshot
+      - regulatory_report
       - curated_manifest
       - manual
 
@@ -398,3 +432,6 @@ rules:
   - Evaluation lineage must preserve which source documents and claims were used, not only the flattened typed evidence snapshot.
   - Workspace and export snapshots must keep immutable payloads for replay and audit instead of silently rebuilding historical state from mutable live records.
   - External evidence list, detail, and bulk-review API payloads remain part of the validation-facing contract boundary when they carry review posture or provenance semantics.
+  - EvidenceDecisionContext is the validation-facing boundary between canonical evidence retrieval and deterministic decision scoring.
+  - Only accepted, normalized, decision-ready evidence with traceable source locator or span may affect benchmark-backed scoring.
+  - Supplier claims without independent corroboration may appear as supplier signals but must not increase validated evidence confidence.

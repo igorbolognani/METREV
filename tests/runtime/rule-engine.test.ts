@@ -3,10 +3,10 @@ import fixture from '../fixtures/raw-case-input.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-  decisionOutputSchema,
-  evidenceDecisionContextSchema,
-  normalizeCaseInput,
-  rawCaseInputSchema,
+    decisionOutputSchema,
+    evidenceDecisionContextSchema,
+    normalizeCaseInput,
+    rawCaseInputSchema,
 } from '@metrev/domain-contracts';
 import { runCaseEvaluation } from '@metrev/rule-engine';
 
@@ -177,6 +177,7 @@ describe('rule engine', () => {
       failure_mode_signals: [],
       cost_signals: [],
       supplier_signals: [],
+      regulatory_social_signals: [],
       uncertainty_summary: {
         confidence_level: 'low',
         summary:
@@ -186,6 +187,7 @@ describe('rule engine', () => {
           'Pending, rejected, supplier-only, or non-decision-ready evidence was excluded from this decision context.',
         ],
       },
+      excluded_evidence_summary: [],
       provenance_note:
         'EvidenceDecisionContext was built from decision-ready benchmark aggregates and accepted catalog evidence only.',
       source_refs: [],
@@ -206,5 +208,164 @@ describe('rule engine', () => {
     ).toContain(
       'Expand decision-ready benchmark coverage for comparable materials, components, and operating windows before committing to a benchmark-backed redesign.',
     );
+  });
+
+  it('uses admissible benchmark context to add a material recommendation and score it', () => {
+    const normalized = normalizeCaseInput(rawCaseInputSchema.parse(fixture));
+    const evidenceContext = evidenceDecisionContextSchema.parse({
+      case_id: normalized.case_id,
+      technology_family: normalized.technology_family,
+      system_type: 'MFC',
+      primary_objective: normalized.primary_objective,
+      query: {
+        system_type: 'MFC',
+        application: normalized.primary_objective,
+        component_types: ['anode'],
+        materials: ['carbon_felt', 'carbon_cloth'],
+        metric_types: ['power_density'],
+        limit: 12,
+        decision_ready_only: true,
+      },
+      benchmark_ranges: [
+        {
+          canonical_key: 'power_density_w_m2',
+          metric_type: 'power_density',
+          normalized_unit: 'W/m2',
+          system_type: 'MFC',
+          application: normalized.primary_objective,
+          component_type: 'anode',
+          material: 'carbon_felt',
+          evidence_quality: 'high',
+          record_count: 4,
+          median_value: 1,
+        },
+        {
+          canonical_key: 'power_density_w_m2',
+          metric_type: 'power_density',
+          normalized_unit: 'W/m2',
+          system_type: 'MFC',
+          application: normalized.primary_objective,
+          component_type: 'anode',
+          material: 'carbon_cloth',
+          evidence_quality: 'high',
+          record_count: 3,
+          median_value: 1.25,
+        },
+      ],
+      matched_evidence: [
+        {
+          catalog_item_id: 'benchmark-carbon-cloth-001',
+          source_record_id: 'source-benchmark-carbon-cloth-001',
+          title: 'Carbon cloth anode benchmark',
+          canonical_key: 'power_density_w_m2',
+          metric_type: 'power_density',
+          normalized_value: 1.25,
+          normalized_unit: 'W/m2',
+          material: 'carbon_cloth',
+          component_type: 'anode',
+          confidence: 0.82,
+        },
+      ],
+      material_comparisons: [],
+      operating_window_signals: [],
+      failure_mode_signals: [],
+      cost_signals: [],
+      supplier_signals: [],
+      regulatory_social_signals: [],
+      uncertainty_summary: {
+        confidence_level: 'medium',
+        summary: 'Benchmark context has admissible comparable records.',
+        missing_dependencies: [],
+        excluded_evidence_reasons: [],
+      },
+      excluded_evidence_summary: [],
+      provenance_note: 'Fixture benchmark context.',
+      source_refs: ['catalog:benchmark-carbon-cloth-001'],
+      builder_version: 'evidence_decision_context_builder.v1',
+    });
+
+    const decisionOutput = runCaseEvaluation(normalized, { evidenceContext });
+    const evidenceRecommendation =
+      decisionOutput.prioritized_improvement_options.find((recommendation) =>
+        recommendation.recommendation_id.includes('carbon_cloth'),
+      );
+
+    expect(evidenceRecommendation).toEqual(
+      expect.objectContaining({
+        linked_diagnosis: 'Benchmark-backed material optimization',
+        evidence_refs: ['catalog:benchmark-carbon-cloth-001'],
+        priority_score: expect.any(Number),
+        rule_refs: [
+          'evidence_decision_context.material_alternative_recommendation',
+        ],
+      }),
+    );
+    expect(evidenceRecommendation?.expected_benefit).toContain('25%');
+  });
+
+  it('does not let weak benchmark context influence material recommendations', () => {
+    const normalized = normalizeCaseInput(rawCaseInputSchema.parse(fixture));
+    const evidenceContext = evidenceDecisionContextSchema.parse({
+      case_id: normalized.case_id,
+      technology_family: normalized.technology_family,
+      system_type: 'MFC',
+      primary_objective: normalized.primary_objective,
+      query: {
+        system_type: 'MFC',
+        application: normalized.primary_objective,
+        component_types: ['anode'],
+        materials: ['carbon_felt', 'carbon_cloth'],
+        metric_types: ['power_density'],
+        limit: 12,
+        decision_ready_only: true,
+      },
+      benchmark_ranges: [
+        {
+          canonical_key: 'power_density_w_m2',
+          metric_type: 'power_density',
+          normalized_unit: 'W/m2',
+          component_type: 'anode',
+          material: 'carbon_felt',
+          evidence_quality: 'high',
+          record_count: 4,
+          median_value: 1,
+        },
+        {
+          canonical_key: 'power_density_w_m2',
+          metric_type: 'power_density',
+          normalized_unit: 'W/m2',
+          component_type: 'anode',
+          material: 'carbon_cloth',
+          evidence_quality: 'low',
+          record_count: 2,
+          median_value: 1.5,
+        },
+      ],
+      matched_evidence: [],
+      material_comparisons: [],
+      operating_window_signals: [],
+      failure_mode_signals: [],
+      cost_signals: [],
+      supplier_signals: [],
+      regulatory_social_signals: [],
+      uncertainty_summary: {
+        confidence_level: 'low',
+        summary: 'Benchmark context is sparse and weak.',
+        missing_dependencies: ['replicated accepted records'],
+        excluded_evidence_reasons: ['low evidence quality'],
+      },
+      excluded_evidence_summary: [],
+      provenance_note: 'Fixture weak benchmark context.',
+      source_refs: [],
+      builder_version: 'evidence_decision_context_builder.v1',
+    });
+
+    const decisionOutput = runCaseEvaluation(normalized, { evidenceContext });
+
+    expect(
+      decisionOutput.prioritized_improvement_options.some((recommendation) =>
+        recommendation.recommendation_id.includes('carbon_cloth'),
+      ),
+    ).toBe(false);
   });
 });

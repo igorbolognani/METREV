@@ -30,3 +30,24 @@ evidence_scoring:
       metadata_completeness: 0.15
       extraction_trace_quality: 0.10
       review_posture: 0.05
+  decision_context_rules:
+    material_alternative_recommendation:
+      required_conditions:
+        - comparable_system_type
+        - comparable_component_type
+        - alternative_material_median_at_least_15_percent_above_current_material_or_baseline
+        - record_count_greater_or_equal_3
+        - evidence_quality_not_low
+        - decision_ready_true
+      effect:
+        - add_or_raise_recommendation_priority
+        - cite_benchmark_ranges_in_provenance
+        - keep_missing_validation_actions_explicit
+    weak_or_conflicting_evidence:
+      required_conditions:
+        - low_record_count_or_low_confidence_coverage_or_conflict_flags
+      effect:
+        - lower_confidence
+        - add_next_test_or_measurement_action
+    supplier_claim_handling:
+      rule: supplier_claims_without_independent_corroboration_do_not_increase_confidence

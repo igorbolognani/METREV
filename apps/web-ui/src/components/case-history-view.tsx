@@ -100,15 +100,6 @@ function renderChipList(values: string[], emptyMessage: string) {
   return <DenseChipList emptyMessage={emptyMessage} values={values} />;
 }
 
-function catalogEvidenceDetailHref(evidenceId: string) {
-  if (!evidenceId.startsWith('catalog:')) {
-    return null;
-  }
-
-  const catalogItemId = evidenceId.slice('catalog:'.length).trim();
-  return catalogItemId ? `/evidence/review/${catalogItemId}` : null;
-}
-
 export function CaseHistoryView({ caseId }: { caseId: string }) {
   const [activeTab, setActiveTab] = useCaseHistoryTab();
   const query = useQuery({
@@ -411,21 +402,9 @@ export function CaseHistoryWorkspaceView({
                           />
                         </TableCell>
                         <TableCell>
-                          {catalogEvidenceDetailHref(record.evidence_id) ? (
-                            <Link
-                              className="ghost-button"
-                              href={
-                                catalogEvidenceDetailHref(record.evidence_id) ??
-                                '#'
-                              }
-                            >
-                              Open catalog detail
-                            </Link>
-                          ) : (
-                            <span className="muted">
-                              No catalog detail link available
-                            </span>
-                          )}
+                          <span className="muted">
+                            Traceable through audit record {record.evidence_id}
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}

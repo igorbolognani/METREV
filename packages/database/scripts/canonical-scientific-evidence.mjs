@@ -63,7 +63,10 @@ const SYSTEM_TYPE_RULES = [
   },
   {
     canonical: 'MET',
-    patterns: [/\bmicrobial electrochemical technolog(?:y|ies)\b/i, /\bMETs?\b/],
+    patterns: [
+      /\bmicrobial electrochemical technolog(?:y|ies)\b/i,
+      /\bMETs?\b/,
+    ],
   },
   {
     canonical: 'MDC',
@@ -123,7 +126,10 @@ const INOCULUM_RULES = [
   ['anaerobic_sludge', /\banaerobic sludge\b/i],
   ['activated_sludge', /\bactivated sludge\b/i],
   ['mixed_culture', /\bmixed culture\b/i],
-  ['electroactive_biofilm', /\belectroactive biofilm\b|\belectrogenic biofilm\b/i],
+  [
+    'electroactive_biofilm',
+    /\belectroactive biofilm\b|\belectrogenic biofilm\b/i,
+  ],
   ['geobacter', /\bGeobacter\b/i],
   ['shewanella', /\bShewanella\b/i],
 ];
@@ -145,7 +151,8 @@ const METRIC_RULES = [
     factType: 'performance_metric',
     metricType: 'power_density',
     label: 'power\\s+density|maximum\\s+power|power\\s+output',
-    units: 'mW\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)|W\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)',
+    units:
+      'mW\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)|W\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)',
   },
   {
     canonicalKey: 'current_density_a_m2',
@@ -153,7 +160,8 @@ const METRIC_RULES = [
     factType: 'performance_metric',
     metricType: 'current_density',
     label: 'current\\s+density|current\\s+output',
-    units: 'mA\\s*(?:\\/|per)\\s*cm(?:2|\\^2|\\u00b2)|A\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)',
+    units:
+      'mA\\s*(?:\\/|per)\\s*cm(?:2|\\^2|\\u00b2)|A\\s*(?:\\/|per)\\s*m(?:2|\\^2|\\u00b2)',
   },
   {
     canonicalKey: 'coulombic_efficiency_pct',
@@ -188,7 +196,8 @@ const METRIC_RULES = [
     metricType: 'conductivity',
     operatingConditionKey: 'conductivity_ms_cm',
     label: 'conductivity',
-    units: 'mS\\s*(?:\\/|per)\\s*cm|uS\\s*(?:\\/|per)\\s*cm|\\u00b5S\\s*(?:\\/|per)\\s*cm',
+    units:
+      'mS\\s*(?:\\/|per)\\s*cm|uS\\s*(?:\\/|per)\\s*cm|\\u00b5S\\s*(?:\\/|per)\\s*cm',
   },
   {
     canonicalKey: 'temperature_c',
@@ -214,7 +223,8 @@ const METRIC_RULES = [
     fieldKey: 'contaminant_removal_efficiency',
     factType: 'performance_metric',
     metricType: 'removal_efficiency',
-    label: 'removal\\s+efficien(?:cy|cies)|COD\\s+removal|contaminant\\s+removal',
+    label:
+      'removal\\s+efficien(?:cy|cies)|COD\\s+removal|contaminant\\s+removal',
     units: '%|percent|pct',
   },
   {
@@ -262,7 +272,9 @@ const METRIC_RULES = [
 ];
 
 function normalizeWhitespace(value) {
-  return String(value ?? '').replace(/\s+/g, ' ').trim();
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function normalizeKey(value) {
@@ -279,7 +291,9 @@ function parseNumber(value) {
 }
 
 function hashText(value) {
-  return createHash('sha256').update(String(value ?? '')).digest('hex');
+  return createHash('sha256')
+    .update(String(value ?? ''))
+    .digest('hex');
 }
 
 function shortSnippet(text, index = 0, length = 220) {
@@ -328,6 +342,72 @@ function dedupeSegments(segments) {
   return deduped;
 }
 
+function firstString(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function firstNumber(...values) {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function locatorDetailsForSegment(segment, snippetText) {
+  const metadata =
+    segment.metadata && typeof segment.metadata === 'object'
+      ? segment.metadata
+      : {};
+
+  return {
+    source_locator: firstString(
+      segment.locator,
+      metadata.source_locator,
+      metadata.sourceLocator,
+    ),
+    page_number: firstNumber(
+      segment.pageNumber,
+      metadata.page_number,
+      metadata.pageNumber,
+    ),
+    section_label: firstString(
+      segment.sectionLabel,
+      metadata.section_label,
+      metadata.sectionLabel,
+    ),
+    table_label: firstString(
+      segment.tableLabel,
+      metadata.table_label,
+      metadata.tableLabel,
+    ),
+    cell_locator: firstString(
+      segment.cellLocator,
+      metadata.cell_locator,
+      metadata.cellLocator,
+    ),
+    caption: firstString(segment.caption, metadata.caption),
+    text_span: snippetText,
+  };
+}
+
+function hasTraceableSourceSpan(segment, snippetText) {
+  const locatorDetails = locatorDetailsForSegment(segment, snippetText);
+  return Boolean(
+    segment.sourceTextHash &&
+    snippetText.length >= 8 &&
+    locatorDetails.source_locator,
+  );
+}
+
 function collectSegments(record, options = {}) {
   const sourceRecord = record.sourceRecord ?? {};
   const segments = [
@@ -353,6 +433,8 @@ function collectSegments(record, options = {}) {
       text: [claim.content, claim.sourceSnippet].filter(Boolean).join('. '),
       locator: claim.sourceLocator ?? 'claim',
       claimId: claim.id,
+      metadata: claim.metadata ?? {},
+      pageNumber: claim.pageNumber ?? null,
       confidence: Math.max(0.45, Math.min(0.88, claim.confidence ?? 0.7)),
     });
   }
@@ -363,6 +445,8 @@ function collectSegments(record, options = {}) {
         source: 'full_text_chunk',
         text: chunk.text,
         locator: chunk.sourceLocator ?? `chunk:${chunk.chunkIndex}`,
+        metadata: chunk.metadata ?? {},
+        pageNumber: chunk.pageNumber ?? null,
         confidence: 0.8,
       });
     }
@@ -408,7 +492,10 @@ function inferComponent(sentence) {
 function inferNearestComponent(text, materialIndex) {
   const componentRules = [
     ['current_collector', /\bcurrent collector\b|\binterconnect\b|\bmesh\b/gi],
-    ['membrane_separator', /\bmembrane\b|\bseparator\b|\bCEM\b|\bAEM\b|\bNafion\b/gi],
+    [
+      'membrane_separator',
+      /\bmembrane\b|\bseparator\b|\bCEM\b|\bAEM\b|\bNafion\b/gi,
+    ],
     ['catalyst', /\bcatalyst\b|\bPt\/C\b|\bplatinum\b|\bMnO2\b/gi],
     ['cathode', /\bcathode\b/gi],
     ['anode', /\banode\b/gi],
@@ -490,7 +577,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue / 1000,
           normalizedUnit: 'W/m2',
-          normalizationRuleId: 'research_metric.power_density_w_m2.mw_m2_to_w_m2',
+          normalizationRuleId:
+            'research_metric.power_density_w_m2.mw_m2_to_w_m2',
           qualityFlags: [],
         };
       }
@@ -508,7 +596,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue * 10,
           normalizedUnit: 'A/m2',
-          normalizationRuleId: 'research_metric.current_density_a_m2.ma_cm2_to_a_m2',
+          normalizationRuleId:
+            'research_metric.current_density_a_m2.ma_cm2_to_a_m2',
           qualityFlags: [],
         };
       }
@@ -570,7 +659,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue / 1000,
           normalizedUnit: 'mS/cm',
-          normalizationRuleId: 'research_metric.conductivity_ms_cm.us_cm_to_ms_cm',
+          normalizationRuleId:
+            'research_metric.conductivity_ms_cm.us_cm_to_ms_cm',
           qualityFlags: [],
         };
       }
@@ -617,7 +707,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue,
           normalizedUnit: 'mL/L/d',
-          normalizationRuleId: 'research_metric.hydrogen_production_ml_l_d.identity',
+          normalizationRuleId:
+            'research_metric.hydrogen_production_ml_l_d.identity',
           qualityFlags: [],
         };
       }
@@ -625,7 +716,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue * 1000,
           normalizedUnit: 'mL/L/d',
-          normalizationRuleId: 'research_metric.hydrogen_production_ml_l_d.l_l_d_to_ml_l_d',
+          normalizationRuleId:
+            'research_metric.hydrogen_production_ml_l_d.l_l_d_to_ml_l_d',
           qualityFlags: [],
         };
       }
@@ -652,7 +744,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         normalizedValue: Math.round(numericValue),
         normalizedUnit: 'TRL',
         normalizationRuleId: 'research_metric.trl.identity',
-        qualityFlags: numericValue < 1 || numericValue > 9 ? ['trl_out_of_range'] : [],
+        qualityFlags:
+          numericValue < 1 || numericValue > 9 ? ['trl_out_of_range'] : [],
       };
     case 'cost_indicator_usd':
       return {
@@ -666,7 +759,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue,
           normalizedUnit: '%',
-          normalizationRuleId: 'research_metric.methane_biogas_relationship.percent_identity',
+          normalizationRuleId:
+            'research_metric.methane_biogas_relationship.percent_identity',
           qualityFlags: [],
         };
       }
@@ -674,7 +768,8 @@ export function normalizeScientificMeasurement({ canonicalKey, value, unit }) {
         return {
           normalizedValue: numericValue,
           normalizedUnit: 'mL/L/d',
-          normalizationRuleId: 'research_metric.methane_biogas_relationship.ml_l_d_identity',
+          normalizationRuleId:
+            'research_metric.methane_biogas_relationship.ml_l_d_identity',
           qualityFlags: [],
         };
       }
@@ -719,9 +814,19 @@ function createBaseFact({
 }) {
   const boundedConfidence = Math.max(0, Math.min(0.98, confidence));
   const flags = [...new Set(qualityFlags.filter(Boolean))];
+  const snippetText = normalizeWhitespace(snippet ?? segment.text).slice(
+    0,
+    500,
+  );
+  const locatorDetails = locatorDetailsForSegment(segment, snippetText);
+  const traceableSourceSpan = hasTraceableSourceSpan(segment, snippetText);
 
   if (boundedConfidence < 0.55) {
     flags.push('low_confidence');
+  }
+
+  if (!traceableSourceSpan) {
+    flags.push('untraceable_source_span');
   }
 
   return {
@@ -737,7 +842,8 @@ function createBaseFact({
     decisionReady:
       boundedConfidence >= 0.55 &&
       !flags.includes('unsupported_unit') &&
-      !flags.includes('normalization_conflict'),
+      !flags.includes('normalization_conflict') &&
+      traceableSourceSpan,
     extractionSource: segment.source,
     missingFields,
     qualityFlags: flags,
@@ -763,7 +869,8 @@ function createBaseFact({
       extractor_version: CANONICAL_EXTRACTOR_VERSION,
       extraction_source: segment.source,
       locator: locator ?? segment.locator,
-      snippet: normalizeWhitespace(snippet ?? segment.text).slice(0, 500),
+      locator_details: locatorDetails,
+      snippet: snippetText,
       no_fabrication: true,
     },
   };
@@ -786,7 +893,7 @@ function findMetricMatches(text, rule) {
   for (const pattern of [after, before].filter(Boolean)) {
     for (const match of text.matchAll(pattern)) {
       const value = match[1];
-      const unit = rule.unitless ? '' : match[2] ?? '';
+      const unit = rule.unitless ? '' : (match[2] ?? '');
       if (value) {
         matches.push({
           value,
@@ -835,7 +942,10 @@ function extractMetricFacts(record, segments, context) {
         const confidence = Math.min(0.95, segment.confidence + confidenceBoost);
         const qualityFlags = [...normalized.qualityFlags];
 
-        if (rule.canonicalKey === 'ph' && (normalizedValue < 0 || normalizedValue > 14)) {
+        if (
+          rule.canonicalKey === 'ph' &&
+          (normalizedValue < 0 || normalizedValue > 14)
+        ) {
           qualityFlags.push('ph_out_of_range');
         }
 
@@ -904,7 +1014,14 @@ function extractSystemTypeFacts(record, segments, context) {
   return facts;
 }
 
-function extractSimpleVocabularyFacts(record, segments, context, rules, fieldKey, canonicalPrefix) {
+function extractSimpleVocabularyFacts(
+  record,
+  segments,
+  context,
+  rules,
+  fieldKey,
+  canonicalPrefix,
+) {
   const facts = [];
   const seen = new Set();
 
@@ -948,13 +1065,21 @@ function extractMaterialFacts(record, segments, context) {
 
   for (const segment of segments) {
     for (const [canonical, pattern] of MATERIAL_RULES) {
-      for (const match of segment.text.matchAll(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`))) {
+      for (const match of segment.text.matchAll(
+        new RegExp(
+          pattern.source,
+          pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`,
+        ),
+      )) {
         const index = match.index ?? 0;
         const sentence = sentenceForMatch(segment.text, index);
         const componentType = inferComponentForMaterial(
           canonical,
           sentence,
-          Math.max(0, index - Math.max(0, segment.text.lastIndexOf('.', index))),
+          Math.max(
+            0,
+            index - Math.max(0, segment.text.lastIndexOf('.', index)),
+          ),
         );
         const fieldKey =
           componentType === 'material_unspecified'
@@ -1093,11 +1218,11 @@ function hasFullTextPotential(record) {
   const sourceRecord = record.sourceRecord ?? {};
   return Boolean(
     sourceRecord.pdfUrl ||
-      sourceRecord.xmlUrl ||
-      sourceRecord.sourceUrl ||
-      (sourceRecord.rawPayload &&
-        typeof sourceRecord.rawPayload === 'object' &&
-        Object.keys(sourceRecord.rawPayload).length > 0),
+    sourceRecord.xmlUrl ||
+    sourceRecord.sourceUrl ||
+    (sourceRecord.rawPayload &&
+      typeof sourceRecord.rawPayload === 'object' &&
+      Object.keys(sourceRecord.rawPayload).length > 0),
   );
 }
 
@@ -1180,7 +1305,9 @@ export function canonicalizeScientificEvidenceRecord(record, options = {}) {
         ...new Set(facts.flatMap((fact) => fact.qualityFlags ?? [])),
       ],
       extractorVersion: CANONICAL_EXTRACTOR_VERSION,
-      sourceTextHashes: [...new Set(segments.map((segment) => segment.sourceTextHash))],
+      sourceTextHashes: [
+        ...new Set(segments.map((segment) => segment.sourceTextHash)),
+      ],
       usedSegments: segments.length,
     };
   } catch (error) {

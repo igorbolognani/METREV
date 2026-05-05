@@ -4,42 +4,42 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '../generated/prisma/client';
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 import {
-  buildEvidenceVeracityScore,
-  buildMetadataQualityProfile,
-  chunkTextPages,
-  mapAccessStatusToDatabase,
+    buildEvidenceVeracityScore,
+    buildMetadataQualityProfile,
+    chunkTextPages,
+    mapAccessStatusToDatabase,
 } from '../src/source-artifacts';
 
 import {
-  researchPaperMetadataSchema,
-  type ExternalEvidenceAccessStatus,
-  type ResearchPaperMetadata,
+    researchPaperMetadataSchema,
+    type ExternalEvidenceAccessStatus,
+    type ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import type {
-  CanonicalEvidenceMeasurementCandidate,
-  CanonicalEvidenceQualitativeCandidate,
+    CanonicalEvidenceMeasurementCandidate,
+    CanonicalEvidenceQualitativeCandidate,
 } from '@metrev/llm-adapter';
 import {
-  generateCanonicalEvidenceMeasurementCandidates,
-  generateCanonicalEvidenceQualitativeCandidates,
+    generateCanonicalEvidenceMeasurementCandidates,
+    generateCanonicalEvidenceQualitativeCandidates,
 } from '@metrev/llm-adapter';
 import {
-  hydrateResearchPaperText,
-  type HydratedResearchPaperText,
+    hydrateResearchPaperText,
+    type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 
 import {
-  CANONICAL_FACT_LAYER,
-  CANONICALIZATION_STATUSES,
-  canonicalizeMaterial,
-  canonicalizeScientificEvidenceRecord,
-  normalizeScientificMeasurement,
+    CANONICAL_FACT_LAYER,
+    CANONICALIZATION_STATUSES,
+    canonicalizeMaterial,
+    canonicalizeScientificEvidenceRecord,
+    normalizeScientificMeasurement,
 } from './canonical-scientific-evidence.mjs';
 import {
-  optionFlag,
-  optionNumber,
-  optionValue,
-  parseScriptOptions,
+    optionFlag,
+    optionNumber,
+    optionValue,
+    parseScriptOptions,
 } from './external-ingestion-shared.mjs';
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 
@@ -396,24 +396,41 @@ function buildResearchPaperMetadataForCanonicalization(
 }
 
 function buildHydratedSourceChunks(hydrated: HydratedResearchPaperText) {
-  return chunkTextPages([hydrated.text]).map((chunk) => ({
-    charEnd: chunk.charEnd,
-    charStart: chunk.charStart,
-    chunkIndex: chunk.chunkIndex,
-    metadata: toPrismaJsonObject({
-      content_type: hydrated.contentType,
-      extraction_method: HYDRATED_FULL_TEXT_EXTRACTOR_VERSION,
-      fetched_from: hydrated.fetchedFrom,
-      source: hydrated.source,
-      trace: hydrated.trace,
-    }),
-    pageNumber: hydrated.source === 'pdf' ? chunk.pageNumber : null,
-    sourceLocator:
+  const trace = hydrated.trace[0] ?? null;
+
+  return chunkTextPages([hydrated.text]).map((chunk) => {
+    const pageNumber =
+      hydrated.source === 'pdf'
+        ? (trace?.page_number ?? chunk.pageNumber)
+        : (trace?.page_number ?? null);
+    const sourceLocator =
       hydrated.source === 'pdf'
         ? `${hydrated.source}:${chunk.sourceLocator}`
-        : `${hydrated.source}:${hydrated.fetchedFrom}:chunk:${chunk.chunkIndex}`,
-    text: chunk.text,
-  }));
+        : `${hydrated.source}:${hydrated.fetchedFrom}:chunk:${chunk.chunkIndex}`;
+
+    return {
+      charEnd: chunk.charEnd,
+      charStart: chunk.charStart,
+      chunkIndex: chunk.chunkIndex,
+      metadata: toPrismaJsonObject({
+        caption: trace?.caption ?? chunk.caption,
+        cell_locator: trace?.cell_locator ?? chunk.cellLocator,
+        content_type: hydrated.contentType,
+        extraction_method: HYDRATED_FULL_TEXT_EXTRACTOR_VERSION,
+        fetched_from: hydrated.fetchedFrom,
+        page_number: pageNumber,
+        section_label: trace?.section_label ?? chunk.sectionLabel,
+        source: hydrated.source,
+        source_locator: trace?.source_locator ?? sourceLocator,
+        table_label: trace?.table_label ?? chunk.tableLabel,
+        text_span: chunk.text,
+        trace: hydrated.trace,
+      }),
+      pageNumber,
+      sourceLocator,
+      text: chunk.text,
+    };
+  });
 }
 
 function buildHydratedSourcePersistence(input: {
@@ -499,6 +516,44 @@ function hashSegmentText(value: string) {
   return createHash('sha256').update(normalizeSegmentText(value)).digest('hex');
 }
 
+function optionalLocatorText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function optionalLocatorNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function candidateLocatorDetails(input: {
+  pageNumber?: number | null;
+  sectionLabel?: string | null;
+  sourceLocator?: string | null;
+  tableLabel?: string | null;
+  cellLocator?: string | null;
+  caption?: string | null;
+  textSpan: string;
+}) {
+  return {
+    source_locator: optionalLocatorText(input.sourceLocator),
+    page_number: optionalLocatorNumber(input.pageNumber),
+    section_label: optionalLocatorText(input.sectionLabel),
+    table_label: optionalLocatorText(input.tableLabel),
+    cell_locator: optionalLocatorText(input.cellLocator),
+    caption: optionalLocatorText(input.caption),
+    text_span: input.textSpan,
+  };
+}
+
+function hasTraceableCandidateLocator(input: {
+  sourceLocator?: string | null;
+  textSpan: string;
+}) {
+  return Boolean(
+    optionalLocatorText(input.sourceLocator) &&
+    input.textSpan.trim().length >= 8,
+  );
+}
+
 function currentSystemTypeFromFacts(facts: any[]) {
   const systemFact = facts.find(
     (fact) => fact.fieldKey === 'system_type' && fact.normalizedText,
@@ -575,6 +630,19 @@ function buildSchemaValidatedMeasurementFacts(input: {
       Math.min(0.82, candidate.confidence || 0.62),
     );
     const sourceTextHash = hashSegmentText(normalizedSpan);
+    const locatorDetails = candidateLocatorDetails({
+      pageNumber: candidate.pageNumber,
+      sectionLabel: candidate.sectionLabel,
+      sourceLocator: candidate.sourceLocator,
+      tableLabel: candidate.tableLabel,
+      cellLocator: candidate.cellLocator,
+      caption: candidate.caption,
+      textSpan: normalizedSpan,
+    });
+    const traceableLocator = hasTraceableCandidateLocator({
+      sourceLocator: candidate.sourceLocator,
+      textSpan: normalizedSpan,
+    });
     llmHashes.push(sourceTextHash);
     llmFacts.push({
       id: randomUUID(),
@@ -587,10 +655,13 @@ function buildSchemaValidatedMeasurementFacts(input: {
       fieldKey: candidate.fieldKey,
       canonicalKey: candidate.canonicalKey,
       normalizationRuleId: normalized.normalizationRuleId,
-      decisionReady: true,
+      decisionReady: traceableLocator,
       extractionSource: 'llm_schema_validated_measurement',
       missingFields: [],
-      qualityFlags: ['llm_schema_validated_measurement'],
+      qualityFlags: [
+        'llm_schema_validated_measurement',
+        ...(traceableLocator ? [] : ['untraceable_source_span']),
+      ],
       sourceTextHash,
       originalValue: candidate.rawValue,
       originalUnit: candidate.rawUnit,
@@ -613,6 +684,7 @@ function buildSchemaValidatedMeasurementFacts(input: {
         extractor_version: LLM_SCHEMA_VALIDATED_EXTRACTOR_VERSION,
         extraction_source: 'llm_schema_validated_measurement',
         locator: candidate.sourceLocator,
+        locator_details: locatorDetails,
         snippet: normalizedSpan.slice(0, 500),
         no_fabrication: true,
         llm_schema_validated: true,
@@ -685,6 +757,19 @@ function buildSchemaValidatedQualitativeFacts(input: {
     }
 
     const sourceTextHash = hashSegmentText(normalizedSpan);
+    const locatorDetails = candidateLocatorDetails({
+      pageNumber: candidate.pageNumber,
+      sectionLabel: candidate.sectionLabel,
+      sourceLocator: candidate.sourceLocator,
+      tableLabel: candidate.tableLabel,
+      cellLocator: candidate.cellLocator,
+      caption: candidate.caption,
+      textSpan: normalizedSpan,
+    });
+    const traceableLocator = hasTraceableCandidateLocator({
+      sourceLocator: candidate.sourceLocator,
+      textSpan: normalizedSpan,
+    });
     const boundedConfidence = Math.max(
       0.55,
       Math.min(0.82, candidate.confidence || 0.62),
@@ -696,10 +781,13 @@ function buildSchemaValidatedQualitativeFacts(input: {
       catalogItemId: input.record.id,
       claimId: null,
       factLayer: CANONICAL_FACT_LAYER,
-      decisionReady: true,
+      decisionReady: traceableLocator,
       extractionSource: 'llm_schema_validated_qualitative',
       missingFields: [],
-      qualityFlags: ['llm_schema_validated_qualitative'],
+      qualityFlags: [
+        'llm_schema_validated_qualitative',
+        ...(traceableLocator ? [] : ['untraceable_source_span']),
+      ],
       sourceTextHash,
       originalValue: normalizedSpan,
       originalUnit: null,
@@ -722,6 +810,7 @@ function buildSchemaValidatedQualitativeFacts(input: {
         extraction_source: 'llm_schema_validated_qualitative',
         candidate_category: candidate.category,
         locator: candidate.sourceLocator,
+        locator_details: locatorDetails,
         snippet: normalizedSpan.slice(0, 500),
         no_fabrication: true,
         llm_schema_validated: true,

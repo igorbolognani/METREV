@@ -378,11 +378,11 @@ export function EvaluationRecommendationsTable({
                               {(recommendation.evidence_refs ?? []).length >
                               0 ? (
                                 (recommendation.evidence_refs ?? []).map(
-                                  (reference) =>
-                                    referenceLink(
-                                      `/evidence/review?q=${encodeURIComponent(reference)}`,
-                                      reference,
-                                    ),
+                                  (reference) => (
+                                    <span className="meta-chip" key={reference}>
+                                      {reference}
+                                    </span>
+                                  ),
                                 )
                               ) : (
                                 <span className="muted">No evidence refs.</span>

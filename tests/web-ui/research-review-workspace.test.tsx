@@ -423,7 +423,9 @@ describe('research review workspace UI', () => {
     expect(createHtml).toContain('Import selected papers');
     expect(createHtml).toContain('Create review from imported papers');
     expect(reviewsHtml).toContain('MFC fixture review');
-    expect(reviewsHtml).toContain('/research/reviews/review-001');
+    expect(reviewsHtml).toContain(
+      '/admin/intelligence/research/reviews/review-001',
+    );
     expect(reviewsHtml).toContain('Open table');
   });
 

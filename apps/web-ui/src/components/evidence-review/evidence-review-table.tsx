@@ -4,18 +4,18 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  ExternalEvidenceCatalogItemSummary,
-  ExternalEvidenceReviewStatus,
+    ExternalEvidenceCatalogItemSummary,
+    ExternalEvidenceReviewStatus,
 } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { formatToken } from '@/lib/formatting';
@@ -68,7 +68,7 @@ export interface EvidenceReviewTableProps {
 
 export function EvidenceReviewTable({
   detailActionLabel = 'Open review detail',
-  detailHrefBase = '/evidence/review',
+  detailHrefBase = '/admin/intelligence/evidence/review',
   emptyDescription,
   emptyTitle,
   highlightIds = [],

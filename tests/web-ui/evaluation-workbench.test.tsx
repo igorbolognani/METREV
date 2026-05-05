@@ -170,7 +170,7 @@ describe('workspace presenters', () => {
       expect(recommendationHtml).toContain('Prerequisite actions');
       expect(recommendationHtml).toContain('Missing data dependencies');
       expect(recommendationHtml).toContain('/evaluations/');
-      expect(recommendationHtml).toContain('/evidence/review?q=');
+      expect(recommendationHtml).not.toContain('/evidence/review?q=');
 
       const modelingHtml = renderToStaticMarkup(
         React.createElement(EvaluationModelingTab, {

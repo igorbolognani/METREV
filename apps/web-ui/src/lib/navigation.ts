@@ -52,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'primary',
   },
   {
-    href: '/evidence/explorer',
+    href: '/admin/intelligence/evidence/explorer',
     icon: 'evidence-explorer',
     id: 'evidence-explorer',
     label: 'Evidence Explorer',
@@ -60,7 +60,7 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'advanced',
   },
   {
-    href: '/evidence/review',
+    href: '/admin/intelligence/evidence/review',
     icon: 'evidence-review',
     id: 'evidence-review',
     label: 'Evidence Review',
@@ -68,7 +68,7 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'advanced',
   },
   {
-    href: '/research/reviews',
+    href: '/admin/intelligence/research/reviews',
     icon: 'research-tables',
     id: 'research-tables',
     label: 'Research Tables',
@@ -154,27 +154,39 @@ export function buildBreadcrumbs(
     return [{ href: '/dashboard', label: 'Dashboard' }];
   }
 
-  if (normalizedPathname === '/evidence/explorer') {
-    return [{ href: '/dashboard', label: 'Dashboard' }];
+  if (normalizedPathname === '/admin/intelligence/evidence/explorer') {
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { label: 'Admin Intelligence' },
+    ];
   }
 
-  if (normalizedPathname === '/evidence/review') {
-    return [{ href: '/dashboard', label: 'Dashboard' }];
+  if (normalizedPathname === '/admin/intelligence/evidence/review') {
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { label: 'Admin Intelligence' },
+    ];
   }
 
-  if (normalizedPathname === '/research/reviews') {
-    return [{ href: '/dashboard', label: 'Dashboard' }];
+  if (normalizedPathname === '/admin/intelligence/research/reviews') {
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { label: 'Admin Intelligence' },
+    ];
   }
 
-  if (normalizedPathname.startsWith('/research/reviews/')) {
+  if (normalizedPathname.startsWith('/admin/intelligence/research/reviews/')) {
     const reviewId =
       readParam(params, 'id', 'reviewId') ??
-      normalizedPathname.split('/')[3] ??
+      normalizedPathname.split('/')[5] ??
       'unknown';
 
     return [
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/research/reviews', label: 'Research Tables' },
+      {
+        href: '/admin/intelligence/research/reviews',
+        label: 'Research Tables',
+      },
       { label: `#${reviewId}` },
     ];
   }
@@ -239,28 +251,34 @@ export function buildBreadcrumbs(
     ];
   }
 
-  if (normalizedPathname.startsWith('/evidence/explorer/')) {
+  if (normalizedPathname.startsWith('/admin/intelligence/evidence/explorer/')) {
     const evidenceId =
       readParam(params, 'id', 'evidenceId') ??
-      normalizedPathname.split('/')[3] ??
+      normalizedPathname.split('/')[5] ??
       'unknown';
 
     return [
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/evidence/explorer', label: 'Evidence Explorer' },
+      {
+        href: '/admin/intelligence/evidence/explorer',
+        label: 'Evidence Explorer',
+      },
       { label: `#${evidenceId}` },
     ];
   }
 
-  if (normalizedPathname.startsWith('/evidence/review/')) {
+  if (normalizedPathname.startsWith('/admin/intelligence/evidence/review/')) {
     const evidenceId =
       readParam(params, 'id', 'evidenceId') ??
-      normalizedPathname.split('/')[3] ??
+      normalizedPathname.split('/')[5] ??
       'unknown';
 
     return [
       { href: '/dashboard', label: 'Dashboard' },
-      { href: '/evidence/review', label: 'Evidence Review' },
+      {
+        href: '/admin/intelligence/evidence/review',
+        label: 'Evidence Review',
+      },
       { label: `#${evidenceId}` },
     ];
   }

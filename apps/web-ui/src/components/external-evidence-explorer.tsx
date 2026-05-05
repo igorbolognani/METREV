@@ -540,7 +540,7 @@ export function EvidenceExplorerView({
             >
               <EvidenceReviewTable
                 detailActionLabel="Open evidence detail"
-                detailHrefBase="/evidence/explorer"
+                detailHrefBase="/admin/intelligence/evidence/explorer"
                 emptyDescription="No spotlight records match the current filter state."
                 emptyTitle="No spotlight items"
                 items={workspace.spotlight}
@@ -554,7 +554,7 @@ export function EvidenceExplorerView({
             >
               <EvidenceReviewTable
                 detailActionLabel="Open evidence detail"
-                detailHrefBase="/evidence/explorer"
+                detailHrefBase="/admin/intelligence/evidence/explorer"
                 emptyDescription="No accepted records are present on the current slice."
                 emptyTitle="No intake-ready items"
                 items={workspace.table_groups.intake_ready}
@@ -570,7 +570,7 @@ export function EvidenceExplorerView({
             >
               <EvidenceReviewTable
                 detailActionLabel="Open evidence detail"
-                detailHrefBase="/evidence/explorer"
+                detailHrefBase="/admin/intelligence/evidence/explorer"
                 emptyDescription="No publication timestamps are available on the current slice."
                 emptyTitle="No recent publication rows"
                 items={workspace.table_groups.recently_published}
@@ -584,7 +584,7 @@ export function EvidenceExplorerView({
             >
               <EvidenceReviewTable
                 detailActionLabel="Open evidence detail"
-                detailHrefBase="/evidence/explorer"
+                detailHrefBase="/admin/intelligence/evidence/explorer"
                 emptyDescription="Adjust the current filter or search string to widen the explorer catalog."
                 emptyTitle="No catalog items"
                 highlightIds={spotlightIds}

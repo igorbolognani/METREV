@@ -170,7 +170,7 @@ describe('external evidence explorer', () => {
         'http://localhost:4000/api/exports/evidence/explorer/csv?status=accepted&amp;q=benchmark&amp;sourceType=crossref&amp;page=1&amp;pageSize=25',
       );
       expect(catalogHtml).toContain(
-        '/evidence/explorer/catalog-item-accepted-001',
+        '/admin/intelligence/evidence/explorer/catalog-item-accepted-001',
       );
     } finally {
       await repository.disconnect();

@@ -1,16 +1,16 @@
 import type {
-  ConfidenceLevel,
-  DecisionOutput,
-  EvidenceExplorerWarehouseSnapshot,
-  ExternalEvidenceCatalogItemSummary,
-  NarrativeMetadata,
-  NormalizedCaseInput,
-  PrintableEvaluationReportResponse,
-  ReportConversationCitation,
-  ReportConversationGrounding,
-  ResearchColumnDefinition,
-  ResearchEvidenceTrace,
-  ResearchPaperMetadata,
+    ConfidenceLevel,
+    DecisionOutput,
+    EvidenceExplorerWarehouseSnapshot,
+    ExternalEvidenceCatalogItemSummary,
+    NarrativeMetadata,
+    NormalizedCaseInput,
+    PrintableEvaluationReportResponse,
+    ReportConversationCitation,
+    ReportConversationGrounding,
+    ResearchColumnDefinition,
+    ResearchEvidenceTrace,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface NarrativeResult {
@@ -82,12 +82,17 @@ export interface StructuredResearchExtractionResult {
 }
 
 export interface CanonicalEvidenceMeasurementCandidate {
+  caption?: string | null;
   canonicalKey: string;
+  cellLocator?: string | null;
   confidence: number;
   fieldKey: string;
+  pageNumber?: number | null;
   rawUnit: string;
   rawValue: string;
+  sectionLabel?: string | null;
   sourceLocator: string;
+  tableLabel?: string | null;
   textSpan: string;
 }
 
@@ -99,12 +104,17 @@ export type CanonicalEvidenceQualitativeCategory =
   | 'scientific_theory';
 
 export interface CanonicalEvidenceQualitativeCandidate {
+  caption?: string | null;
   canonicalValue: string;
   category: CanonicalEvidenceQualitativeCategory;
+  cellLocator?: string | null;
   componentType: string | null;
   confidence: number;
   fieldKey: string;
+  pageNumber?: number | null;
+  sectionLabel?: string | null;
   sourceLocator: string;
+  tableLabel?: string | null;
   textSpan: string;
 }
 

@@ -1,10 +1,9 @@
 'use client';
 
-import { useDeferredValue } from 'react';
-
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import * as React from 'react';
+import { useDeferredValue } from 'react';
 
 import type { Role } from '@metrev/auth';
 import type { ExternalEvidenceCatalogItemSummary } from '@metrev/domain-contracts';
@@ -171,7 +170,11 @@ export function AcceptedEvidenceSelector({
               ? 'No accepted external-evidence records are available yet. Review the queue first before attaching catalog evidence to a case.'
               : 'No accepted external-evidence records are available yet. Internal evidence review stays with analyst workflows; use saved reports and evaluation history to trace accepted evidence after a run.'
           }
-          primaryHref={canOpenInternalEvidence ? '/evidence/review' : undefined}
+          primaryHref={
+            canOpenInternalEvidence
+              ? '/admin/intelligence/evidence/review'
+              : undefined
+          }
           primaryLabel={
             canOpenInternalEvidence ? 'Open evidence review queue' : undefined
           }
@@ -225,7 +228,7 @@ export function AcceptedEvidenceSelector({
                   {canOpenInternalEvidence ? (
                     <Link
                       className="button secondary"
-                      href={`/evidence/review/${item.id}`}
+                      href={`/admin/intelligence/evidence/review/${item.id}`}
                     >
                       Inspect record
                     </Link>

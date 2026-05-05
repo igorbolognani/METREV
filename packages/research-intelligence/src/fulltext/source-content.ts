@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer';
 import { inflateSync } from 'node:zlib';
 
 import type {
-  ResearchEvidenceTrace,
-  ResearchPaperMetadata,
+    ResearchEvidenceTrace,
+    ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface HydratedResearchPaperText {
@@ -274,6 +274,10 @@ export async function hydrateResearchPaperText(
             text_span: truncate(text, 520),
             source_locator: `${source}:${candidate}`,
             page_number: source === 'pdf' ? 1 : null,
+            section_label: null,
+            table_label: null,
+            cell_locator: null,
+            caption: null,
           },
         ],
       };

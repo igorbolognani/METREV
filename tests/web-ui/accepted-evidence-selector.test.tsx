@@ -56,6 +56,7 @@ describe('accepted evidence selector', () => {
     expect(html).toContain('saved reports and evaluation history');
     expect(html).not.toContain('Open evidence review queue');
     expect(html).not.toContain('/evidence/review');
+    expect(html).not.toContain('/admin/intelligence/evidence/review');
   });
 
   it('requests a paged accepted evidence slice for stack cockpit selection', async () => {

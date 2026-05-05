@@ -42,12 +42,12 @@ vi.mock('@/components/research/research-review-detail', () => ({
     React.createElement('div', null, 'research-detail'),
 }));
 
-import ExternalEvidenceExplorerDetailPage from '../../apps/web-ui/src/app/evidence/explorer/[id]/page';
-import ExternalEvidenceExplorerPage from '../../apps/web-ui/src/app/evidence/explorer/page';
-import ExternalEvidenceReviewDetailPage from '../../apps/web-ui/src/app/evidence/review/[id]/page';
-import ExternalEvidenceReviewPage from '../../apps/web-ui/src/app/evidence/review/page';
-import ResearchReviewDetailPage from '../../apps/web-ui/src/app/research/reviews/[id]/page';
-import ResearchReviewsPage from '../../apps/web-ui/src/app/research/reviews/page';
+import ExternalEvidenceExplorerDetailPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page';
+import ExternalEvidenceExplorerPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/page';
+import ExternalEvidenceReviewDetailPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/review/[id]/page';
+import ExternalEvidenceReviewPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/review/page';
+import ResearchReviewDetailPage from '../../apps/web-ui/src/app/admin/intelligence/research/reviews/[id]/page';
+import ResearchReviewsPage from '../../apps/web-ui/src/app/admin/intelligence/research/reviews/page';
 
 describe('advanced route pages', () => {
   it('shows the analyst-required state for viewer sessions on advanced/internal pages', async () => {

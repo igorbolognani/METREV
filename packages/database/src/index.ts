@@ -3,47 +3,47 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-  caseHistoryResponseSchema,
-  evaluationClaimUsageSchema,
-  evaluationListResponseSchema,
-  evaluationResponseSchema,
-  evaluationSourceUsageSchema,
-  evidenceClaimSchema,
-  evidenceClaimTypeSchema,
-  evidenceExtractionMethodSchema,
-  evidenceStrengthSchema,
-  evidenceTypeSchema,
-  evidenceVeracityScoreSchema,
-  externalEvidenceAccessStatusSchema,
-  externalEvidenceBulkReviewResponseSchema,
-  externalEvidenceCatalogDetailSchema,
-  externalEvidenceCatalogListResponseSchema,
-  metadataQualityProfileSchema,
-  ontologyMappingSourceSchema,
-  reportConversationTurnSchema,
-  simulationEnrichmentSchema,
-  sourceArtifactSchema,
-  sourceDocumentRecordSchema,
-  supplierDocumentSchema,
-  supplierDocumentTypeSchema,
-  workspaceSnapshotRecordSchema,
-  type CaseHistoryResponse,
-  type ConfidenceLevel,
-  type EvaluationListResponse,
-  type EvaluationResponse,
-  type EvidenceClaim,
-  type ExternalEvidenceBulkReviewResponse,
-  type ExternalEvidenceCatalogItemDetail,
-  type ExternalEvidenceCatalogItemSummary,
-  type ExternalEvidenceCatalogListResponse,
-  type ExternalEvidenceReviewAction,
-  type ExternalEvidenceReviewStatus,
-  type ExternalEvidenceSourceType,
-  type NarrativeMetadata,
-  type ReportConversationCitation,
-  type ReportConversationGrounding,
-  type ReportConversationTurn,
-  type SourceArtifact,
+    caseHistoryResponseSchema,
+    evaluationClaimUsageSchema,
+    evaluationListResponseSchema,
+    evaluationResponseSchema,
+    evaluationSourceUsageSchema,
+    evidenceClaimSchema,
+    evidenceClaimTypeSchema,
+    evidenceExtractionMethodSchema,
+    evidenceStrengthSchema,
+    evidenceTypeSchema,
+    evidenceVeracityScoreSchema,
+    externalEvidenceAccessStatusSchema,
+    externalEvidenceBulkReviewResponseSchema,
+    externalEvidenceCatalogDetailSchema,
+    externalEvidenceCatalogListResponseSchema,
+    metadataQualityProfileSchema,
+    ontologyMappingSourceSchema,
+    reportConversationTurnSchema,
+    simulationEnrichmentSchema,
+    sourceArtifactSchema,
+    sourceDocumentRecordSchema,
+    supplierDocumentSchema,
+    supplierDocumentTypeSchema,
+    workspaceSnapshotRecordSchema,
+    type CaseHistoryResponse,
+    type ConfidenceLevel,
+    type EvaluationListResponse,
+    type EvaluationResponse,
+    type EvidenceClaim,
+    type ExternalEvidenceBulkReviewResponse,
+    type ExternalEvidenceCatalogItemDetail,
+    type ExternalEvidenceCatalogItemSummary,
+    type ExternalEvidenceCatalogListResponse,
+    type ExternalEvidenceReviewAction,
+    type ExternalEvidenceReviewStatus,
+    type ExternalEvidenceSourceType,
+    type NarrativeMetadata,
+    type ReportConversationCitation,
+    type ReportConversationGrounding,
+    type ReportConversationTurn,
+    type SourceArtifact,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
@@ -57,32 +57,32 @@ const PRISMA_TRANSACTION_OPTIONS = {
 
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
-  MFC_MEC_30000_PRESET_ID,
-  planResearchBackfillPreset,
-  type PlannedResearchBackfill,
-  type PlannedResearchBackfillPreset,
+    MFC_MEC_30000_PRESET_ID,
+    planResearchBackfillPreset,
+    type PlannedResearchBackfill,
+    type PlannedResearchBackfillPreset
 } from './research-backfill-presets';
 export {
-  createResearchRepository,
-  MemoryResearchRepository,
-  PrismaResearchRepository,
-  type AddResearchReviewColumnInput,
-  type ClaimResearchExtractionJobsInput,
-  type CreateResearchEvidencePackInput,
-  type CreateResearchReviewInput,
-  type ResearchExtractionWorkItem,
-  type ResearchRepository,
-  type SaveResearchExtractionResultInput,
+    createResearchRepository,
+    MemoryResearchRepository,
+    PrismaResearchRepository,
+    type AddResearchReviewColumnInput,
+    type ClaimResearchExtractionJobsInput,
+    type CreateResearchEvidencePackInput,
+    type CreateResearchReviewInput,
+    type ResearchExtractionWorkItem,
+    type ResearchRepository,
+    type SaveResearchExtractionResultInput
 } from './research-repository';
 export {
-  buildEvidenceVeracityScore,
-  getSourceArtifactForSourceDocument,
-  importLocalPdfSources,
-  localSourceImportRequestToInput,
-  normalizeCliFiles,
-  resolveLocalSourceImportRequestToInput,
-  type LocalPdfImportFile,
-  type LocalPdfImportInput,
+    buildEvidenceVeracityScore,
+    getSourceArtifactForSourceDocument,
+    importLocalPdfSources,
+    localSourceImportRequestToInput,
+    normalizeCliFiles,
+    resolveLocalSourceImportRequestToInput,
+    type LocalPdfImportFile,
+    type LocalPdfImportInput
 } from './source-artifacts';
 
 export interface EvaluationRepository {
@@ -230,6 +230,25 @@ export interface ListRecentReportConversationTurnsInput {
 export interface MemoryEvaluationRepositoryOptions {
   externalEvidenceCatalogItems?: ExternalEvidenceCatalogItemDetail[];
 }
+
+type DatabaseExternalSourceType =
+  | 'OPENALEX'
+  | 'CROSSREF'
+  | 'EUROPE_PMC'
+  | 'PAPER'
+  | 'REVIEW'
+  | 'PATENT'
+  | 'DATASHEET'
+  | 'MANUAL_SOP'
+  | 'TECHNICAL_REPORT'
+  | 'SUPPLIER_DOCUMENT'
+  | 'SUPPLIER_PROFILE'
+  | 'CASE_STUDY'
+  | 'MARKET_REPORT'
+  | 'MARKET_SNAPSHOT'
+  | 'REGULATORY_REPORT'
+  | 'CURATED_MANIFEST'
+  | 'MANUAL';
 
 function normalizeCatalogItemIds(ids: string[]): string[] {
   return [...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))];
@@ -392,16 +411,7 @@ function mapExternalEvidenceReviewStatus(
   }
 }
 
-function mapExternalEvidenceSourceType(
-  value:
-    | 'OPENALEX'
-    | 'CROSSREF'
-    | 'EUROPE_PMC'
-    | 'SUPPLIER_PROFILE'
-    | 'MARKET_SNAPSHOT'
-    | 'CURATED_MANIFEST'
-    | 'MANUAL',
-) {
+function mapExternalEvidenceSourceType(value: DatabaseExternalSourceType) {
   switch (value) {
     case 'OPENALEX':
       return 'openalex';
@@ -409,10 +419,30 @@ function mapExternalEvidenceSourceType(
       return 'crossref';
     case 'EUROPE_PMC':
       return 'europe_pmc';
+    case 'PAPER':
+      return 'paper';
+    case 'REVIEW':
+      return 'review';
+    case 'PATENT':
+      return 'patent';
+    case 'DATASHEET':
+      return 'datasheet';
+    case 'MANUAL_SOP':
+      return 'manual_sop';
+    case 'TECHNICAL_REPORT':
+      return 'technical_report';
+    case 'SUPPLIER_DOCUMENT':
+      return 'supplier_document';
     case 'SUPPLIER_PROFILE':
       return 'supplier_profile';
+    case 'CASE_STUDY':
+      return 'case_study';
+    case 'MARKET_REPORT':
+      return 'market_report';
     case 'MARKET_SNAPSHOT':
       return 'market_snapshot';
+    case 'REGULATORY_REPORT':
+      return 'regulatory_report';
     case 'CURATED_MANIFEST':
       return 'curated_manifest';
     default:
@@ -422,14 +452,7 @@ function mapExternalEvidenceSourceType(
 
 function normalizeExternalEvidenceType(
   value: string,
-  sourceType:
-    | 'OPENALEX'
-    | 'CROSSREF'
-    | 'EUROPE_PMC'
-    | 'SUPPLIER_PROFILE'
-    | 'MARKET_SNAPSHOT'
-    | 'CURATED_MANIFEST'
-    | 'MANUAL',
+  sourceType: DatabaseExternalSourceType,
 ) {
   const normalizedValue = value.trim().toLowerCase();
   const parsed = evidenceTypeSchema.safeParse(normalizedValue);
@@ -449,9 +472,12 @@ function normalizeExternalEvidenceType(
   }
 
   switch (sourceType) {
+    case 'SUPPLIER_DOCUMENT':
     case 'SUPPLIER_PROFILE':
       return 'supplier_claim';
+    case 'MARKET_REPORT':
     case 'MARKET_SNAPSHOT':
+    case 'REGULATORY_REPORT':
       return 'derived_heuristic';
     default:
       return 'literature_evidence';
@@ -460,14 +486,7 @@ function normalizeExternalEvidenceType(
 
 function toDatabaseExternalEvidenceSourceType(
   value: ExternalEvidenceSourceType,
-):
-  | 'OPENALEX'
-  | 'CROSSREF'
-  | 'EUROPE_PMC'
-  | 'SUPPLIER_PROFILE'
-  | 'MARKET_SNAPSHOT'
-  | 'CURATED_MANIFEST'
-  | 'MANUAL' {
+): DatabaseExternalSourceType {
   switch (value) {
     case 'openalex':
       return 'OPENALEX';
@@ -475,10 +494,30 @@ function toDatabaseExternalEvidenceSourceType(
       return 'CROSSREF';
     case 'europe_pmc':
       return 'EUROPE_PMC';
+    case 'paper':
+      return 'PAPER';
+    case 'review':
+      return 'REVIEW';
+    case 'patent':
+      return 'PATENT';
+    case 'datasheet':
+      return 'DATASHEET';
+    case 'manual_sop':
+      return 'MANUAL_SOP';
+    case 'technical_report':
+      return 'TECHNICAL_REPORT';
+    case 'supplier_document':
+      return 'SUPPLIER_DOCUMENT';
     case 'supplier_profile':
       return 'SUPPLIER_PROFILE';
+    case 'case_study':
+      return 'CASE_STUDY';
+    case 'market_report':
+      return 'MARKET_REPORT';
     case 'market_snapshot':
       return 'MARKET_SNAPSHOT';
+    case 'regulatory_report':
+      return 'REGULATORY_REPORT';
     case 'curated_manifest':
       return 'CURATED_MANIFEST';
     default:
@@ -1002,21 +1041,16 @@ function buildEvidenceQualitySummary(evaluation: EvaluationResponse) {
 }
 
 function toEvaluationSourceUsageType(input: {
-  sourceType:
-    | 'OPENALEX'
-    | 'CROSSREF'
-    | 'EUROPE_PMC'
-    | 'SUPPLIER_PROFILE'
-    | 'MARKET_SNAPSHOT'
-    | 'CURATED_MANIFEST'
-    | 'MANUAL';
+  sourceType: DatabaseExternalSourceType;
   evidenceType: string;
 }) {
   const normalizedEvidenceType = input.evidenceType.toLowerCase();
 
   if (
     input.sourceType === 'SUPPLIER_PROFILE' ||
+    input.sourceType === 'SUPPLIER_DOCUMENT' ||
     input.sourceType === 'MARKET_SNAPSHOT' ||
+    input.sourceType === 'MARKET_REPORT' ||
     normalizedEvidenceType.includes('supplier') ||
     normalizedEvidenceType.includes('market')
   ) {
@@ -1105,14 +1139,7 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
 
 function createSourceDocumentRecord(sourceRecord: {
   id: string;
-  sourceType:
-    | 'OPENALEX'
-    | 'CROSSREF'
-    | 'EUROPE_PMC'
-    | 'SUPPLIER_PROFILE'
-    | 'MARKET_SNAPSHOT'
-    | 'CURATED_MANIFEST'
-    | 'MANUAL';
+  sourceType: DatabaseExternalSourceType;
   sourceCategory: string | null;
   sourceUrl: string | null;
   doi: string | null;
@@ -1396,14 +1423,7 @@ function createExternalEvidenceSummary(record: {
   createdAt: Date;
   updatedAt: Date;
   sourceRecord: {
-    sourceType:
-      | 'OPENALEX'
-      | 'CROSSREF'
-      | 'EUROPE_PMC'
-      | 'SUPPLIER_PROFILE'
-      | 'MARKET_SNAPSHOT'
-      | 'CURATED_MANIFEST'
-      | 'MANUAL';
+    sourceType: DatabaseExternalSourceType;
     sourceUrl: string | null;
     sourceCategory: string | null;
     doi: string | null;
@@ -1540,14 +1560,7 @@ function createExternalEvidenceDetail(record: {
   }>;
   sourceRecord: {
     id: string;
-    sourceType:
-      | 'OPENALEX'
-      | 'CROSSREF'
-      | 'EUROPE_PMC'
-      | 'SUPPLIER_PROFILE'
-      | 'MARKET_SNAPSHOT'
-      | 'CURATED_MANIFEST'
-      | 'MANUAL';
+    sourceType: DatabaseExternalSourceType;
     sourceUrl: string | null;
     sourceCategory: string | null;
     doi: string | null;
@@ -2268,6 +2281,63 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
               },
             });
 
+            if (evaluation.evidence_decision_context) {
+              await database.evidenceDecisionContextRecord.create({
+                data: {
+                  evaluationId: evaluation.evaluation_id,
+                  caseId: evaluation.case_id,
+                  contextVersion: 'evidence_decision_context.v1',
+                  builderVersion:
+                    evaluation.evidence_decision_context.builder_version,
+                  systemType: evaluation.evidence_decision_context.system_type,
+                  primaryObjective:
+                    evaluation.evidence_decision_context.primary_objective,
+                  query: toPrismaJsonObject(
+                    evaluation.evidence_decision_context.query,
+                  ),
+                  benchmarkRanges: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.benchmark_ranges,
+                  ),
+                  matchedEvidence: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.matched_evidence,
+                  ),
+                  materialComparisons: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.material_comparisons,
+                  ),
+                  operatingWindowSignals: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context
+                      .operating_window_signals,
+                  ),
+                  failureModeSignals: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.failure_mode_signals,
+                  ),
+                  costSignals: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.cost_signals,
+                  ),
+                  supplierSignals: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context.supplier_signals,
+                  ),
+                  regulatorySocialSignals: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context
+                      .regulatory_social_signals,
+                  ),
+                  uncertaintySummary: toPrismaJsonObject(
+                    evaluation.evidence_decision_context.uncertainty_summary,
+                  ),
+                  excludedEvidenceSummary: toRequiredPrismaJsonValue(
+                    evaluation.evidence_decision_context
+                      .excluded_evidence_summary,
+                  ),
+                  sourceRefs: evaluation.evidence_decision_context.source_refs,
+                  provenanceNote:
+                    evaluation.evidence_decision_context.provenance_note,
+                  payload: toPrismaJsonObject(
+                    evaluation.evidence_decision_context,
+                  ),
+                },
+              });
+            }
+
             if (evaluation.simulation_enrichment) {
               await database.simulationArtifactRecord.create({
                 data: {
@@ -2642,6 +2712,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           where: { id: evaluationId },
           include: {
             case: true,
+            evidenceDecisionContext: true,
             simulationArtifact: true,
             sourceUsages: true,
             claimUsages: true,
@@ -2660,6 +2731,11 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             normalized_case: record.case.normalizedCase,
             decision_output: record.decisionOutput,
             audit_record: record.auditRecord,
+            evidence_decision_context:
+              record.evidenceDecisionContext?.payload ??
+              (record.auditRecord as Record<string, unknown>)
+                .evidence_decision_context ??
+              null,
             narrative: record.narrative,
             narrative_metadata: record.narrativeMetadata,
             simulation_enrichment: record.simulationArtifact
@@ -2691,6 +2767,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           where: { idempotencyKey },
           include: {
             case: true,
+            evidenceDecisionContext: true,
             simulationArtifact: true,
             sourceUsages: true,
             claimUsages: true,
@@ -2709,6 +2786,11 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             normalized_case: record.case.normalizedCase,
             decision_output: record.decisionOutput,
             audit_record: record.auditRecord,
+            evidence_decision_context:
+              record.evidenceDecisionContext?.payload ??
+              (record.auditRecord as Record<string, unknown>)
+                .evidence_decision_context ??
+              null,
             narrative: record.narrative,
             narrative_metadata: record.narrativeMetadata,
             simulation_enrichment: record.simulationArtifact
@@ -3405,8 +3487,7 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                   run_id: activeCanonicalizationRun.id,
                   target_total:
                     activeCanonicalizationRun.targetTotal ?? acceptedTotal,
-                  processed_total:
-                    activeCanonicalizationRun.recordsProcessed,
+                  processed_total: activeCanonicalizationRun.recordsProcessed,
                   records_remaining: Math.max(
                     0,
                     (activeCanonicalizationRun.targetTotal ?? acceptedTotal) -

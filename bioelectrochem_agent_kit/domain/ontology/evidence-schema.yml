@@ -39,7 +39,66 @@ scientific_decision_database_layers:
   decision_support:
     purpose: Retrieve relevant evidence slices for stack diagnosis, benchmarking, and recommendations before any LLM narrative is generated.
 
+evidence_decision_context:
+  purpose: Server-built decision-support context assembled after case normalization and before deterministic scoring or LLM narrative generation.
+  required_fields:
+    - case_id
+    - technology_family
+    - system_type
+    - primary_objective
+    - query
+    - benchmark_ranges
+    - matched_evidence
+    - uncertainty_summary
+    - provenance_note
+    - source_refs
+    - builder_version
+  signal_groups:
+    - material_comparisons
+    - operating_window_signals
+    - failure_mode_signals
+    - cost_signals
+    - supplier_signals
+    - regulatory_social_signals
+  admissibility:
+    admitted_when:
+      - review_status_accepted
+      - decision_ready_true
+      - normalization_completed
+      - source_locator_or_span_present
+      - source_license_or_access_policy_allows_decision_use
+      - supplier_claim_is_corroborated_or_kept_as_supplier_signal
+    excluded_when:
+      - review_status_pending_or_rejected
+      - decision_ready_false
+      - missing_required_unit_for_numeric_metric
+      - missing_source_locator_or_span
+      - low_trace_quality
+      - supplier_claim_without_independent_corroboration
+  rule_engine_use:
+    - benchmark ranges may change recommendation priority, confidence, and validation actions when comparable context exists
+    - weak or conflicting evidence lowers confidence and creates next-test actions
+    - supplier claims remain separated from validated evidence and cannot increase confidence without corroboration
+
 enums:
+  source_type:
+    - openalex
+    - crossref
+    - europe_pmc
+    - paper
+    - review
+    - patent
+    - datasheet
+    - manual_sop
+    - technical_report
+    - supplier_document
+    - supplier_profile
+    - case_study
+    - market_report
+    - market_snapshot
+    - regulatory_report
+    - curated_manifest
+    - manual
   evidence_type:
     - literature_evidence
     - internal_benchmark
