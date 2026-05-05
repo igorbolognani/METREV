@@ -386,6 +386,160 @@ describe('research API flow', () => {
     }
   });
 
+  it('sweeps warehouse eligibility and excludes ineligible sources from reviews', async () => {
+    const isolatedEvaluationRepository = new MemoryEvaluationRepository();
+    const isolatedResearchRepository = new MemoryResearchRepository();
+    const app = await buildApp({
+      repository: isolatedEvaluationRepository,
+      researchRepository: isolatedResearchRepository,
+      sessionResolver: testSessionResolver,
+    });
+
+    try {
+      const forbiddenSweep = await app.inject({
+        method: 'GET',
+        url: '/api/research/warehouse-eligibility?limit=10',
+        headers: {
+          cookie: sessionCookie('research-viewer-session'),
+        },
+      });
+
+      expect(forbiddenSweep.statusCode).toBe(403);
+
+      const searchResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial electrochemical technologies wastewater',
+          limit: 3,
+        },
+      });
+
+      expect(searchResponse.statusCode).toBe(200);
+      const searched = searchResponse.json();
+      expect(searched.items).toHaveLength(3);
+
+      const importResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/search/import',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          query: 'microbial electrochemical technologies wastewater',
+          items: searched.items,
+        },
+      });
+
+      expect(importResponse.statusCode).toBe(201);
+      const imported = importResponse.json();
+      expect(imported.source_document_ids).toHaveLength(3);
+
+      const eligibilityResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/warehouse-eligibility?limit=10',
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(eligibilityResponse.statusCode).toBe(200);
+      const eligibility = eligibilityResponse.json();
+      expect(eligibility).toMatchObject({
+        dry_run: true,
+        total_linked_records: 3,
+        eligible_records: 2,
+        excluded_records: 1,
+        inaccessible_records: 1,
+        missing_full_text_records: 1,
+      });
+      expect(eligibility.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source_type: 'crossref',
+            status: 'excluded',
+            reasons: expect.arrayContaining([
+              'access_unknown',
+              'missing_full_text_link',
+              'missing_license_or_access_policy',
+            ]),
+          }),
+          expect.objectContaining({
+            source_type: 'openalex',
+            status: 'eligible',
+            technology_classes: expect.arrayContaining(['MFC']),
+          }),
+          expect.objectContaining({
+            source_type: 'europe_pmc',
+            status: 'eligible',
+            technology_classes: expect.arrayContaining(['MET']),
+          }),
+        ]),
+      );
+
+      const sweepResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/warehouse-eligibility/sweep',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          dry_run: false,
+          include_items: false,
+          limit: 10,
+        },
+      });
+
+      expect(sweepResponse.statusCode).toBe(200);
+      expect(sweepResponse.json()).toMatchObject({
+        dry_run: false,
+        eligible_records: 2,
+        excluded_records: 1,
+        items: [],
+      });
+
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/reviews',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          title: 'Strict active surface review',
+          query: 'microbial electrochemical technologies wastewater',
+          limit: 3,
+          source_document_ids: imported.source_document_ids,
+        },
+      });
+
+      expect(createResponse.statusCode).toBe(201);
+      const created = createResponse.json();
+      expect(created.paper_count).toBe(2);
+      expect(created.papers).toEqual(
+        expect.not.arrayContaining([
+          expect.objectContaining({ source_type: 'crossref' }),
+        ]),
+      );
+      expect(created.papers).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ source_type: 'openalex' }),
+          expect.objectContaining({ source_type: 'europe_pmc' }),
+        ]),
+      );
+    } finally {
+      await app.close();
+      await isolatedEvaluationRepository.disconnect();
+      await isolatedResearchRepository.disconnect();
+    }
+  });
+
   it('imports analyst-gated local PDF artifacts with metadata quality and veracity', async () => {
     const app = await buildApp({
       repository: evaluationRepository,

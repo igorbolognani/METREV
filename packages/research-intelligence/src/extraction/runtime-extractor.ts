@@ -1,5 +1,6 @@
 import {
     researchExtractionResultSchema,
+    type ResearchEvidenceTrace,
     type ResearchExtractionResult,
     type ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
@@ -67,6 +68,31 @@ function fullTextSummary(source: HydratedResearchPaperText | null) {
   };
 }
 
+function buildSupplementalTrace(
+  source: HydratedResearchPaperText | null,
+  sourceDocumentId: string,
+): ResearchEvidenceTrace[] {
+  if (!source) {
+    return [];
+  }
+
+  if ((source.blocks?.length ?? 0) > 0) {
+    return source.blocks!.slice(0, 8).map((block) => ({
+      source: 'full_text',
+      source_document_id: sourceDocumentId,
+      text_span: block.text.slice(0, 900),
+      source_locator: block.sourceLocator,
+      page_number: block.pageNumber,
+      section_label: block.sectionLabel,
+      table_label: block.tableLabel,
+      cell_locator: block.cellLocator,
+      caption: block.caption,
+    }));
+  }
+
+  return source.trace;
+}
+
 export async function executeResearchExtraction(
   input: ExecuteResearchExtractionInput,
 ): Promise<ResearchExtractionResult> {
@@ -74,7 +100,10 @@ export async function executeResearchExtraction(
     input.paper,
   ).catch(() => null);
   const supplementalText = buildSupplementalText(hydrated);
-  const supplementalTrace = hydrated?.trace ?? [];
+  const supplementalTrace = buildSupplementalTrace(
+    hydrated,
+    input.paper.source_document_id,
+  );
 
   if (input.column.type === 'llm_extracted') {
     const structured = await generateStructuredResearchExtraction({

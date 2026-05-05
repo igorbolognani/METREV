@@ -41,9 +41,23 @@ source_text_chunk:
     - char_end
     - metadata
 
+ingestion_levels:
+  - metadata
+  - abstract
+  - full_text_html
+  - full_text_xml
+  - pdf_text
+  - table
+  - figure_caption
+  - scientific_chunk
+  - evidence_span
+  - quality_gate
+
 rules:
   - Source artifacts are linked to ExternalSourceRecord and do not replace it.
   - File hash is the primary local-artifact dedupe key.
   - Text chunks must include source locators suitable for evidence traces.
   - When available, chunks must preserve section_label, table_label, cell_locator, caption, page_number, text, and source_locator together rather than flattening them into untraceable prose.
+  - HTML/XML full text, parsed PDFs, tables, and figure captions must remain separate traceable chunk kinds when available.
+  - Quality gates must report inaccessible, missing-full-text, and out-of-scope sources explicitly before active review creation.
   - Metadata-rich context references may inform readiness and methodology review, but they do not replace reviewed performance evidence.

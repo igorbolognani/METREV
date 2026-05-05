@@ -6,10 +6,14 @@ import {
     type ConfidenceLevel,
     type EvidenceClaim,
     type ResearchColumnDefinition,
+    type ResearchComponentProfile,
+    type ResearchComponentType,
     type ResearchEvidenceTrace,
+    type ResearchExtractedParameter,
     type ResearchExtractionResult,
     type ResearchMetricMeasurement,
     type ResearchPaperMetadata,
+    type ResearchParameterKind,
     type ResearchSystemPerformanceExtraction,
 } from '@metrev/domain-contracts';
 
@@ -289,6 +293,16 @@ function detectTechnologyClasses(text: string) {
     classes.add('MEC');
   }
   if (
+    /\bMETs?\b/i.test(text) ||
+    includesAny(text, [
+      'microbial electrochemical technolog',
+      'microbial electrochemical system',
+      'microbial electrosynthesis',
+    ])
+  ) {
+    classes.add('MET');
+  }
+  if (
     /\bMDCs?\b/i.test(text) ||
     includesAny(text, ['microbial desalination cell'])
   ) {
@@ -402,6 +416,431 @@ function extractOperatingConditions(text: string): Record<string, unknown> {
   return conditions;
 }
 
+function findEvidenceSentence(text: string, tokens: string[]): string | null {
+  return (
+    text
+      .split(/(?<=[.!?])\s+/)
+      .find((sentence) => includesAny(sentence, tokens)) ?? null
+  );
+}
+
+function parameterTrace(input: {
+  baseTraces: ResearchEvidenceTrace[];
+  sourceDocumentId: string;
+  text: string;
+  tokens: string[];
+}): ResearchEvidenceTrace {
+  const matchingTrace = input.baseTraces.find((trace) =>
+    includesAny(trace.text_span, input.tokens),
+  );
+  if (matchingTrace) {
+    return matchingTrace;
+  }
+
+  const sentence = findEvidenceSentence(input.text, input.tokens);
+  return {
+    source: 'full_text',
+    source_document_id: input.sourceDocumentId,
+    text_span: truncate(sentence ?? input.text, 520),
+    source_locator: null,
+    page_number: null,
+    section_label: null,
+    table_label: null,
+    cell_locator: null,
+    caption: null,
+  };
+}
+
+function buildTextParameter(input: {
+  baseTraces: ResearchEvidenceTrace[];
+  componentType: ResearchComponentType;
+  confidence?: ConfidenceLevel;
+  key: string;
+  kind: ResearchParameterKind;
+  label: string;
+  sourceDocumentId: string;
+  text: string;
+  textValue: string | null;
+  tokens: string[];
+}): ResearchExtractedParameter | null {
+  if (!input.textValue) {
+    return null;
+  }
+
+  return {
+    parameter_key: input.key,
+    component_type: input.componentType,
+    parameter_kind: input.kind,
+    label: input.label,
+    original_value: input.textValue,
+    original_unit: null,
+    normalized_value: null,
+    normalized_unit: null,
+    normalization_rule_id: null,
+    text_value: input.textValue,
+    evidence_trace: parameterTrace({
+      baseTraces: input.baseTraces,
+      sourceDocumentId: input.sourceDocumentId,
+      text: input.text,
+      tokens: input.tokens,
+    }),
+    confidence: input.confidence ?? 'medium',
+  };
+}
+
+function buildNumericParameter(input: {
+  baseTraces: ResearchEvidenceTrace[];
+  componentType: ResearchComponentType;
+  confidence?: ConfidenceLevel;
+  key: string;
+  kind: ResearchParameterKind;
+  label: string;
+  normalizedUnit: string;
+  normalizedValue?: number;
+  originalUnit: string;
+  originalValue: number;
+  sourceDocumentId: string;
+  text: string;
+  tokens: string[];
+}): ResearchExtractedParameter {
+  return {
+    parameter_key: input.key,
+    component_type: input.componentType,
+    parameter_kind: input.kind,
+    label: input.label,
+    original_value: input.originalValue,
+    original_unit: input.originalUnit,
+    normalized_value: input.normalizedValue ?? input.originalValue,
+    normalized_unit: input.normalizedUnit,
+    normalization_rule_id:
+      input.originalUnit === input.normalizedUnit
+        ? 'identity'
+        : 'unit-normalization-v1',
+    text_value: null,
+    evidence_trace: parameterTrace({
+      baseTraces: input.baseTraces,
+      sourceDocumentId: input.sourceDocumentId,
+      text: input.text,
+      tokens: input.tokens,
+    }),
+    confidence: input.confidence ?? 'medium',
+  };
+}
+
+function firstNumericMatch(
+  text: string,
+  patterns: RegExp[],
+): { unit: string; value: number } | null {
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (!match) {
+      continue;
+    }
+
+    const value = Number.parseFloat(match[1].replace(',', '.'));
+    if (Number.isFinite(value)) {
+      return {
+        value,
+        unit: match[2] ?? '',
+      };
+    }
+  }
+
+  return null;
+}
+
+function normalizeUnitText(unit: string): string {
+  return unit
+    .replace(/cm\s?[-^]?2/i, 'cm2')
+    .replace(/m\s?[-^]?2/i, 'm2')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildScientificComponentParameters(input: {
+  anodeMaterial: string | null;
+  baseTraces: ResearchEvidenceTrace[];
+  cathodeMaterial: string | null;
+  operatingConditions: Record<string, unknown>;
+  separator: string | null;
+  sourceDocumentId: string;
+  text: string;
+}): ResearchExtractedParameter[] {
+  const parameters = [
+    buildTextParameter({
+      baseTraces: input.baseTraces,
+      componentType: 'anode',
+      key: 'component_parameters.anode_material',
+      kind: 'material',
+      label: 'Anode material',
+      sourceDocumentId: input.sourceDocumentId,
+      text: input.text,
+      textValue: input.anodeMaterial,
+      tokens: ['anode', input.anodeMaterial ?? ''],
+    }),
+    buildTextParameter({
+      baseTraces: input.baseTraces,
+      componentType: 'cathode',
+      key: 'component_parameters.cathode_material_or_catalyst',
+      kind: 'material',
+      label: 'Cathode material or catalyst',
+      sourceDocumentId: input.sourceDocumentId,
+      text: input.text,
+      textValue: input.cathodeMaterial,
+      tokens: ['cathode', 'catalyst', input.cathodeMaterial ?? ''],
+    }),
+    buildTextParameter({
+      baseTraces: input.baseTraces,
+      componentType: 'membrane_separator',
+      key: 'component_parameters.membrane_separator_type',
+      kind: 'material',
+      label: 'Membrane or separator type',
+      sourceDocumentId: input.sourceDocumentId,
+      text: input.text,
+      textValue: input.separator,
+      tokens: ['membrane', 'separator', input.separator ?? ''],
+    }),
+  ].filter((parameter): parameter is ResearchExtractedParameter =>
+    Boolean(parameter),
+  );
+
+  const numericCandidates: ResearchExtractedParameter[] = [];
+  const surfaceArea = firstNumericMatch(input.text, [
+    /surface\s+area\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(m\s?2\s*\/\s*g|m\s?2\s*g\s?-?1|cm\s?2)/i,
+    /(\d+(?:[.,]\d+)?)\s*(m\s?2\s*\/\s*g|m\s?2\s*g\s?-?1|cm\s?2)\s+surface\s+area/i,
+  ]);
+  if (surfaceArea) {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'anode',
+        key: 'component_parameters.anode_surface_area',
+        kind: 'surface_property',
+        label: 'Anode surface area',
+        normalizedUnit: normalizeUnitText(surfaceArea.unit),
+        originalUnit: normalizeUnitText(surfaceArea.unit),
+        originalValue: surfaceArea.value,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['surface area', 'anode'],
+      }),
+    );
+  }
+
+  const catalystLoading = firstNumericMatch(input.text, [
+    /catalyst\s+loading\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(mg\s*\/\s*cm\s?2|mg\s*cm\s?-?2)/i,
+    /(\d+(?:[.,]\d+)?)\s*(mg\s*\/\s*cm\s?2|mg\s*cm\s?-?2)\s+catalyst\s+loading/i,
+  ]);
+  if (catalystLoading) {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'catalyst',
+        key: 'component_parameters.catalyst_loading',
+        kind: 'loading',
+        label: 'Catalyst loading',
+        normalizedUnit: normalizeUnitText(catalystLoading.unit),
+        originalUnit: normalizeUnitText(catalystLoading.unit),
+        originalValue: catalystLoading.value,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['catalyst loading', 'catalyst'],
+      }),
+    );
+  }
+
+  const membraneThickness = firstNumericMatch(input.text, [
+    /membrane\s+thickness\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(um|\u00b5m|micrometers?|mm)/i,
+    /(\d+(?:[.,]\d+)?)\s*(um|\u00b5m|micrometers?|mm)\s+membrane\s+thickness/i,
+  ]);
+  if (membraneThickness) {
+    const unit = membraneThickness.unit.toLowerCase();
+    const normalizedValue =
+      unit === 'mm'
+        ? membraneThickness.value / 1000
+        : membraneThickness.value / 1_000_000;
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'membrane_separator',
+        key: 'component_parameters.membrane_separator_thickness',
+        kind: 'geometry',
+        label: 'Membrane thickness',
+        normalizedUnit: 'm',
+        normalizedValue,
+        originalUnit: unit === 'mm' ? 'mm' : 'um',
+        originalValue: membraneThickness.value,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['membrane thickness', 'membrane'],
+      }),
+    );
+  }
+
+  const startupTime = firstNumericMatch(input.text, [
+    /(?:biofilm\s+)?startup\s+(?:time\s+)?(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(d|day|days)/i,
+    /(\d+(?:[.,]\d+)?)\s*(d|day|days)\s+(?:biofilm\s+)?startup/i,
+  ]);
+  if (startupTime) {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'biofilm',
+        key: 'component_parameters.biofilm_startup_time',
+        kind: 'biology',
+        label: 'Biofilm startup time',
+        normalizedUnit: 'd',
+        originalUnit: startupTime.unit,
+        originalValue: startupTime.value,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['biofilm', 'startup'],
+      }),
+    );
+  }
+
+  if (typeof input.operatingConditions.pH === 'number') {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'electrolyte',
+        key: 'component_parameters.electrolyte_pH',
+        kind: 'operating_condition',
+        label: 'Electrolyte pH',
+        normalizedUnit: 'pH',
+        originalUnit: 'pH',
+        originalValue: input.operatingConditions.pH,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['pH'],
+      }),
+    );
+  }
+  if (typeof input.operatingConditions.temperature_c === 'number') {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'reactor',
+        key: 'component_parameters.reactor_temperature',
+        kind: 'operating_condition',
+        label: 'Operating temperature',
+        normalizedUnit: 'K',
+        normalizedValue: input.operatingConditions.temperature_c + 273.15,
+        originalUnit: 'degC',
+        originalValue: input.operatingConditions.temperature_c,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['temperature', 'degrees c', ' C'],
+      }),
+    );
+  }
+  if (typeof input.operatingConditions.HRT_h === 'number') {
+    numericCandidates.push(
+      buildNumericParameter({
+        baseTraces: input.baseTraces,
+        componentType: 'reactor',
+        key: 'component_parameters.reactor_hydraulic_retention_time',
+        kind: 'operating_condition',
+        label: 'Hydraulic retention time',
+        normalizedUnit: 's',
+        normalizedValue: input.operatingConditions.HRT_h * 3600,
+        originalUnit: 'h',
+        originalValue: input.operatingConditions.HRT_h,
+        sourceDocumentId: input.sourceDocumentId,
+        text: input.text,
+        tokens: ['HRT', 'hydraulic retention time'],
+      }),
+    );
+  }
+
+  return [...parameters, ...numericCandidates];
+}
+
+function buildComponentProfiles(input: {
+  anodeMaterial: string | null;
+  cathodeMaterial: string | null;
+  componentParameters: ResearchExtractedParameter[];
+  separator: string | null;
+  traces: ResearchEvidenceTrace[];
+}): ResearchComponentProfile[] {
+  const componentDefinitions: Array<{
+    componentType: ResearchComponentType;
+    label: string;
+    material: string | null;
+    role: string;
+  }> = [
+    {
+      componentType: 'anode',
+      label: 'Anode',
+      material: input.anodeMaterial,
+      role: 'electron-collecting biofilm support',
+    },
+    {
+      componentType: 'cathode',
+      label: 'Cathode',
+      material: input.cathodeMaterial,
+      role: 'reduction electrode and catalyst surface',
+    },
+    {
+      componentType: 'membrane_separator',
+      label: 'Membrane or separator',
+      material: input.separator,
+      role: 'ion transport and compartment separation',
+    },
+    {
+      componentType: 'biofilm',
+      label: 'Biofilm',
+      material: null,
+      role: 'electroactive microbial interface',
+    },
+  ];
+
+  return componentDefinitions
+    .map((definition) => {
+      const properties = input.componentParameters.filter(
+        (parameter) => parameter.component_type === definition.componentType,
+      );
+      const hasMaterial = Boolean(definition.material);
+      const missingFields = [
+        hasMaterial || definition.componentType === 'biofilm'
+          ? null
+          : `${definition.componentType}.material`,
+        properties.length > 0 ? null : `${definition.componentType}.properties`,
+      ].filter((value): value is string => Boolean(value));
+
+      return {
+        component_type: definition.componentType,
+        label: definition.label,
+        material: definition.material,
+        role: definition.role,
+        properties,
+        missing_fields: missingFields,
+        evidence_trace: properties
+          .map((parameter) => parameter.evidence_trace)
+          .slice(0, 4),
+        confidence:
+          missingFields.length === 0
+            ? 'medium'
+            : properties.length > 0 || hasMaterial
+              ? 'low'
+              : 'low',
+      } satisfies ResearchComponentProfile;
+    })
+    .filter(
+      (profile) =>
+        profile.properties.length > 0 ||
+        profile.material ||
+        profile.component_type === 'biofilm',
+    )
+    .map((profile) => ({
+      ...profile,
+      evidence_trace:
+        profile.evidence_trace.length > 0
+          ? profile.evidence_trace
+          : input.traces.slice(0, 1),
+    }));
+}
+
 function buildSystemPerformance(input: DeterministicExtractionInput): {
   answer: ResearchSystemPerformanceExtraction;
   trace: ResearchEvidenceTrace[];
@@ -477,6 +916,23 @@ function buildSystemPerformance(input: DeterministicExtractionInput): {
     'membrane-less',
     'wetland-integrated',
   ]);
+  const operatingConditions = extractOperatingConditions(text);
+  const componentParameters = buildScientificComponentParameters({
+    anodeMaterial,
+    baseTraces: traces,
+    cathodeMaterial,
+    operatingConditions,
+    separator,
+    sourceDocumentId: input.paper.source_document_id,
+    text,
+  });
+  const componentProfiles = buildComponentProfiles({
+    anodeMaterial,
+    cathodeMaterial,
+    componentParameters,
+    separator,
+    traces,
+  });
   const productOutputs = metrics.filter((metric) =>
     includesAny(metric.evidence_trace.text_span, [
       'hydrogen',
@@ -495,6 +951,7 @@ function buildSystemPerformance(input: DeterministicExtractionInput): {
     anodeMaterial ? null : 'anode.material',
     cathodeMaterial ? null : 'cathode.material',
     separator ? null : 'membrane_or_separator.type',
+    componentParameters.length > 0 ? null : 'component_parameters',
     metrics.length > 0 ? null : 'metrics',
   ].filter((value): value is string => Boolean(value));
 
@@ -529,7 +986,21 @@ function buildSystemPerformance(input: DeterministicExtractionInput): {
         'urine',
       ]),
     ].filter((value): value is string => Boolean(value)),
-    operating_conditions: extractOperatingConditions(text),
+    operating_conditions: operatingConditions,
+    component_parameters: componentParameters,
+    component_profiles: componentProfiles,
+    quality_gate: {
+      gate_id: 'deterministic-system-performance-v1',
+      passed: componentParameters.length > 0 && metrics.length > 0,
+      reasons:
+        componentParameters.length > 0 || metrics.length > 0
+          ? ['full_access_traceable']
+          : ['insufficient_source_metadata'],
+      trace_count: traces.length,
+      table_count: traces.filter((trace) => Boolean(trace.table_label)).length,
+      figure_count: traces.filter((trace) => Boolean(trace.caption)).length,
+      missing_fields: missingFields,
+    },
     electrochemical_metrics: electrochemicalMetrics,
     treatment_metrics: treatmentMetrics,
     product_outputs: productOutputs,

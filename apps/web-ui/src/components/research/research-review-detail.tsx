@@ -122,6 +122,9 @@ function summarizeOperatingConditions(answer: Record<string, unknown>) {
   const substrateFeedstock = collectStringList(answer.substrate_feedstock).map(
     (value) => `substrate ${value}`,
   );
+  const componentConditions = summarizeComponentParameters(answer, [
+    'operating_condition',
+  ]);
 
   const conditionChips = operatingConditions
     ? Object.entries(operatingConditions).flatMap(([key, value]) => {
@@ -137,7 +140,47 @@ function summarizeOperatingConditions(answer: Record<string, unknown>) {
       })
     : [];
 
-  return [...substrateFeedstock, ...conditionChips];
+  return [...substrateFeedstock, ...conditionChips, ...componentConditions];
+}
+
+function summarizeComponentParameters(
+  answer: Record<string, unknown>,
+  kinds?: string[],
+) {
+  const parameters = Array.isArray(answer.component_parameters)
+    ? answer.component_parameters
+    : [];
+
+  return parameters.flatMap((entry) => {
+    const parameter = asRecord(entry);
+    if (!parameter) {
+      return [];
+    }
+
+    const parameterKind = readString(parameter.parameter_kind);
+    if (kinds && (!parameterKind || !kinds.includes(parameterKind))) {
+      return [];
+    }
+
+    const componentType = readString(parameter.component_type);
+    const label = readString(parameter.label);
+    const textValue = readString(parameter.text_value);
+    const originalValue = readString(parameter.original_value);
+    const normalizedValue = readNumber(parameter.normalized_value);
+    const normalizedUnit = readString(parameter.normalized_unit);
+    const originalUnit = readString(parameter.original_unit);
+    const value =
+      textValue ??
+      originalValue ??
+      (normalizedValue === null ? null : formatNumber(normalizedValue));
+    const unit = normalizedUnit ?? originalUnit;
+
+    return label && value
+      ? [
+          `${componentType ? `${formatToken(componentType)} ` : ''}${label}: ${value}${unit ? ` ${unit}` : ''}`,
+        ]
+      : [];
+  });
 }
 
 function summarizeDesignParameters(answer: Record<string, unknown>) {
@@ -160,6 +203,7 @@ function summarizeDesignParameters(answer: Record<string, unknown>) {
     readString(reactor.geometry)
       ? `geometry ${readString(reactor.geometry)}`
       : null,
+    ...summarizeComponentParameters(answer, ['geometry', 'surface_property']),
   ].filter((value): value is string => Boolean(value));
 }
 
@@ -192,6 +236,7 @@ function summarizeMaterialProperties(answer: Record<string, unknown>) {
     ...collectStringList(membrane?.properties).map(
       (value) => `separator ${value}`,
     ),
+    ...summarizeComponentParameters(answer, ['material', 'loading']),
   ].filter((value): value is string => Boolean(value));
 }
 

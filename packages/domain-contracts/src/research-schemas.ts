@@ -53,11 +53,70 @@ export const researchEvidencePackStatusSchema = z.enum(['draft', 'reviewed']);
 export const researchTechnologyClassSchema = z.enum([
   'MFC',
   'MEC',
+  'MET',
   'MDC',
   'BES',
   'bioelectrochemical_sensor',
   'hybrid_system',
   'not_reported',
+]);
+
+export const researchDocumentTypeSchema = z.enum([
+  'paper',
+  'review',
+  'patent',
+  'datasheet',
+  'manual_sop',
+  'technical_report',
+  'supplier_document',
+  'case_study',
+  'market_report',
+  'regulatory_report',
+  'curated_manifest',
+  'manual',
+]);
+
+export const researchEligibilityStatusSchema = z.enum(['eligible', 'excluded']);
+
+export const researchEligibilityReasonSchema = z.enum([
+  'full_access_traceable',
+  'access_closed',
+  'access_unknown',
+  'missing_license_or_access_policy',
+  'missing_full_text_link',
+  'out_of_scope_technology',
+  'supplier_or_market_context_only',
+  'insufficient_source_metadata',
+]);
+
+export const researchComponentTypeSchema = z.enum([
+  'reactor',
+  'anode',
+  'cathode',
+  'membrane_separator',
+  'catalyst',
+  'current_collector',
+  'biofilm',
+  'inoculum_microbial_community',
+  'substrate_feedstock',
+  'electrolyte',
+  'external_circuit',
+  'sensors_instrumentation',
+  'balance_of_plant',
+]);
+
+export const researchParameterKindSchema = z.enum([
+  'material',
+  'geometry',
+  'surface_property',
+  'loading',
+  'operating_condition',
+  'electrochemical_metric',
+  'treatment_metric',
+  'product_metric',
+  'biology',
+  'cost_maturity',
+  'limitation',
 ]);
 
 export const researchEvidenceTraceSchema = z.object({
@@ -80,6 +139,41 @@ export const researchEvidenceTraceSchema = z.object({
   caption: z.string().min(1).nullable().default(null),
 });
 
+export const researchExtractedParameterSchema = z.object({
+  parameter_key: z.string().min(1),
+  component_type: researchComponentTypeSchema,
+  parameter_kind: researchParameterKindSchema,
+  label: z.string().min(1),
+  original_value: z.union([z.number(), z.string()]).nullable().default(null),
+  original_unit: z.string().min(1).nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_unit: z.string().min(1).nullable().default(null),
+  normalization_rule_id: z.string().min(1).nullable().default(null),
+  text_value: z.string().min(1).nullable().default(null),
+  evidence_trace: researchEvidenceTraceSchema,
+  confidence: confidenceLevelSchema,
+});
+
+export const researchComponentProfileSchema = z.object({
+  component_type: researchComponentTypeSchema,
+  label: z.string().min(1),
+  material: z.string().min(1).nullable().default(null),
+  role: z.string().min(1).nullable().default(null),
+  properties: z.array(researchExtractedParameterSchema).default([]),
+  missing_fields: z.array(z.string()).default([]),
+  evidence_trace: z.array(researchEvidenceTraceSchema).default([]),
+  confidence: confidenceLevelSchema,
+});
+
+export const researchExtractionQualityGateSchema = z.object({
+  gate_id: z.string().min(1),
+  passed: z.boolean(),
+  reasons: z.array(researchEligibilityReasonSchema).default([]),
+  trace_count: z.number().int().nonnegative(),
+  table_count: z.number().int().nonnegative().default(0),
+  figure_count: z.number().int().nonnegative().default(0),
+  missing_fields: z.array(z.string()).default([]),
+});
 export const researchMetricMeasurementSchema = z.object({
   metric_key: z.string().min(1),
   original_value: z.number(),
@@ -93,6 +187,7 @@ export const researchMetricMeasurementSchema = z.object({
 export const researchPaperMetadataSchema = z.object({
   paper_id: z.string().min(1),
   source_document_id: z.string().min(1),
+  document_type: researchDocumentTypeSchema.default('paper'),
   title: z.string().min(1),
   authors: z.array(flexibleObjectSchema).default([]),
   year: z.number().int().nullable(),
@@ -105,8 +200,12 @@ export const researchPaperMetadataSchema = z.object({
   xml_url: nullableStringSchema.default(null),
   abstract_text: z.string().nullable(),
   citation_count: z.number().int().nonnegative().nullable(),
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  source_license: z.string().min(1).nullable().default(null),
   metadata: flexibleObjectSchema.default({}),
 });
+
+export const researchDocumentMetadataSchema = researchPaperMetadataSchema;
 
 export const localSourceImportRequestSchema = z
   .object({
@@ -139,6 +238,7 @@ export const localSourceImportResponseSchema = z.object({
 export const researchPaperSearchResultSchema = z.object({
   source_type: researchSearchProviderSchema,
   source_key: z.string().min(1),
+  document_type: researchDocumentTypeSchema.default('paper'),
   title: z.string().min(1),
   authors: z.array(flexibleObjectSchema).default([]),
   year: z.number().int().nullable(),
@@ -151,6 +251,7 @@ export const researchPaperSearchResultSchema = z.object({
   abstract_text: z.string().nullable(),
   citation_count: z.number().int().nonnegative().nullable(),
   access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  source_license: z.string().min(1).nullable().default(null),
   metadata: flexibleObjectSchema.default({}),
 });
 
@@ -216,6 +317,9 @@ export const researchSystemPerformanceExtractionSchema = z.object({
   electrochemical_metrics: z.array(researchMetricMeasurementSchema).default([]),
   treatment_metrics: z.array(researchMetricMeasurementSchema).default([]),
   product_outputs: z.array(researchMetricMeasurementSchema).default([]),
+  component_parameters: z.array(researchExtractedParameterSchema).default([]),
+  component_profiles: z.array(researchComponentProfileSchema).default([]),
+  quality_gate: researchExtractionQualityGateSchema.optional(),
   scale: z.string().nullable().default(null),
   implementation_limitations: z.array(z.string()).default([]),
   missing_fields: z.array(z.string()).default([]),
@@ -501,6 +605,42 @@ export const researchWarehouseProgressResponseSchema = z.object({
   last_updated_at: z.string().min(1).nullable().default(null),
 });
 
+export const researchWarehouseEligibilityItemSchema = z.object({
+  source_document_id: z.string().min(1),
+  title: z.string().min(1),
+  source_type: externalEvidenceSourceTypeSchema,
+  document_type: researchDocumentTypeSchema,
+  access_status: externalEvidenceAccessStatusSchema,
+  source_license: z.string().min(1).nullable().default(null),
+  has_full_text_link: z.boolean(),
+  technology_classes: z.array(researchTechnologyClassSchema).default([]),
+  status: researchEligibilityStatusSchema,
+  reasons: z.array(researchEligibilityReasonSchema).default([]),
+  active_surface: z.boolean(),
+});
+
+export const researchWarehouseEligibilityResponseSchema = z.object({
+  dry_run: z.boolean().default(true),
+  total_linked_records: z.number().int().nonnegative(),
+  eligible_records: z.number().int().nonnegative(),
+  excluded_records: z.number().int().nonnegative(),
+  inaccessible_records: z.number().int().nonnegative(),
+  out_of_scope_records: z.number().int().nonnegative(),
+  missing_full_text_records: z.number().int().nonnegative(),
+  missing_license_records: z.number().int().nonnegative(),
+  source_breakdown: z.array(researchWarehouseProgressBucketSchema).default([]),
+  rejected_reason_buckets: z
+    .array(researchWarehouseProgressBucketSchema)
+    .default([]),
+  items: z.array(researchWarehouseEligibilityItemSchema).default([]),
+});
+
+export const researchWarehouseEligibilityRequestSchema = z.object({
+  dry_run: z.boolean().default(true),
+  limit: z.number().int().min(1).max(500).default(100),
+  include_items: z.boolean().default(true),
+});
+
 export const queueResearchBackfillPresetResponseSchema = z.object({
   preset_id: queueResearchBackfillPresetSchema,
   target_records: z.number().int().positive(),
@@ -555,11 +695,32 @@ export type ResearchExtractionResultStatus = z.infer<
 export type ResearchEvidencePackStatus = z.infer<
   typeof researchEvidencePackStatusSchema
 >;
+export type ResearchDocumentType = z.infer<typeof researchDocumentTypeSchema>;
+export type ResearchEligibilityStatus = z.infer<
+  typeof researchEligibilityStatusSchema
+>;
+export type ResearchEligibilityReason = z.infer<
+  typeof researchEligibilityReasonSchema
+>;
+export type ResearchComponentType = z.infer<typeof researchComponentTypeSchema>;
+export type ResearchParameterKind = z.infer<typeof researchParameterKindSchema>;
 export type ResearchEvidenceTrace = z.infer<typeof researchEvidenceTraceSchema>;
+export type ResearchExtractedParameter = z.infer<
+  typeof researchExtractedParameterSchema
+>;
+export type ResearchComponentProfile = z.infer<
+  typeof researchComponentProfileSchema
+>;
+export type ResearchExtractionQualityGate = z.infer<
+  typeof researchExtractionQualityGateSchema
+>;
 export type ResearchMetricMeasurement = z.infer<
   typeof researchMetricMeasurementSchema
 >;
 export type ResearchPaperMetadata = z.infer<typeof researchPaperMetadataSchema>;
+export type ResearchDocumentMetadata = z.infer<
+  typeof researchDocumentMetadataSchema
+>;
 export type LocalSourceImportRequest = z.infer<
   typeof localSourceImportRequestSchema
 >;
@@ -623,6 +784,15 @@ export type ResearchBackfillListResponse = z.infer<
 >;
 export type ResearchWarehouseProgressResponse = z.infer<
   typeof researchWarehouseProgressResponseSchema
+>;
+export type ResearchWarehouseEligibilityItem = z.infer<
+  typeof researchWarehouseEligibilityItemSchema
+>;
+export type ResearchWarehouseEligibilityResponse = z.infer<
+  typeof researchWarehouseEligibilityResponseSchema
+>;
+export type ResearchWarehouseEligibilityRequest = z.infer<
+  typeof researchWarehouseEligibilityRequestSchema
 >;
 export type QueueResearchBackfillPresetResponse = z.infer<
   typeof queueResearchBackfillPresetResponseSchema

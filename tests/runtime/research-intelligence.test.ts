@@ -239,6 +239,38 @@ describe('research intelligence runtime contracts', () => {
       temperature_c: 30,
       substrate: 'acetate',
     });
+    expect(answer.component_parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          component_type: 'anode',
+          parameter_key: 'component_parameters.anode_material',
+          text_value: 'carbon felt',
+        }),
+        expect.objectContaining({
+          component_type: 'cathode',
+          parameter_key: 'component_parameters.cathode_material_or_catalyst',
+          text_value: 'Pt/C',
+        }),
+        expect.objectContaining({
+          component_type: 'membrane_separator',
+          parameter_key: 'component_parameters.membrane_separator_type',
+          text_value: 'Nafion',
+        }),
+        expect.objectContaining({
+          component_type: 'reactor',
+          parameter_key: 'component_parameters.reactor_temperature',
+          normalized_unit: 'K',
+          normalized_value: 303.15,
+        }),
+      ]),
+    );
+    expect(answer.component_profiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ component_type: 'anode' }),
+        expect.objectContaining({ component_type: 'cathode' }),
+        expect.objectContaining({ component_type: 'membrane_separator' }),
+      ]),
+    );
     expect(Array.isArray(metrics)).toBe(true);
     expect(metrics).toEqual(
       expect.arrayContaining([
@@ -447,6 +479,21 @@ describe('research intelligence runtime contracts', () => {
     );
     expect(pack.evidence_items[0]).toEqual(
       expect.objectContaining({
+        component_parameters: expect.arrayContaining([
+          expect.objectContaining({
+            parameter_key: 'component_parameters.anode_material',
+          }),
+          expect.objectContaining({
+            parameter_key: 'component_parameters.reactor_temperature',
+          }),
+        ]),
+        component_profiles: expect.arrayContaining([
+          expect.objectContaining({ component_type: 'anode' }),
+        ]),
+        operating_conditions: expect.objectContaining({
+          pH: 7,
+          temperature_c: 30,
+        }),
         metadata_quality: expect.objectContaining({ level: 'medium' }),
         review_status: 'pending',
         source_artifact_id: 'source-artifact-fixture-001',

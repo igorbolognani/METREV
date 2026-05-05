@@ -25,6 +25,11 @@ decision_ingestion_preview:
     - assumptions
   optional_fields:
     - runtime_versions
+raw_evidence_record_extensions:
+  optional_fields:
+    - component_parameters
+    - component_profiles
+    - extraction_quality_gates
 rules:
   - Evidence packs may include only schema-valid extraction results.
   - Decision ingestion must adapt packs into existing RawEvidenceRecord-shaped evidence rather than coupling review UI to decision internals.
@@ -32,3 +37,4 @@ rules:
   - When a research pack is created at runtime, its decision-ingestion preview should preserve the same runtime_versions lineage when available.
   - Literature and supplier claims must remain explicitly typed.
   - Supplier claims remain supplier signals unless independently corroborated by accepted scientific, technical, or benchmark evidence.
+  - Evidence records built from research results must preserve operating_conditions, component_parameters, component_profiles, and extraction quality gates when present in validated extraction answers.

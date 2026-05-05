@@ -258,6 +258,77 @@ def test_research_contract_pack_declares_core_boundaries() -> None:
     existing_files = {path.name for path in RESEARCH_CONTRACTS_ROOT.glob("*.yaml")}
     assert required_files.issubset(existing_files)
 
+
+def test_research_taxonomy_and_contracts_align_on_active_surface_eligibility() -> None:
+    domain = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "research-taxonomy.yml")
+    paper_contract = _load_yaml(RESEARCH_CONTRACTS_ROOT / "paper.schema.yaml")
+    extraction_contract = _load_yaml(
+        RESEARCH_CONTRACTS_ROOT / "extraction-result.schema.yaml"
+    )
+
+    active_surface = (domain.get("scope") or {}).get("active_surface_eligibility") or {}
+    required_scope = set(active_surface.get("required_technology_scope") or [])
+    technology_contract = set(
+        ((extraction_contract.get("enums") or {}).get("technology_class") or {}).get(
+            "allowed"
+        )
+        or []
+    )
+    eligibility_reasons = set(
+        ((paper_contract.get("enums") or {}).get("eligibility_reason") or {}).get(
+            "allowed"
+        )
+        or []
+    )
+
+    assert {"MFC", "MEC", "MET"}.issubset(required_scope)
+    assert {"MFC", "MEC", "MET"}.issubset(technology_contract)
+    assert {
+        "full_access_traceable",
+        "missing_full_text_link",
+        "out_of_scope_technology",
+        "supplier_or_market_context_only",
+    }.issubset(eligibility_reasons)
+
+
+def test_research_component_parameter_contract_uses_rooted_keys() -> None:
+    extraction_contract = _load_yaml(
+        RESEARCH_CONTRACTS_ROOT / "extraction-result.schema.yaml"
+    )
+    property_dictionary = _load_yaml(ONTOLOGY_ROOT / "property_dictionary.yaml")
+    parameter_fields = set(
+        (extraction_contract.get("component_parameter") or {}).get(
+            "required_fields"
+        )
+        or []
+    )
+    metric_names = _allowed_metric_names()
+
+    assert {
+        "parameter_key",
+        "component_type",
+        "parameter_kind",
+        "evidence_trace",
+        "confidence",
+    }.issubset(parameter_fields)
+    assert {
+        "component_parameters.anode_surface_area",
+        "component_parameters.catalyst_loading",
+        "component_parameters.membrane_separator_thickness",
+        "component_parameters.biofilm_startup_time",
+        "component_parameters.reactor_temperature",
+        "component_parameters.reactor_hydraulic_retention_time",
+    }.issubset(metric_names)
+
+    compact_metric_names = [
+        item["name"]
+        for item in property_dictionary["properties"]
+        if any(item["name"].startswith(prefix) for prefix in FORBIDDEN_COMPACT_FIELD_PREFIXES)
+    ]
+    assert not compact_metric_names, (
+        f"Compact component prefixes found in property dictionary: {compact_metric_names}"
+    )
+
     extraction_result = _load_yaml(
         RESEARCH_CONTRACTS_ROOT / "extraction-result.schema.yaml"
     )

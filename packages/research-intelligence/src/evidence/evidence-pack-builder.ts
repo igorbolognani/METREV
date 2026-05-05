@@ -101,6 +101,46 @@ function normalizedMetricsFromResults(
   });
 }
 
+function answerRecord(
+  result: ResearchExtractionResult,
+): Record<string, unknown> | null {
+  return asRecord(result.answer);
+}
+
+function operatingConditionsFromResults(
+  results: ResearchExtractionResult[],
+): Record<string, unknown> {
+  return Object.assign(
+    {},
+    ...results.flatMap((result) => {
+      const operatingConditions = asRecord(
+        answerRecord(result)?.operating_conditions,
+      );
+      return operatingConditions ? [operatingConditions] : [];
+    }),
+  );
+}
+
+function arrayFieldFromResults(
+  results: ResearchExtractionResult[],
+  key: string,
+): unknown[] {
+  return results.flatMap((result) => {
+    const value = answerRecord(result)?.[key];
+    return Array.isArray(value) ? value : [];
+  });
+}
+
+function objectFieldFromResults(
+  results: ResearchExtractionResult[],
+  key: string,
+): unknown[] {
+  return results.flatMap((result) => {
+    const value = answerRecord(result)?.[key];
+    return asRecord(value) ? [value] : [];
+  });
+}
+
 function traceReferenceKey(input: {
   columnId: string;
   trace: ResearchEvidenceTrace;
@@ -242,6 +282,19 @@ function buildEvidenceRecord(input: {
         : [],
     ),
   ]);
+  const operatingConditions = operatingConditionsFromResults(input.results);
+  const componentParameters = arrayFieldFromResults(
+    input.results,
+    'component_parameters',
+  );
+  const componentProfiles = arrayFieldFromResults(
+    input.results,
+    'component_profiles',
+  );
+  const extractionQualityGates = objectFieldFromResults(
+    input.results,
+    'quality_gate',
+  );
 
   return {
     evidence_id: `research:${input.reviewId}:${input.paper.paper_id}`,
@@ -272,7 +325,10 @@ function buildEvidenceRecord(input: {
         },
       ]),
     ),
-    operating_conditions: {},
+    operating_conditions: operatingConditions,
+    component_parameters: componentParameters,
+    component_profiles: componentProfiles,
+    extraction_quality_gates: extractionQualityGates,
     block_mapping: uniqueStrings(
       input.results.map((result) => result.column_id),
     ),

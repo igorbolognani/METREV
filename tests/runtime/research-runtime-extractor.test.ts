@@ -57,7 +57,7 @@ describe('research runtime extractor', () => {
         blocks: [
           {
             kind: 'section',
-            text: 'Methods The reactor used carbon felt anodes.',
+            text: 'Methods The reactor used carbon felt anodes with surface area of 1200 m2/g, a Nafion membrane thickness of 180 um, and biofilm startup of 12 days at pH 7, 30 C, and HRT 24 h.',
             sourceLocator: 'html:https://example.org/full-text:block:0',
             pageNumber: null,
             sectionLabel: 'Methods',
@@ -67,25 +67,26 @@ describe('research runtime extractor', () => {
           },
           {
             kind: 'table',
-            text: 'Table 1 reports power density of 950 mW/m2.',
+            text: 'Table 1 reports a Pt/C cathode catalyst loading of 0.5 mg/cm2 and power density of 950 mW/m2.',
             sourceLocator: 'html:https://example.org/full-text:block:1',
             pageNumber: null,
             sectionLabel: 'Results',
             tableLabel: 'Table 1',
             cellLocator: 'Table 1:block:1',
-            caption: 'Table 1 reports power density of 950 mW/m2.',
+            caption:
+              'Table 1 reports a Pt/C cathode catalyst loading of 0.5 mg/cm2 and power density of 950 mW/m2.',
           },
         ],
         contentType: 'text/html',
         fetchedFrom: `${paper.source_url ?? 'https://example.org'}/full-text`,
         source: 'html',
-        text: 'The reactor used carbon felt anodes, activated carbon cathodes, and achieved power density of 950 mW/m2 with COD removal of 76%.',
+        text: 'The reactor used carbon felt anodes with surface area of 1200 m2/g, a Nafion membrane thickness of 180 um, and biofilm startup of 12 days at pH 7, 30 C, and HRT 24 h. Table 1 reports a Pt/C cathode catalyst loading of 0.5 mg/cm2 and power density of 950 mW/m2 with COD removal of 76%.',
         trace: [
           {
             source: 'full_text',
             source_document_id: paper.source_document_id,
             text_span:
-              'The reactor used carbon felt anodes, activated carbon cathodes, and achieved power density of 950 mW/m2 with COD removal of 76%.',
+              'The reactor used carbon felt anodes with surface area of 1200 m2/g, a Nafion membrane thickness of 180 um, and biofilm startup of 12 days at pH 7, 30 C, and HRT 24 h. Table 1 reports a Pt/C cathode catalyst loading of 0.5 mg/cm2 and power density of 950 mW/m2 with COD removal of 76%.',
             source_locator: 'html:https://example.org/full-text',
             page_number: null,
           },
@@ -127,6 +128,67 @@ describe('research runtime extractor', () => {
       metrics?.find((metric) => metric.metric_key === 'power_density_w_m2')
         ?.normalized_value,
     ).toBeCloseTo(0.95, 6);
+    const answer = result.answer as {
+      component_parameters?: Array<{
+        component_type: string;
+        normalized_unit: string | null;
+        normalized_value: number | null;
+        parameter_key: string;
+      }>;
+      component_profiles?: Array<{ component_type: string }>;
+      quality_gate?: { passed: boolean; table_count: number };
+    };
+    expect(answer.component_parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          component_type: 'anode',
+          parameter_key: 'component_parameters.anode_material',
+        }),
+        expect.objectContaining({
+          component_type: 'anode',
+          parameter_key: 'component_parameters.anode_surface_area',
+          normalized_unit: 'm2/g',
+          normalized_value: 1200,
+        }),
+        expect.objectContaining({
+          component_type: 'membrane_separator',
+          parameter_key: 'component_parameters.membrane_separator_thickness',
+          normalized_unit: 'm',
+          normalized_value: 0.00018,
+        }),
+        expect.objectContaining({
+          component_type: 'catalyst',
+          parameter_key: 'component_parameters.catalyst_loading',
+          normalized_unit: 'mg/cm2',
+          normalized_value: 0.5,
+        }),
+        expect.objectContaining({
+          component_type: 'biofilm',
+          parameter_key: 'component_parameters.biofilm_startup_time',
+          normalized_unit: 'd',
+          normalized_value: 12,
+        }),
+        expect.objectContaining({
+          component_type: 'reactor',
+          parameter_key: 'component_parameters.reactor_temperature',
+          normalized_unit: 'K',
+          normalized_value: 303.15,
+        }),
+      ]),
+    );
+    expect(answer.component_profiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ component_type: 'anode' }),
+        expect.objectContaining({ component_type: 'membrane_separator' }),
+        expect.objectContaining({ component_type: 'biofilm' }),
+      ]),
+    );
+    expect(answer.quality_gate).toEqual(
+      expect.objectContaining({
+        passed: true,
+        table_count: 1,
+      }),
+    );
   });
 
   it('falls back to deterministic extraction for llm_extracted research columns when openai mode is requested', async () => {

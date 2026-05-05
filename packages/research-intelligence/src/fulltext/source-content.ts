@@ -396,22 +396,23 @@ export async function hydrateResearchPaperText(
         source,
         text,
       });
+      const fallbackTrace: ResearchEvidenceTrace[] = [
+        {
+          source: 'full_text',
+          source_document_id: paper.source_document_id,
+          text_span: truncate(text, 520),
+          source_locator: `${source}:${candidate}`,
+          page_number: source === 'pdf' ? 1 : null,
+          section_label: null,
+          table_label: null,
+          cell_locator: null,
+          caption: null,
+        },
+      ];
       const trace =
         blocks.length > 0
           ? buildTraceFromBlocks(blocks, paper.source_document_id)
-          : [
-              {
-                source: 'full_text',
-                source_document_id: paper.source_document_id,
-                text_span: truncate(text, 520),
-                source_locator: `${source}:${candidate}`,
-                page_number: source === 'pdf' ? 1 : null,
-                section_label: null,
-                table_label: null,
-                cell_locator: null,
-                caption: null,
-              },
-            ];
+          : fallbackTrace;
 
       return {
         blocks,

@@ -169,6 +169,7 @@ function toPaperMetadata(input: {
   return {
     paper_id: `staged:${input.sourceDocumentId}`,
     source_document_id: input.sourceDocumentId,
+    document_type: input.result.document_type,
     title: input.result.title,
     authors: input.result.authors,
     year: input.result.year,
@@ -181,6 +182,8 @@ function toPaperMetadata(input: {
     xml_url: input.result.xml_url,
     abstract_text: input.result.abstract_text,
     citation_count: input.result.citation_count,
+    access_status: input.result.access_status,
+    source_license: input.result.source_license,
     metadata: input.result.metadata,
   };
 }
@@ -353,6 +356,7 @@ async function searchOpenAlex(
       const normalized: ResearchPaperSearchResult = {
         source_type: 'openalex' as const,
         source_key: id,
+        document_type: 'paper',
         title,
         authors,
         year: toYear(work.publication_year as number | null | undefined),
@@ -399,6 +403,13 @@ async function searchOpenAlex(
         citation_count: toCitationCount(work.cited_by_count),
         access_status: toAccessStatus(
           (work.open_access as { oa_status?: string } | null)?.oa_status,
+        ),
+        source_license: normalizeWhitespace(
+          (
+            work.primary_location as {
+              license?: string;
+            } | null
+          )?.license,
         ),
         metadata: {
           openalex_id: id,
@@ -460,6 +471,7 @@ async function searchCrossref(
       const normalized: ResearchPaperSearchResult = {
         source_type: 'crossref' as const,
         source_key: sourceKey,
+        document_type: 'paper',
         title,
         authors,
         year: toYear(
@@ -493,6 +505,12 @@ async function searchCrossref(
           Array.isArray(work.license) && work.license.length > 0
             ? 'hybrid'
             : 'unknown',
+        source_license:
+          Array.isArray(work.license) && work.license.length > 0
+            ? normalizeWhitespace(
+                (work.license[0] as { URL?: string } | undefined)?.URL,
+              )
+            : null,
         metadata: {
           crossref_type: normalizeWhitespace(
             work.type as string | null | undefined,
@@ -541,6 +559,7 @@ async function searchEuropePmc(
       const normalized: ResearchPaperSearchResult = {
         source_type: 'europe_pmc' as const,
         source_key: sourceKey,
+        document_type: 'paper',
         title,
         authors: authorListFromString(
           work.authorString as string | null | undefined,
@@ -566,6 +585,9 @@ async function searchEuropePmc(
           String(work.isOpenAccess ?? '').toLowerCase() === 'y'
             ? 'green'
             : 'unknown',
+        source_license: normalizeWhitespace(
+          work.license as string | null | undefined,
+        ),
         metadata: {
           europe_pmc_source: source,
           pmid: normalizeWhitespace(work.pmid as string | null | undefined),

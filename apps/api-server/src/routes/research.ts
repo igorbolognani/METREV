@@ -15,6 +15,7 @@ import {
     queueResearchBackfillPresetRequestSchema,
     queueResearchBackfillPresetResponseSchema,
     queueResearchBackfillRequestSchema,
+    researchWarehouseEligibilityRequestSchema,
     researchWarehouseProgressResponseSchema,
     runResearchExtractionsRequestSchema,
     runResearchExtractionsResponseSchema,
@@ -418,6 +419,74 @@ export async function registerResearchRoutes(
           warehouse,
         }),
       );
+    },
+  );
+
+  app.get(
+    '/warehouse-eligibility',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const query = request.query as Record<string, unknown>;
+      const parsed = researchWarehouseEligibilityRequestSchema.safeParse({
+        ...query,
+        dry_run: true,
+        include_items: query.include_items !== 'false',
+        limit:
+          typeof query.limit === 'string' ? Number(query.limit) : query.limit,
+      });
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const response = await withSpan(
+        'research.warehouse.eligibility',
+        () =>
+          app.researchRepository.listResearchWarehouseEligibility(parsed.data),
+        { actor_id: actor.userId },
+      );
+
+      return reply.send(response);
+    },
+  );
+
+  app.post(
+    '/warehouse-eligibility/sweep',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      const actor = requireAnalyst(request, reply);
+      if (!actor) {
+        return reply;
+      }
+
+      const parsed = researchWarehouseEligibilityRequestSchema.safeParse(
+        request.body ?? {},
+      );
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const response = await withSpan(
+        'research.warehouse.eligibility_sweep',
+        () =>
+          app.researchRepository.listResearchWarehouseEligibility(parsed.data),
+        {
+          actor_id: actor.userId,
+          dry_run: parsed.data.dry_run,
+        },
+      );
+
+      return reply.send(response);
     },
   );
 

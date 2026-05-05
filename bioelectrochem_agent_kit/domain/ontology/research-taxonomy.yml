@@ -4,6 +4,7 @@ scope:
   primary_technologies:
     - MFC
     - MEC
+    - MET
     - MDC
     - BES
     - bioelectrochemical_sensor
@@ -26,6 +27,22 @@ scope:
       - case_study
       - market_report
       - regulatory_report
+  active_surface_eligibility:
+    required_access:
+      - full_text_html
+      - full_text_xml
+      - accessible_pdf
+      - locally_imported_full_text
+    required_technology_scope:
+      - MFC
+      - MEC
+      - MET
+    excluded_when:
+      - closed_access
+      - unknown_access_without_license_or_policy
+      - missing_full_text_link_or_artifact
+      - source_is_only_supplier_market_or_regulatory_context
+      - source_does_not_address_MFC_MEC_or_MET
   research_lenses:
     - electroactive_biology
     - redox_reactor_engineering
@@ -94,6 +111,45 @@ technical_detail_sections:
   - data_metadata_readiness
   - metadata_quality
   - evidence_veracity
+  - eligibility_audit
+  - component_parameters
+  - component_profiles
+
+scientific_component_parameters:
+  required_trace_fields:
+    - original_value
+    - original_unit
+    - normalized_value
+    - normalized_unit
+    - normalization_rule_id
+    - source_locator
+    - text_span
+  component_types:
+    - reactor
+    - anode
+    - cathode
+    - membrane_separator
+    - catalyst
+    - current_collector
+    - biofilm
+    - inoculum_microbial_community
+    - substrate_feedstock
+    - electrolyte
+    - external_circuit
+    - sensors_instrumentation
+    - balance_of_plant
+  parameter_kinds:
+    - material
+    - geometry
+    - surface_property
+    - loading
+    - operating_condition
+    - electrochemical_metric
+    - treatment_metric
+    - product_metric
+    - biology
+    - cost_maturity
+    - limitation
 
 metrev_research_lens_mapping:
   electroactive_biology:
@@ -136,3 +192,7 @@ rules:
   - EvidenceDecisionContext is built by the API/database decision layer, not by review UI state, and may admit only decision-ready evidence.
   - Context or methodology references may inform vocabulary, metadata organization, and evidence targeting but must not be treated as validated stack performance evidence.
   - Metadata quality and evidence veracity are distinct review dimensions and both must remain audit-visible.
+  - Warehouse eligibility sweeps may mark active sources only when sources are full-access, traceable, and explicitly in MFC, MEC, or MET scope.
+  - Eligibility filtering must preserve excluded source records and reason buckets for audit instead of deleting source rows.
+  - Papers, reviews, patents, datasheets, manuals, SOPs, supplier documents, case studies, market reports, and regulatory reports must remain typed source documents; only decision-ready evidence can cross into decision inputs.
+  - Component profiles must not hide defaults: missing material, geometry, surface, loading, biology, and operating fields stay visible in missing_fields.

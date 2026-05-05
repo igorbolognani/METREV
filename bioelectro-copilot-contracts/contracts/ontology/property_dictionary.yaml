@@ -13,7 +13,7 @@ properties:
     comparability_notes: Confirm area basis and operating regime before benchmarking
 
   - name: coulombic_efficiency_pct
-    unit: "%"
+    unit: '%'
     category: electrochemical
     description: Fraction of electrons recovered as useful current
     comparability_notes: Sensitive to substrate definition and system boundary
@@ -25,7 +25,7 @@ properties:
     comparability_notes: Measurement method and frequency range should be recorded
 
   - name: cod_removal_pct
-    unit: "%"
+    unit: '%'
     category: biological
     description: Fraction of chemical oxygen demand removed
     comparability_notes: Requires influent/effluent definition and sampling basis
@@ -35,3 +35,39 @@ properties:
     category: economic
     description: Estimated cost per useful energy output
     comparability_notes: Always state assumptions and time horizon
+
+  - name: component_parameters.anode_surface_area
+    unit: m2/g
+    category: component_surface_property
+    description: Specific or reported anode active surface area when stated by the source
+    comparability_notes: Compare only when the surface-area basis and electrode geometry are compatible
+
+  - name: component_parameters.catalyst_loading
+    unit: mg/cm2
+    category: component_loading
+    description: Catalyst mass loading normalized by projected electrode area
+    comparability_notes: Catalyst identity, support material, and loading basis must be preserved
+
+  - name: component_parameters.membrane_separator_thickness
+    unit: m
+    category: component_geometry
+    description: Membrane or separator thickness normalized to SI length units
+    comparability_notes: Hydration state, membrane family, and measurement method can affect comparability
+
+  - name: component_parameters.biofilm_startup_time
+    unit: d
+    category: biological_operating_parameter
+    description: Time required for electroactive biofilm startup or acclimation
+    comparability_notes: Compare only with matching inoculum, substrate, and startup criterion
+
+  - name: component_parameters.reactor_temperature
+    unit: K
+    category: operating_condition
+    description: Reactor operating temperature normalized to kelvin while preserving reported Celsius values
+    comparability_notes: Temperature control strategy and location of measurement should be recorded
+
+  - name: component_parameters.reactor_hydraulic_retention_time
+    unit: s
+    category: operating_condition
+    description: Hydraulic retention time normalized to seconds while preserving reported hour values
+    comparability_notes: Reactor volume definition and flow regime must be compatible

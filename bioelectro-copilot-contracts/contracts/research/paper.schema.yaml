@@ -4,6 +4,7 @@ paper_metadata:
   required_fields:
     - paper_id
     - source_document_id
+    - document_type
     - title
     - source_type
   optional_fields:
@@ -16,7 +17,42 @@ paper_metadata:
     - pdf_url
     - abstract_text
     - citation_count
+    - access_status
+    - source_license
     - metadata
+document_metadata:
+  alias_of: paper_metadata
+  intent: Document-neutral runtime metadata for papers, reviews, patents, datasheets, manuals/SOPs, supplier documents, case studies, market reports, regulatory reports, curated manifests, and local manual imports.
+enums:
+  document_type:
+    allowed:
+      - paper
+      - review
+      - patent
+      - datasheet
+      - manual_sop
+      - technical_report
+      - supplier_document
+      - case_study
+      - market_report
+      - regulatory_report
+      - curated_manifest
+      - manual
+  eligibility_status:
+    allowed: [eligible, excluded]
+  eligibility_reason:
+    allowed:
+      - full_access_traceable
+      - access_closed
+      - access_unknown
+      - missing_license_or_access_policy
+      - missing_full_text_link
+      - out_of_scope_technology
+      - supplier_or_market_context_only
+      - insufficient_source_metadata
 rules:
   - Existing ExternalSourceRecord rows remain the canonical source-document backing store.
   - Paper metadata snapshots may be stored for review stability but must not replace source-document provenance.
+  - Runtime code may keep the paper_metadata name for backward compatibility, but new ingestion should treat it as document metadata.
+  - Active research reviews may include only full-access, traceable sources that explicitly address MFC, MEC, or MET surfaces.
+  - Eligibility sweeps must preserve excluded source records and reason buckets for audit; filtering must not delete warehouse rows.

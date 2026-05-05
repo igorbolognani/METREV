@@ -18,6 +18,7 @@ import {
     researchReviewDetailSchema,
     researchReviewListResponseSchema,
     researchReviewSummarySchema,
+    researchWarehouseEligibilityResponseSchema,
     searchResearchPapersResponseSchema,
     sourceArtifactSchema,
     stageResearchPapersResponseSchema,
@@ -39,6 +40,9 @@ import {
     type ResearchPaperSearchResult,
     type ResearchReviewDetail,
     type ResearchReviewListResponse,
+    type ResearchWarehouseEligibilityItem,
+    type ResearchWarehouseEligibilityRequest,
+    type ResearchWarehouseEligibilityResponse,
     type SearchResearchPapersRequest,
     type SearchResearchPapersResponse,
     type SourceArtifact,
@@ -152,6 +156,9 @@ export interface ResearchRepository {
   ): Promise<ResearchBackfillSummary | null>;
   listResearchBackfills(): Promise<ResearchBackfillListResponse>;
   listResearchReviews(): Promise<ResearchReviewListResponse>;
+  listResearchWarehouseEligibility(
+    input: ResearchWarehouseEligibilityRequest,
+  ): Promise<ResearchWarehouseEligibilityResponse>;
   searchResearchPapers(
     input: SearchResearchPapersRequest,
   ): Promise<SearchResearchPapersResponse>;
@@ -306,14 +313,327 @@ function numberFromPayload(payload: unknown, key: string): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function readStringFromPayload(payload: unknown, key: string): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function normalizeAccessStatus(
+  value: unknown,
+): ResearchPaperMetadata['access_status'] {
+  switch (String(value ?? 'unknown').toLowerCase()) {
+    case 'gold':
+      return 'gold';
+    case 'green':
+      return 'green';
+    case 'hybrid':
+      return 'hybrid';
+    case 'bronze':
+      return 'bronze';
+    case 'closed':
+      return 'closed';
+    default:
+      return 'unknown';
+  }
+}
+
+function documentTypeFromSourceType(
+  value: ResearchPaperMetadata['source_type'],
+): ResearchPaperMetadata['document_type'] {
+  switch (value) {
+    case 'review':
+      return 'review';
+    case 'patent':
+      return 'patent';
+    case 'datasheet':
+      return 'datasheet';
+    case 'manual_sop':
+      return 'manual_sop';
+    case 'technical_report':
+      return 'technical_report';
+    case 'supplier_document':
+    case 'supplier_profile':
+      return 'supplier_document';
+    case 'case_study':
+      return 'case_study';
+    case 'market_report':
+    case 'market_snapshot':
+      return 'market_report';
+    case 'regulatory_report':
+      return 'regulatory_report';
+    case 'curated_manifest':
+      return 'curated_manifest';
+    case 'manual':
+      return 'manual';
+    default:
+      return 'paper';
+  }
+}
+
+function titleCaseLabel(value: string): string {
+  return value
+    .split(/[_\s-]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function countBuckets(values: string[]) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([key, count]) => ({
+      key,
+      label: titleCaseLabel(key),
+      count,
+    }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.key.localeCompare(right.key),
+    );
+}
+
+function detectResearchTechnologyClasses(
+  text: string,
+): ResearchWarehouseEligibilityItem['technology_classes'] {
+  const normalized = text.toLowerCase();
+  const classes = new Set<
+    ResearchWarehouseEligibilityItem['technology_classes'][number]
+  >();
+
+  if (/\bMFCs?\b/i.test(text) || normalized.includes('microbial fuel cell')) {
+    classes.add('MFC');
+  }
+  if (
+    /\bMECs?\b/i.test(text) ||
+    normalized.includes('microbial electrolysis cell')
+  ) {
+    classes.add('MEC');
+  }
+  if (
+    /\bMETs?\b/i.test(text) ||
+    normalized.includes('microbial electrochemical technolog') ||
+    normalized.includes('microbial electrochemical system') ||
+    normalized.includes('microbial electrosynthesis')
+  ) {
+    classes.add('MET');
+  }
+  if (
+    /\bBES\b/i.test(text) ||
+    normalized.includes('bioelectrochemical system')
+  ) {
+    classes.add('BES');
+  }
+
+  return [...classes];
+}
+
+function hasFullTextLink(source: {
+  pdfUrl?: string | null;
+  rawPayload?: unknown;
+  sourceUrl?: string | null;
+  xmlUrl?: string | null;
+}) {
+  return Boolean(
+    source.pdfUrl ||
+    source.xmlUrl ||
+    readStringFromPayload(source.rawPayload, 'full_text_url') ||
+    readStringFromPayload(source.rawPayload, 'full_text_xml_url') ||
+    readStringFromPayload(source.rawPayload, 'pdf_url'),
+  );
+}
+
+function assessResearchWarehouseEligibility(source: {
+  abstractText?: string | null;
+  accessStatus?: unknown;
+  doi?: string | null;
+  id: string;
+  journal?: string | null;
+  license?: string | null;
+  pdfUrl?: string | null;
+  publisher?: string | null;
+  rawPayload?: unknown;
+  sourceType: DatabaseResearchSourceType;
+  sourceUrl?: string | null;
+  title: string;
+  xmlUrl?: string | null;
+}): ResearchWarehouseEligibilityItem {
+  const sourceType = sourceTypeToContract(source.sourceType);
+  const documentType = documentTypeFromSourceType(sourceType);
+  const accessStatus = normalizeAccessStatus(source.accessStatus);
+  const hasLink = hasFullTextLink(source);
+  const text = [
+    source.title,
+    source.abstractText ?? '',
+    source.journal ?? '',
+    source.publisher ?? '',
+    source.doi ?? '',
+  ].join(' ');
+  const technologyClasses = detectResearchTechnologyClasses(text);
+  const reasons: ResearchWarehouseEligibilityItem['reasons'] = [];
+
+  if (accessStatus === 'closed') {
+    reasons.push('access_closed');
+  }
+  if (accessStatus === 'unknown') {
+    reasons.push('access_unknown');
+  }
+  if (accessStatus === 'unknown' && !source.license) {
+    reasons.push('missing_license_or_access_policy');
+  }
+  if (!hasLink) {
+    reasons.push('missing_full_text_link');
+  }
+  if (
+    technologyClasses.filter((technology) =>
+      ['MFC', 'MEC', 'MET'].includes(technology),
+    ).length === 0
+  ) {
+    reasons.push('out_of_scope_technology');
+  }
+  if (
+    ['supplier_document', 'market_report', 'regulatory_report'].includes(
+      documentType,
+    )
+  ) {
+    reasons.push('supplier_or_market_context_only');
+  }
+
+  return {
+    source_document_id: source.id,
+    title: source.title,
+    source_type: sourceType,
+    document_type: documentType,
+    access_status: accessStatus,
+    source_license: source.license ?? null,
+    has_full_text_link: hasLink,
+    technology_classes: technologyClasses,
+    status: reasons.length === 0 ? 'eligible' : 'excluded',
+    reasons: reasons.length === 0 ? ['full_access_traceable'] : reasons,
+    active_surface: reasons.length === 0,
+  };
+}
+
+function buildEligibilityResponse(input: {
+  dryRun: boolean;
+  includeItems: boolean;
+  items: ResearchWarehouseEligibilityItem[];
+  totalLinkedRecords?: number;
+}): ResearchWarehouseEligibilityResponse {
+  const excluded = input.items.filter((item) => item.status === 'excluded');
+
+  return researchWarehouseEligibilityResponseSchema.parse({
+    dry_run: input.dryRun,
+    total_linked_records: input.totalLinkedRecords ?? input.items.length,
+    eligible_records: input.items.filter((item) => item.status === 'eligible')
+      .length,
+    excluded_records: excluded.length,
+    inaccessible_records: input.items.filter((item) =>
+      item.reasons.some((reason) =>
+        [
+          'access_closed',
+          'access_unknown',
+          'missing_license_or_access_policy',
+        ].includes(reason),
+      ),
+    ).length,
+    out_of_scope_records: input.items.filter((item) =>
+      item.reasons.includes('out_of_scope_technology'),
+    ).length,
+    missing_full_text_records: input.items.filter((item) =>
+      item.reasons.includes('missing_full_text_link'),
+    ).length,
+    missing_license_records: input.items.filter((item) =>
+      item.reasons.includes('missing_license_or_access_policy'),
+    ).length,
+    source_breakdown: countBuckets(input.items.map((item) => item.source_type)),
+    rejected_reason_buckets: countBuckets(
+      excluded.flatMap((item) => item.reasons),
+    ),
+    items: input.includeItems ? input.items : [],
+  });
+}
+
+function sourceTypeFromContract(
+  value: ResearchPaperMetadata['source_type'],
+): DatabaseResearchSourceType {
+  switch (value) {
+    case 'openalex':
+      return 'OPENALEX';
+    case 'crossref':
+      return 'CROSSREF';
+    case 'europe_pmc':
+      return 'EUROPE_PMC';
+    case 'paper':
+      return 'PAPER';
+    case 'review':
+      return 'REVIEW';
+    case 'patent':
+      return 'PATENT';
+    case 'datasheet':
+      return 'DATASHEET';
+    case 'manual_sop':
+      return 'MANUAL_SOP';
+    case 'technical_report':
+      return 'TECHNICAL_REPORT';
+    case 'supplier_document':
+      return 'SUPPLIER_DOCUMENT';
+    case 'supplier_profile':
+      return 'SUPPLIER_PROFILE';
+    case 'case_study':
+      return 'CASE_STUDY';
+    case 'market_report':
+      return 'MARKET_REPORT';
+    case 'market_snapshot':
+      return 'MARKET_SNAPSHOT';
+    case 'regulatory_report':
+      return 'REGULATORY_REPORT';
+    case 'curated_manifest':
+      return 'CURATED_MANIFEST';
+    default:
+      return 'MANUAL';
+  }
+}
+
+function assessResearchPaperMetadataEligibility(
+  paper: ResearchPaperMetadata,
+): ResearchWarehouseEligibilityItem {
+  return assessResearchWarehouseEligibility({
+    abstractText: paper.abstract_text,
+    accessStatus: paper.access_status,
+    doi: paper.doi,
+    id: paper.source_document_id,
+    journal: paper.journal,
+    license: paper.source_license,
+    pdfUrl: paper.pdf_url,
+    publisher: paper.publisher,
+    rawPayload: paper.metadata,
+    sourceType: sourceTypeFromContract(paper.source_type),
+    sourceUrl: paper.source_url,
+    title: paper.title,
+    xmlUrl: paper.xml_url,
+  });
+}
+
 function paperMetadataFromSource(input: {
   paperId: string;
   sourceRecord: {
     abstractText: string | null;
+    accessStatus?: unknown;
     authors: unknown;
     doi: string | null;
     id: string;
     journal: string | null;
+    license?: string | null;
     pdfUrl: string | null;
     publishedAt: Date | null;
     publisher: string | null;
@@ -321,11 +641,15 @@ function paperMetadataFromSource(input: {
     sourceType: DatabaseResearchSourceType;
     sourceUrl: string | null;
     title: string;
+    xmlUrl?: string | null;
   };
 }): ResearchPaperMetadata {
+  const sourceType = sourceTypeToContract(input.sourceRecord.sourceType);
+
   return researchPaperMetadataSchema.parse({
     paper_id: input.paperId,
     source_document_id: input.sourceRecord.id,
+    document_type: documentTypeFromSourceType(sourceType),
     title: input.sourceRecord.title,
     authors: Array.isArray(input.sourceRecord.authors)
       ? input.sourceRecord.authors
@@ -334,15 +658,21 @@ function paperMetadataFromSource(input: {
     doi: input.sourceRecord.doi,
     journal: input.sourceRecord.journal,
     publisher: input.sourceRecord.publisher,
-    source_type: sourceTypeToContract(input.sourceRecord.sourceType),
+    source_type: sourceType,
     source_url: input.sourceRecord.sourceUrl,
     pdf_url: input.sourceRecord.pdfUrl,
-    xml_url: normalizeXmlUrlFromPayload(input.sourceRecord.rawPayload),
+    xml_url:
+      input.sourceRecord.xmlUrl ??
+      normalizeXmlUrlFromPayload(input.sourceRecord.rawPayload),
     abstract_text: input.sourceRecord.abstractText,
     citation_count:
       numberFromPayload(input.sourceRecord.rawPayload, 'cited_by_count') ??
       numberFromPayload(input.sourceRecord.rawPayload, 'references_count'),
-    metadata: {},
+    access_status: normalizeAccessStatus(input.sourceRecord.accessStatus),
+    source_license: input.sourceRecord.license ?? null,
+    metadata: {
+      eligibility: assessResearchWarehouseEligibility(input.sourceRecord),
+    },
   });
 }
 
@@ -351,10 +681,12 @@ function paperMetadataFromSnapshot(input: {
   paperId: string;
   sourceRecord: {
     abstractText: string | null;
+    accessStatus?: unknown;
     authors: unknown;
     doi: string | null;
     id: string;
     journal: string | null;
+    license?: string | null;
     pdfUrl: string | null;
     publishedAt: Date | null;
     publisher: string | null;
@@ -362,6 +694,7 @@ function paperMetadataFromSnapshot(input: {
     sourceType: DatabaseResearchSourceType;
     sourceUrl: string | null;
     title: string;
+    xmlUrl?: string | null;
   };
 }): ResearchPaperMetadata {
   const fallback = paperMetadataFromSource({
@@ -852,6 +1185,7 @@ export class MemoryResearchRepository implements ResearchRepository {
       {
         source_type: 'openalex',
         source_key: 'https://openalex.org/Wmemory001',
+        document_type: 'paper',
         title: `Dual chamber microbial fuel cell search fixture for ${compactQuery}`,
         authors: [{ name: 'Fixture OpenAlex Author' }],
         year: 2025,
@@ -865,6 +1199,7 @@ export class MemoryResearchRepository implements ResearchRepository {
           'A live-search fixture paper describing carbon felt anodes, COD removal, and power density.',
         citation_count: 14,
         access_status: 'green',
+        source_license: 'CC-BY-4.0',
         metadata: {
           fixture: true,
           provider: 'openalex',
@@ -873,6 +1208,7 @@ export class MemoryResearchRepository implements ResearchRepository {
       {
         source_type: 'crossref',
         source_key: '10.5555/crossref-fixture-001',
+        document_type: 'paper',
         title: `Crossref microbial electrochemical fixture for ${compactQuery}`,
         authors: [{ name: 'Fixture Crossref Author' }],
         year: 2024,
@@ -886,6 +1222,7 @@ export class MemoryResearchRepository implements ResearchRepository {
           'A Crossref search fixture describing microbial electrolysis performance and implementation limits.',
         citation_count: 9,
         access_status: 'unknown',
+        source_license: null,
         metadata: {
           fixture: true,
           provider: 'crossref',
@@ -894,6 +1231,7 @@ export class MemoryResearchRepository implements ResearchRepository {
       {
         source_type: 'europe_pmc',
         source_key: 'MED:12345678',
+        document_type: 'paper',
         title: `Europe PMC wastewater recovery fixture for ${compactQuery}`,
         authors: [{ name: 'Fixture Europe PMC Author' }],
         year: 2023,
@@ -907,6 +1245,7 @@ export class MemoryResearchRepository implements ResearchRepository {
           'A Europe PMC fixture covering nutrient recovery and bioelectrochemical wastewater treatment.',
         citation_count: 5,
         access_status: 'green',
+        source_license: 'CC-BY-4.0',
         metadata: {
           fixture: true,
           provider: 'europe_pmc',
@@ -924,6 +1263,11 @@ export class MemoryResearchRepository implements ResearchRepository {
       ? input.source_document_ids
           .map((sourceDocumentId) => this.stagedPapers.get(sourceDocumentId))
           .filter((paper): paper is ResearchPaperMetadata => Boolean(paper))
+          .filter(
+            (paper) =>
+              assessResearchPaperMetadataEligibility(paper).status ===
+              'eligible',
+          )
           .slice(0, input.limit)
       : [createDefaultMemoryPaper(1), createDefaultMemoryPaper(2)].slice(
           0,
@@ -1027,7 +1371,27 @@ export class MemoryResearchRepository implements ResearchRepository {
         xml_url: item.xml_url,
         abstract_text: item.abstract_text,
         citation_count: item.citation_count,
-        metadata: item.metadata,
+        document_type: item.document_type,
+        access_status: item.access_status,
+        source_license: item.source_license,
+        metadata: {
+          ...item.metadata,
+          eligibility: assessResearchWarehouseEligibility({
+            abstractText: item.abstract_text,
+            accessStatus: item.access_status,
+            doi: item.doi,
+            id: sourceDocumentId,
+            journal: item.journal,
+            license: item.source_license,
+            pdfUrl: item.pdf_url,
+            publisher: item.publisher,
+            rawPayload: item.metadata,
+            sourceType: sourceTypeFromContract(item.source_type),
+            sourceUrl: item.source_url,
+            title: item.title,
+            xmlUrl: item.xml_url,
+          }),
+        },
       });
 
       this.stagedPapers.set(sourceDocumentId, paper);
@@ -1121,6 +1485,7 @@ export class MemoryResearchRepository implements ResearchRepository {
       const paper = researchPaperMetadataSchema.parse({
         paper_id: `source:${sourceDocumentId}`,
         source_document_id: sourceDocumentId,
+        document_type: 'manual',
         title: fileName,
         authors: [],
         year: null,
@@ -1134,8 +1499,26 @@ export class MemoryResearchRepository implements ResearchRepository {
         abstract_text:
           'Memory local PDF import fixture for metadata quality and veracity disclosure.',
         citation_count: null,
+        access_status: input.access_status,
+        source_license: input.license ?? null,
         metadata: {
           local_source_artifact_id: artifact.artifact_id,
+          eligibility: assessResearchWarehouseEligibility({
+            abstractText:
+              'Memory local PDF import fixture for metadata quality and veracity disclosure.',
+            accessStatus: input.access_status,
+            doi: null,
+            id: sourceDocumentId,
+            journal: null,
+            license: input.license ?? null,
+            pdfUrl: filePath,
+            publisher: 'Memory local PDF import',
+            rawPayload: {},
+            sourceType: 'MANUAL',
+            sourceUrl: null,
+            title: fileName,
+            xmlUrl: null,
+          }),
           metadata_quality: metadataQuality,
           veracity_score: veracityScore,
         },
@@ -1176,6 +1559,49 @@ export class MemoryResearchRepository implements ResearchRepository {
         created_at: review.created_at,
         updated_at: review.updated_at,
       })),
+    });
+  }
+
+  async listResearchWarehouseEligibility(
+    input: ResearchWarehouseEligibilityRequest,
+  ): Promise<ResearchWarehouseEligibilityResponse> {
+    const staged = [...this.stagedPapers.values()];
+    const sourcePapers =
+      staged.length > 0
+        ? staged
+        : dedupeResearchPaperItems(
+            this.buildMemorySearchResults('microbial fuel cell wastewater'),
+          ).map((item) =>
+            researchPaperMetadataSchema.parse({
+              paper_id: `memory-eligibility:${item.source_key}`,
+              source_document_id: `memory-eligibility-${item.source_key.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+              document_type: item.document_type,
+              title: item.title,
+              authors: item.authors,
+              year: item.year,
+              doi: item.doi,
+              journal: item.journal,
+              publisher: item.publisher,
+              source_type: item.source_type,
+              source_url: item.source_url,
+              pdf_url: item.pdf_url,
+              xml_url: item.xml_url,
+              abstract_text: item.abstract_text,
+              citation_count: item.citation_count,
+              access_status: item.access_status,
+              source_license: item.source_license,
+              metadata: item.metadata,
+            }),
+          );
+    const items = sourcePapers
+      .map((paper) => assessResearchPaperMetadataEligibility(paper))
+      .slice(0, input.limit);
+
+    return buildEligibilityResponse({
+      dryRun: input.dry_run,
+      includeItems: input.include_items,
+      items,
+      totalLinkedRecords: sourcePapers.length,
     });
   }
 
@@ -1596,6 +2022,11 @@ export class PrismaResearchRepository implements ResearchRepository {
                 input.source_document_ids!.indexOf(left.id) -
                 input.source_document_ids!.indexOf(right.id),
             )
+            .filter(
+              (source) =>
+                assessResearchWarehouseEligibility(source).status ===
+                'eligible',
+            )
             .slice(0, input.limit)
         : (() => {
             const searchQuery = input.query.trim();
@@ -1609,6 +2040,11 @@ export class PrismaResearchRepository implements ResearchRepository {
                     source,
                   }))
                   .filter((entry) => entry.score > 0)
+                  .filter(
+                    (entry) =>
+                      assessResearchWarehouseEligibility(entry.source)
+                        .status === 'eligible',
+                  )
                   .sort(
                     (left, right) =>
                       right.score - left.score ||
@@ -1697,6 +2133,38 @@ export class PrismaResearchRepository implements ResearchRepository {
       }
 
       return toResearchReviewDetail(hydrated);
+    });
+  }
+
+  async listResearchWarehouseEligibility(
+    input: ResearchWarehouseEligibilityRequest,
+  ): Promise<ResearchWarehouseEligibilityResponse> {
+    return withSpan('database.research_warehouse.eligibility', async () => {
+      const linkedWhere: Prisma.ExternalSourceRecordWhereInput = {
+        OR: [
+          { sourceUrl: { not: null } },
+          { pdfUrl: { not: null } },
+          { xmlUrl: { not: null } },
+        ],
+      };
+      const [totalLinkedRecords, records] = await Promise.all([
+        this.prisma.externalSourceRecord.count({ where: linkedWhere }),
+        this.prisma.externalSourceRecord.findMany({
+          where: linkedWhere,
+          orderBy: [{ updatedAt: 'desc' }],
+          take: input.limit,
+        }),
+      ]);
+      const items = records.map((record) =>
+        assessResearchWarehouseEligibility(record),
+      );
+
+      return buildEligibilityResponse({
+        dryRun: input.dry_run,
+        includeItems: input.include_items,
+        items,
+        totalLinkedRecords,
+      });
     });
   }
 

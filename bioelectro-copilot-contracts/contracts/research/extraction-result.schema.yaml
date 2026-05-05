@@ -20,9 +20,107 @@ enums:
     allowed: [valid, invalid]
   confidence:
     allowed: [low, medium, high]
+  technology_class:
+    allowed:
+      [
+        MFC,
+        MEC,
+        MET,
+        MDC,
+        BES,
+        bioelectrochemical_sensor,
+        hybrid_system,
+        not_reported,
+      ]
+  component_type:
+    allowed:
+      - reactor
+      - anode
+      - cathode
+      - membrane_separator
+      - catalyst
+      - current_collector
+      - biofilm
+      - inoculum_microbial_community
+      - substrate_feedstock
+      - electrolyte
+      - external_circuit
+      - sensors_instrumentation
+      - balance_of_plant
+  parameter_kind:
+    allowed:
+      - material
+      - geometry
+      - surface_property
+      - loading
+      - operating_condition
+      - electrochemical_metric
+      - treatment_metric
+      - product_metric
+      - biology
+      - cost_maturity
+      - limitation
+system_performance_answer:
+  expected_optional_fields:
+    - technology_class
+    - reactor_architecture
+    - anode
+    - cathode
+    - membrane_or_separator
+    - substrate_feedstock
+    - operating_conditions
+    - component_parameters
+    - component_profiles
+    - quality_gate
+    - electrochemical_metrics
+    - treatment_metrics
+    - product_outputs
+    - scale
+    - implementation_limitations
+    - missing_fields
+    - evidence_trace
+    - confidence
+component_parameter:
+  required_fields:
+    - parameter_key
+    - component_type
+    - parameter_kind
+    - label
+    - evidence_trace
+    - confidence
+  optional_fields:
+    - original_value
+    - original_unit
+    - normalized_value
+    - normalized_unit
+    - normalization_rule_id
+    - text_value
+component_profile:
+  required_fields:
+    - component_type
+    - label
+    - missing_fields
+    - evidence_trace
+    - confidence
+  optional_fields:
+    - material
+    - role
+    - properties
+quality_gate:
+  required_fields:
+    - gate_id
+    - passed
+    - reasons
+    - trace_count
+    - missing_fields
+  optional_fields:
+    - table_count
+    - figure_count
 rules:
   - Valid extraction results with non-null answers require at least one evidence trace.
   - Evidence traces must preserve source_locator, text_span, page_number, section_label, table_label, cell_locator, and caption when those locators are available from the source artifact or extracted claim.
   - Invalid extraction results must preserve validation_errors for audit.
   - Missing reported values must be represented as null and listed in missing_fields.
   - Normalized numerical metrics must preserve original values, original units, normalized values, normalized units, and rule ids.
+  - Component parameters must preserve the component type, parameter kind, source span, original unit, normalized unit, and normalization rule whenever values are extracted.
+  - Component profiles must expose missing scientific fields instead of inferring unreported material, geometry, loading, or biology details.
