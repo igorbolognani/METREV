@@ -227,6 +227,11 @@ describe('dashboard workspace', () => {
     expect(overviewHtml).toContain('Configure stack');
     expect(overviewHtml).toContain('Open evaluations');
     expect(overviewHtml).toContain('Open reports');
+    expect(overviewHtml).not.toContain('Evidence catalog total');
+    expect(overviewHtml).not.toContain('System-accepted evidence');
+    expect(overviewHtml).not.toContain('Review exceptions');
+    expect(overviewHtml).not.toContain('Decision-ready facts');
+    expect(overviewHtml).not.toContain('Canonicalization progress');
     expect(overviewHtml).not.toContain('Run momentum');
     expect(overviewHtml).not.toContain('Confidence posture');
     expect(overviewHtml).not.toContain('Accepted sidestream benchmark');

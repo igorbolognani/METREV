@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decisionOutputSchema,
+  evidenceDecisionContextSchema,
   normalizeCaseInput,
   rawCaseInputSchema,
 } from '@metrev/domain-contracts';
@@ -150,6 +151,60 @@ describe('rule engine', () => {
     ).toContain('metadata or veracity penalties');
     expect(penalizedDecision.current_stack_diagnosis.summary).toContain(
       'single_source_with_trace_penalties',
+    );
+  });
+
+  it('surfaces missing benchmark coverage from the evidence decision context', () => {
+    const normalized = normalizeCaseInput(rawCaseInputSchema.parse(fixture));
+    const evidenceContext = evidenceDecisionContextSchema.parse({
+      case_id: normalized.case_id,
+      technology_family: normalized.technology_family,
+      system_type: 'MFC',
+      primary_objective: normalized.primary_objective,
+      query: {
+        system_type: 'MFC',
+        application: normalized.primary_objective,
+        component_types: ['anode'],
+        materials: ['carbon_felt'],
+        metric_types: ['power_density'],
+        limit: 12,
+        decision_ready_only: true,
+      },
+      benchmark_ranges: [],
+      matched_evidence: [],
+      material_comparisons: [],
+      operating_window_signals: [],
+      failure_mode_signals: [],
+      cost_signals: [],
+      supplier_signals: [],
+      uncertainty_summary: {
+        confidence_level: 'low',
+        summary:
+          'No decision-ready benchmark aggregates matched the current case filters.',
+        missing_dependencies: ['canonical decision-ready benchmark aggregates'],
+        excluded_evidence_reasons: [
+          'Pending, rejected, supplier-only, or non-decision-ready evidence was excluded from this decision context.',
+        ],
+      },
+      provenance_note:
+        'EvidenceDecisionContext was built from decision-ready benchmark aggregates and accepted catalog evidence only.',
+      source_refs: [],
+      builder_version: 'initial_benchmark_slice_v1',
+    });
+
+    const decisionOutput = runCaseEvaluation(normalized, {
+      evidenceContext,
+    });
+
+    expect(
+      decisionOutput.confidence_and_uncertainty_summary.provenance_notes.join(
+        ' ',
+      ),
+    ).toContain('found no decision-ready benchmark ranges');
+    expect(
+      decisionOutput.confidence_and_uncertainty_summary.next_tests,
+    ).toContain(
+      'Expand decision-ready benchmark coverage for comparable materials, components, and operating windows before committing to a benchmark-backed redesign.',
     );
   });
 });

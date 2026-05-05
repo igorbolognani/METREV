@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   AuditRecord,
   DecisionOutput,
+  EvidenceDecisionContext,
   NormalizedCaseInput,
   RawCaseInput,
   RuntimeVersion,
@@ -11,7 +12,9 @@ import type {
 import { buildBioelectroAgentPipelineTrace } from '@metrev/domain-contracts';
 
 function uniqueStrings(values: Array<string | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
 }
 
 function collectRuleRefs(decisionOutput: DecisionOutput): string[] {
@@ -40,6 +43,7 @@ export function createAuditRecord(input: {
   normalizedCase: NormalizedCaseInput;
   rawInput: RawCaseInput;
   simulationEnrichment?: SimulationEnrichment;
+  evidenceDecisionContext?: EvidenceDecisionContext | null;
   runtimeVersions: RuntimeVersion;
   entrypoint: 'ui' | 'api' | 'batch' | 'test';
   evaluationId?: string;
@@ -69,6 +73,7 @@ export function createAuditRecord(input: {
     provenance_notes: provenanceNotes,
     raw_input_snapshot: input.rawInput,
     typed_evidence: typedEvidence,
+    evidence_decision_context: input.evidenceDecisionContext ?? null,
     agent_pipeline_trace: buildBioelectroAgentPipelineTrace({
       rawInput: input.rawInput,
       normalizedCase: input.normalizedCase,
@@ -85,12 +90,16 @@ export function createAuditRecord(input: {
       transformation_stages: [
         'raw_input',
         'normalized_case',
+        'evidence_decision_context',
         'simulation_enrichment',
         'deterministic_rules',
         'decision_output_validation',
       ],
       rule_refs: collectRuleRefs(input.decisionOutput),
-      evidence_refs: collectEvidenceRefs(input.decisionOutput),
+      evidence_refs: uniqueStrings([
+        ...collectEvidenceRefs(input.decisionOutput),
+        ...(input.evidenceDecisionContext?.source_refs ?? []),
+      ]),
       defaults_count: input.normalizedCase.defaults_used.length,
       missing_data_count: input.normalizedCase.missing_data.length,
       evidence_count: typedEvidence.length,

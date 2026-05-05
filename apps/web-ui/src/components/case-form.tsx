@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
@@ -78,10 +77,6 @@ function countCommaSeparated(value: string): number {
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean).length;
-}
-
-function canOpenInternalEvidence(role: Role): boolean {
-  return role === 'ANALYST' || role === 'ADMIN';
 }
 
 function formatAutosaveTimestamp(value: string | null): string {
@@ -883,16 +878,10 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
             <button className="secondary" onClick={resetForm} type="button">
               Reset input draft
             </button>
-            {canOpenInternalEvidence(actorRole) ? (
-              <Link className="button secondary" href="/evidence/review">
-                Open admin evidence queue
-              </Link>
-            ) : (
-              <p className="muted">
-                Evidence review stays internal. Trace accepted records later
-                through saved reports and evaluation history.
-              </p>
-            )}
+            <p className="muted">
+              Evidence review stays internal. Trace accepted records later
+              through saved reports and evaluation history.
+            </p>
           </>
         }
         description="Use the active panel to enter stack inputs. Navigation, draft context, presets, and readiness stay on the left so they do not compete with the generated outputs that arrive only after submission."

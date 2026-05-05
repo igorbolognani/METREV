@@ -1,19 +1,20 @@
 import {
-    canonicalOutputSections,
-    confidenceLevelSchema,
-    decisionOutputSchema,
-    loadContractCompatibilityDefinition,
-    loadContractDiagnosticsDefinition,
-    loadContractImprovementsDefinition,
-    loadContractOutputDefinition,
-    loadContractScoringModel,
-    loadContractSensitivityPolicy,
-    type ConfidenceLevel,
-    type DecisionOutput,
-    type DerivedObservation,
-    type EvidenceRecord,
-    type NormalizedCaseInput,
-    type RecommendationRecord,
+  canonicalOutputSections,
+  confidenceLevelSchema,
+  decisionOutputSchema,
+  loadContractCompatibilityDefinition,
+  loadContractDiagnosticsDefinition,
+  loadContractImprovementsDefinition,
+  loadContractOutputDefinition,
+  loadContractScoringModel,
+  loadContractSensitivityPolicy,
+  type ConfidenceLevel,
+  type DecisionOutput,
+  type DerivedObservation,
+  type EvidenceDecisionContext,
+  type EvidenceRecord,
+  type NormalizedCaseInput,
+  type RecommendationRecord,
 } from '@metrev/domain-contracts';
 import { dedupeStrings, isNonEmptyString } from '@metrev/utils';
 
@@ -726,6 +727,7 @@ export function runCaseEvaluation(
   normalizedCase: NormalizedCaseInput,
   input: {
     derivedObservations?: DerivedObservation[];
+    evidenceContext?: EvidenceDecisionContext | null;
   } = {},
 ): DecisionOutput {
   const { resolvedCase, modeledRuleInputsUsed } = toResolvedMetricContext({
@@ -993,6 +995,16 @@ export function runCaseEvaluation(
     );
 
   const sensitivityLevel = determineSensitivityLevel(resolvedCase);
+  const evidenceContextCoverageNote = input.evidenceContext
+    ? input.evidenceContext.benchmark_ranges.length > 0
+      ? `Evidence decision context contributed ${input.evidenceContext.benchmark_ranges.length} benchmark range(s) across ${input.evidenceContext.matched_evidence.length} matched evidence record(s).`
+      : 'Evidence decision context found no decision-ready benchmark ranges for the current case filters.'
+    : undefined;
+  const evidenceContextNextTest = input.evidenceContext
+    ? input.evidenceContext.benchmark_ranges.length > 0
+      ? undefined
+      : 'Expand decision-ready benchmark coverage for comparable materials, components, and operating windows before committing to a benchmark-backed redesign.'
+    : undefined;
   const provenanceNotes = dedupeStrings([
     `${typedEvidence.length} typed evidence records were processed in deterministic evaluation mode.`,
     resolvedCase.cross_cutting_layers.evidence_and_provenance
@@ -1015,6 +1027,7 @@ export function runCaseEvaluation(
       : sensitivityLevel === 'medium'
         ? 'Recommendation ranking is directionally stable but still depends on a few assumption-sensitive factors.'
         : 'Recommendation ranking is relatively stable under the currently tracked sensitivity factors.',
+    evidenceContextCoverageNote,
   ]);
 
   const phasedRoadmap = ['Phase 1', 'Phase 2', 'Phase 3'].map((phase) => ({
@@ -1087,6 +1100,7 @@ export function runCaseEvaluation(
         missingData.length > 0
           ? 'Close the most material missing-data items before procurement or major retrofit decisions.'
           : undefined,
+        evidenceContextNextTest,
       ]),
       provenance_notes: provenanceNotes,
       sensitivity_level: sensitivityLevel,

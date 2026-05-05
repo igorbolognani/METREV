@@ -599,6 +599,93 @@ export const simulationEnrichmentSchema = z.object({
   failure_detail: flexibleObjectSchema.optional(),
 });
 
+export const evidenceDecisionContextSystemTypeSchema = z.enum([
+  'MFC',
+  'MEC',
+  'MET',
+  'BES',
+]);
+
+export const evidenceDecisionContextQuerySchema = z.object({
+  system_type: evidenceDecisionContextSystemTypeSchema,
+  application: primaryObjectiveSchema,
+  component_types: z.array(z.string()).default([]),
+  materials: z.array(z.string()).default([]),
+  metric_types: z.array(z.string()).default([]),
+  limit: z.number().int().nonnegative(),
+  decision_ready_only: z.boolean().default(true),
+});
+
+export const evidenceDecisionBenchmarkRangeSchema = z.object({
+  canonical_key: z.string().min(1),
+  metric_type: z.string().min(1),
+  normalized_unit: z.string().min(1),
+  system_type: z.string().nullable().default(null),
+  application: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
+  record_count: z.number().int().nonnegative(),
+  min_value: z.number().nullable().default(null),
+  p25_value: z.number().nullable().default(null),
+  median_value: z.number().nullable().default(null),
+  p75_value: z.number().nullable().default(null),
+  p90_value: z.number().nullable().default(null),
+  max_value: z.number().nullable().default(null),
+  mean_value: z.number().nullable().default(null),
+  confidence_coverage: z.number().nullable().default(null),
+});
+
+export const evidenceDecisionMatchedEvidenceSchema = z.object({
+  catalog_item_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  title: z.string().min(1),
+  doi: z.string().nullable().default(null),
+  source_url: z.string().nullable().default(null),
+  canonical_key: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  confidence: z.number().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+});
+
+export const evidenceDecisionSignalSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  summary: z.string().min(1),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+export const evidenceDecisionUncertaintySummarySchema = z.object({
+  confidence_level: confidenceLevelSchema,
+  summary: z.string().min(1),
+  missing_dependencies: z.array(z.string()).default([]),
+  excluded_evidence_reasons: z.array(z.string()).default([]),
+});
+
+export const evidenceDecisionContextSchema = z.object({
+  case_id: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  system_type: evidenceDecisionContextSystemTypeSchema,
+  primary_objective: primaryObjectiveSchema,
+  query: evidenceDecisionContextQuerySchema,
+  benchmark_ranges: z.array(evidenceDecisionBenchmarkRangeSchema).default([]),
+  matched_evidence: z.array(evidenceDecisionMatchedEvidenceSchema).default([]),
+  material_comparisons: z.array(evidenceDecisionSignalSchema).default([]),
+  operating_window_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  failure_mode_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  cost_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  supplier_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  uncertainty_summary: evidenceDecisionUncertaintySummarySchema,
+  provenance_note: z.string().min(1),
+  source_refs: z.array(z.string()).default([]),
+  builder_version: z.string().min(1),
+});
+
 export const decisionOutputSchema = z.object({
   current_stack_diagnosis: currentStackDiagnosisSchema,
   prioritized_improvement_options: z.array(recommendationRecordSchema),
@@ -676,6 +763,9 @@ export const auditRecordSchema = z.object({
   provenance_notes: z.array(z.string()).default([]),
   raw_input_snapshot: rawCaseInputSchema,
   typed_evidence: z.array(evidenceRecordSchema).default([]),
+  evidence_decision_context: evidenceDecisionContextSchema
+    .nullable()
+    .default(null),
   agent_pipeline_trace: z.array(agentPipelineStageSchema).default([]),
   runtime_versions: runtimeVersionSchema,
   traceability: traceabilitySummarySchema,
@@ -688,6 +778,9 @@ export const evaluationResponseSchema = z.object({
   normalized_case: normalizedCaseInputSchema,
   decision_output: decisionOutputSchema,
   audit_record: auditRecordSchema,
+  evidence_decision_context: evidenceDecisionContextSchema
+    .nullable()
+    .default(null),
   narrative: z.string().nullable(),
   narrative_metadata: narrativeMetadataSchema,
   simulation_enrichment: simulationEnrichmentSchema.optional(),
@@ -1516,6 +1609,9 @@ export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 export type NormalizedCaseInput = z.infer<typeof normalizedCaseInputSchema>;
 export type RecommendationRecord = z.infer<typeof recommendationRecordSchema>;
 export type DecisionOutput = z.infer<typeof decisionOutputSchema>;
+export type EvidenceDecisionContext = z.infer<
+  typeof evidenceDecisionContextSchema
+>;
 export type AgentPipelineStage = z.infer<typeof agentPipelineStageSchema>;
 export type NarrativeMetadata = z.infer<typeof narrativeMetadataSchema>;
 export type RuntimeVersion = z.infer<typeof runtimeVersionSchema>;

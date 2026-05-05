@@ -4,14 +4,19 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import { createAuditRecord } from '@metrev/audit';
 import type { SessionActor } from '@metrev/auth';
-import type { EvaluationRepository } from '@metrev/database';
+import type {
+  EvaluationRepository,
+  EvidenceBenchmarkSlice,
+} from '@metrev/database';
 import {
   evaluationResponseSchema,
+  evidenceDecisionContextSchema,
   normalizeCaseInput,
   validateDecisionOutputContract,
   type DecisionOutputValidationIssue,
   type DerivedObservation,
   type EvaluationResponse,
+  type EvidenceDecisionContext,
   type ExternalEvidenceCatalogItemDetail,
   type RawCaseInput,
   type RawEvidenceRecord,
@@ -55,7 +60,10 @@ function canonicalMaterialToken(value: unknown): string | null {
     return null;
   }
 
-  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 
   if (normalized.includes('carbon_felt')) {
     return 'carbon_felt';
@@ -122,6 +130,70 @@ function evidenceBenchmarkObservation(input: {
       input.aggregateCount > 0
         ? []
         : ['canonical decision-ready benchmark aggregates'],
+  };
+}
+
+function buildEvidenceDecisionContext(input: {
+  normalizedCase: ReturnType<typeof normalizeCaseInput>;
+  benchmarkSlice: EvidenceBenchmarkSlice;
+  componentTypes: string[];
+  materials: string[];
+  metricTypes: string[];
+}): EvidenceDecisionContext {
+  const systemType = evidenceDecisionContextSchema.shape.system_type.parse(
+    systemTypeForTechnologyFamily(input.normalizedCase.technology_family),
+  );
+  const sourceRefs = dedupeStrings(
+    input.benchmarkSlice.evidence.map(
+      (record) => `catalog:${record.catalog_item_id}`,
+    ),
+  );
+  const missingDependencies = dedupeStrings([
+    ...(input.benchmarkSlice.summary.aggregate_count > 0
+      ? []
+      : ['canonical decision-ready benchmark aggregates']),
+    ...(input.benchmarkSlice.summary.evidence_count > 0
+      ? []
+      : ['accepted decision-ready evidence records']),
+  ]);
+
+  return {
+    case_id: input.normalizedCase.case_id,
+    technology_family: input.normalizedCase.technology_family,
+    system_type: systemType,
+    primary_objective: input.normalizedCase.primary_objective,
+    query: {
+      system_type: systemType,
+      application: input.normalizedCase.primary_objective,
+      component_types: input.componentTypes,
+      materials: input.materials,
+      metric_types: input.metricTypes,
+      limit: input.benchmarkSlice.summary.limited_to,
+      decision_ready_only: true,
+    },
+    benchmark_ranges: input.benchmarkSlice.aggregates,
+    matched_evidence: input.benchmarkSlice.evidence,
+    material_comparisons: [],
+    operating_window_signals: [],
+    failure_mode_signals: [],
+    cost_signals: [],
+    supplier_signals: [],
+    uncertainty_summary: {
+      confidence_level:
+        input.benchmarkSlice.summary.aggregate_count > 0 ? 'medium' : 'low',
+      summary:
+        input.benchmarkSlice.summary.aggregate_count > 0
+          ? `Retrieved ${input.benchmarkSlice.summary.aggregate_count} decision-ready benchmark aggregate range(s) and ${input.benchmarkSlice.summary.evidence_count} top evidence record(s) for this case.`
+          : 'No decision-ready benchmark aggregates matched the current case filters.',
+      missing_dependencies: missingDependencies,
+      excluded_evidence_reasons: [
+        'Pending, rejected, supplier-only, or non-decision-ready evidence was excluded from this decision context.',
+      ],
+    },
+    provenance_note:
+      'EvidenceDecisionContext was built from decision-ready benchmark aggregates and accepted catalog evidence only; the full corpus was not loaded or sent to the LLM.',
+    source_refs: sourceRefs,
+    builder_version: 'initial_benchmark_slice_v1',
   };
 }
 
@@ -378,6 +450,9 @@ export async function createPersistedCaseEvaluation(
           technology_family: normalizedCase.technology_family,
         },
       );
+      const metricTypes = metricTypesForObjective(
+        normalizedCase.primary_objective,
+      );
       const benchmarkSlice = await withSpan(
         'case.evaluate.evidence_benchmark_slice',
         () =>
@@ -386,9 +461,7 @@ export async function createPersistedCaseEvaluation(
             componentTypes,
             limit: 12,
             materials,
-            metricTypes: metricTypesForObjective(
-              normalizedCase.primary_objective,
-            ),
+            metricTypes,
             systemType: systemTypeForTechnologyFamily(
               normalizedCase.technology_family,
             ),
@@ -399,6 +472,13 @@ export async function createPersistedCaseEvaluation(
           primary_objective: normalizedCase.primary_objective,
         },
       );
+      const evidenceDecisionContext = buildEvidenceDecisionContext({
+        normalizedCase,
+        benchmarkSlice,
+        componentTypes,
+        materials,
+        metricTypes,
+      });
       const evidenceBenchmarkObservations = [
         evidenceBenchmarkObservation({
           aggregateCount: benchmarkSlice.summary.aggregate_count,
@@ -430,6 +510,7 @@ export async function createPersistedCaseEvaluation(
       };
       const decisionOutput = runCaseEvaluation(normalizedCase, {
         derivedObservations: decisionDerivedObservations,
+        evidenceContext: evidenceDecisionContext,
       });
       const validation = validateDecisionOutputContract({
         decisionOutput,
@@ -459,6 +540,7 @@ export async function createPersistedCaseEvaluation(
         normalizedCase,
         rawInput: sanitizedRawInput,
         simulationEnrichment: evaluationEnrichment,
+        evidenceDecisionContext,
         runtimeVersions,
         entrypoint: input.entrypoint ?? 'api',
         evaluationId,
@@ -471,6 +553,7 @@ export async function createPersistedCaseEvaluation(
         normalized_case: normalizedCase,
         decision_output: reviewedDecisionOutput,
         audit_record: auditRecord,
+        evidence_decision_context: evidenceDecisionContext,
         narrative: narrativeResult.narrative,
         narrative_metadata: narrativeResult.narrativeMetadata,
         simulation_enrichment: evaluationEnrichment,

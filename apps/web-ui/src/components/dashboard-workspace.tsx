@@ -74,33 +74,6 @@ export function DashboardWorkspaceView({
   const latestRun = workspace.recent_evaluations[0] ?? null;
   const hasSavedRuns = workspace.summary.total_runs > 0;
   const latestRunOverview = workspace.latest_run_overview;
-  const evidenceCatalog = workspace.evidence_catalog ?? {
-    total: 0,
-    catalog_total: 0,
-    filtered_total: 0,
-    pending: 0,
-    pending_review: 0,
-    accepted: 0,
-    rejected: 0,
-    failed_ingestion: 0,
-    duplicate_skipped: 0,
-    canonical_processed: 0,
-    canonical_extracted: 0,
-    canonical_insufficient_source: 0,
-    canonical_needs_full_text: 0,
-    canonical_needs_review: 0,
-    canonical_failed: 0,
-    canonical_facts: 0,
-    benchmark_ready_facts: 0,
-    benchmark_aggregates: 0,
-    last_ingestion_batch: null,
-    ingestion_progress: null,
-    canonicalization_progress: null,
-    page: 1,
-    page_size: 1,
-    total_pages: 1,
-    returned: 0,
-  };
   const presentation = workspace.presentation;
   const tabItems = [
     { value: 'overview', label: 'Overview' },
@@ -200,74 +173,6 @@ export function DashboardWorkspaceView({
           label="Parameter controls"
           tone="success"
           value={latestRunOverview?.parameter_summary.total ?? 0}
-        />
-      </div>
-
-      <div className="workspace-detail-grid">
-        <WorkspaceStatCard
-          detail={`${evidenceCatalog.accepted} accepted, ${evidenceCatalog.pending_review ?? evidenceCatalog.pending} requiring exception review.`}
-          label="Evidence catalog total"
-          tone="accent"
-          value={evidenceCatalog.catalog_total ?? evidenceCatalog.total}
-        />
-        <WorkspaceStatCard
-          detail="Trusted scientific records accepted by policy after validation, normalization, dedupe, and audit."
-          label="System-accepted evidence"
-          tone="success"
-          value={evidenceCatalog.accepted}
-        />
-        <WorkspaceStatCard
-          detail={`${evidenceCatalog.failed_ingestion} failed ingestion record(s) remain visible for audit.`}
-          label="Review exceptions"
-          tone="warning"
-          value={evidenceCatalog.pending_review ?? evidenceCatalog.pending}
-        />
-        <WorkspaceStatCard
-          detail={`${evidenceCatalog.canonical_facts} canonical fact(s); ${evidenceCatalog.benchmark_aggregates} benchmark aggregate range(s).`}
-          label="Decision-ready facts"
-          tone="default"
-          value={evidenceCatalog.benchmark_ready_facts}
-        />
-      </div>
-
-      <div className="workspace-detail-grid">
-        <WorkspaceStatCard
-          detail={`${evidenceCatalog.canonical_insufficient_source} insufficient source, ${evidenceCatalog.canonical_needs_full_text} needing full text.`}
-          label="Canonicalized articles"
-          tone="accent"
-          value={evidenceCatalog.canonical_processed}
-        />
-        <WorkspaceStatCard
-          detail={`${evidenceCatalog.canonical_needs_review} canonicalization exception(s); ${evidenceCatalog.canonical_failed} failed extraction(s).`}
-          label="Decision exceptions"
-          tone="warning"
-          value={
-            evidenceCatalog.canonical_needs_review +
-            evidenceCatalog.canonical_failed
-          }
-        />
-        <WorkspaceStatCard
-          detail={`Last ingestion batch: ${evidenceCatalog.last_ingestion_batch ?? 'none'}.`}
-          label="Duplicate skipped"
-          tone="default"
-          value={evidenceCatalog.duplicate_skipped}
-        />
-        <WorkspaceStatCard
-          detail={
-            evidenceCatalog.canonicalization_progress
-              ? `${evidenceCatalog.canonicalization_progress.processed_total} processed of ${evidenceCatalog.canonicalization_progress.target_total}.`
-              : 'Canonicalization run status is loaded from persisted audit records.'
-          }
-          label="Canonicalization progress"
-          tone="success"
-          value={
-            evidenceCatalog.canonicalization_progress
-              ? Math.round(
-                  evidenceCatalog.canonicalization_progress.completion_ratio *
-                    100,
-                )
-              : 0
-          }
         />
       </div>
 

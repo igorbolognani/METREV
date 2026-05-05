@@ -51,6 +51,14 @@ describe('case evaluation service', () => {
     expect(evaluation.audit_record.actor_id).toBe(actor.userId);
     expect(evaluation.audit_record.actor_role).toBe(actor.role);
     expect(evaluation.simulation_enrichment?.status).toBe('completed');
+    expect(evaluation.evidence_decision_context).not.toBeNull();
+    expect(evaluation.evidence_decision_context?.case_id).toBe(
+      evaluation.case_id,
+    );
+    expect(evaluation.evidence_decision_context?.query.limit).toBe(12);
+    expect(evaluation.audit_record.evidence_decision_context).toEqual(
+      evaluation.evidence_decision_context,
+    );
     expect(
       evaluation.simulation_enrichment?.derived_observations.length,
     ).toBeGreaterThan(0);
