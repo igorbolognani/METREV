@@ -384,12 +384,7 @@ function titleCaseLabel(value: string): string {
     .join(' ');
 }
 
-function countBuckets(values: string[]) {
-  const counts = new Map<string, number>();
-  for (const value of values) {
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-
+function countBucketsFromMap(counts: Map<string, number>) {
   return [...counts.entries()]
     .map(([key, count]) => ({
       key,
@@ -400,6 +395,68 @@ function countBuckets(values: string[]) {
       (left, right) =>
         right.count - left.count || left.key.localeCompare(right.key),
     );
+}
+
+function summarizeEligibilityItems(items: ResearchWarehouseEligibilityItem[]) {
+  const sourceCounts = new Map<string, number>();
+  const rejectedReasonCounts = new Map<string, number>();
+  let eligibleRecords = 0;
+  let excludedRecords = 0;
+  let inaccessibleRecords = 0;
+  let outOfScopeRecords = 0;
+  let missingFullTextRecords = 0;
+  let missingLicenseRecords = 0;
+
+  for (const item of items) {
+    sourceCounts.set(
+      item.source_type,
+      (sourceCounts.get(item.source_type) ?? 0) + 1,
+    );
+
+    if (item.status === 'eligible') {
+      eligibleRecords += 1;
+    } else {
+      excludedRecords += 1;
+      for (const reason of item.reasons) {
+        rejectedReasonCounts.set(
+          reason,
+          (rejectedReasonCounts.get(reason) ?? 0) + 1,
+        );
+      }
+    }
+
+    if (
+      item.reasons.some((reason) =>
+        [
+          'access_closed',
+          'access_unknown',
+          'missing_license_or_access_policy',
+        ].includes(reason),
+      )
+    ) {
+      inaccessibleRecords += 1;
+    }
+    if (item.reasons.includes('out_of_scope_technology')) {
+      outOfScopeRecords += 1;
+    }
+    if (item.reasons.includes('missing_full_text_link')) {
+      missingFullTextRecords += 1;
+    }
+    if (item.reasons.includes('missing_license_or_access_policy')) {
+      missingLicenseRecords += 1;
+    }
+  }
+
+  return {
+    eligibleRecords,
+    excludedRecords,
+    inaccessibleRecords,
+    outOfScopeRecords,
+    missingFullTextRecords,
+    missingLicenseRecords,
+    sourceBreakdown: countBucketsFromMap(sourceCounts),
+    rejectedReasonBuckets: countBucketsFromMap(rejectedReasonCounts),
+  };
 }
 
 function detectResearchTechnologyClasses(
@@ -437,10 +494,42 @@ function detectResearchTechnologyClasses(
   return [...classes];
 }
 
+function relatedRecordCount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  return Array.isArray(value) ? value.length : 0;
+}
+
+function hasLocalFullTextEvidence(source: {
+  _count?: {
+    sourceArtifacts?: number;
+    sourceTextChunks?: number;
+  } | null;
+  sourceArtifacts?: unknown[] | null;
+  sourceTextChunks?: unknown[] | null;
+}) {
+  const artifactCount = relatedRecordCount(
+    source._count?.sourceArtifacts ?? source.sourceArtifacts,
+  );
+  const chunkCount = relatedRecordCount(
+    source._count?.sourceTextChunks ?? source.sourceTextChunks,
+  );
+
+  return artifactCount > 0 || chunkCount > 0;
+}
+
 function hasFullTextLink(source: {
+  _count?: {
+    sourceArtifacts?: number;
+    sourceTextChunks?: number;
+  } | null;
   pdfUrl?: string | null;
   rawPayload?: unknown;
+  sourceArtifacts?: unknown[] | null;
   sourceUrl?: string | null;
+  sourceTextChunks?: unknown[] | null;
   xmlUrl?: string | null;
 }) {
   return Boolean(
@@ -448,7 +537,8 @@ function hasFullTextLink(source: {
     source.xmlUrl ||
     readStringFromPayload(source.rawPayload, 'full_text_url') ||
     readStringFromPayload(source.rawPayload, 'full_text_xml_url') ||
-    readStringFromPayload(source.rawPayload, 'pdf_url'),
+    readStringFromPayload(source.rawPayload, 'pdf_url') ||
+    hasLocalFullTextEvidence(source),
   );
 }
 
@@ -527,38 +617,22 @@ function buildEligibilityResponse(input: {
   dryRun: boolean;
   includeItems: boolean;
   items: ResearchWarehouseEligibilityItem[];
+  summary?: ReturnType<typeof summarizeEligibilityItems>;
   totalLinkedRecords?: number;
 }): ResearchWarehouseEligibilityResponse {
-  const excluded = input.items.filter((item) => item.status === 'excluded');
+  const summary = input.summary ?? summarizeEligibilityItems(input.items);
 
   return researchWarehouseEligibilityResponseSchema.parse({
     dry_run: input.dryRun,
     total_linked_records: input.totalLinkedRecords ?? input.items.length,
-    eligible_records: input.items.filter((item) => item.status === 'eligible')
-      .length,
-    excluded_records: excluded.length,
-    inaccessible_records: input.items.filter((item) =>
-      item.reasons.some((reason) =>
-        [
-          'access_closed',
-          'access_unknown',
-          'missing_license_or_access_policy',
-        ].includes(reason),
-      ),
-    ).length,
-    out_of_scope_records: input.items.filter((item) =>
-      item.reasons.includes('out_of_scope_technology'),
-    ).length,
-    missing_full_text_records: input.items.filter((item) =>
-      item.reasons.includes('missing_full_text_link'),
-    ).length,
-    missing_license_records: input.items.filter((item) =>
-      item.reasons.includes('missing_license_or_access_policy'),
-    ).length,
-    source_breakdown: countBuckets(input.items.map((item) => item.source_type)),
-    rejected_reason_buckets: countBuckets(
-      excluded.flatMap((item) => item.reasons),
-    ),
+    eligible_records: summary.eligibleRecords,
+    excluded_records: summary.excludedRecords,
+    inaccessible_records: summary.inaccessibleRecords,
+    out_of_scope_records: summary.outOfScopeRecords,
+    missing_full_text_records: summary.missingFullTextRecords,
+    missing_license_records: summary.missingLicenseRecords,
+    source_breakdown: summary.sourceBreakdown,
+    rejected_reason_buckets: summary.rejectedReasonBuckets,
     items: input.includeItems ? input.items : [],
   });
 }
@@ -1593,15 +1667,22 @@ export class MemoryResearchRepository implements ResearchRepository {
               metadata: item.metadata,
             }),
           );
-    const items = sourcePapers
-      .map((paper) => assessResearchPaperMetadataEligibility(paper))
-      .slice(0, input.limit);
+    const allItems = sourcePapers.map((paper) =>
+      assessResearchPaperMetadataEligibility(paper),
+    );
+    const scopedItems = input.source_document_ids?.length
+      ? allItems.filter((item) =>
+          input.source_document_ids?.includes(item.source_document_id),
+        )
+      : allItems;
+    const items = scopedItems.slice(0, input.limit);
 
     return buildEligibilityResponse({
       dryRun: input.dry_run,
       includeItems: input.include_items,
       items,
-      totalLinkedRecords: sourcePapers.length,
+      summary: summarizeEligibilityItems(scopedItems),
+      totalLinkedRecords: scopedItems.length,
     });
   }
 
@@ -1898,6 +1979,101 @@ export class MemoryResearchRepository implements ResearchRepository {
 export class PrismaResearchRepository implements ResearchRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  private readonly eligibilitySourceInclude = {
+    _count: {
+      select: {
+        sourceArtifacts: true,
+        sourceTextChunks: true,
+      },
+    },
+  } as const;
+
+  private async applyWarehouseEligibilityToCatalog(
+    items: ResearchWarehouseEligibilityItem[],
+  ) {
+    const eligibleSourceIds = items
+      .filter((item) => item.active_surface)
+      .map((item) => item.source_document_id);
+    const excludedSourceIds = items
+      .filter((item) => !item.active_surface)
+      .map((item) => item.source_document_id);
+    const operations: Prisma.PrismaPromise<unknown>[] = [];
+    const acceptedAt = new Date();
+
+    if (eligibleSourceIds.length > 0) {
+      operations.push(
+        this.prisma.externalEvidenceCatalogItem.updateMany({
+          where: {
+            sourceRecordId: {
+              in: eligibleSourceIds,
+            },
+          },
+          data: {
+            reviewStatus: 'ACCEPTED',
+            sourceState: 'REVIEWED',
+            acceptedBy: 'system',
+            acceptancePolicy: 'research_warehouse_eligibility_acceptance_v1',
+            acceptedAt,
+            reviewRequired: false,
+          },
+        }),
+      );
+    }
+
+    if (excludedSourceIds.length > 0) {
+      operations.push(
+        this.prisma.externalEvidenceCatalogItem.updateMany({
+          where: {
+            sourceRecordId: {
+              in: excludedSourceIds,
+            },
+          },
+          data: {
+            reviewStatus: 'REJECTED',
+            sourceState: 'REVIEWED',
+            acceptedBy: null,
+            acceptancePolicy: null,
+            acceptedAt: null,
+            reviewRequired: false,
+          },
+        }),
+      );
+    }
+
+    if (operations.length > 0) {
+      await this.prisma.$transaction(operations);
+    }
+  }
+
+  private linkedWarehouseWhere(
+    sourceDocumentIds?: string[],
+  ): Prisma.ExternalSourceRecordWhereInput {
+    const linkedWhere: Prisma.ExternalSourceRecordWhereInput = {
+      OR: [
+        { sourceUrl: { not: null } },
+        { pdfUrl: { not: null } },
+        { xmlUrl: { not: null } },
+        { sourceArtifacts: { some: {} } },
+        { sourceTextChunks: { some: {} } },
+      ],
+    };
+
+    if (!sourceDocumentIds || sourceDocumentIds.length === 0) {
+      return linkedWhere;
+    }
+
+    return {
+      AND: [
+        linkedWhere,
+        {
+          id: {
+            in: sourceDocumentIds,
+          },
+        },
+      ],
+    };
+  }
+
   async importLocalSources(
     input: LocalSourceImportRequest,
   ): Promise<LocalSourceImportResponse> {
@@ -1970,6 +2146,7 @@ export class PrismaResearchRepository implements ResearchRepository {
     const resultSets = await Promise.all(
       tokens.map((token) =>
         this.prisma.externalSourceRecord.findMany({
+          include: this.eligibilitySourceInclude,
           where: this.candidateSourceWhere(token),
           orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
           take: candidateWindow,
@@ -1989,9 +2166,16 @@ export class PrismaResearchRepository implements ResearchRepository {
       where: { id: reviewId },
       include: {
         papers: {
+          orderBy: {
+            position: 'asc',
+          },
           include: { sourceRecord: true },
         },
-        columns: true,
+        columns: {
+          orderBy: {
+            position: 'asc',
+          },
+        },
         extractionJobs: {
           include: { column: true },
         },
@@ -2010,6 +2194,7 @@ export class PrismaResearchRepository implements ResearchRepository {
       const sources = input.source_document_ids?.length
         ? (
             await this.prisma.externalSourceRecord.findMany({
+              include: this.eligibilitySourceInclude,
               where: {
                 id: {
                   in: input.source_document_ids,
@@ -2060,70 +2245,77 @@ export class PrismaResearchRepository implements ResearchRepository {
 
       const resolvedSources = Array.isArray(sources) ? sources : await sources;
 
-      const review = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.researchReview.create({
-          data: {
-            title: input.title ?? input.query,
-            query: input.query,
-            createdBy: input.actorId,
-          },
-        });
-        const paperRecords: Array<{ id: string }> = [];
-        const columnRecords: Array<{ id: string }> = [];
-
-        for (const [index, source] of resolvedSources.entries()) {
-          const paper = await tx.researchReviewPaper.create({
+      const reviewTransactionTimeoutMs = Math.min(
+        180_000,
+        Math.max(5_000, resolvedSources.length * input.columns.length * 5),
+      );
+      const review = await this.prisma.$transaction(
+        async (tx) => {
+          const created = await tx.researchReview.create({
             data: {
-              reviewId: created.id,
-              sourceRecordId: source.id,
-              position: index,
-              metadataSnapshot: toPrismaJsonValue(
-                paperMetadataFromSource({
-                  paperId: `pending:${source.id}`,
-                  sourceRecord: source,
-                }),
-              ),
+              title: input.title ?? input.query,
+              query: input.query,
+              createdBy: input.actorId,
             },
           });
-          paperRecords.push(paper);
-        }
+          const paperRecords: Array<{ id: string }> = [];
+          const columnRecords: Array<{ id: string }> = [];
 
-        for (const column of input.columns) {
-          const createdColumn = await tx.researchReviewColumn.create({
-            data: {
-              reviewId: created.id,
-              columnId: column.column_id,
-              name: column.name,
-              columnGroup: column.group,
-              columnType: column.type,
-              answerStructure: column.answer_structure,
-              instructions: column.instructions,
-              outputSchemaKey: column.output_schema_key,
-              outputSchema: toPrismaJsonObject(column.output_schema),
-              visible: column.visible,
-              position: column.position,
-            },
-          });
-          columnRecords.push(createdColumn);
-        }
-
-        if (paperRecords.length > 0 && columnRecords.length > 0) {
-          await tx.researchExtractionJob.createMany({
-            data: paperRecords.flatMap((paper) =>
-              columnRecords.map((column) => ({
+          for (const [index, source] of resolvedSources.entries()) {
+            const paper = await tx.researchReviewPaper.create({
+              data: {
                 reviewId: created.id,
-                paperId: paper.id,
-                columnId: column.id,
-                status: 'QUEUED',
-                extractorVersion: input.extractorVersion,
-              })),
-            ),
-            skipDuplicates: true,
-          });
-        }
+                sourceRecordId: source.id,
+                position: index,
+                metadataSnapshot: toPrismaJsonValue(
+                  paperMetadataFromSource({
+                    paperId: `pending:${source.id}`,
+                    sourceRecord: source,
+                  }),
+                ),
+              },
+            });
+            paperRecords.push(paper);
+          }
 
-        return created;
-      });
+          for (const column of input.columns) {
+            const createdColumn = await tx.researchReviewColumn.create({
+              data: {
+                reviewId: created.id,
+                columnId: column.column_id,
+                name: column.name,
+                columnGroup: column.group,
+                columnType: column.type,
+                answerStructure: column.answer_structure,
+                instructions: column.instructions,
+                outputSchemaKey: column.output_schema_key,
+                outputSchema: toPrismaJsonObject(column.output_schema),
+                visible: column.visible,
+                position: column.position,
+              },
+            });
+            columnRecords.push(createdColumn);
+          }
+
+          if (paperRecords.length > 0 && columnRecords.length > 0) {
+            await tx.researchExtractionJob.createMany({
+              data: paperRecords.flatMap((paper) =>
+                columnRecords.map((column) => ({
+                  reviewId: created.id,
+                  paperId: paper.id,
+                  columnId: column.id,
+                  status: 'QUEUED',
+                  extractorVersion: input.extractorVersion,
+                })),
+              ),
+              skipDuplicates: true,
+            });
+          }
+
+          return created;
+        },
+        { maxWait: 10_000, timeout: reviewTransactionTimeoutMs },
+      );
 
       const hydrated = await this.findReviewRecord(review.id);
       if (!hydrated) {
@@ -2140,16 +2332,11 @@ export class PrismaResearchRepository implements ResearchRepository {
     input: ResearchWarehouseEligibilityRequest,
   ): Promise<ResearchWarehouseEligibilityResponse> {
     return withSpan('database.research_warehouse.eligibility', async () => {
-      const linkedWhere: Prisma.ExternalSourceRecordWhereInput = {
-        OR: [
-          { sourceUrl: { not: null } },
-          { pdfUrl: { not: null } },
-          { xmlUrl: { not: null } },
-        ],
-      };
+      const linkedWhere = this.linkedWarehouseWhere(input.source_document_ids);
       const [totalLinkedRecords, records] = await Promise.all([
         this.prisma.externalSourceRecord.count({ where: linkedWhere }),
         this.prisma.externalSourceRecord.findMany({
+          include: this.eligibilitySourceInclude,
           where: linkedWhere,
           orderBy: [{ updatedAt: 'desc' }],
           take: input.limit,
@@ -2158,11 +2345,43 @@ export class PrismaResearchRepository implements ResearchRepository {
       const items = records.map((record) =>
         assessResearchWarehouseEligibility(record),
       );
+      const summaryItems: ResearchWarehouseEligibilityItem[] = [];
+      let cursorId: string | undefined;
+
+      for (;;) {
+        const batch = await this.prisma.externalSourceRecord.findMany({
+          include: this.eligibilitySourceInclude,
+          where: linkedWhere,
+          orderBy: [{ id: 'asc' }],
+          take: 1000,
+          ...(cursorId
+            ? {
+                cursor: { id: cursorId },
+                skip: 1,
+              }
+            : {}),
+        });
+
+        if (batch.length === 0) {
+          break;
+        }
+
+        for (const record of batch) {
+          summaryItems.push(assessResearchWarehouseEligibility(record));
+        }
+
+        cursorId = batch.at(-1)?.id;
+      }
+
+      if (!input.dry_run) {
+        await this.applyWarehouseEligibilityToCatalog(summaryItems);
+      }
 
       return buildEligibilityResponse({
         dryRun: input.dry_run,
         includeItems: input.include_items,
         items,
+        summary: summarizeEligibilityItems(summaryItems),
         totalLinkedRecords,
       });
     });

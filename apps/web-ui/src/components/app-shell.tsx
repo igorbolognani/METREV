@@ -27,10 +27,15 @@ export function AppShell({ children, signOutAction, user }: AppShellProps) {
 
   React.useEffect(() => {
     const storedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    const prefersCollapsedLayout =
-      window.matchMedia('(max-width: 760px)').matches;
+    const prefersCollapsedLayout = window.matchMedia(
+      '(max-width: 1366px)',
+    ).matches;
 
-    setCollapsed(storedValue === 'true' || prefersCollapsedLayout);
+    if (storedValue === 'true' || storedValue === 'false') {
+      setCollapsed(storedValue === 'true');
+    } else {
+      setCollapsed(prefersCollapsedLayout);
+    }
     setHasHydrated(true);
   }, []);
 
@@ -53,10 +58,16 @@ export function AppShell({ children, signOutAction, user }: AppShellProps) {
     return <div className="app-main app-main--report">{children}</div>;
   }
 
+  const layoutClassName = [
+    'app-layout',
+    'app-layout--workspace-density',
+    collapsed ? 'app-layout--collapsed' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div
-      className={collapsed ? 'app-layout app-layout--collapsed' : 'app-layout'}
-    >
+    <div className={layoutClassName}>
       <AppSidebar
         collapsed={collapsed}
         email={user.email}

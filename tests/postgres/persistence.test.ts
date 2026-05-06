@@ -5,26 +5,26 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  defaultSessionCookieName,
-  type SessionActor,
-  type SessionResolver,
+    defaultSessionCookieName,
+    type SessionActor,
+    type SessionResolver,
 } from '@metrev/auth';
 import {
-  PrismaResearchRepository,
-  disconnectPrismaClient,
-  getPrismaClient,
+    PrismaResearchRepository,
+    disconnectPrismaClient,
+    getPrismaClient,
 } from '@metrev/database';
 import {
-  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-  buildDecisionIngestionPreview,
-  buildResearchEvidencePack,
-  getDefaultResearchColumns,
-  runDeterministicResearchExtraction,
+    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    buildDecisionIngestionPreview,
+    buildResearchEvidencePack,
+    getDefaultResearchColumns,
+    runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
 import {
-  normalizeOpenAlexWork,
-  persistNormalizedEntries,
+    normalizeOpenAlexWork,
+    persistNormalizedEntries,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 const caseId = 'CASE-POSTGRES-SUITE';
@@ -712,8 +712,10 @@ describe('postgres-backed persistence flow', () => {
         publisher: 'METREV Regression Harness',
         journal: 'METREV Postgres Research Fixtures',
         authors: [{ name: 'Postgres Fixture Author' }],
-        accessStatus: 'UNKNOWN',
+        license: 'CC-BY-4.0',
+        accessStatus: 'GREEN',
         publishedAt: new Date('2025-01-02T00:00:00.000Z'),
+        pdfUrl: 'https://fixtures.metrev.local/postgres-research-fixture.pdf',
         abstractText:
           'A dual chamber microbial fuel cell using carbon felt anodes and an air cathode reached power density of 850 mW/m2 with COD removal of 82% at pH 7 and 30 C. Membrane fouling and electrode cost remained scale-up challenges.',
         rawPayload: {
@@ -751,12 +753,14 @@ describe('postgres-backed persistence flow', () => {
     const review = await repository.createResearchReview({
       query: researchQuery,
       limit: 1,
+      source_document_ids: [sourceRecord.id],
       actorId: actor.userId,
       columns,
       extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
     });
 
     expect(review.papers).toHaveLength(1);
+    expect(review.papers[0]?.source_document_id).toBe(sourceRecord.id);
     expect(review.columns.map((column) => column.column_id)).toEqual([
       'paper',
       'summary',
@@ -841,6 +845,257 @@ describe('postgres-backed persistence flow', () => {
       }),
     );
   });
+
+  it('treats URL-less local source artifacts as linked eligible records and allows query-backed reviews to use them', async () => {
+    const prisma = getPrismaClient();
+    const repository = new PrismaResearchRepository(prisma);
+    const uniqueToken = randomUUID().slice(0, 8);
+    const title = `Local artifact recovery ${uniqueToken} microbial fuel cell record`;
+    const excludedTitle = `Local artifact recovery ${uniqueToken} corrosion inhibitor record`;
+
+    const sourceRecord = await prisma.externalSourceRecord.create({
+      data: {
+        sourceType: 'CROSSREF',
+        sourceKey: `postgres-local-artifact-${uniqueToken}`,
+        sourceUrl: null,
+        title,
+        sourceCategory: 'scholarly_work',
+        doi: `10.1000/local-artifact-${uniqueToken}`,
+        publisher: 'METREV Local Artifact Harness',
+        journal: 'METREV Local Artifact Fixtures',
+        authors: [{ name: 'Artifact Fixture Author' }],
+        license: 'CC-BY-4.0',
+        accessStatus: 'GREEN',
+        publishedAt: new Date('2025-02-01T00:00:00.000Z'),
+        pdfUrl: null,
+        xmlUrl: null,
+        abstractText:
+          'A microbial fuel cell local artifact fixture reports carbon felt anodes, a Nafion separator, and stable wastewater treatment performance with traceable stored chunks.',
+        rawPayload: {
+          fixture: true,
+          local_artifact_only: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    const excludedSourceRecord = await prisma.externalSourceRecord.create({
+      data: {
+        sourceType: 'CROSSREF',
+        sourceKey: `postgres-local-artifact-excluded-${uniqueToken}`,
+        sourceUrl: null,
+        title: excludedTitle,
+        sourceCategory: 'scholarly_work',
+        doi: `10.1000/local-artifact-excluded-${uniqueToken}`,
+        publisher: 'METREV Local Artifact Harness',
+        journal: 'METREV Local Artifact Fixtures',
+        authors: [{ name: 'Artifact Fixture Author' }],
+        license: 'CC-BY-4.0',
+        accessStatus: 'GREEN',
+        publishedAt: new Date('2025-02-02T00:00:00.000Z'),
+        pdfUrl: null,
+        xmlUrl: null,
+        abstractText:
+          'A corrosion inhibitor local artifact fixture discusses steel protection coatings, electrochemical impedance, and coating durability for industrial pipelines.',
+        rawPayload: {
+          fixture: true,
+          local_artifact_only: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.externalEvidenceCatalogItem.createMany({
+      data: [
+        {
+          sourceRecordId: sourceRecord.id,
+          evidenceType: 'literature_evidence',
+          title,
+          summary: 'Pending local artifact fixture.',
+          strengthLevel: 'weak',
+          provenanceNote: 'Fixture catalog item before eligibility sweep.',
+          reviewStatus: 'PENDING',
+          sourceState: 'PARSED',
+          applicabilityScope: {},
+          extractedClaims: [],
+          tags: ['fixture'],
+          payload: {},
+          reviewRequired: true,
+          ingestionMode: 'fixture',
+          extractionStatus: 'heuristic_extracted',
+          normalizationStatus: 'parsed',
+        },
+        {
+          sourceRecordId: excludedSourceRecord.id,
+          evidenceType: 'literature_evidence',
+          title: excludedTitle,
+          summary: 'Pending excluded local artifact fixture.',
+          strengthLevel: 'weak',
+          provenanceNote: 'Fixture catalog item before eligibility sweep.',
+          reviewStatus: 'PENDING',
+          sourceState: 'PARSED',
+          applicabilityScope: {},
+          extractedClaims: [],
+          tags: ['fixture'],
+          payload: {},
+          reviewRequired: true,
+          ingestionMode: 'fixture',
+          extractionStatus: 'heuristic_extracted',
+          normalizationStatus: 'parsed',
+        },
+      ],
+    });
+
+    const artifact = await prisma.sourceArtifactRecord.create({
+      data: {
+        sourceRecordId: sourceRecord.id,
+        localPath: `/tmp/local-artifact-${uniqueToken}.pdf`,
+        fileName: `local-artifact-${uniqueToken}.pdf`,
+        fileHash: `local-artifact-hash-${uniqueToken}`,
+        mimeType: 'application/pdf',
+        fileSizeBytes: 2048,
+        pageCount: 2,
+        extractionMethod: 'local-pdf-v1',
+        ingestionStatus: 'parsed',
+        title,
+        doi: `10.1000/local-artifact-${uniqueToken}`,
+        license: 'CC-BY-4.0',
+        accessStatus: 'GREEN',
+        metadataQuality: { level: 'high', fixture: true },
+        veracityScore: { level: 'medium', fixture: true },
+      },
+      select: { id: true },
+    });
+
+    const excludedArtifact = await prisma.sourceArtifactRecord.create({
+      data: {
+        sourceRecordId: excludedSourceRecord.id,
+        localPath: `/tmp/local-artifact-excluded-${uniqueToken}.pdf`,
+        fileName: `local-artifact-excluded-${uniqueToken}.pdf`,
+        fileHash: `local-artifact-excluded-hash-${uniqueToken}`,
+        mimeType: 'application/pdf',
+        fileSizeBytes: 1024,
+        pageCount: 1,
+        extractionMethod: 'local-pdf-v1',
+        ingestionStatus: 'parsed',
+        title: excludedTitle,
+        doi: `10.1000/local-artifact-excluded-${uniqueToken}`,
+        license: 'CC-BY-4.0',
+        accessStatus: 'GREEN',
+        metadataQuality: { level: 'high', fixture: true },
+        veracityScore: { level: 'medium', fixture: true },
+      },
+      select: { id: true },
+    });
+
+    await prisma.sourceTextChunkRecord.createMany({
+      data: [
+        {
+          artifactId: artifact.id,
+          sourceRecordId: sourceRecord.id,
+          chunkIndex: 0,
+          pageNumber: 1,
+          text: 'Microbial fuel cell local artifact results with carbon felt anode and 850 mW/m2 power density.',
+          sourceLocator: 'page:1:chunk:0',
+          charStart: 0,
+          charEnd: 98,
+          metadata: {
+            section_label: 'Results',
+            source_locator: 'page:1:chunk:0',
+          },
+        },
+        {
+          artifactId: excludedArtifact.id,
+          sourceRecordId: excludedSourceRecord.id,
+          chunkIndex: 0,
+          pageNumber: 1,
+          text: 'Corrosion inhibitor local artifact results for steel protection and coating durability.',
+          sourceLocator: 'page:1:chunk:0',
+          charStart: 0,
+          charEnd: 84,
+          metadata: {
+            section_label: 'Results',
+            source_locator: 'page:1:chunk:0',
+          },
+        },
+      ],
+    });
+
+    const eligibility = await repository.listResearchWarehouseEligibility({
+      dry_run: false,
+      include_items: true,
+      limit: 100,
+      source_document_ids: [sourceRecord.id, excludedSourceRecord.id],
+    });
+
+    expect(eligibility.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source_document_id: sourceRecord.id,
+          has_full_text_link: true,
+          status: 'eligible',
+          technology_classes: expect.arrayContaining(['MFC']),
+        }),
+        expect.objectContaining({
+          source_document_id: excludedSourceRecord.id,
+          has_full_text_link: true,
+          status: 'excluded',
+          reasons: expect.arrayContaining(['out_of_scope_technology']),
+        }),
+      ]),
+    );
+
+    const catalogItems = await prisma.externalEvidenceCatalogItem.findMany({
+      where: {
+        sourceRecordId: {
+          in: [sourceRecord.id, excludedSourceRecord.id],
+        },
+      },
+      select: {
+        sourceRecordId: true,
+        reviewStatus: true,
+        sourceState: true,
+        reviewRequired: true,
+        acceptancePolicy: true,
+      },
+    });
+    const catalogStatusBySource = new Map(
+      catalogItems.map((item) => [item.sourceRecordId, item]),
+    );
+
+    expect(catalogStatusBySource.get(sourceRecord.id)).toEqual(
+      expect.objectContaining({
+        sourceRecordId: sourceRecord.id,
+        reviewStatus: 'ACCEPTED',
+        sourceState: 'REVIEWED',
+        reviewRequired: false,
+        acceptancePolicy: 'research_warehouse_eligibility_acceptance_v1',
+      }),
+    );
+    expect(catalogStatusBySource.get(excludedSourceRecord.id)).toEqual(
+      expect.objectContaining({
+        sourceRecordId: excludedSourceRecord.id,
+        reviewStatus: 'REJECTED',
+        sourceState: 'REVIEWED',
+        reviewRequired: false,
+        acceptancePolicy: null,
+      }),
+    );
+
+    const review = await repository.createResearchReview({
+      query: uniqueToken,
+      limit: 5,
+      actorId: actor.userId,
+      columns: getDefaultResearchColumns().filter((column) =>
+        ['paper', 'summary'].includes(column.column_id),
+      ),
+      extractorVersion: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+    });
+
+    expect(review.paper_count).toBe(1);
+    expect(review.papers[0]?.source_document_id).toBe(sourceRecord.id);
+    expect(review.papers[0]?.title).toBe(title);
+  }, 15000);
 
   it('deduplicates staged research imports by DOI before provider-specific keys in Prisma storage', async () => {
     const prisma = getPrismaClient();

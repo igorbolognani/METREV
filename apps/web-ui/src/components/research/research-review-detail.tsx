@@ -13,6 +13,15 @@ import type {
     ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
+import { DenseTableShell } from '@/components/ui/dense-table';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
+} from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
     WorkspaceDataCard,
@@ -21,7 +30,6 @@ import {
     WorkspaceSection,
     WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
-import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
     addResearchColumn,
@@ -35,6 +43,83 @@ import { formatToken } from '@/lib/formatting';
 void React;
 
 type ResearchReviewDetailTab = 'table' | 'columns' | 'papers' | 'pack';
+type ResearchPaperStatusFilter = 'all' | 'completed' | 'queued' | 'attention';
+type ResearchColumnGroupKey =
+  | 'overview'
+  | 'bioelectrochemistry'
+  | 'metrics'
+  | 'decision';
+
+const RESEARCH_FIELD_LABELS: Record<string, string> = {
+  cod_removal_pct: 'COD removal',
+  conductivity_ms_cm: 'Conductivity',
+  current_density_a_m2: 'Current density',
+  electrode_area_cm2: 'Electrode area',
+  electrode_spacing_cm: 'Electrode spacing',
+  HRT_h: 'HRT',
+  pH: 'pH',
+  power_density_w_m2: 'Power density',
+  temperature_c: 'Temperature',
+  useful_volume_ml: 'Volume',
+};
+
+const RESEARCH_FIELD_UNITS: Record<string, string> = {
+  conductivity_ms_cm: 'mS/cm',
+  electrode_area_cm2: 'cm2',
+  electrode_spacing_cm: 'cm',
+  HRT_h: 'h',
+  temperature_c: 'C',
+  useful_volume_ml: 'mL',
+};
+
+const RESEARCH_TABLE_GROUPS: Array<{
+  columnIds: string[];
+  description: string;
+  key: ResearchColumnGroupKey;
+  label: string;
+}> = [
+  {
+    key: 'overview',
+    label: 'Overview',
+    description:
+      'Summary, technology, core materials, key metrics, and implementation status.',
+    columnIds: [
+      'summary',
+      'technology_application',
+      'material_properties',
+      'performance_metrics',
+      'implementation_factors',
+    ],
+  },
+  {
+    key: 'bioelectrochemistry',
+    label: 'Reactor & Materials',
+    description:
+      'Reactor architecture, materials, separator, and operating conditions.',
+    columnIds: [
+      'design_parameters',
+      'material_properties',
+      'operating_conditions',
+    ],
+  },
+  {
+    key: 'metrics',
+    label: 'Metrics & Outputs',
+    description: 'Electrochemical, treatment, and product output measurements.',
+    columnIds: ['performance_metrics', 'product_outputs'],
+  },
+  {
+    key: 'decision',
+    label: 'Decision & Metadata',
+    description:
+      'Limitations, implementation factors, and readiness for analyst use.',
+    columnIds: [
+      'limitations',
+      'implementation_factors',
+      'data_metadata_readiness',
+    ],
+  },
+];
 
 function resultKey(paperId: string, columnId: string) {
   return `${paperId}:${columnId}`;
@@ -80,18 +165,84 @@ function formatNumber(value: number) {
   return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function renderChipList(items: string[], emptyLabel = 'Not reported') {
-  if (items.length === 0) {
+function formatResearchFieldLabel(key: string) {
+  return RESEARCH_FIELD_LABELS[key] ?? formatToken(key);
+}
+
+function formatResearchFieldValue(key: string, value: number) {
+  const unit = RESEARCH_FIELD_UNITS[key];
+  return `${formatResearchFieldLabel(key)} ${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function sanitizeVisibleText(value: unknown) {
+  const rawValue = readString(value);
+  if (!rawValue) {
+    return null;
+  }
+
+  const decodedValue = decodeHtmlEntities(rawValue);
+  const withoutTags = decodedValue.replace(/<\/?[\w:-]+\b[^>]*>/g, ' ');
+  const normalizedValue = withoutTags
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : null;
+}
+
+function truncateVisibleText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function normalizeChipItems(items: string[]) {
+  return items.flatMap((item) => {
+    const sanitizedValue = sanitizeVisibleText(item);
+    return sanitizedValue ? [sanitizedValue] : [];
+  });
+}
+
+function renderChipList(
+  items: string[],
+  emptyLabel = 'Not reported',
+  options?: {
+    limit?: number;
+  },
+) {
+  const normalizedItems = normalizeChipItems(items);
+  if (normalizedItems.length === 0) {
     return <span className="muted">{emptyLabel}</span>;
   }
 
+  const limit = options?.limit;
+  const visibleItems = limit
+    ? normalizedItems.slice(0, limit)
+    : normalizedItems;
+  const hiddenCount = normalizedItems.length - visibleItems.length;
+
   return (
     <div className="workspace-chip-list compact">
-      {items.map((item) => (
-        <span className="meta-chip" key={item}>
+      {visibleItems.map((item, index) => (
+        <span className="meta-chip" key={`${item}-${index}`}>
           {item}
         </span>
       ))}
+      {hiddenCount > 0 ? (
+        <span className="meta-chip">+{hiddenCount} more</span>
+      ) : null}
     </div>
   );
 }
@@ -114,7 +265,7 @@ function metricLabel(metric: unknown): string | null {
     return null;
   }
 
-  return `${formatToken(metricKey)} ${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
+  return `${formatResearchFieldLabel(metricKey)} ${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
 }
 
 function summarizeOperatingConditions(answer: Record<string, unknown>) {
@@ -130,13 +281,13 @@ function summarizeOperatingConditions(answer: Record<string, unknown>) {
     ? Object.entries(operatingConditions).flatMap(([key, value]) => {
         const stringValue = readString(value);
         if (stringValue) {
-          return [`${formatToken(key)} ${stringValue}`];
+          return [`${formatResearchFieldLabel(key)} ${stringValue}`];
         }
 
         const numericValue = readNumber(value);
         return numericValue === null
           ? []
-          : [`${formatToken(key)} ${formatNumber(numericValue)}`];
+          : [formatResearchFieldValue(key, numericValue)];
       })
     : [];
 
@@ -214,25 +365,25 @@ function summarizeMaterialProperties(answer: Record<string, unknown>) {
 
   return [
     readString(anode?.material) ? `anode ${readString(anode?.material)}` : null,
-    readString(anode?.modification)
-      ? `anode mod ${readString(anode?.modification)}`
-      : null,
-    ...collectStringList(anode?.properties).map((value) => `anode ${value}`),
     readString(cathode?.material)
       ? `cathode ${readString(cathode?.material)}`
+      : null,
+    readString(membrane?.type)
+      ? `separator ${readString(membrane?.type)}`
       : null,
     readString(cathode?.catalyst)
       ? `catalyst ${readString(cathode?.catalyst)}`
       : null,
+    readString(anode?.modification)
+      ? `anode mod ${readString(anode?.modification)}`
+      : null,
+    ...collectStringList(anode?.properties).map((value) => `anode ${value}`),
     readNumber(cathode?.loading_mg_cm2) !== null
       ? `loading ${formatNumber(readNumber(cathode?.loading_mg_cm2)!)} mg/cm2`
       : null,
     ...collectStringList(cathode?.properties).map(
       (value) => `cathode ${value}`,
     ),
-    readString(membrane?.type)
-      ? `separator ${readString(membrane?.type)}`
-      : null,
     ...collectStringList(membrane?.properties).map(
       (value) => `separator ${value}`,
     ),
@@ -261,16 +412,44 @@ function summarizeLimitations(answer: Record<string, unknown>) {
   ];
 }
 
-function renderPaperCell(paper: ResearchPaperMetadata) {
+function paperMetaChips(paper: ResearchPaperMetadata) {
   const paperChips = [
     paper.year ? `Year ${paper.year}` : null,
     paper.doi ? `DOI ${paper.doi}` : null,
+    sanitizeVisibleText(paper.journal)
+      ? `Journal ${sanitizeVisibleText(paper.journal)}`
+      : null,
     formatToken(paper.source_type),
   ].filter((value): value is string => Boolean(value));
 
+  return paperChips;
+}
+
+function renderPaperCell(
+  paper: ResearchPaperMetadata,
+  options?: {
+    compact?: boolean;
+  },
+) {
+  const compact = options?.compact ?? false;
+  const sanitizedTitle = sanitizeVisibleText(paper.title) ?? 'Untitled paper';
+  const sanitizedAbstract = sanitizeVisibleText(paper.abstract_text);
+  const preview = sanitizedAbstract
+    ? truncateVisibleText(sanitizedAbstract, compact ? 180 : 320)
+    : null;
+  const paperChips = compact
+    ? [
+        paper.year ? `Year ${paper.year}` : null,
+        formatToken(paper.source_type),
+      ].filter((value): value is string => Boolean(value))
+    : paperMetaChips(paper);
+
   return (
-    <div>
-      <strong>{paper.title}</strong>
+    <div className="research-review-paper-cell">
+      <strong>{sanitizedTitle}</strong>
+      {preview ? (
+        <p className="research-review-paper-cell__preview">{preview}</p>
+      ) : null}
       <div className="workspace-chip-list compact">
         {paperChips.map((item) => (
           <span className="meta-chip" key={item}>
@@ -291,51 +470,148 @@ function resultMap(review: ResearchReviewDetail) {
   );
 }
 
+function summarizeStructuredResult(answer: Record<string, unknown>) {
+  const listKeys = ['items', 'gaps', 'missing_fields', 'validation_errors'];
+  for (const key of listKeys) {
+    const values = collectStringList(answer[key]);
+    if (values.length > 0) {
+      return values;
+    }
+  }
+
+  const scalarEntries = Object.entries(answer)
+    .filter(
+      ([key]) =>
+        ![
+          'confidence',
+          'evidence_trace',
+          'evidence_span',
+          'missing_fields',
+          'validation_errors',
+        ].includes(key),
+    )
+    .flatMap(([key, value]) => {
+      const sanitizedValue = sanitizeVisibleText(value);
+      if (sanitizedValue) {
+        return [`${formatToken(key)}: ${sanitizedValue}`];
+      }
+
+      const numericValue = readNumber(value);
+      return numericValue === null
+        ? []
+        : [`${formatToken(key)}: ${formatNumber(numericValue)}`];
+    });
+
+  return scalarEntries;
+}
+
+function renderResultFallback(
+  answer: Record<string, unknown>,
+  compact: boolean,
+) {
+  const summary = sanitizeVisibleText(answer.summary);
+  if (summary) {
+    return compact ? truncateVisibleText(summary, 180) : summary;
+  }
+
+  const evidenceSpan = sanitizeVisibleText(answer.evidence_span);
+  if (evidenceSpan) {
+    return compact ? truncateVisibleText(evidenceSpan, 180) : evidenceSpan;
+  }
+
+  const structuredItems = summarizeStructuredResult(answer);
+  if (structuredItems.length > 0) {
+    return renderChipList(structuredItems, 'Not reported', {
+      limit: compact ? 3 : undefined,
+    });
+  }
+
+  return <span className="muted">Structured result</span>;
+}
+
+function resultTraceCount(result: ResearchExtractionResult | undefined) {
+  return result?.evidence_trace.length ?? 0;
+}
+
 function renderCell(
   column: ResearchColumnDefinition,
   result: ResearchExtractionResult | undefined,
+  options?: {
+    compact?: boolean;
+  },
 ) {
+  const compact = options?.compact ?? false;
   if (!result) {
     return <span className="muted">Queued</span>;
   }
 
   if (result.status === 'invalid') {
-    return <span className="error">Invalid</span>;
+    return (
+      <div className="research-review-invalid-cell">
+        <span className="error">Invalid</span>
+        {collectStringList(
+          (result.answer as Record<string, unknown>)?.validation_errors,
+        )
+          .slice(0, compact ? 2 : undefined)
+          .map((message) => (
+            <span className="muted" key={message}>
+              {sanitizeVisibleText(message) ?? message}
+            </span>
+          ))}
+      </div>
+    );
   }
 
   if (typeof result.answer === 'object' && result.answer !== null) {
     const answer = result.answer as Record<string, unknown>;
     if (column.column_id === 'summary') {
-      return (
-        readString(answer.summary) ?? (
-          <span className="muted">Not reported</span>
-        )
-      );
+      const summary = sanitizeVisibleText(answer.summary);
+      if (!summary) {
+        return <span className="muted">Not reported</span>;
+      }
+
+      return compact ? truncateVisibleText(summary, 220) : summary;
     }
 
     if (column.column_id === 'technology_application') {
       const technology = collectStringList(answer.technology_class);
-      const application = readString(answer.application);
-      const scale = readString(answer.scale);
+      const application = sanitizeVisibleText(answer.application);
+      const scale = sanitizeVisibleText(answer.scale);
       return renderChipList(
         [
           ...technology,
           application ? `application ${application}` : null,
           scale ? `scale ${scale}` : null,
         ].filter((value): value is string => Boolean(value)),
+        'Not reported',
+        { limit: compact ? 3 : undefined },
       );
     }
 
     if (column.column_id === 'design_parameters') {
-      return renderChipList(summarizeDesignParameters(answer));
+      return renderChipList(summarizeDesignParameters(answer), 'Not reported', {
+        limit: compact ? 3 : undefined,
+      });
     }
 
     if (column.column_id === 'material_properties') {
-      return renderChipList(summarizeMaterialProperties(answer));
+      return renderChipList(
+        summarizeMaterialProperties(answer),
+        'Not reported',
+        {
+          limit: compact ? 3 : undefined,
+        },
+      );
     }
 
     if (column.column_id === 'operating_conditions') {
-      return renderChipList(summarizeOperatingConditions(answer));
+      return renderChipList(
+        summarizeOperatingConditions(answer),
+        'Not reported',
+        {
+          limit: compact ? 3 : undefined,
+        },
+      );
     }
 
     if (column.column_id === 'performance_metrics') {
@@ -352,8 +628,9 @@ function renderCell(
           ).map((metric) => metricLabel(metric)),
         ),
       );
-
-      return renderChipList(metrics);
+      return renderChipList(metrics, 'Not reported', {
+        limit: compact ? 4 : undefined,
+      });
     }
 
     if (column.column_id === 'product_outputs') {
@@ -364,6 +641,8 @@ function renderCell(
             : []
           ).map((metric) => metricLabel(metric)),
         ),
+        'Not reported',
+        { limit: compact ? 3 : undefined },
       );
     }
 
@@ -371,21 +650,33 @@ function renderCell(
       const items = summarizeLimitations(answer).concat(
         collectStringList(answer.items),
       );
-      return renderChipList(items);
+      return renderChipList(items, 'Not reported', {
+        limit: compact ? 3 : undefined,
+      });
     }
 
     if (column.column_id === 'implementation_factors') {
-      return renderChipList(summarizeImplementationFactors(answer));
+      return renderChipList(
+        summarizeImplementationFactors(answer),
+        'Not reported',
+        {
+          limit: compact ? 3 : undefined,
+        },
+      );
     }
 
     if (column.column_id === 'data_metadata_readiness') {
-      const summary = readString(answer.summary);
-      const decisionReadiness = readString(answer.decision_use_readiness);
+      const summary = sanitizeVisibleText(answer.summary);
+      const decisionReadiness = sanitizeVisibleText(
+        answer.decision_use_readiness,
+      );
       const blockingGaps = collectStringList(answer.blocking_gaps);
 
       return (
-        <div>
-          {summary ? <div>{summary}</div> : null}
+        <div className="research-review-cell-stack">
+          {summary ? (
+            <div>{compact ? truncateVisibleText(summary, 160) : summary}</div>
+          ) : null}
           {renderChipList(
             [
               decisionReadiness
@@ -394,25 +685,622 @@ function renderCell(
               ...blockingGaps.map((gap) => `gap ${formatToken(gap)}`),
             ].filter((value): value is string => Boolean(value)),
             summary ? 'No readiness tags' : 'Not reported',
+            { limit: compact ? 3 : undefined },
           )}
         </div>
       );
     }
 
     if (Array.isArray(answer.items)) {
-      return answer.items.join('; ') || 'Not reported';
+      const items = collectStringList(answer.items);
+      if (items.length > 0) {
+        return renderChipList(items, 'Not reported', {
+          limit: compact ? 3 : undefined,
+        });
+      }
     }
 
-    if (typeof answer.summary === 'string') {
-      return answer.summary;
-    }
+    return renderResultFallback(answer, compact);
   }
 
-  return JSON.stringify(result.answer).slice(0, 180);
+  const scalarValue = sanitizeVisibleText(String(result.answer));
+  return scalarValue ? (
+    compact ? (
+      truncateVisibleText(scalarValue, 180)
+    ) : (
+      scalarValue
+    )
+  ) : (
+    <span className="muted">Not reported</span>
+  );
 }
 
 function visibleColumns(review: ResearchReviewDetail) {
   return review.columns.filter((column) => column.visible);
+}
+
+function paperCompletionSummary(
+  paperId: string,
+  columns: ResearchColumnDefinition[],
+  cells: Map<string, ResearchExtractionResult>,
+) {
+  return columns
+    .filter((column) => column.column_id !== 'paper')
+    .reduce(
+      (summary, column) => {
+        const result = cells.get(resultKey(paperId, column.column_id));
+        if (!result) {
+          summary.queued += 1;
+          return summary;
+        }
+
+        if (result.status === 'invalid') {
+          summary.invalid += 1;
+        } else {
+          summary.completed += 1;
+        }
+
+        summary.traces += resultTraceCount(result);
+        return summary;
+      },
+      { completed: 0, invalid: 0, queued: 0, traces: 0 },
+    );
+}
+
+function paperStatusFilterValue(
+  paperId: string,
+  columns: ResearchColumnDefinition[],
+  cells: Map<string, ResearchExtractionResult>,
+): Exclude<ResearchPaperStatusFilter, 'all'> {
+  const summary = paperCompletionSummary(paperId, columns, cells);
+  if (summary.invalid > 0) {
+    return 'attention';
+  }
+
+  if (summary.queued > 0) {
+    return 'queued';
+  }
+
+  return 'completed';
+}
+
+function matchesPaperSearchQuery(
+  paper: ResearchPaperMetadata,
+  searchQuery: string,
+) {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  const searchHaystack = [
+    sanitizeVisibleText(paper.title),
+    sanitizeVisibleText(paper.doi),
+    sanitizeVisibleText(paper.journal),
+    sanitizeVisibleText(paper.publisher),
+    sanitizeVisibleText(paper.abstract_text),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .toLowerCase();
+
+  return searchHaystack.includes(normalizedQuery);
+}
+
+function ResearchReviewRow({
+  activeGroup,
+  activeGroupColumns,
+  cells,
+  columns,
+  expanded,
+  onToggleExpanded,
+  paper,
+}: {
+  activeGroup: (typeof RESEARCH_TABLE_GROUPS)[number];
+  activeGroupColumns: ResearchColumnDefinition[];
+  cells: Map<string, ResearchExtractionResult>;
+  columns: ResearchColumnDefinition[];
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  paper: ResearchPaperMetadata;
+}) {
+  const completion = paperCompletionSummary(paper.paper_id, columns, cells);
+  const summaryColumn = columns.find(
+    (column) => column.column_id === 'summary',
+  );
+  const insightColumns = activeGroupColumns.filter(
+    (column) => column.column_id !== 'summary',
+  );
+  const results = columns
+    .filter((column) => column.column_id !== 'paper')
+    .map((column) => cells.get(resultKey(paper.paper_id, column.column_id)))
+    .filter(
+      (result): result is ResearchExtractionResult => result !== undefined,
+    );
+
+  return (
+    <article
+      className={
+        expanded
+          ? 'research-review-row research-review-row--expanded'
+          : 'research-review-row'
+      }
+    >
+      <div className="research-review-row__main">
+        <div className="research-review-row__paper">
+          <span className="research-review-row__eyebrow">Paper</span>
+          {renderPaperCell(paper, { compact: true })}
+          <div className="research-review-table__paper-meta">
+            <span>{completion.completed} completed</span>
+            <span>{completion.queued} queued</span>
+            <span>{completion.invalid} invalid</span>
+            <span>{completion.traces} traces</span>
+          </div>
+        </div>
+
+        <div className="research-review-row__summary">
+          <span className="research-review-row__eyebrow">Summary</span>
+          <div className="research-review-row__summary-body">
+            {summaryColumn ? (
+              renderCell(
+                summaryColumn,
+                cells.get(resultKey(paper.paper_id, summaryColumn.column_id)),
+                { compact: true },
+              )
+            ) : (
+              <span className="muted">Not reported</span>
+            )}
+          </div>
+        </div>
+
+        <div className="research-review-row__insights">
+          {insightColumns.length > 0 ? (
+            insightColumns.map((column) => (
+              <div
+                className="research-review-row__insight-card"
+                key={`${paper.paper_id}-${column.column_id}`}
+              >
+                <span className="research-review-row__eyebrow">
+                  {column.name}
+                </span>
+                <div className="research-review-row__insight-body">
+                  {renderCell(
+                    column,
+                    cells.get(resultKey(paper.paper_id, column.column_id)),
+                    { compact: true },
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="research-review-row__insight-card">
+              <span className="research-review-row__eyebrow">
+                {activeGroup.label}
+              </span>
+              <span className="muted">No visible columns in this group.</span>
+            </div>
+          )}
+        </div>
+
+        <div className="research-review-row__actions">
+          <span className="meta-chip">{activeGroup.label}</span>
+          <button onClick={onToggleExpanded} type="button">
+            {expanded ? 'Hide details' : 'Show details'}
+          </button>
+        </div>
+      </div>
+
+      {expanded ? (
+        <PaperDetailsPanel
+          columns={columns}
+          paper={paper}
+          results={results}
+          variant="inline"
+        />
+      ) : null}
+    </article>
+  );
+}
+
+function ResearchReviewTable({
+  cells,
+  columns,
+  papers,
+}: {
+  cells: Map<string, ResearchExtractionResult>;
+  columns: ResearchColumnDefinition[];
+  papers: ResearchPaperMetadata[];
+}) {
+  const [expandedPaperId, setExpandedPaperId] = React.useState<string | null>(
+    null,
+  );
+  const [activeGroup, setActiveGroup] =
+    React.useState<ResearchColumnGroupKey>('overview');
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] =
+    React.useState<ResearchPaperStatusFilter>('all');
+  const activeGroupConfig =
+    RESEARCH_TABLE_GROUPS.find((group) => group.key === activeGroup) ??
+    RESEARCH_TABLE_GROUPS[0];
+  const activeGroupColumns = React.useMemo(
+    () =>
+      activeGroupConfig.columnIds.flatMap((columnId) => {
+        const column = columns.find((entry) => entry.column_id === columnId);
+        return column ? [column] : [];
+      }),
+    [activeGroupConfig.columnIds, columns],
+  );
+
+  const filteredPapers = React.useMemo(() => {
+    return papers.filter((paper) => {
+      if (statusFilter !== 'all') {
+        const paperStatus = paperStatusFilterValue(
+          paper.paper_id,
+          columns,
+          cells,
+        );
+        if (paperStatus !== statusFilter) {
+          return false;
+        }
+      }
+
+      return matchesPaperSearchQuery(paper, searchQuery);
+    });
+  }, [cells, columns, papers, searchQuery, statusFilter]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [pageSize, searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart =
+    filteredPapers.length === 0 ? 0 : (currentPage - 1) * pageSize;
+  const pagedPapers = filteredPapers.slice(pageStart, pageStart + pageSize);
+  const statusCounts = React.useMemo(
+    () => ({
+      attention: papers.filter(
+        (paper) =>
+          paperStatusFilterValue(paper.paper_id, columns, cells) ===
+          'attention',
+      ).length,
+      completed: papers.filter(
+        (paper) =>
+          paperStatusFilterValue(paper.paper_id, columns, cells) ===
+          'completed',
+      ).length,
+      queued: papers.filter(
+        (paper) =>
+          paperStatusFilterValue(paper.paper_id, columns, cells) === 'queued',
+      ).length,
+    }),
+    [cells, columns, papers],
+  );
+
+  React.useEffect(() => {
+    if (
+      expandedPaperId &&
+      !pagedPapers.some((paper) => paper.paper_id === expandedPaperId)
+    ) {
+      setExpandedPaperId(null);
+    }
+  }, [expandedPaperId, pagedPapers]);
+
+  return (
+    <div className="research-review-table-panel">
+      <div className="research-review-table-toolbar">
+        <div className="research-review-table-toolbar__filters">
+          <label className="research-review-table-toolbar__field">
+            <span>Search papers</span>
+            <input
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Title, DOI, journal, publisher"
+              type="search"
+              value={searchQuery}
+            />
+          </label>
+          <label className="research-review-table-toolbar__field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                setStatusFilter(event.target.value as ResearchPaperStatusFilter)
+              }
+              value={statusFilter}
+            >
+              <option value="all">All papers</option>
+              <option value="completed">Completed only</option>
+              <option value="queued">Queued only</option>
+              <option value="attention">Needs attention</option>
+            </select>
+          </label>
+          <label className="research-review-table-toolbar__field research-review-table-toolbar__field--compact">
+            <span>Rows per page</span>
+            <select
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              value={pageSize}
+            >
+              {[25, 50, 100].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="research-review-table-toolbar__meta">
+          <div className="workspace-chip-list compact">
+            <span className="meta-chip">
+              {filteredPapers.length} of {papers.length} papers
+            </span>
+            <span className="meta-chip">
+              {statusCounts.completed} completed
+            </span>
+            <span className="meta-chip">{statusCounts.queued} queued</span>
+            <span className="meta-chip">
+              {statusCounts.attention} attention
+            </span>
+          </div>
+          <div className="research-review-table-toolbar__pagination">
+            <span>
+              {filteredPapers.length === 0
+                ? 'No matching papers'
+                : `Showing ${pageStart + 1}-${Math.min(
+                    pageStart + pageSize,
+                    filteredPapers.length,
+                  )} of ${filteredPapers.length}`}
+            </span>
+            <div className="workspace-action-row">
+              <button
+                disabled={currentPage <= 1}
+                onClick={() =>
+                  setPage((currentValue) => Math.max(1, currentValue - 1))
+                }
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setPage((currentValue) =>
+                    Math.min(totalPages, currentValue + 1),
+                  )
+                }
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="research-review-group-bar">
+        <div className="research-review-group-bar__copy">
+          <strong>{activeGroupConfig.label}</strong>
+          <span>{activeGroupConfig.description}</span>
+        </div>
+        <div
+          aria-label="Research review column groups"
+          className="research-review-group-bar__actions"
+          role="tablist"
+        >
+          {RESEARCH_TABLE_GROUPS.map((group) => {
+            const isActive = group.key === activeGroup;
+
+            return (
+              <button
+                aria-selected={isActive}
+                className={
+                  isActive
+                    ? 'research-review-group-trigger research-review-group-trigger--active'
+                    : 'research-review-group-trigger'
+                }
+                key={group.key}
+                onClick={() => setActiveGroup(group.key)}
+                role="tab"
+                type="button"
+              >
+                <span>{group.label}</span>
+                <span className="research-review-group-trigger__badge">
+                  {group.columnIds.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {pagedPapers.length === 0 ? (
+        <WorkspaceEmptyState
+          description="No papers match the current search or status filters."
+          title="No matching papers"
+        />
+      ) : (
+        <div className="research-review-row-list">
+          {pagedPapers.map((paper) => {
+            const expanded = expandedPaperId === paper.paper_id;
+
+            return (
+              <ResearchReviewRow
+                activeGroup={activeGroupConfig}
+                activeGroupColumns={activeGroupColumns}
+                cells={cells}
+                columns={columns}
+                expanded={expanded}
+                key={paper.paper_id}
+                onToggleExpanded={() =>
+                  setExpandedPaperId((currentValue) =>
+                    currentValue === paper.paper_id ? null : paper.paper_id,
+                  )
+                }
+                paper={paper}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResearchPaperBrowser({
+  cells,
+  columns,
+  papers,
+}: {
+  cells: Map<string, ResearchExtractionResult>;
+  columns: ResearchColumnDefinition[];
+  papers: ResearchPaperMetadata[];
+}) {
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(12);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] =
+    React.useState<ResearchPaperStatusFilter>('all');
+
+  const filteredPapers = React.useMemo(
+    () =>
+      papers.filter((paper) => {
+        if (statusFilter !== 'all') {
+          const paperStatus = paperStatusFilterValue(
+            paper.paper_id,
+            columns,
+            cells,
+          );
+          if (paperStatus !== statusFilter) {
+            return false;
+          }
+        }
+
+        return matchesPaperSearchQuery(paper, searchQuery);
+      }),
+    [cells, columns, papers, searchQuery, statusFilter],
+  );
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [pageSize, searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart =
+    filteredPapers.length === 0 ? 0 : (currentPage - 1) * pageSize;
+  const pagedPapers = filteredPapers.slice(pageStart, pageStart + pageSize);
+
+  return (
+    <div className="research-review-table-panel">
+      <div className="research-review-table-toolbar">
+        <div className="research-review-table-toolbar__filters">
+          <label className="research-review-table-toolbar__field">
+            <span>Search papers</span>
+            <input
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Title, DOI, journal, publisher"
+              type="search"
+              value={searchQuery}
+            />
+          </label>
+          <label className="research-review-table-toolbar__field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                setStatusFilter(event.target.value as ResearchPaperStatusFilter)
+              }
+              value={statusFilter}
+            >
+              <option value="all">All papers</option>
+              <option value="completed">Completed only</option>
+              <option value="queued">Queued only</option>
+              <option value="attention">Needs attention</option>
+            </select>
+          </label>
+          <label className="research-review-table-toolbar__field research-review-table-toolbar__field--compact">
+            <span>Cards per page</span>
+            <select
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              value={pageSize}
+            >
+              {[12, 24, 48].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="research-review-table-toolbar__meta">
+          <div className="workspace-chip-list compact">
+            <span className="meta-chip">
+              {filteredPapers.length} of {papers.length} papers
+            </span>
+          </div>
+          <div className="research-review-table-toolbar__pagination">
+            <span>
+              {filteredPapers.length === 0
+                ? 'No matching papers'
+                : `Showing ${pageStart + 1}-${Math.min(
+                    pageStart + pageSize,
+                    filteredPapers.length,
+                  )} of ${filteredPapers.length}`}
+            </span>
+            <div className="workspace-action-row">
+              <button
+                disabled={currentPage <= 1}
+                onClick={() =>
+                  setPage((currentValue) => Math.max(1, currentValue - 1))
+                }
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setPage((currentValue) =>
+                    Math.min(totalPages, currentValue + 1),
+                  )
+                }
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {pagedPapers.length === 0 ? (
+        <WorkspaceEmptyState
+          description="No papers match the current search or status filters."
+          title="No matching papers"
+        />
+      ) : (
+        <div className="workspace-card-list research-review-paper-browser-grid">
+          {pagedPapers.map((paper) => (
+            <PaperDetailsPanel
+              columns={columns}
+              key={paper.paper_id}
+              paper={paper}
+              results={columns
+                .filter((column) => column.column_id !== 'paper')
+                .map((column) =>
+                  cells.get(resultKey(paper.paper_id, column.column_id)),
+                )
+                .filter(
+                  (result): result is ResearchExtractionResult =>
+                    result !== undefined,
+                )}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AddColumnPanel({
@@ -487,10 +1375,12 @@ function PaperDetailsPanel({
   columns,
   paper,
   results,
+  variant = 'card',
 }: {
   columns: ResearchColumnDefinition[];
   paper: ResearchPaperMetadata;
   results: ResearchExtractionResult[];
+  variant?: 'card' | 'inline';
 }) {
   const visibleResultRows = columns
     .filter((column) => column.column_id !== 'paper')
@@ -499,41 +1389,55 @@ function PaperDetailsPanel({
       result: results.find((result) => result.column_id === column.column_id),
     }));
 
-  return (
-    <WorkspaceDataCard>
-      <h3>{paper.title}</h3>
-      <p>{paper.abstract_text ?? 'No abstract stored.'}</p>
-      <div className="workspace-chip-list compact">
-        <span className="meta-chip">DOI {paper.doi ?? 'not stated'}</span>
-        <span className="meta-chip">Year {paper.year ?? 'not stated'}</span>
-        <span className="meta-chip">{formatToken(paper.source_type)}</span>
+  const content = (
+    <div className="research-review-paper-detail">
+      <div className="research-review-paper-detail__header">
+        <div>
+          <h3>{sanitizeVisibleText(paper.title) ?? 'Untitled paper'}</h3>
+          <p>
+            {sanitizeVisibleText(paper.abstract_text) ?? 'No abstract stored.'}
+          </p>
+        </div>
+        <div className="workspace-chip-list compact">
+          {paperMetaChips(paper).map((item) => (
+            <span className="meta-chip" key={item}>
+              {item}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="evidence-review-table-shell">
-        <table>
-          <thead>
+      <DenseTableShell>
+        <Table>
+          <TableHead>
             <tr>
-              <th>Column</th>
-              <th>Details</th>
-              <th>Confidence</th>
-              <th>Trace</th>
+              <TableHeaderCell>Column</TableHeaderCell>
+              <TableHeaderCell>Details</TableHeaderCell>
+              <TableHeaderCell>Confidence</TableHeaderCell>
+              <TableHeaderCell>Trace</TableHeaderCell>
             </tr>
-          </thead>
-          <tbody>
+          </TableHead>
+          <TableBody>
             {visibleResultRows.map(({ column, result }) => (
-              <tr key={`${paper.paper_id}-${column.column_id}`}>
-                <td>
+              <TableRow key={`${paper.paper_id}-${column.column_id}`}>
+                <TableCell>
                   <strong>{column.name}</strong>
-                </td>
-                <td>{renderCell(column, result)}</td>
-                <td>{result?.confidence ?? 'queued'}</td>
-                <td>{result?.evidence_trace.length ?? 0} trace(s)</td>
-              </tr>
+                </TableCell>
+                <TableCell>{renderCell(column, result)}</TableCell>
+                <TableCell>{result?.confidence ?? 'queued'}</TableCell>
+                <TableCell>{resultTraceCount(result)} trace(s)</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </WorkspaceDataCard>
+          </TableBody>
+        </Table>
+      </DenseTableShell>
+    </div>
   );
+
+  if (variant === 'inline') {
+    return content;
+  }
+
+  return <WorkspaceDataCard>{content}</WorkspaceDataCard>;
 }
 
 function EvidencePackViewer({
@@ -685,32 +1589,8 @@ export function ResearchReviewDetailWorkspace({
   const selectedPack = pack ?? review.evidence_packs[0] ?? null;
   const decisionInput = selectedPack ? (decisionInputQuery.data ?? null) : null;
   const resolvedActiveTab = activeTab ?? internalActiveTab;
-  const summaryItems = [
-    {
-      detail: 'Source-document rows attached to this review.',
-      key: 'papers',
-      label: 'Papers',
-      tone: 'accent' as const,
-      value: review.paper_count,
-    },
-    {
-      detail: 'Schema-backed table columns currently visible.',
-      key: 'columns',
-      label: 'Columns',
-      tone: 'default' as const,
-      value: columns.length,
-    },
-    {
-      detail: 'Cell-level extraction results saved for this review.',
-      key: 'results',
-      label: 'Results',
-      tone: 'success' as const,
-      value: review.completed_result_count,
-    },
-  ];
-
   return (
-    <div className="workspace-page">
+    <div className="workspace-page research-review-workspace">
       <WorkspacePageHeader
         actions={
           <>
@@ -751,11 +1631,6 @@ export function ResearchReviewDetailWorkspace({
         title={review.title}
       />
 
-      <SummaryRail
-        items={summaryItems}
-        label="Research review detail summary"
-      />
-
       <WorkspaceTabShell
         activeTab={resolvedActiveTab}
         items={[
@@ -788,36 +1663,16 @@ export function ResearchReviewDetailWorkspace({
         title="Research detail layers"
       >
         <TabsContent value="table">
-          <WorkspaceSection title="Review table" eyebrow="Living table">
-            <div className="evidence-review-table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    {columns.map((column) => (
-                      <th key={column.column_id}>{column.name}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {review.papers.map((paper) => (
-                    <tr key={paper.paper_id}>
-                      {columns.map((column) => (
-                        <td key={`${paper.paper_id}-${column.column_id}`}>
-                          {column.column_id === 'paper'
-                            ? renderPaperCell(paper)
-                            : renderCell(
-                                column,
-                                cells.get(
-                                  resultKey(paper.paper_id, column.column_id),
-                                ),
-                              )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <WorkspaceSection
+            className="research-review-table-section"
+            title="Review table"
+            eyebrow="Living table"
+          >
+            <ResearchReviewTable
+              cells={cells}
+              columns={columns}
+              papers={review.papers}
+            />
           </WorkspaceSection>
         </TabsContent>
 
@@ -845,18 +1700,11 @@ export function ResearchReviewDetailWorkspace({
 
         <TabsContent value="papers">
           <WorkspaceSection title="Paper details" eyebrow="Evidence trace">
-            <div className="workspace-card-list">
-              {review.papers.map((paper) => (
-                <PaperDetailsPanel
-                  columns={columns}
-                  key={paper.paper_id}
-                  paper={paper}
-                  results={review.extraction_results.filter(
-                    (result) => result.paper_id === paper.paper_id,
-                  )}
-                />
-              ))}
-            </div>
+            <ResearchPaperBrowser
+              cells={cells}
+              columns={columns}
+              papers={review.papers}
+            />
           </WorkspaceSection>
         </TabsContent>
 

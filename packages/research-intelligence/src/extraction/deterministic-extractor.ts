@@ -1611,6 +1611,10 @@ export function runDeterministicResearchExtraction(
     column: input.column,
     outputSchemaKey: input.column.output_schema_key,
   });
+  const evidenceTrace =
+    validationErrors.length === 0 && built.trace.length === 0
+      ? baseTrace(input)
+      : built.trace;
 
   return researchExtractionResultSchema.parse({
     review_id: input.reviewId,
@@ -1618,7 +1622,7 @@ export function runDeterministicResearchExtraction(
     column_id: input.column.column_id,
     status: validationErrors.length > 0 ? 'invalid' : 'valid',
     answer: built.answer,
-    evidence_trace: built.trace,
+    evidence_trace: evidenceTrace,
     confidence: validationErrors.length > 0 ? 'low' : built.confidence,
     missing_fields: built.missingFields,
     validation_errors: validationErrors,

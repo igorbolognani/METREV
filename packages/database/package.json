@@ -24,6 +24,7 @@
     "evidence:benchmark:refresh": "tsx scripts/refresh-evidence-benchmarks.ts",
     "evidence:quality-report": "tsx scripts/evidence-quality-report.ts",
     "bootstrap:bigdata": "tsx scripts/bootstrap-bigdata.ts",
+    "research:hard-prune": "tsx scripts/prune-research-warehouse.ts",
     "queue:research:backfill-preset": "tsx scripts/queue-research-backfill-target.ts"
   },
   "dependencies": {

@@ -759,6 +759,10 @@ describe('research review workspace UI', () => {
 
     expect(tableHtml).toContain('Research detail layers');
     expect(tableHtml).toContain('Review table');
+    expect(tableHtml).toContain('Overview');
+    expect(tableHtml).toContain('Reactor &amp; Materials');
+    expect(tableHtml).toContain('Metrics &amp; Outputs');
+    expect(tableHtml).toContain('Decision &amp; Metadata');
     expect(tableHtml).toContain('Paper');
     expect(tableHtml).toContain('Summary');
     expect(tableHtml).toContain('MFC fixture review');
@@ -768,7 +772,6 @@ describe('research review workspace UI', () => {
     expect(tableHtml).toContain('anode carbon felt');
     expect(tableHtml).toContain('separator Nafion');
     expect(tableHtml).toContain('0.85 W/m2');
-    expect(tableHtml).toContain('substrate acetate wastewater');
     expect(tableHtml).toContain('Scale-up maintenance remained challenging.');
     expect(columnsHtml).toContain('Add structured column');
     expect(columnsHtml).toContain('Visible columns');
@@ -807,6 +810,59 @@ describe('research review workspace UI', () => {
     expect(papersHtml).toContain('fixture 2');
     expect(papersHtml).toContain('fixture 3');
     expect(papersHtml).toContain('fixture 4');
+  });
+
+  it('strips raw markup from visible paper and summary text', async () => {
+    const { ResearchReviewDetailWorkspace } =
+      await import('../../apps/web-ui/src/components/research/research-review-detail');
+    const client = createQueryClient();
+    const review = buildReviewFixture();
+
+    review.papers[0] = researchPaperMetadataSchema.parse({
+      ...review.papers[0],
+      abstract_text:
+        '<h4>Background</h4>This study uses &lt;i&gt;E. coli&lt;/i&gt; in wastewater treatment.',
+    });
+
+    review.extraction_results = review.extraction_results.map((result) =>
+      result.column_id === 'summary'
+        ? researchExtractionResultSchema.parse({
+            ...result,
+            answer: {
+              summary:
+                '<jats:p>Structured &lt;b&gt;summary&lt;/b&gt; text with <i>markup</i>.</jats:p>',
+              evidence_span: review.papers[0].abstract_text,
+              confidence: 'medium',
+            },
+          })
+        : result,
+    );
+
+    client.setQueryData(['research-review', 'review-001'], review);
+
+    const tableHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'table',
+        reviewId: 'review-001',
+      }),
+      client,
+    );
+    const papersHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'papers',
+        reviewId: 'review-001',
+      }),
+      client,
+    );
+
+    expect(tableHtml).toContain('Structured summary text with markup.');
+    expect(tableHtml).not.toContain('&lt;b&gt;');
+    expect(tableHtml).not.toContain('jats:p');
+    expect(papersHtml).toContain(
+      'Background This study uses E. coli in wastewater treatment.',
+    );
+    expect(papersHtml).not.toContain('&lt;i&gt;');
+    expect(papersHtml).not.toContain('&lt;h4&gt;');
   });
 
   it('renders persisted evidence-pack decision preview data from cached queries', async () => {

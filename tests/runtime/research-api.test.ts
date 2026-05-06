@@ -482,6 +482,74 @@ describe('research API flow', () => {
         ]),
       );
 
+      const sampledEligibilityResponse = await app.inject({
+        method: 'GET',
+        url: '/api/research/warehouse-eligibility?limit=1',
+        headers: {
+          cookie: sessionCookie('research-analyst-session'),
+        },
+      });
+
+      expect(sampledEligibilityResponse.statusCode).toBe(200);
+      expect(sampledEligibilityResponse.json()).toMatchObject({
+        dry_run: true,
+        total_linked_records: 3,
+        eligible_records: 2,
+        excluded_records: 1,
+        inaccessible_records: 1,
+        missing_full_text_records: 1,
+        items: [expect.any(Object)],
+      });
+      expect(sampledEligibilityResponse.json().items).toHaveLength(1);
+
+      const excludedItem = eligibility.items.find(
+        (item: { status: string }) => item.status === 'excluded',
+      );
+      const eligibleItem = eligibility.items.find(
+        (item: { source_type: string }) => item.source_type === 'openalex',
+      );
+
+      expect(excludedItem).toBeDefined();
+      expect(eligibleItem).toBeDefined();
+
+      const scopedSweepResponse = await app.inject({
+        method: 'POST',
+        url: '/api/research/warehouse-eligibility/sweep',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie('research-analyst-session'),
+        },
+        payload: {
+          dry_run: false,
+          include_items: true,
+          limit: 10,
+          source_document_ids: [
+            eligibleItem.source_document_id,
+            excludedItem.source_document_id,
+          ],
+        },
+      });
+
+      expect(scopedSweepResponse.statusCode).toBe(200);
+      expect(scopedSweepResponse.json()).toMatchObject({
+        dry_run: false,
+        total_linked_records: 2,
+        eligible_records: 1,
+        excluded_records: 1,
+      });
+      expect(scopedSweepResponse.json().items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source_document_id: eligibleItem.source_document_id,
+            status: 'eligible',
+          }),
+          expect.objectContaining({
+            source_document_id: excludedItem.source_document_id,
+            status: 'excluded',
+          }),
+        ]),
+      );
+
       const sweepResponse = await app.inject({
         method: 'POST',
         url: '/api/research/warehouse-eligibility/sweep',

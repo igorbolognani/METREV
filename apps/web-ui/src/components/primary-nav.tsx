@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React from 'react';
 
 import { Tooltip } from '@/components/ui/tooltip';
 import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';
@@ -178,6 +177,7 @@ export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
 
             const navItem = item.disabled ? (
               <span
+                aria-label={collapsed ? item.label : undefined}
                 aria-disabled="true"
                 className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
                 key={item.id}
@@ -187,6 +187,7 @@ export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
               </span>
             ) : (
               <Link
+                aria-label={collapsed ? item.label : undefined}
                 className={`app-sidebar__nav-item${isActive ? ' app-sidebar__nav-item--active' : ''}`}
                 href={item.href}
                 key={item.id}

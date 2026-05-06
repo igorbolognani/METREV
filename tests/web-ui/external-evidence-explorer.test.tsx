@@ -155,6 +155,7 @@ describe('external evidence explorer', () => {
       expect(catalogHtml).toContain('Metric');
       expect(catalogHtml).toContain('Material');
       expect(catalogHtml).toContain('Open review queue');
+      expect(catalogHtml).toContain('/admin/intelligence/evidence/review');
       expect(catalogHtml).toContain('Open evidence detail');
 
       expect(facetsHtml).toContain('Filtered warehouse snapshot');

@@ -1610,7 +1610,7 @@ export function buildEvidenceReviewWorkspace(input: {
         {
           key: 'open-explorer',
           label: 'Open explorer',
-          href: '/evidence/explorer',
+          href: '/admin/intelligence/evidence/explorer',
         },
       ],
       copy: {
@@ -1807,7 +1807,7 @@ export function buildEvidenceExplorerWorkspace(input: {
         {
           key: 'review-queue',
           label: 'Open review queue',
-          href: '/evidence/review',
+          href: '/admin/intelligence/evidence/review',
         },
         {
           key: 'export-csv',
@@ -1999,7 +1999,7 @@ export function buildEvidenceExplorerAssistantResponse(input: {
         {
           key: 'open-explorer',
           label: 'Open explorer',
-          href: '/evidence/explorer',
+          href: '/admin/intelligence/evidence/explorer',
         },
       ],
       copy: {

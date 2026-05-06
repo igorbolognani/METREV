@@ -16,3 +16,23 @@ export const seededEvidenceTitle = 'Playwright local evidence acceptance';
 
 export const seededEvidenceSummary =
   'Local E2E evidence fixture that must be reviewed, accepted, and attached before deterministic intake submission.';
+
+export const seededResearchReviewFixtures = [
+  {
+    reviewId: 'playwright-research-review-25',
+    title: 'Playwright seeded research review 25 papers',
+    paperCount: 25,
+  },
+  {
+    reviewId: 'playwright-research-review-100',
+    title: 'Playwright seeded research review 100 papers',
+    paperCount: 100,
+  },
+] as const;
+
+export function seededResearchPaperTitle(
+  paperCount: number,
+  index: number,
+): string {
+  return `Playwright research review ${paperCount} paper ${String(index).padStart(3, '0')}`;
+}

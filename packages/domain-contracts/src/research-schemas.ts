@@ -639,6 +639,7 @@ export const researchWarehouseEligibilityRequestSchema = z.object({
   dry_run: z.boolean().default(true),
   limit: z.number().int().min(1).max(500).default(100),
   include_items: z.boolean().default(true),
+  source_document_ids: z.array(z.string().min(1)).max(500).optional(),
 });
 
 export const queueResearchBackfillPresetResponseSchema = z.object({

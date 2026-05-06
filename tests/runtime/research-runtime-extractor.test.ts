@@ -4,6 +4,7 @@ import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
 import {
     executeResearchExtraction,
     findDefaultResearchColumn,
+    runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 
 import incompletePaperFixture from '../fixtures/research/incomplete-paper.json';
@@ -42,6 +43,35 @@ afterEach(() => {
 });
 
 describe('research runtime extractor', () => {
+  it('keeps deterministic low-information answers traceable with abstract evidence', () => {
+    const column = findDefaultResearchColumn('design_parameters');
+    if (!column) {
+      throw new Error('design_parameters default column not registered');
+    }
+
+    const paper = researchPaperMetadataSchema.parse(incompletePaperFixture);
+    const result = runDeterministicResearchExtraction({
+      reviewId: 'review-runtime-trace-fallback',
+      paper,
+      column,
+      claims: [],
+    });
+
+    expect(result.status).toBe('valid');
+    expect(result.evidence_trace).toHaveLength(1);
+    expect(result.evidence_trace[0]).toEqual(
+      expect.objectContaining({
+        source: 'abstract',
+        source_document_id: paper.source_document_id,
+      }),
+    );
+    expect(result.answer).toEqual(
+      expect.objectContaining({
+        quality_gate: expect.objectContaining({ passed: false }),
+      }),
+    );
+  });
+
   it('uses hydrated full text to improve deterministic extraction when abstracts are incomplete', async () => {
     const column = findDefaultResearchColumn('performance_metrics');
     if (!column) {

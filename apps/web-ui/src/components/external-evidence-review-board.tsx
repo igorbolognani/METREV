@@ -399,7 +399,7 @@ export function EvidenceReviewWorkspaceView({
   ];
 
   return (
-    <div className="workspace-page">
+    <div className="workspace-page evidence-admin-workspace">
       <WorkspacePageHeader
         actions={
           <>
