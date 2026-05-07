@@ -3,9 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 import {
-    analystEmail,
-    analystPassword,
-    seededResearchReviewFixtures,
+  analystEmail,
+  analystPassword,
+  seededResearchReviewFixtures,
 } from './support/local-runtime';
 
 const desktopViewports = [
@@ -155,8 +155,14 @@ test.describe('workspace density at 100 percent zoom', () => {
       await page.setViewportSize(viewport);
       await page.goto(`/admin/intelligence/research/reviews/${reviewId}`);
 
+      await expect(
+        page.getByRole('heading', {
+          name: seededResearchReviewFixtures[0].title,
+        }),
+      ).toBeVisible();
       await expect(page.getByText('Search papers')).toBeVisible();
       await expect(page.getByText('Rows per page')).toBeVisible();
+      await expect(page.getByRole('tab', { name: /Table\s+25/ })).toBeVisible();
       await expect(page.getByRole('tab', { name: /Overview/ })).toBeVisible();
       await expect(page.locator('.research-review-row').first()).toBeVisible();
       await expectWorkspaceToFitViewport(

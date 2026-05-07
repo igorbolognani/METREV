@@ -224,7 +224,7 @@ function renderChipList(
 ) {
   const normalizedItems = normalizeChipItems(items);
   if (normalizedItems.length === 0) {
-    return <span className="muted">{emptyLabel}</span>;
+    return <QuietState label={emptyLabel} />;
   }
 
   const limit = options?.limit;
@@ -245,6 +245,10 @@ function renderChipList(
       ) : null}
     </div>
   );
+}
+
+function QuietState({ label }: { label: string }) {
+  return <span className="research-review-quiet-state">{label}</span>;
 }
 
 function metricLabel(metric: unknown): string | null {
@@ -542,7 +546,7 @@ function renderCell(
 ) {
   const compact = options?.compact ?? false;
   if (!result) {
-    return <span className="muted">Queued</span>;
+    return <QuietState label="Queued" />;
   }
 
   if (result.status === 'invalid') {
@@ -567,7 +571,7 @@ function renderCell(
     if (column.column_id === 'summary') {
       const summary = sanitizeVisibleText(answer.summary);
       if (!summary) {
-        return <span className="muted">Not reported</span>;
+        return <QuietState label="Not reported" />;
       }
 
       return compact ? truncateVisibleText(summary, 220) : summary;
@@ -711,8 +715,40 @@ function renderCell(
       scalarValue
     )
   ) : (
-    <span className="muted">Not reported</span>
+    <QuietState label="Not reported" />
   );
+}
+
+function formatPreviewValue(value: unknown) {
+  const stringValue = sanitizeVisibleText(value);
+  if (stringValue) {
+    return stringValue;
+  }
+
+  const numericValue = readNumber(value);
+  if (numericValue !== null) {
+    return formatNumber(numericValue);
+  }
+
+  if (Array.isArray(value)) {
+    return `${value.length} item${value.length === 1 ? '' : 's'}`;
+  }
+
+  if (value && typeof value === 'object') {
+    return truncateVisibleText(JSON.stringify(value), 120);
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  return 'Not reported';
+}
+
+function metricCandidateEntries(
+  decisionInput: ResearchDecisionIngestionPreview,
+) {
+  return Object.entries(decisionInput.measured_metric_candidates).slice(0, 6);
 }
 
 function visibleColumns(review: ResearchReviewDetail) {
@@ -877,7 +913,7 @@ function ResearchReviewRow({
               <span className="research-review-row__eyebrow">
                 {activeGroup.label}
               </span>
-              <span className="muted">No visible columns in this group.</span>
+              <QuietState label="No visible columns in this group" />
             </div>
           )}
         </div>
@@ -1469,18 +1505,64 @@ function EvidencePackViewer({
       </div>
       {decisionInput ? (
         <>
-          <pre className="payload-preview">
-            {JSON.stringify(
-              {
-                evidence_records: decisionInput.evidence_records.length,
-                measured_metric_candidates:
-                  decisionInput.measured_metric_candidates,
-                missing_data: decisionInput.missing_data,
-              },
-              null,
-              2,
-            )}
-          </pre>
+          <div className="research-evidence-pack-summary">
+            <article className="research-evidence-pack-summary__item">
+              <span>Evidence Records</span>
+              <strong>{decisionInput.evidence_records.length}</strong>
+              <p>Reviewed evidence records available for intake.</p>
+            </article>
+            <article className="research-evidence-pack-summary__item">
+              <span>Metric Candidates</span>
+              <strong>
+                {Object.keys(decisionInput.measured_metric_candidates).length}
+              </strong>
+              {metricCandidateEntries(decisionInput).length > 0 ? (
+                <div className="research-evidence-pack-summary__list">
+                  {metricCandidateEntries(decisionInput).map(([key, value]) => (
+                    <span key={key}>
+                      <b>{key}</b> {formatPreviewValue(value)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <QuietState label="No measured metrics reported" />
+              )}
+            </article>
+            <article className="research-evidence-pack-summary__item">
+              <span>Missing Data</span>
+              <strong>{decisionInput.missing_data.length}</strong>
+              {decisionInput.missing_data.length > 0 ? (
+                renderChipList(decisionInput.missing_data, 'No missing data')
+              ) : (
+                <QuietState label="No missing data flagged" />
+              )}
+            </article>
+            <article className="research-evidence-pack-summary__item">
+              <span>Assumptions</span>
+              <strong>{decisionInput.assumptions.length}</strong>
+              {decisionInput.assumptions.length > 0 ? (
+                renderChipList(decisionInput.assumptions, 'No assumptions')
+              ) : (
+                <QuietState label="No assumptions stated" />
+              )}
+            </article>
+          </div>
+          <details className="research-evidence-pack-raw">
+            <summary>Raw decision preview</summary>
+            <pre className="code-block payload-preview">
+              {JSON.stringify(
+                {
+                  evidence_records: decisionInput.evidence_records.length,
+                  measured_metric_candidates:
+                    decisionInput.measured_metric_candidates,
+                  missing_data: decisionInput.missing_data,
+                  assumptions: decisionInput.assumptions,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </details>
           <div className="workspace-action-row">
             <Link
               className="button secondary"

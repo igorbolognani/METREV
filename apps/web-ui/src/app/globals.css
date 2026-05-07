@@ -394,7 +394,7 @@ main {
 }
 
 .breadcrumb {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .breadcrumb__list {
@@ -412,7 +412,13 @@ main {
   align-items: center;
   gap: var(--space-2);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.breadcrumb__item [aria-current='page'] {
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -459,7 +465,8 @@ main {
 .app-layout .app-main .workspace-action-tile p,
 .app-layout .app-main .summary-callout p {
   font-size: 0.92rem;
-  line-height: 1.45;
+  line-height: 1.55;
+  text-align: left;
 }
 
 .app-layout .app-main .workspace-page-header__meta,
@@ -4459,7 +4466,7 @@ button.secondary {
 .ui-tabs__trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -4481,10 +4488,21 @@ button.secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 1px;
+  padding: 0 8px;
   border-radius: 999px;
+  background: rgba(15, 155, 150, 0.12);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ui-tabs__trigger[data-state='active'] .ui-tabs__badge,
+.ui-tabs__trigger.active .ui-tabs__badge {
+  background: rgba(31, 111, 95, 0.14);
+  color: var(--accent-strong);
 }
 
 .ui-tabs__content {
@@ -5075,7 +5093,8 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 12px 14px;
+  min-height: 44px;
+  padding: 13px 16px;
   font: inherit;
   background: white;
 }
@@ -6627,6 +6646,12 @@ textarea {
   min-width: 0;
 }
 
+.evidence-review-record strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+
 .evidence-review-card__facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -6648,13 +6673,16 @@ textarea {
   overflow: hidden;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  line-height: 1.45;
+  line-height: 1.58;
+  text-align: left;
 }
 
 .evidence-review-record,
 .evidence-review-cell-stack {
   display: grid;
   gap: 6px;
+  align-content: start;
+  line-height: 1.45;
 }
 
 .evidence-review-record {
@@ -6825,7 +6853,8 @@ textarea {
 
 .research-review-workspace .workspace-page-header {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   min-height: 0;
 }
@@ -6836,6 +6865,8 @@ textarea {
 
 .research-review-workspace .workspace-page-header__copy {
   display: flex;
+  flex: 1 1 520px;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -6843,18 +6874,18 @@ textarea {
 }
 
 .research-review-workspace .workspace-page-header__meta {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   gap: 8px;
   justify-content: flex-end;
 }
 
 .research-review-workspace .workspace-page-header__copy h1 {
-  overflow: hidden;
-  max-width: 38vw;
+  flex: 1 1 420px;
+  min-width: min(100%, 320px);
+  max-width: none;
   font-size: clamp(1.05rem, 1.4vw, 1.35rem);
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.22;
+  white-space: normal;
 }
 
 .research-review-workspace .workspace-page-header__actions,
@@ -6893,13 +6924,13 @@ textarea {
 
 .research-review-workspace .wb-tab {
   min-height: 34px;
-  padding: 7px 12px;
+  padding: 7px 10px 7px 12px;
 }
 
 .research-review-workspace .wb-tab-badge {
-  min-width: 20px;
-  height: 20px;
-  font-size: 0.72rem;
+  min-width: 22px;
+  height: 22px;
+  font-size: 0.74rem;
 }
 
 .research-review-table-section > .workspace-section__header {
@@ -7063,16 +7094,16 @@ textarea {
 
 .research-review-row-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .research-review-row {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px;
+  padding: 8px 10px;
   border: 1px solid var(--border-muted);
-  border-radius: 18px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.95);
 }
 
@@ -7084,9 +7115,9 @@ textarea {
 .research-review-row__main {
   display: grid;
   grid-template-columns:
-    minmax(210px, 0.78fr) minmax(220px, 0.9fr) minmax(320px, 1.5fr)
-    auto;
-  gap: 8px;
+    minmax(230px, 0.82fr) minmax(250px, 0.9fr) minmax(360px, 1.48fr)
+    minmax(108px, auto);
+  gap: 10px;
   align-items: start;
   min-width: 0;
 }
@@ -7101,7 +7132,7 @@ textarea {
 }
 
 .research-review-row__paper .research-review-paper-cell {
-  gap: 4px;
+  gap: 6px;
 }
 
 .research-review-row__paper .research-review-paper-cell strong {
@@ -7109,15 +7140,20 @@ textarea {
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  line-height: 1.15;
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.24;
 }
 
 .research-review-row__eyebrow {
   color: var(--muted);
-  font-size: 0.72rem;
+  overflow: hidden;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .research-review-row__summary-body,
@@ -7125,7 +7161,13 @@ textarea {
   min-width: 0;
   color: var(--ink);
   font-size: 0.86rem;
-  line-height: 1.35;
+  line-height: 1.48;
+  text-align: left;
+}
+
+.research-review-row__insight-body {
+  font-size: 0.82rem;
+  line-height: 1.42;
 }
 
 .research-review-row__summary-body {
@@ -7137,18 +7179,19 @@ textarea {
 
 .research-review-row__insights {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   min-width: 0;
 }
 
 .research-review-row__insight-card {
   align-content: start;
-  padding: 8px;
+  gap: 4px;
+  max-height: 64px;
+  padding: 7px 8px;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(248, 251, 253, 0.88);
-  max-height: 76px;
   overflow: hidden;
 }
 
@@ -7157,14 +7200,15 @@ textarea {
 }
 
 .research-review-row__actions {
-  justify-items: end;
-  min-width: 116px;
+  align-content: start;
+  justify-items: start;
+  min-width: 108px;
 }
 
 .research-review-row__actions button,
 .research-review-table__toggle {
-  min-height: 34px;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 6px 10px;
 }
 
 .research-review-table {
@@ -7199,7 +7243,8 @@ textarea {
   margin: 0;
   color: var(--muted);
   font-size: 0.94rem;
-  line-height: 1.55;
+  line-height: 1.6;
+  text-align: left;
 }
 
 .research-review-table__toggle {
@@ -7232,11 +7277,101 @@ textarea {
 
 .research-review-paper-detail__header h3 {
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: var(--ink);
+  font-size: 1.08rem;
+  line-height: 1.28;
 }
 
 .research-review-paper-browser-grid {
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   align-items: start;
+}
+
+.research-review-quiet-state {
+  color: color-mix(in srgb, var(--muted) 78%, white 22%);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.research-review-workspace .form-grid {
+  gap: 16px;
+}
+
+.research-review-workspace .form-grid input,
+.research-review-workspace .form-grid textarea {
+  padding: 14px 16px;
+}
+
+.research-review-workspace .form-grid + .workspace-action-row {
+  margin-top: 24px;
+}
+
+.research-evidence-pack-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.research-evidence-pack-summary__item {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.research-evidence-pack-summary__item > span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.research-evidence-pack-summary__item strong {
+  color: var(--ink);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.research-evidence-pack-summary__item p,
+.research-evidence-pack-summary__list {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.research-evidence-pack-summary__list {
+  display: grid;
+  gap: 6px;
+}
+
+.research-evidence-pack-summary__list span {
+  overflow-wrap: anywhere;
+}
+
+.research-evidence-pack-raw {
+  display: grid;
+  gap: 10px;
+}
+
+.research-evidence-pack-raw summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.payload-preview {
+  max-height: 360px;
 }
 
 @media (max-width: 720px) {

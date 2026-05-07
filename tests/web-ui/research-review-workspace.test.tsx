@@ -898,6 +898,11 @@ describe('research review workspace UI', () => {
     );
 
     expect(html).toContain('Fixture evidence pack');
+    expect(html).toContain('Evidence Records');
+    expect(html).toContain('Metric Candidates');
+    expect(html).toContain('Missing Data');
+    expect(html).toContain('Assumptions');
+    expect(html).toContain('Raw decision preview');
     expect(html).toContain('power_density_w_m2');
     expect(html).toContain('HRT_h');
   });
