@@ -203,6 +203,73 @@ export const parameterConfidenceImpactSchema = z.enum([
   'high',
 ]);
 
+export const evidenceCoverageLevelSchema = z.enum([
+  'strong',
+  'sufficient',
+  'sparse',
+  'absent',
+]);
+
+export const evidenceRecencyStatusSchema = z.enum([
+  'current',
+  'aging',
+  'stale',
+]);
+
+export const evidenceGapSeveritySchema = z.enum([
+  'critical',
+  'moderate',
+  'minor',
+]);
+
+export const evidenceReadinessLevelSchema = z.enum([
+  'ready',
+  'partial',
+  'insufficient',
+  'no_audit',
+]);
+
+export const evidenceOutlierActionSchema = z.enum([
+  'flag_for_review',
+  'confirmed_outlier',
+  'dismissed',
+]);
+
+export const evidenceQualityAuditTriggerModeSchema = z.enum([
+  'manual',
+  'scheduled',
+  'pre_evaluation',
+  'worker',
+]);
+
+export const discoveryTargetStatusSchema = z.enum([
+  'queued',
+  'running',
+  'completed',
+  'failed',
+  'skipped',
+]);
+
+export const acquisitionAttemptStrategySchema = z.enum([
+  'source_artifact',
+  'unpaywall',
+  'core',
+  'semantic_scholar',
+  'publisher_oa',
+  'direct_pdf',
+  'direct_html',
+  'direct_xml',
+]);
+
+export const acquisitionAttemptStatusSchema = z.enum([
+  'queued',
+  'running',
+  'success',
+  'failed',
+  'blocked',
+  'skipped',
+]);
+
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
 
 export const metadataQualityLevelSchema = z.enum(['low', 'medium', 'high']);
@@ -1073,6 +1140,122 @@ export const parameterStateAuditSchema = z.object({
   summary: parameterStateSummarySchema,
   entries: z.array(parameterStateAuditEntrySchema),
 });
+
+export const coverageEntrySchema = z.object({
+  system_type: z.string().min(1).nullable().default(null),
+  component_type: z.string().min(1).nullable().default(null),
+  material: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  scale: z.string().min(1).nullable().default(null),
+  trl: z.number().int().nullable().default(null),
+  record_count: z.number().int().nonnegative(),
+  coverage_level: evidenceCoverageLevelSchema,
+  newest_publication_year: z.number().int().nullable().default(null),
+  recency_status: evidenceRecencyStatusSchema,
+});
+
+export const evidenceGapSchema = z.object({
+  gap_id: z.string().min(1),
+  system_type: z.string().min(1).nullable().default(null),
+  component_type: z.string().min(1).nullable().default(null),
+  material: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  severity: evidenceGapSeveritySchema,
+  affects_golden_cases: z.array(z.string().min(1)).default([]),
+  recommended_query: z.string().min(1).nullable().default(null),
+  priority: z.number().int().min(1).max(100),
+});
+
+export const evidenceOutlierSchema = z.object({
+  fact_id: z.string().min(1),
+  canonical_key: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  normalized_value: z.number(),
+  aggregate_median: z.number(),
+  z_score: z.number(),
+  source_document_id: z.string().min(1),
+  title: z.string().min(1),
+  action: evidenceOutlierActionSchema,
+});
+
+export const readinessScoreSchema = z.object({
+  case_archetype: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  primary_objective: primaryObjectiveSchema,
+  readiness_level: evidenceReadinessLevelSchema.exclude(['no_audit']),
+  primary_metrics_coverage: z.number().int().nonnegative(),
+  material_comparison_count: z.number().int().nonnegative(),
+  operating_window_count: z.number().int().nonnegative(),
+  critical_gaps: z.array(z.string().min(1)).default([]),
+  recommendation: z.string().min(1),
+});
+
+export const funnelStageCountSchema = z.object({
+  stage: z.string().min(1),
+  count: z.number().int().nonnegative(),
+  conversion_rate: z.number().min(0).max(1).nullable().default(null),
+});
+
+export const evidenceQualityReportSchema = z.object({
+  report_id: z.string().min(1),
+  trigger_mode: evidenceQualityAuditTriggerModeSchema,
+  coverage_matrix: z.array(coverageEntrySchema).default([]),
+  gaps: z.array(evidenceGapSchema).default([]),
+  outliers: z.array(evidenceOutlierSchema).default([]),
+  readiness_scores: z.array(readinessScoreSchema).default([]),
+  funnel_metrics: z.array(funnelStageCountSchema).default([]),
+  summary: z.object({
+    total_benchmark_records: z.number().int().nonnegative(),
+    decision_ready_records: z.number().int().nonnegative(),
+    coverage_ratio: z.number().min(0).max(1),
+    critical_gap_count: z.number().int().nonnegative(),
+    stale_metric_count: z.number().int().nonnegative(),
+    outlier_count: z.number().int().nonnegative(),
+  }),
+  created_at: z.string().min(1),
+});
+
+export const discoveryTargetSchema = z.object({
+  target_id: z.string().min(1),
+  audit_report_id: z.string().min(1).nullable().default(null),
+  gap_id: z.string().min(1),
+  query: z.string().min(1),
+  providers: z
+    .array(z.enum(['openalex', 'crossref', 'europe_pmc']))
+    .default([]),
+  priority: z.number().int().min(1).max(100),
+  status: discoveryTargetStatusSchema,
+  records_found: z.number().int().nonnegative().default(0),
+  records_staged: z.number().int().nonnegative().default(0),
+  failure_detail: flexibleObjectSchema.nullable().default(null),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1).optional(),
+  completed_at: z.string().min(1).nullable().default(null),
+});
+
+export const acquisitionAttemptSchema = z.object({
+  attempt_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  strategy: acquisitionAttemptStrategySchema,
+  status: acquisitionAttemptStatusSchema,
+  found_url: z.string().nullable().default(null),
+  found_access_status: externalEvidenceAccessStatusSchema
+    .nullable()
+    .default(null),
+  failure_reason: z.string().nullable().default(null),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1).optional(),
+});
+
+export const evidenceIntelligenceSummarySchema = z.object({
+  readiness_level: evidenceReadinessLevelSchema,
+  critical_gap_count: z.number().int().nonnegative(),
+  stale_metric_count: z.number().int().nonnegative(),
+  decision_ready_records: z.number().int().nonnegative(),
+  coverage_ratio: z.number().min(0).max(1).nullable().default(null),
+  last_audit_at: z.string().min(1).nullable().default(null),
+  discovery_active: z.boolean(),
+});
 export const dashboardRunOutputStatusSchema = z.object({
   report_available: z.boolean(),
   narrative_available: z.boolean(),
@@ -1125,6 +1308,7 @@ export const dashboardWorkspaceResponseSchema = z.object({
     latest_evaluation_href: z.string().nullable(),
     latest_case_history_href: z.string().nullable(),
   }),
+  evidence_intelligence: evidenceIntelligenceSummarySchema.optional(),
   latest_run_overview: dashboardLatestRunOverviewSchema.nullable(),
   recent_evaluations: z.array(evaluationSummarySchema),
   recent_reports: z.array(dashboardReportSummarySchema),
@@ -1635,6 +1819,7 @@ export const externalEvidenceBulkReviewResponseSchema = z.object({
 });
 
 export type RawCaseInput = z.infer<typeof rawCaseInputSchema>;
+export type PrimaryObjective = z.infer<typeof primaryObjectiveSchema>;
 export type SupplierContext = z.infer<typeof supplierContextSchema>;
 export type RawEvidenceRecord = z.infer<typeof rawEvidenceRecordSchema>;
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
@@ -1680,6 +1865,23 @@ export type WorkspaceRoadmapItem = z.infer<typeof workspaceRoadmapItemSchema>;
 export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
 export type WorkspaceMetricRecord = z.infer<typeof workspaceMetricRecordSchema>;
 export type ParameterStateAudit = z.infer<typeof parameterStateAuditSchema>;
+export type EvidenceCoverageLevel = z.infer<typeof evidenceCoverageLevelSchema>;
+export type EvidenceRecencyStatus = z.infer<typeof evidenceRecencyStatusSchema>;
+export type EvidenceGapSeverity = z.infer<typeof evidenceGapSeveritySchema>;
+export type EvidenceReadinessLevel = z.infer<
+  typeof evidenceReadinessLevelSchema
+>;
+export type CoverageEntry = z.infer<typeof coverageEntrySchema>;
+export type EvidenceGap = z.infer<typeof evidenceGapSchema>;
+export type EvidenceOutlier = z.infer<typeof evidenceOutlierSchema>;
+export type ReadinessScore = z.infer<typeof readinessScoreSchema>;
+export type FunnelStageCount = z.infer<typeof funnelStageCountSchema>;
+export type EvidenceQualityReport = z.infer<typeof evidenceQualityReportSchema>;
+export type DiscoveryTarget = z.infer<typeof discoveryTargetSchema>;
+export type AcquisitionAttempt = z.infer<typeof acquisitionAttemptSchema>;
+export type EvidenceIntelligenceSummary = z.infer<
+  typeof evidenceIntelligenceSummarySchema
+>;
 export type DashboardWorkspaceResponse = z.infer<
   typeof dashboardWorkspaceResponseSchema
 >;

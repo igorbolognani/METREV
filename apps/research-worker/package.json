@@ -12,6 +12,7 @@
   "dependencies": {
     "@metrev/database": "workspace:*",
     "@metrev/domain-contracts": "workspace:*",
+    "@metrev/evidence-discovery": "workspace:*",
     "@metrev/research-intelligence": "workspace:*",
     "@metrev/telemetry": "workspace:*"
   },

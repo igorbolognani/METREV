@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
 import {
-    confidenceLevelSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    externalEvidenceAccessStatusSchema,
-    externalEvidenceSourceTypeSchema,
-    rawEvidenceRecordSchema,
-    runtimeVersionSchema,
-    sourceArtifactSchema,
+  acquisitionAttemptSchema,
+  confidenceLevelSchema,
+  discoveryTargetSchema,
+  evidenceQualityAuditTriggerModeSchema,
+  evidenceQualityReportSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceSourceTypeSchema,
+  rawEvidenceRecordSchema,
+  runtimeVersionSchema,
+  sourceArtifactSchema,
 } from './schemas';
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
@@ -679,6 +683,33 @@ export const researchReviewListResponseSchema = z.object({
   items: z.array(researchReviewSummarySchema),
 });
 
+export const evidenceQualityAuditRequestSchema = z.object({
+  trigger_mode: evidenceQualityAuditTriggerModeSchema.default('manual'),
+  include_golden_cases: z.boolean().default(true),
+});
+
+export const evidenceQualityAuditResponseSchema = z.object({
+  report: evidenceQualityReportSchema,
+});
+
+export const discoveryStatusResponseSchema = z.object({
+  active_targets: z.number().int().nonnegative(),
+  queued_targets: z.number().int().nonnegative(),
+  completed_targets: z.number().int().nonnegative(),
+  failed_targets: z.number().int().nonnegative().default(0),
+  total_records_staged: z.number().int().nonnegative(),
+  targets: z.array(discoveryTargetSchema).default([]),
+});
+
+export const acquisitionStatusResponseSchema = z.object({
+  queued_attempts: z.number().int().nonnegative(),
+  running_attempts: z.number().int().nonnegative(),
+  successful_attempts: z.number().int().nonnegative(),
+  failed_attempts: z.number().int().nonnegative(),
+  skipped_attempts: z.number().int().nonnegative().default(0),
+  attempts: z.array(acquisitionAttemptSchema).default([]),
+});
+
 export type ResearchReviewStatus = z.infer<typeof researchReviewStatusSchema>;
 export type ResearchSearchProvider = z.infer<
   typeof researchSearchProviderSchema
@@ -812,6 +843,18 @@ export type CreateResearchEvidencePackRequest = z.infer<
 >;
 export type ResearchReviewListResponse = z.infer<
   typeof researchReviewListResponseSchema
+>;
+export type EvidenceQualityAuditRequest = z.infer<
+  typeof evidenceQualityAuditRequestSchema
+>;
+export type EvidenceQualityAuditResponse = z.infer<
+  typeof evidenceQualityAuditResponseSchema
+>;
+export type DiscoveryStatusResponse = z.infer<
+  typeof discoveryStatusResponseSchema
+>;
+export type AcquisitionStatusResponse = z.infer<
+  typeof acquisitionStatusResponseSchema
 >;
 
 export const researchEvidenceTypeSchema = evidenceTypeSchema;

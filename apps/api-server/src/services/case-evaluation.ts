@@ -4,7 +4,10 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import { createAuditRecord } from '@metrev/audit';
 import type { SessionActor } from '@metrev/auth';
-import type { EvaluationRepository } from '@metrev/database';
+import type {
+  EvaluationRepository,
+  EvidenceAuditRepository,
+} from '@metrev/database';
 import {
   evaluationResponseSchema,
   normalizeCaseInput,
@@ -12,6 +15,7 @@ import {
   type DecisionOutputValidationIssue,
   type EvaluationResponse,
   type ExternalEvidenceCatalogItemDetail,
+  type NormalizedCaseInput,
   type RawCaseInput,
   type RawEvidenceRecord,
 } from '@metrev/domain-contracts';
@@ -27,6 +31,7 @@ type RuntimeLogger = Pick<FastifyBaseLogger, 'warn'>;
 export interface CreatePersistedCaseEvaluationInput {
   rawInput: RawCaseInput;
   actor: SessionActor;
+  evidenceAuditRepository?: EvidenceAuditRepository;
   evaluationRepository: EvaluationRepository;
   logger: RuntimeLogger;
   environment?: string;
@@ -54,6 +59,73 @@ export class InvalidCatalogEvidenceSelectionError extends Error {
 
 function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+async function applyEvidenceReadinessAdjustment(input: {
+  normalizedCase: NormalizedCaseInput;
+  evidenceAuditRepository?: EvidenceAuditRepository;
+  logger: RuntimeLogger;
+}): Promise<NormalizedCaseInput> {
+  if (!input.evidenceAuditRepository) {
+    return input.normalizedCase;
+  }
+
+  try {
+    const latestReport =
+      await input.evidenceAuditRepository.getLatestEvidenceQualityAuditReport();
+    const readiness = latestReport?.readiness_scores.find(
+      (score) =>
+        score.technology_family === input.normalizedCase.technology_family &&
+        score.primary_objective === input.normalizedCase.primary_objective,
+    );
+
+    if (!readiness) {
+      return input.normalizedCase;
+    }
+
+    const criticalGapNotes = readiness.critical_gaps.map(
+      (gap) => `evidence_gap:${gap}`,
+    );
+    const readinessNote =
+      `Evidence readiness ${readiness.readiness_level} for ` +
+      `${readiness.technology_family}/${readiness.primary_objective}: ` +
+      readiness.recommendation;
+
+    if (readiness.readiness_level === 'insufficient') {
+      return {
+        ...input.normalizedCase,
+        missing_data: dedupeStrings([
+          ...input.normalizedCase.missing_data,
+          'evidence_base_insufficient_for_configuration',
+          ...criticalGapNotes,
+        ]),
+        assumptions: dedupeStrings([
+          ...input.normalizedCase.assumptions,
+          readinessNote,
+        ]),
+      };
+    }
+
+    if (readiness.readiness_level === 'partial') {
+      return {
+        ...input.normalizedCase,
+        assumptions: dedupeStrings([
+          ...input.normalizedCase.assumptions,
+          readinessNote,
+        ]),
+      };
+    }
+  } catch (error) {
+    input.logger.warn(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        case_id: input.normalizedCase.case_id,
+      },
+      'evidence readiness lookup failed during case evaluation',
+    );
+  }
+
+  return input.normalizedCase;
 }
 
 function resolveCatalogSourceDocumentId(
@@ -253,7 +325,11 @@ export async function createPersistedCaseEvaluation(
         input.rawInput,
         input.evaluationRepository,
       );
-      const normalizedCase = normalizeCaseInput(sanitizedRawInput);
+      const normalizedCase = await applyEvidenceReadinessAdjustment({
+        normalizedCase: normalizeCaseInput(sanitizedRawInput),
+        evidenceAuditRepository: input.evidenceAuditRepository,
+        logger: input.logger,
+      });
       const evidenceContextBuilder = new EvidenceDecisionContextBuilder();
       const evidenceFilters =
         evidenceContextBuilder.deriveStackFilters(normalizedCase);

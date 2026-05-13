@@ -1,90 +1,98 @@
 import type {
-    AddResearchColumnRequest,
-    CaseHistoryWorkspaceResponse,
-    CreateResearchEvidencePackRequest,
-    CreateResearchReviewRequest,
-    DashboardWorkspaceResponse,
-    EvaluationComparisonResponse,
-    EvaluationListResponse,
-    EvaluationResponse,
-    EvaluationWorkspaceResponse,
-    EvidenceExplorerAssistantResponse,
-    EvidenceExplorerWorkspaceResponse,
-    EvidenceReviewWorkspaceResponse,
-    ExportCsvResponseMetadata,
-    ExternalEvidenceBulkReviewRequest,
-    ExternalEvidenceBulkReviewResponse,
-    ExternalEvidenceCatalogItemDetail,
-    ExternalEvidenceCatalogListResponse,
-    ExternalEvidenceReviewRequest,
-    ExternalEvidenceReviewStatus,
-    LocalSourceImportRequest,
-    LocalSourceImportResponse,
-    PrintableEvaluationReportResponse,
-    QueueResearchBackfillPresetRequest,
-    QueueResearchBackfillPresetResponse,
-    QueueResearchBackfillRequest,
-    RawCaseInput,
-    ReportConversationRequest,
-    ReportConversationResponse,
-    ResearchBackfillListResponse,
-    ResearchDecisionIngestionPreview,
-    ResearchEvidencePack,
-    ResearchReviewDetail,
-    ResearchReviewListResponse,
-    ResearchWarehouseEligibilityRequest,
-    ResearchWarehouseEligibilityResponse,
-    ResearchWarehouseProgressResponse,
-    RunResearchExtractionsRequest,
-    RunResearchExtractionsResponse,
-    SearchResearchPapersRequest,
-    SearchResearchPapersResponse,
-    SourceArtifact,
-    StageResearchPapersRequest,
-    StageResearchPapersResponse,
+  AcquisitionStatusResponse,
+  AddResearchColumnRequest,
+  CaseHistoryWorkspaceResponse,
+  CreateResearchEvidencePackRequest,
+  CreateResearchReviewRequest,
+  DashboardWorkspaceResponse,
+  DiscoveryStatusResponse,
+  EvaluationComparisonResponse,
+  EvaluationListResponse,
+  EvaluationResponse,
+  EvaluationWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerWorkspaceResponse,
+  EvidenceQualityAuditRequest,
+  EvidenceQualityAuditResponse,
+  EvidenceReviewWorkspaceResponse,
+  ExportCsvResponseMetadata,
+  ExternalEvidenceBulkReviewRequest,
+  ExternalEvidenceBulkReviewResponse,
+  ExternalEvidenceCatalogItemDetail,
+  ExternalEvidenceCatalogListResponse,
+  ExternalEvidenceReviewRequest,
+  ExternalEvidenceReviewStatus,
+  LocalSourceImportRequest,
+  LocalSourceImportResponse,
+  PrintableEvaluationReportResponse,
+  QueueResearchBackfillPresetRequest,
+  QueueResearchBackfillPresetResponse,
+  QueueResearchBackfillRequest,
+  RawCaseInput,
+  ReportConversationRequest,
+  ReportConversationResponse,
+  ResearchBackfillListResponse,
+  ResearchDecisionIngestionPreview,
+  ResearchEvidencePack,
+  ResearchReviewDetail,
+  ResearchReviewListResponse,
+  ResearchWarehouseEligibilityRequest,
+  ResearchWarehouseEligibilityResponse,
+  ResearchWarehouseProgressResponse,
+  RunResearchExtractionsRequest,
+  RunResearchExtractionsResponse,
+  SearchResearchPapersRequest,
+  SearchResearchPapersResponse,
+  SourceArtifact,
+  StageResearchPapersRequest,
+  StageResearchPapersResponse,
 } from '@metrev/domain-contracts/browser';
 import {
-    addResearchColumnRequestSchema,
-    caseHistoryWorkspaceResponseSchema,
-    createResearchEvidencePackRequestSchema,
-    createResearchReviewRequestSchema,
-    dashboardWorkspaceResponseSchema,
-    evaluationComparisonResponseSchema,
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    evaluationWorkspaceResponseSchema,
-    evidenceExplorerAssistantResponseSchema,
-    evidenceExplorerWorkspaceResponseSchema,
-    evidenceReviewWorkspaceResponseSchema,
-    externalEvidenceBulkReviewRequestSchema,
-    externalEvidenceBulkReviewResponseSchema,
-    externalEvidenceCatalogDetailSchema,
-    externalEvidenceCatalogListResponseSchema,
-    externalEvidenceReviewRequestSchema,
-    localSourceImportRequestSchema,
-    localSourceImportResponseSchema,
-    printableEvaluationReportResponseSchema,
-    queueResearchBackfillPresetRequestSchema,
-    queueResearchBackfillPresetResponseSchema,
-    queueResearchBackfillRequestSchema,
-    rawCaseInputSchema,
-    reportConversationRequestSchema,
-    reportConversationResponseSchema,
-    researchBackfillListResponseSchema,
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchReviewDetailSchema,
-    researchReviewListResponseSchema,
-    researchWarehouseEligibilityRequestSchema,
-    researchWarehouseEligibilityResponseSchema,
-    researchWarehouseProgressResponseSchema,
-    runResearchExtractionsRequestSchema,
-    runResearchExtractionsResponseSchema,
-    searchResearchPapersRequestSchema,
-    searchResearchPapersResponseSchema,
-    sourceArtifactSchema,
-    stageResearchPapersRequestSchema,
-    stageResearchPapersResponseSchema,
+  acquisitionStatusResponseSchema,
+  addResearchColumnRequestSchema,
+  caseHistoryWorkspaceResponseSchema,
+  createResearchEvidencePackRequestSchema,
+  createResearchReviewRequestSchema,
+  dashboardWorkspaceResponseSchema,
+  discoveryStatusResponseSchema,
+  evaluationComparisonResponseSchema,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  evaluationWorkspaceResponseSchema,
+  evidenceExplorerAssistantResponseSchema,
+  evidenceExplorerWorkspaceResponseSchema,
+  evidenceQualityAuditRequestSchema,
+  evidenceQualityAuditResponseSchema,
+  evidenceReviewWorkspaceResponseSchema,
+  externalEvidenceBulkReviewRequestSchema,
+  externalEvidenceBulkReviewResponseSchema,
+  externalEvidenceCatalogDetailSchema,
+  externalEvidenceCatalogListResponseSchema,
+  externalEvidenceReviewRequestSchema,
+  localSourceImportRequestSchema,
+  localSourceImportResponseSchema,
+  printableEvaluationReportResponseSchema,
+  queueResearchBackfillPresetRequestSchema,
+  queueResearchBackfillPresetResponseSchema,
+  queueResearchBackfillRequestSchema,
+  rawCaseInputSchema,
+  reportConversationRequestSchema,
+  reportConversationResponseSchema,
+  researchBackfillListResponseSchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchReviewDetailSchema,
+  researchReviewListResponseSchema,
+  researchWarehouseEligibilityRequestSchema,
+  researchWarehouseEligibilityResponseSchema,
+  researchWarehouseProgressResponseSchema,
+  runResearchExtractionsRequestSchema,
+  runResearchExtractionsResponseSchema,
+  searchResearchPapersRequestSchema,
+  searchResearchPapersResponseSchema,
+  sourceArtifactSchema,
+  stageResearchPapersRequestSchema,
+  stageResearchPapersResponseSchema,
 } from '@metrev/domain-contracts/browser';
 
 export type ExternalEvidenceSourceTypeFilter =
@@ -255,6 +263,95 @@ export async function fetchDashboardWorkspace(): Promise<DashboardWorkspaceRespo
     response,
     dashboardWorkspaceResponseSchema,
     'dashboard workspace response',
+  );
+}
+
+export async function fetchEvidenceQualityReport(): Promise<EvidenceQualityAuditResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/quality-report`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    evidenceQualityAuditResponseSchema,
+    'evidence quality audit response',
+  );
+}
+
+export async function triggerEvidenceQualityAudit(
+  payload: EvidenceQualityAuditRequest = {
+    trigger_mode: 'manual',
+    include_golden_cases: true,
+  },
+): Promise<EvidenceQualityAuditResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/quality-report`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: toJsonBody(evidenceQualityAuditRequestSchema, payload),
+    },
+  );
+
+  return parseJson(
+    response,
+    evidenceQualityAuditResponseSchema,
+    'evidence quality audit response',
+  );
+}
+
+export async function runEvidenceDiscovery(): Promise<unknown> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/discovery/run`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  return response.json();
+}
+
+export async function fetchDiscoveryStatus(): Promise<DiscoveryStatusResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/discovery/status`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    discoveryStatusResponseSchema,
+    'evidence discovery status response',
+  );
+}
+
+export async function fetchAcquisitionStatus(): Promise<AcquisitionStatusResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/acquisition/status`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    acquisitionStatusResponseSchema,
+    'evidence acquisition status response',
   );
 }
 

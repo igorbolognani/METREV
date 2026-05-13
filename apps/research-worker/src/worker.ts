@@ -1,5 +1,12 @@
+import {
+  type EvidenceAuditRepository,
+  type ResearchRepository,
+} from '@metrev/database';
 import { researchExtractionResultSchema } from '@metrev/domain-contracts';
-import { type ResearchRepository } from '@metrev/database';
+import {
+  processQueuedEvidenceDiscovery,
+  runEvidenceDiscovery,
+} from '@metrev/evidence-discovery';
 import {
   RESEARCH_RUNTIME_EXTRACTOR_VERSION,
   executeResearchExtraction,
@@ -9,6 +16,10 @@ import {
 
 export interface ResearchWorkerCycleResult {
   backfillsProcessed: number;
+  evidenceAcquisitionAttempts: number;
+  evidenceDiscoveryRecordsStaged: number;
+  evidenceDiscoveryTargetsCreated: number;
+  evidenceDiscoveryTargetsProcessed: number;
   extractionFailures: number;
   extractionJobsProcessed: number;
 }
@@ -153,8 +164,43 @@ async function processExtractions(
   return { failures, processed };
 }
 
+async function processEvidenceDiscovery(input: {
+  evidenceAuditRepository: EvidenceAuditRepository;
+  maxAcquisitionAttempts: number;
+  maxTargets: number;
+  researchRepository: ResearchRepository;
+}) {
+  const latestReport =
+    await input.evidenceAuditRepository.getLatestEvidenceQualityAuditReport();
+  const latestReportTargets = latestReport
+    ? (await input.evidenceAuditRepository.listDiscoveryTargets(100)).filter(
+        (target) => target.audit_report_id === latestReport.report_id,
+      )
+    : [];
+
+  if (latestReport && latestReportTargets.length === 0) {
+    return runEvidenceDiscovery({
+      repository: input.evidenceAuditRepository,
+      researchRepository: input.researchRepository,
+      auditReport: latestReport,
+      maxQueries: input.maxTargets,
+      maxAcquisitionAttempts: input.maxAcquisitionAttempts,
+    });
+  }
+
+  return processQueuedEvidenceDiscovery({
+    repository: input.evidenceAuditRepository,
+    researchRepository: input.researchRepository,
+    maxTargets: input.maxTargets,
+    maxAcquisitionAttempts: input.maxAcquisitionAttempts,
+  });
+}
+
 export async function runResearchWorkerCycle(input: {
   backfillLimit?: number;
+  evidenceAcquisitionLimit?: number;
+  evidenceAuditRepository?: EvidenceAuditRepository;
+  evidenceDiscoveryLimit?: number;
   extractionLimit?: number;
   repository: ResearchRepository;
 }): Promise<ResearchWorkerCycleResult> {
@@ -166,9 +212,26 @@ export async function runResearchWorkerCycle(input: {
     input.repository,
     input.extractionLimit ?? 25,
   );
+  const evidenceDiscovery = input.evidenceAuditRepository
+    ? await processEvidenceDiscovery({
+        evidenceAuditRepository: input.evidenceAuditRepository,
+        maxAcquisitionAttempts: input.evidenceAcquisitionLimit ?? 25,
+        maxTargets: input.evidenceDiscoveryLimit ?? 5,
+        researchRepository: input.repository,
+      })
+    : {
+        acquisition_attempts: 0,
+        records_staged: 0,
+        targets_completed: 0,
+        targets_created: 0,
+      };
 
   return {
     backfillsProcessed,
+    evidenceAcquisitionAttempts: evidenceDiscovery.acquisition_attempts,
+    evidenceDiscoveryRecordsStaged: evidenceDiscovery.records_staged,
+    evidenceDiscoveryTargetsCreated: evidenceDiscovery.targets_created,
+    evidenceDiscoveryTargetsProcessed: evidenceDiscovery.targets_completed,
     extractionFailures: extractions.failures,
     extractionJobsProcessed: extractions.processed,
   };
@@ -177,5 +240,5 @@ export async function runResearchWorkerCycle(input: {
 export function summarizeWorkerCycle(
   result: ResearchWorkerCycleResult,
 ): string {
-  return `processed ${result.backfillsProcessed} backfill run(s), ${result.extractionJobsProcessed} extraction job(s), ${result.extractionFailures} extraction failure(s)`;
+  return `processed ${result.backfillsProcessed} backfill run(s), ${result.extractionJobsProcessed} extraction job(s), ${result.extractionFailures} extraction failure(s), ${result.evidenceDiscoveryTargetsCreated} discovery target(s) created, ${result.evidenceDiscoveryTargetsProcessed} discovery target(s) processed, ${result.evidenceDiscoveryRecordsStaged} evidence record(s) staged, ${result.evidenceAcquisitionAttempts} acquisition attempt(s)`;
 }

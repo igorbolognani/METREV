@@ -29,6 +29,11 @@
       "@metrev/research-intelligence": [
         "./packages/research-intelligence/src/index.ts"
       ],
+      "@metrev/evidence-audit": ["./packages/evidence-audit/src/index.ts"],
+      "@metrev/evidence-discovery": [
+        "./packages/evidence-discovery/src/index.ts"
+      ],
+      "@metrev/design-system": ["./packages/design-system/src/index.ts"],
       "@metrev/auth": ["./packages/auth/src/index.ts"],
       "@metrev/database": ["./packages/database/src/index.ts"],
       "@metrev/utils": ["./packages/utils/src/index.ts"]

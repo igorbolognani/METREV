@@ -7703,6 +7703,217 @@ textarea {
   }
 }
 
+.workspace-hero--instrument {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border: 1px solid var(--surface-border-default);
+  background: linear-gradient(135deg, #ffffff 0%, #eef9f7 62%, #e8f2ff 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.workspace-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.evidence-quality-workspace,
+.instrument-grid,
+.quality-list {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.instrument-grid--two {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+}
+
+.instrument-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metrev-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  border: 1px solid var(--surface-border-default);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.92);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+}
+
+.metrev-panel-header,
+.metrev-status-bar,
+.quality-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.metrev-panel-title {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.metrev-panel-meta,
+.metrev-status-label,
+.quality-list__row span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.metrev-status-bar {
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.metrev-status-item {
+  min-width: 150px;
+  flex: 1 1 150px;
+  border: 1px solid var(--surface-border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel-strong);
+  padding: var(--space-4);
+}
+
+.metrev-status-value {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.2rem;
+}
+
+.metrev-status-healthy,
+.metrev-signal-healthy {
+  border-color: rgba(13, 107, 77, 0.22);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+}
+
+.metrev-status-warning,
+.metrev-signal-warning {
+  border-color: rgba(141, 88, 18, 0.24);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+
+.metrev-status-critical,
+.metrev-signal-critical {
+  border-color: rgba(154, 27, 27, 0.22);
+  background: var(--status-critical-bg);
+  color: var(--status-critical-text);
+}
+
+.metrev-signal-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.metrev-coverage-heatmap,
+.metrev-funnel {
+  display: grid;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+
+.metrev-heatmap-row,
+.metrev-funnel-row {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.metrev-heatmap-row {
+  grid-template-columns: minmax(180px, 1fr) repeat(auto-fit, minmax(64px, 80px));
+}
+
+.metrev-heatmap-head {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.metrev-heatmap-cell {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+  font-size: 0.82rem;
+}
+
+.metrev-coverage-strong {
+  background: #0d6b4d;
+  color: #ffffff;
+}
+
+.metrev-coverage-sufficient {
+  background: #72d9b0;
+  color: #063d2c;
+}
+
+.metrev-coverage-sparse {
+  background: #ffe6ad;
+  color: #6f420d;
+}
+
+.metrev-coverage-absent {
+  background: #f5d7d7;
+  color: #7e1a1a;
+}
+
+.metrev-funnel-row {
+  grid-template-columns: minmax(140px, 0.8fr) minmax(80px, 1fr) auto auto;
+}
+
+.metrev-funnel-bar {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--gradient-score);
+}
+
+.quality-list__row {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--surface-border-muted);
+  padding-block: var(--space-2);
+}
+
+.quality-list__row:last-child {
+  border-bottom: 0;
+}
+
+.admin-action-card {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 112px;
+  align-content: space-between;
+}
+
+@media (max-width: 980px) {
+  .workspace-hero--instrument {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .instrument-grid--two,
+  .instrument-grid--three {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   .site-header,
   .app-sidebar,

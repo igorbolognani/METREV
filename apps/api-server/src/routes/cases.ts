@@ -95,6 +95,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
       const evaluation = await createPersistedCaseEvaluation({
         rawInput: parsed.data,
         actor,
+        evidenceAuditRepository: app.evidenceAuditRepository,
         evaluationRepository: app.evaluationRepository,
         logger: app.log,
         environment: process.env.NODE_ENV,

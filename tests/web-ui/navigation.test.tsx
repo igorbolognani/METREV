@@ -10,7 +10,7 @@ import {
 } from '../../apps/web-ui/src/lib/navigation';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard',
+  usePathname: () => '/home',
 }));
 
 vi.mock('next/link', () => ({
@@ -25,70 +25,79 @@ vi.mock('next/link', () => ({
 describe('navigation registry', () => {
   it('registers the global destinations in the expected order', () => {
     expect(NAV_ITEMS.map((item) => item.id)).toEqual([
-      'dashboard',
-      'input-deck',
-      'evaluations',
+      'home',
+      'evaluate',
       'reports',
-      'evidence-explorer',
+      'evidence',
+      'evidence-quality',
       'evidence-review',
-      'research-tables',
+      'research',
+      'admin',
     ]);
 
-    expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe(
+    expect(NAV_ITEMS.find((item) => item.id === 'evaluate')?.disabled).toBe(
       undefined,
     );
 
     expect(getNavItemsForRole('VIEWER').map((item) => item.id)).toEqual([
-      'dashboard',
-      'input-deck',
-      'evaluations',
+      'home',
+      'evaluate',
       'reports',
     ]);
 
-    expect(
-      getNavItemsForRole('VIEWER').some((item) =>
-        item.href.startsWith('/admin/intelligence'),
-      ),
-    ).toBe(false);
+    expect(getNavItemsForRole('VIEWER').some((item) => item.minimumRole)).toBe(
+      false,
+    );
 
     expect(
       getNavItemsForRole('ANALYST')
         .filter((item) => item.section === 'advanced')
         .map((item) => item.href),
-    ).toEqual([
-      '/admin/intelligence/evidence/explorer',
-      '/admin/intelligence/evidence/review',
-      '/admin/intelligence/research/reviews',
-    ]);
+    ).toEqual(['/evidence/quality', '/evidence/review']);
   });
 
   it('builds breadcrumbs for all required route patterns', () => {
     expect(buildBreadcrumbs('/dashboard', {})).toEqual([]);
 
     expect(buildBreadcrumbs('/cases/new', {})).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
     ]);
 
     expect(buildBreadcrumbs('/cases/new/submitting', {})).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
-      { href: '/cases/new', label: 'Configure Stack' },
+      { href: '/home', label: 'Home' },
+      { href: '/evaluate', label: 'Evaluate' },
     ]);
 
     expect(
       buildBreadcrumbs('/cases/CASE-001/history', { caseId: 'CASE-001' }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { href: '/cases/CASE-001/history', label: 'Case #CASE-001' },
     ]);
 
     expect(buildBreadcrumbs('/evaluations', {})).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
+    ]);
+
+    expect(buildBreadcrumbs('/home', {})).toEqual([]);
+
+    expect(buildBreadcrumbs('/evaluate', {})).toEqual([
+      { href: '/home', label: 'Home' },
+    ]);
+
+    expect(buildBreadcrumbs('/evidence/quality', {})).toEqual([
+      { href: '/home', label: 'Home' },
+      { href: '/evidence', label: 'Evidence' },
+    ]);
+
+    expect(buildBreadcrumbs('/research', {})).toEqual([
+      { href: '/home', label: 'Home' },
     ]);
 
     expect(
       buildBreadcrumbs('/admin/intelligence/evidence/explorer', {}),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { label: 'Admin Intelligence' },
     ]);
 
@@ -97,7 +106,7 @@ describe('navigation registry', () => {
         id: 'evidence-001',
       }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       {
         href: '/admin/intelligence/evidence/explorer',
         label: 'Evidence Explorer',
@@ -108,7 +117,7 @@ describe('navigation registry', () => {
     expect(
       buildBreadcrumbs('/evaluations/eval-001', { id: 'eval-001' }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { href: '/evaluations', label: 'Evaluations' },
       { label: '#eval-001' },
     ]);
@@ -116,7 +125,7 @@ describe('navigation registry', () => {
     expect(
       buildBreadcrumbs('/evaluations/eval-001/report', { id: 'eval-001' }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { href: '/evaluations', label: 'Evaluations' },
       { href: '/evaluations/eval-001', label: '#eval-001' },
       { label: 'Report' },
@@ -128,23 +137,20 @@ describe('navigation registry', () => {
         id: 'eval-001',
       }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { href: '/evaluations', label: 'Evaluations' },
       { href: '/evaluations/eval-001', label: '#eval-001' },
       { label: 'Compare' },
     ]);
 
     expect(buildBreadcrumbs('/admin/intelligence/evidence/review', {})).toEqual(
-      [
-        { href: '/dashboard', label: 'Dashboard' },
-        { label: 'Admin Intelligence' },
-      ],
+      [{ href: '/home', label: 'Home' }, { label: 'Admin Intelligence' }],
     );
 
     expect(
       buildBreadcrumbs('/admin/intelligence/research/reviews', {}),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       { label: 'Admin Intelligence' },
     ]);
 
@@ -153,7 +159,7 @@ describe('navigation registry', () => {
         id: 'review-001',
       }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       {
         href: '/admin/intelligence/research/reviews',
         label: 'Research Tables',
@@ -166,7 +172,7 @@ describe('navigation registry', () => {
         id: 'evidence-001',
       }),
     ).toEqual([
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/home', label: 'Home' },
       {
         href: '/admin/intelligence/evidence/review',
         label: 'Evidence Review',
@@ -182,8 +188,8 @@ describe('navigation registry', () => {
 
     expect(html).toContain('Client workspace');
     expect(html).toContain('Admin intelligence');
-    expect(html).toContain('Configure Stack');
-    expect(html).toContain('Evidence Explorer');
-    expect(html).toContain('Research Tables');
+    expect(html).toContain('Evaluate');
+    expect(html).toContain('Evidence');
+    expect(html).toContain('Research');
   });
 });

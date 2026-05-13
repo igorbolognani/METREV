@@ -32,6 +32,15 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      '@metrev/evidence-audit': fileURLToPath(
+        new URL('./packages/evidence-audit/src/index.ts', import.meta.url),
+      ),
+      '@metrev/evidence-discovery': fileURLToPath(
+        new URL('./packages/evidence-discovery/src/index.ts', import.meta.url),
+      ),
+      '@metrev/design-system': fileURLToPath(
+        new URL('./packages/design-system/src/index.ts', import.meta.url),
+      ),
       '@metrev/auth': fileURLToPath(
         new URL('./packages/auth/src/index.ts', import.meta.url),
       ),

@@ -1,0 +1,137 @@
+version: 0.1
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+  evidence_schema: bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml
+
+policy_name: evidence_discovery
+principle: Discovery and acquisition may enrich upstream evidence candidates, but canonical review and admissibility gates remain authoritative.
+
+discovery_policy:
+  trigger: coverage_gap_detected
+  priority_ranking:
+    - primary_metric_absent_for_golden_case
+    - primary_metric_sparse_for_common_objective
+    - material_comparison_absent
+    - operating_window_absent
+    - stale_evidence_only
+  supported_providers:
+    - openalex
+    - crossref
+    - europe_pmc
+  forbidden_outputs:
+    - automatic_review_acceptance
+    - supplier_claim_promotion
+    - untraceable_metric_inference
+
+query_generation:
+  strategy: dimension_to_search_terms
+  max_query_length: 500
+  max_terms_per_query: 6
+  dimension_mappings:
+    system_type:
+      MFC:
+        - microbial fuel cell
+        - bioelectrochemical system
+      MEC:
+        - microbial electrolysis cell
+        - microbial electrolyzer
+      MET:
+        - microbial electrochemical technology
+        - bioelectrochemical system
+    component_type:
+      reactor:
+        - reactor architecture
+        - reactor configuration
+      anode:
+        - anode
+        - anodic biofilm
+      cathode:
+        - cathode
+        - cathodic catalyst
+      membrane_separator:
+        - membrane
+        - separator
+      current_collector:
+        - current collector
+        - interconnect
+      balance_of_plant:
+        - balance of plant
+        - recirculation
+      sensors_instrumentation:
+        - electrochemical diagnostics
+        - instrumentation
+      biofilm:
+        - biofilm
+        - electroactive microbiome
+    metric_type:
+      power_density_w_m2:
+        - power density
+        - power output
+      current_density_a_m2:
+        - current density
+      coulombic_efficiency_pct:
+        - coulombic efficiency
+      cod_removal_pct:
+        - COD removal
+        - organic removal
+      internal_resistance_ohm:
+        - internal resistance
+      voltage_v:
+        - voltage
+        - cell voltage
+      hydrogen_production_ml_l_d:
+        - hydrogen production
+        - H2 production
+      hydrogen_yield_mol_mol:
+        - hydrogen yield
+      ammonium_recovery_pct:
+        - ammonium recovery
+        - nitrogen recovery
+      conductivity_ms_cm:
+        - conductivity
+        - desalination
+      energy_input_kwh_m3:
+        - energy input
+        - energy consumption
+      product_selectivity_pct:
+        - product selectivity
+      durability_d:
+        - durability
+        - long term operation
+
+acquisition_policy:
+  preferred_access_order:
+    - locally_imported_full_text
+    - source_text_chunk
+    - xml_full_text
+    - html_full_text
+    - open_access_pdf
+    - preprint_version
+  strategies:
+    - source_artifact
+    - unpaywall
+    - core
+    - semantic_scholar
+    - publisher_oa
+    - direct_pdf
+    - direct_html
+    - direct_xml
+  statuses:
+    - queued
+    - running
+    - success
+    - failed
+    - blocked
+    - skipped
+  do_not_acquire:
+    - closed_access_without_alternative
+    - license_uncertain_without_explicit_open_policy
+    - source_not_in_mfc_mec_met_scope
+  max_concurrent_fetches: 4
+  fetch_timeout_ms: 15000
+
+batch_policy:
+  max_discovery_queries_per_run: 20
+  max_acquisition_attempts_per_run: 50
+  cooldown_between_runs_minutes: 60
