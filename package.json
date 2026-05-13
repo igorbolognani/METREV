@@ -46,6 +46,8 @@
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:smoke": "PLAYWRIGHT_SKIP_BOOTSTRAP=1 playwright test tests/e2e/local-view-smoke.spec.ts",
     "test:python": "python3 tests/contracts/run_contract_check.py",
+    "export:repository:functional": "node scripts/generate-full-repository-functional-export.mjs --write",
+    "export:repository:functional:check": "node scripts/generate-full-repository-functional-export.mjs --check",
     "validate:advanced": "pnpm run test:advanced && pnpm --filter @metrev/database bootstrap:bigdata -- --sources= --dryRun",
     "validate:fast": "pnpm run lint && pnpm run test:fast && pnpm run build",
     "validate:local:smoke": "node scripts/run-local-validation.mjs --smoke-only",
