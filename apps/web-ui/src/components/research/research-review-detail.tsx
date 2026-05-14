@@ -5,38 +5,38 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-  ResearchColumnDefinition,
-  ResearchDecisionIngestionPreview,
-  ResearchEvidencePack,
-  ResearchExtractionResult,
-  ResearchPaperMetadata,
-  ResearchReviewDetail,
+    ResearchColumnDefinition,
+    ResearchDecisionIngestionPreview,
+    ResearchEvidencePack,
+    ResearchExtractionResult,
+    ResearchPaperMetadata,
+    ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
 import { DenseTableShell } from '@/components/ui/dense-table';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeaderCell,
+    TableRow,
 } from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-  WorkspaceDataCard,
-  WorkspaceEmptyState,
-  WorkspacePageHeader,
-  WorkspaceSection,
-  WorkspaceSkeleton,
+    WorkspaceDataCard,
+    WorkspaceEmptyState,
+    WorkspacePageHeader,
+    WorkspaceSection,
+    WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-  addResearchColumn,
-  createResearchEvidencePack,
-  fetchResearchEvidencePackDecisionInput,
-  fetchResearchReview,
-  runResearchExtractions,
+    addResearchColumn,
+    createResearchEvidencePack,
+    fetchResearchEvidencePackDecisionInput,
+    fetchResearchReview,
+    runResearchExtractions,
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 
@@ -249,6 +249,62 @@ function renderChipList(
 
 function QuietState({ label }: { label: string }) {
   return <span className="research-review-quiet-state">{label}</span>;
+}
+
+// Spec 037 / Phase 4: surface honest research-cell provenance derived by the
+// deterministic extractor. Returns a small chip when the cells[] payload
+// records a non-filled status or a missing_reason. Stays additive: returns
+// null when no cell record is available (legacy extractor outputs).
+function ResearchCellProvenanceChip({
+  result,
+}: {
+  result?: ResearchExtractionResult;
+}) {
+  if (!result) return null;
+  const payload = (result.normalized_payload ?? {}) as Record<string, unknown>;
+  const cells = Array.isArray(payload.cells)
+    ? (payload.cells as Array<Record<string, unknown>>)
+    : null;
+  const cell = cells?.[0];
+  if (!cell) return null;
+  const status = typeof cell.status === 'string' ? cell.status : null;
+  const missingReason =
+    typeof cell.missing_reason === 'string' ? cell.missing_reason : null;
+  if (!status) return null;
+  if (status === 'filled_with_trace') return null;
+  const label =
+    status === 'filled_without_enough_trace'
+      ? 'Filled · no trace'
+      : status === 'not_reported_by_paper'
+        ? 'Not reported by paper'
+        : status === 'extraction_failed'
+          ? 'Extraction failed'
+          : status === 'needs_analyst_review'
+            ? 'Needs analyst review'
+            : status === 'full_text_missing'
+              ? 'Full text missing'
+              : status === 'document_parse_failed'
+                ? 'Document parse failed'
+                : status === 'table_detected_but_no_match'
+                  ? 'Table detected · no match'
+                  : status === 'queued'
+                    ? 'Queued'
+                    : status;
+  const traceCount = Array.isArray(cell.evidence_trace)
+    ? (cell.evidence_trace as unknown[]).length
+    : 0;
+  const tooltip = missingReason
+    ? `missing_reason=${missingReason} · traces=${traceCount}`
+    : `traces=${traceCount}`;
+  return (
+    <span
+      className="meta-chip research-review-provenance-chip"
+      data-status={status}
+      title={tooltip}
+    >
+      {label}
+    </span>
+  );
 }
 
 function paperHasLinkedFullText(paper: ResearchPaperMetadata) {
@@ -590,6 +646,23 @@ function resultTraceCount(result: ResearchExtractionResult | undefined) {
 }
 
 function renderCell(
+  column: ResearchColumnDefinition,
+  result: ResearchExtractionResult | undefined,
+  paper: ResearchPaperMetadata,
+  options?: {
+    compact?: boolean;
+  },
+) {
+  const body = renderCellBody(column, result, paper, options);
+  return (
+    <>
+      <ResearchCellProvenanceChip result={result} />
+      {body}
+    </>
+  );
+}
+
+function renderCellBody(
   column: ResearchColumnDefinition,
   result: ResearchExtractionResult | undefined,
   paper: ResearchPaperMetadata,
@@ -1601,7 +1674,10 @@ function EvidencePackViewer({
           </div>
           <details className="research-evidence-pack-raw">
             <summary>Raw decision preview</summary>
-            <pre className="code-block payload-preview">
+            <pre
+              className="code-block payload-preview"
+              data-layout-scroll="true"
+            >
               {JSON.stringify(
                 {
                   evidence_records: decisionInput.evidence_records.length,

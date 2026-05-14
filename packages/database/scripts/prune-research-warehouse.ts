@@ -366,10 +366,14 @@ async function deleteSourcesNotIn(keepIds: Set<string>) {
 
 async function sourceChunks(sourceDocumentId: string) {
   const prisma = getPrismaClient();
+  // Spec 037 / Phase 4: raise default chunk cap from 12 → 64 so
+  // table_detected_but_no_match vs not_reported_by_paper can be distinguished.
+  // Configurable via --chunks-per-source=N.
+  const limit = optionNumber('chunks-per-source', 64);
   return prisma.sourceTextChunkRecord.findMany({
     where: { sourceRecordId: sourceDocumentId },
     orderBy: [{ pageNumber: 'asc' }, { chunkIndex: 'asc' }],
-    take: 12,
+    take: limit,
   });
 }
 

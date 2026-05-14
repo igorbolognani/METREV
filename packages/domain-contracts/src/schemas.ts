@@ -1314,6 +1314,19 @@ export const funnelStageCountSchema = z.object({
   conversion_rate: z.number().min(0).max(1).nullable().default(null),
 });
 
+/**
+ * Spec 037 / Phase 3: split evidence audit into 5 semantic funnels.
+ * Additive — legacy `funnel_metrics` remains the single-list view until
+ * consumers migrate. See `specs/037-.../contracts/audit-funnel-semantics.md`.
+ */
+export const evidenceFunnelGroupSchema = z.object({
+  article: z.array(funnelStageCountSchema).default([]),
+  document: z.array(funnelStageCountSchema).default([]),
+  fact: z.array(funnelStageCountSchema).default([]),
+  benchmark: z.array(funnelStageCountSchema).default([]),
+  research_cell: z.array(funnelStageCountSchema).default([]),
+});
+
 export const evidenceQualityReportSchema = z.object({
   report_id: z.string().min(1),
   trigger_mode: evidenceQualityAuditTriggerModeSchema,
@@ -1326,6 +1339,7 @@ export const evidenceQualityReportSchema = z.object({
     .optional(),
   accepted_record_summary: acceptedEvidenceReadinessSummarySchema.optional(),
   funnel_metrics: z.array(funnelStageCountSchema).default([]),
+  funnels: evidenceFunnelGroupSchema.optional(),
   summary: z.object({
     total_benchmark_records: z.number().int().nonnegative(),
     decision_ready_records: z.number().int().nonnegative(),
@@ -2011,6 +2025,7 @@ export type EvidenceGap = z.infer<typeof evidenceGapSchema>;
 export type EvidenceOutlier = z.infer<typeof evidenceOutlierSchema>;
 export type ReadinessScore = z.infer<typeof readinessScoreSchema>;
 export type FunnelStageCount = z.infer<typeof funnelStageCountSchema>;
+export type EvidenceFunnelGroup = z.infer<typeof evidenceFunnelGroupSchema>;
 export type EvidenceQualityReport = z.infer<typeof evidenceQualityReportSchema>;
 export type DiscoveryTarget = z.infer<typeof discoveryTargetSchema>;
 export type AcquisitionAttempt = z.infer<typeof acquisitionAttemptSchema>;

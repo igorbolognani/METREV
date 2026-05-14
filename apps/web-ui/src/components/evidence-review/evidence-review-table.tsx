@@ -186,8 +186,12 @@ export function EvidenceReviewTable({
 
               <div className="evidence-review-cell-stack evidence-review-card__scope">
                 <span className="evidence-review-card__label">Scope</span>
-                <p>{item.provenance_note}</p>
-                <span>DOI: {item.doi ?? 'Not stated'}</span>
+                <p className="workspace-mono-overflow">
+                  {item.provenance_note}
+                </p>
+                <span className="workspace-mono-overflow">
+                  DOI: {item.doi ?? 'Not stated'}
+                </span>
                 {item.source_url ? (
                   <a
                     className="meta-chip"

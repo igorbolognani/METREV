@@ -1,16 +1,18 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 
 import {
-    acceptedEvidenceReadinessCandidateSchema,
-    acquisitionAttemptSchema,
-    discoveryTargetSchema,
-    evidenceQualityReportSchema,
-    funnelStageCountSchema,
-    type AcceptedEvidenceReadinessCandidate,
-    type AcquisitionAttempt,
-    type DiscoveryTarget,
-    type EvidenceQualityReport,
-    type FunnelStageCount,
+  acceptedEvidenceReadinessCandidateSchema,
+  acquisitionAttemptSchema,
+  discoveryTargetSchema,
+  evidenceFunnelGroupSchema,
+  evidenceQualityReportSchema,
+  funnelStageCountSchema,
+  type AcceptedEvidenceReadinessCandidate,
+  type AcquisitionAttempt,
+  type DiscoveryTarget,
+  type EvidenceFunnelGroup,
+  type EvidenceQualityReport,
+  type FunnelStageCount,
 } from '@metrev/domain-contracts';
 
 import { getPrismaClient } from './prisma-client';
@@ -85,6 +87,7 @@ export interface EvidenceAuditRepository {
     limit?: number,
   ): Promise<OutlierCandidateRow[]>;
   getEvidenceFunnelCounts(): Promise<FunnelStageCount[]>;
+  getEvidenceFunnels(): Promise<EvidenceFunnelGroup>;
   getAcceptedEvidenceReadinessCandidates(
     limit?: number,
   ): Promise<AcceptedEvidenceReadinessCandidate[]>;
@@ -174,6 +177,16 @@ export class MemoryEvidenceAuditRepository implements EvidenceAuditRepository {
     ].map((stage) =>
       funnelStageCountSchema.parse({ stage, count: 0, conversion_rate: null }),
     );
+  }
+
+  async getEvidenceFunnels(): Promise<EvidenceFunnelGroup> {
+    return evidenceFunnelGroupSchema.parse({
+      article: [],
+      document: [],
+      fact: [],
+      benchmark: [],
+      research_cell: [],
+    });
   }
 
   async getAcceptedEvidenceReadinessCandidates(): Promise<
@@ -683,6 +696,167 @@ export function createEvidenceAuditRepository(
           conversion_rate: conversionRate(row.count, row.previous),
         }),
       );
+    },
+
+    async getEvidenceFunnels(): Promise<EvidenceFunnelGroup> {
+      // Phase 3 / spec 037: deterministic 5-funnel split.
+      // Each funnel reports only stages we can query against the current
+      // schema; stages that depend on not-yet-implemented signals are
+      // surfaced with count=0 so downstream consumers can render an
+      // explicit "not yet captured" rather than silently dropping them.
+      const [
+        articleDiscovered,
+        articleCataloged,
+        articleAccepted,
+        articleStableId,
+        articleAbstract,
+        articleHasArtifact,
+        articleHasChunks,
+        articleHasResearchReview,
+        documentArtifacts,
+        documentParseable,
+        documentParsed,
+        documentParseFailures,
+        factScientific,
+        factCanonical,
+        factDecisionReady,
+        factLowConfidence,
+        benchmarkRecords,
+        benchmarkDecisionReady,
+        benchmarkAggregates,
+        researchTotal,
+        researchValid,
+        researchInvalid,
+      ] = await prisma.$transaction([
+        prisma.externalSourceRecord.count(),
+        prisma.externalEvidenceCatalogItem.count(),
+        prisma.externalEvidenceCatalogItem.count({
+          where: { reviewStatus: 'ACCEPTED' },
+        }),
+        prisma.externalSourceRecord.count({ where: { doi: { not: null } } }),
+        prisma.externalSourceRecord.count({
+          where: { abstractText: { not: null } },
+        }),
+        prisma.externalSourceRecord.count({
+          where: { sourceArtifacts: { some: {} } },
+        }),
+        prisma.externalSourceRecord.count({
+          where: { sourceTextChunks: { some: {} } },
+        }),
+        prisma.externalSourceRecord.count({
+          where: { researchReviewPapers: { some: {} } },
+        }),
+        prisma.sourceArtifactRecord.count(),
+        prisma.sourceArtifactRecord.count({
+          where: {
+            mimeType: {
+              in: ['application/pdf', 'application/xml', 'text/html'],
+            },
+          },
+        }),
+        prisma.sourceArtifactRecord.count({
+          where: { chunks: { some: {} } },
+        }),
+        prisma.sourceArtifactRecord.count({
+          where: { failureMessage: { not: null } },
+        }),
+        prisma.scientificEvidenceFact.count(),
+        prisma.scientificEvidenceFact.count({
+          where: { factLayer: CANONICAL_FACT_LAYER },
+        }),
+        prisma.scientificEvidenceFact.count({
+          where: { factLayer: CANONICAL_FACT_LAYER, decisionReady: true },
+        }),
+        prisma.scientificEvidenceFact.count({
+          where: { factLayer: CANONICAL_FACT_LAYER, decisionReady: false },
+        }),
+        prisma.evidenceBenchmarkRecord.count(),
+        prisma.evidenceBenchmarkRecord.count({
+          where: { decisionReady: true },
+        }),
+        prisma.evidenceBenchmarkAggregate.count(),
+        prisma.researchExtractionResult.count(),
+        prisma.researchExtractionResult.count({ where: { status: 'VALID' } }),
+        prisma.researchExtractionResult.count({ where: { status: 'INVALID' } }),
+      ]);
+
+      const stage = (
+        stageName: string,
+        count: number,
+        previous: number | null,
+      ) =>
+        funnelStageCountSchema.parse({
+          stage: stageName,
+          count,
+          conversion_rate: conversionRate(count, previous),
+        });
+
+      return evidenceFunnelGroupSchema.parse({
+        article: [
+          stage('discovered', articleDiscovered, null),
+          stage('cataloged', articleCataloged, articleDiscovered),
+          stage('accepted', articleAccepted, articleCataloged),
+          stage('has_stable_identifier', articleStableId, articleAccepted),
+          stage('has_abstract', articleAbstract, articleAccepted),
+          stage('has_full_text_artifact', articleHasArtifact, articleAccepted),
+          stage('has_source_text_chunks', articleHasChunks, articleHasArtifact),
+          // technical_domain_match + strict_table_ready not yet captured deterministically
+          stage('technical_domain_match', 0, articleHasChunks),
+          stage('strict_table_ready', 0, articleHasChunks),
+          stage(
+            'has_research_review',
+            articleHasResearchReview,
+            articleAccepted,
+          ),
+        ],
+        document: [
+          stage('artifact_present', documentArtifacts, null),
+          stage('pdf_xml_html_detected', documentParseable, documentArtifacts),
+          stage('parse_attempted', documentParseable, documentArtifacts),
+          // pages_parsed/text_blocks_parsed/tables_parsed not yet captured
+          stage('pages_parsed', 0, documentParseable),
+          stage('text_blocks_parsed', documentParsed, documentParseable),
+          stage('tables_parsed', 0, documentParseable),
+          stage('parse_warnings', 0, documentParseable),
+          stage('parse_failures', documentParseFailures, documentParseable),
+        ],
+        fact: [
+          stage('scientific_facts', factScientific, null),
+          stage('canonical_facts', factCanonical, factScientific),
+          // normalized_facts not yet distinct from canonical_facts in current schema
+          stage('normalized_facts', factCanonical, factCanonical),
+          stage('decision_ready_facts', factDecisionReady, factCanonical),
+          stage('low_confidence_facts', factLowConfidence, factCanonical),
+          stage('invalid_facts', 0, factScientific),
+        ],
+        benchmark: [
+          stage('benchmark_records', benchmarkRecords, null),
+          // normalized_benchmark_records not yet distinct in current schema
+          stage(
+            'normalized_benchmark_records',
+            benchmarkRecords,
+            benchmarkRecords,
+          ),
+          stage(
+            'decision_ready_benchmark_records',
+            benchmarkDecisionReady,
+            benchmarkRecords,
+          ),
+          stage(
+            'benchmark_aggregates',
+            benchmarkAggregates,
+            benchmarkDecisionReady,
+          ),
+          stage('unit_normalization_failures', 0, benchmarkRecords),
+        ],
+        research_cell: [
+          // Cell-level statuses come in Phase 4; for now expose extraction-result
+          // level coverage so the UI has a non-empty research_cell funnel.
+          stage('total_extraction_results', researchTotal, null),
+          stage('valid_results', researchValid, researchTotal),
+          stage('invalid_results', researchInvalid, researchTotal),
+        ],
+      });
     },
 
     async getAcceptedEvidenceReadinessCandidates(limit = 500) {

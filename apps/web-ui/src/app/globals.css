@@ -171,9 +171,15 @@ main {
   min-height: 100vh;
 }
 
+/*
+ * Spec 037 / ADR 0008: do NOT clip horizontally at the app shell level.
+ * Horizontal overflow is allowed only inside containers carrying
+ * `data-layout-scroll="true"` (or known shells: .workspace-scroll-x,
+ * DenseTableShell, payload/heatmap/document previews). The layout audit
+ * (Phase 2) enforces this rule across the admin routes.
+ */
 .app-layout--workspace-density {
   width: 100%;
-  overflow-x: hidden;
 }
 
 .app-layout--collapsed {
@@ -185,7 +191,6 @@ main {
   max-width: none;
   margin: 0;
   padding: 18px 20px 28px;
-  overflow-x: hidden;
   background: linear-gradient(
     180deg,
     rgba(248, 251, 253, 0.72),
@@ -5906,6 +5911,37 @@ textarea {
 .workspace-card-list {
   display: grid;
   gap: 18px;
+}
+
+/*
+ * Spec 037 / ADR 0008: ensure grid/flex children can shrink so inner
+ * scroll containers can scroll instead of inflating the parent.
+ */
+.workspace-stats-grid > *,
+.workspace-detail-grid > *,
+.workspace-split-grid > *,
+.workspace-form-layout > *,
+.workspace-card-list > * {
+  min-width: 0;
+}
+
+/*
+ * Allowed horizontal scroll container. Mark with data-layout-scroll="true"
+ * so the layout audit (Phase 2) accepts overflow inside this element only.
+ */
+.workspace-scroll-x {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/*
+ * Long token wrap utility for DOIs, URLs, identifiers, extracted chips.
+ */
+.workspace-mono-overflow {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .workspace-card-list--modules {

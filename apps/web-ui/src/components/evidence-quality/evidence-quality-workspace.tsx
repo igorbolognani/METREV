@@ -227,6 +227,37 @@ export function EvidenceQualityWorkspace() {
         </Panel>
       </div>
 
+      {report?.funnels ? (
+        <div className="instrument-grid instrument-grid--three">
+          {(
+            [
+              ['article', 'Article funnel', 'discovery → research review'],
+              ['document', 'Document funnel', 'artifact → parsed text/tables'],
+              ['fact', 'Fact funnel', 'scientific → decision-ready facts'],
+              ['benchmark', 'Benchmark funnel', 'records → aggregates'],
+              [
+                'research_cell',
+                'Research-cell funnel',
+                'extraction completeness',
+              ],
+            ] as const
+          ).map(([key, title, meta]) => {
+            const stages = report.funnels?.[key] ?? [];
+            return (
+              <Panel key={key} title={title} meta={meta}>
+                {stages.length > 0 ? (
+                  <FunnelChart stages={stages} />
+                ) : (
+                  <p className="muted">
+                    No stage data captured yet (spec 037).
+                  </p>
+                )}
+              </Panel>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="instrument-grid instrument-grid--three">
         <Panel
           title="Readiness scores"

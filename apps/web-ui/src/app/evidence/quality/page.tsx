@@ -1,17 +1,17 @@
 import { redirect } from 'next/navigation';
 
 import {
-  buildLegacyRouteRedirectTarget,
-  type LegacyRouteSearchParams,
+    buildLegacyRouteRedirectTarget,
+    type LegacyRouteSearchParams,
 } from '@/lib/legacy-route-redirect';
 
 type EvidenceQualityPageProps = {
-  searchParams?: Promise<LegacyRouteSearchParams>;
+  searchParams: Promise<LegacyRouteSearchParams>;
 };
 
 export default async function EvidenceQualityPage({
   searchParams,
-}: EvidenceQualityPageProps = {}) {
+}: EvidenceQualityPageProps) {
   redirect(
     await buildLegacyRouteRedirectTarget(
       '/admin/intelligence/evidence/quality',

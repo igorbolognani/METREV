@@ -286,6 +286,19 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/document-intelligence:
+    dependencies:
+      '@metrev/domain-contracts':
+        specifier: workspace:*
+        version: link:../domain-contracts
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/domain-contracts:
     dependencies:
       '@metrev/utils':

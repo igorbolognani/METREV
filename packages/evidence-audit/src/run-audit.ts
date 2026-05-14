@@ -1,14 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-    acceptedEvidenceReadinessRecordSchema,
-    evidenceQualityReportSchema,
-    type AcceptedEvidenceReadinessCandidate,
-    type AcceptedEvidenceReadinessRecord,
-    type AcceptedEvidenceReadinessSummary,
-    type EvidenceQualityReport,
-    type FunnelStageCount,
-    type NormalizedCaseInput,
+  acceptedEvidenceReadinessRecordSchema,
+  evidenceQualityReportSchema,
+  type AcceptedEvidenceReadinessCandidate,
+  type AcceptedEvidenceReadinessRecord,
+  type AcceptedEvidenceReadinessSummary,
+  type EvidenceFunnelGroup,
+  type EvidenceQualityReport,
+  type FunnelStageCount,
+  type NormalizedCaseInput,
 } from '@metrev/domain-contracts';
 
 import { buildCoverageMatrix, type RawCoverageRow } from './coverage-matrix';
@@ -20,6 +21,7 @@ export interface EvidenceAuditRepositoryLike {
   getBenchmarkCoverageMatrix(): Promise<RawCoverageRow[]>;
   getCanonicalFactOutlierCandidates(): Promise<OutlierCandidateRow[]>;
   getEvidenceFunnelCounts(): Promise<FunnelStageCount[]>;
+  getEvidenceFunnels?(): Promise<EvidenceFunnelGroup>;
   getAcceptedEvidenceReadinessCandidates(
     limit?: number,
   ): Promise<AcceptedEvidenceReadinessCandidate[]>;
@@ -206,6 +208,16 @@ export async function runEvidenceQualityAudit(input: {
       input.repository.getAcceptedEvidenceReadinessCandidates(),
     ]);
 
+  // Phase 3 / spec 037: 5-funnel split. Additive and gated on whether the
+  // repository implements the new method, so legacy repositories continue
+  // to work and the existing `funnel_metrics` field is preserved.
+  const funnels: EvidenceFunnelGroup | undefined =
+    process.env.METREV_AUDIT_FUNNELS_V2 === '0'
+      ? undefined
+      : typeof input.repository.getEvidenceFunnels === 'function'
+        ? await input.repository.getEvidenceFunnels()
+        : undefined;
+
   const coverageMatrix = buildCoverageMatrix({
     rawCounts,
     currentYear: input.currentYear,
@@ -243,6 +255,7 @@ export async function runEvidenceQualityAudit(input: {
     accepted_record_readiness: acceptedRecordReadiness,
     accepted_record_summary: acceptedRecordSummary,
     funnel_metrics: funnelMetrics,
+    funnels,
     summary: {
       total_benchmark_records: totalBenchmarkRecords,
       decision_ready_records: totalBenchmarkRecords,

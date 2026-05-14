@@ -20,6 +20,7 @@ export function DenseTableShell({
       className={
         variant === 'dashboard' ? 'dashboard-table-shell' : 'detail-table-shell'
       }
+      data-layout-scroll="true"
     >
       {children}
     </div>
