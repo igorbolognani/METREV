@@ -4,10 +4,22 @@ import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-pan
 import { requireRoleSession } from '@/lib/require-session';
 
 const adminLinks = [
-  { href: '/evidence/quality', label: 'Evidence quality' },
-  { href: '/evidence/review', label: 'Evidence review' },
-  { href: '/research', label: 'Research reviews' },
-  { href: '/admin/intelligence/evidence/explorer', label: 'Legacy explorer' },
+  {
+    href: '/admin/intelligence/evidence/explorer',
+    label: 'Evidence Explorer',
+  },
+  {
+    href: '/admin/intelligence/evidence/quality',
+    label: 'Evidence Quality',
+  },
+  {
+    href: '/admin/intelligence/evidence/review',
+    label: 'Evidence Review',
+  },
+  {
+    href: '/admin/intelligence/research/reviews',
+    label: 'Research Tables',
+  },
 ];
 
 export default async function AdminWorkspacePage() {

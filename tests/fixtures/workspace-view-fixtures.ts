@@ -3,17 +3,17 @@ import rawFixture from './raw-case-input.json';
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-  rawCaseInputSchema,
-  type ExternalEvidenceCatalogListResponse,
+    rawCaseInputSchema,
+    type ExternalEvidenceCatalogListResponse,
 } from '@metrev/domain-contracts';
 
 import {
-  buildCaseHistoryWorkspace,
-  buildEvaluationComparison,
-  buildEvaluationWorkspace,
-  buildEvidenceExplorerWorkspace,
-  buildEvidenceReviewWorkspace,
-  buildPrintableEvaluationReport,
+    buildCaseHistoryWorkspace,
+    buildEvaluationComparison,
+    buildEvaluationWorkspace,
+    buildEvidenceExplorerWorkspace,
+    buildEvidenceReviewWorkspace,
+    buildPrintableEvaluationReport,
 } from '../../apps/api-server/src/presenters/workspace-presenters';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 
@@ -181,8 +181,16 @@ export async function buildWorkspaceViewFixtures() {
         publisher: 'Journal of MET Studies',
         published_at: '2025-11-10',
         provenance_note: 'Imported and accepted for analyst intake.',
-        claim_count: 0,
-        reviewed_claim_count: 0,
+        claim_count: 2,
+        reviewed_claim_count: 1,
+        canonical_fact_count: 3,
+        decision_ready_fact_count: 2,
+        benchmark_record_count: 1,
+        decision_ready_benchmark_count: 1,
+        source_artifact_count: 1,
+        source_text_chunk_count: 14,
+        abstract_available: true,
+        full_text_available: true,
         applicability_scope: {},
         extracted_claims: [],
         tags: ['sidestream', 'benchmark', 'accepted'],
@@ -206,6 +214,14 @@ export async function buildWorkspaceViewFixtures() {
         provenance_note: 'Imported and still awaiting analyst review.',
         claim_count: 0,
         reviewed_claim_count: 0,
+        canonical_fact_count: 0,
+        decision_ready_fact_count: 0,
+        benchmark_record_count: 0,
+        decision_ready_benchmark_count: 0,
+        source_artifact_count: 0,
+        source_text_chunk_count: 0,
+        abstract_available: false,
+        full_text_available: false,
         applicability_scope: {},
         extracted_claims: [],
         tags: ['instrumentation', 'pending'],

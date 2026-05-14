@@ -1,20 +1,21 @@
-import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
-import { EvidenceQualityWorkspace } from '@/components/evidence-quality/evidence-quality-workspace';
-import { requireRoleSession } from '@/lib/require-session';
+import { redirect } from 'next/navigation';
 
-export default async function EvidenceQualityPage() {
-  const { session, authorized } = await requireRoleSession(
-    '/evidence/quality',
-    'ANALYST',
-  );
+import {
+  buildLegacyRouteRedirectTarget,
+  type LegacyRouteSearchParams,
+} from '@/lib/legacy-route-redirect';
 
-  if (!authorized) {
-    return <AnalystRoleRequiredPanel email={session.user.email} />;
-  }
+type EvidenceQualityPageProps = {
+  searchParams?: Promise<LegacyRouteSearchParams>;
+};
 
-  return (
-    <main>
-      <EvidenceQualityWorkspace />
-    </main>
+export default async function EvidenceQualityPage({
+  searchParams,
+}: EvidenceQualityPageProps = {}) {
+  redirect(
+    await buildLegacyRouteRedirectTarget(
+      '/admin/intelligence/evidence/quality',
+      searchParams,
+    ),
   );
 }

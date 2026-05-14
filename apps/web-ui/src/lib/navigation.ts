@@ -50,39 +50,43 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'primary',
   },
   {
-    href: '/evidence',
+    href: '/admin/intelligence/evidence/explorer',
     icon: 'evidence-explorer',
     id: 'evidence',
-    label: 'Evidence',
-    matchPrefixes: ['/admin/intelligence/evidence/explorer'],
+    label: 'Evidence Explorer',
+    matchPrefixes: ['/evidence', '/admin/intelligence/evidence/explorer'],
     minimumRole: 'ANALYST',
-    section: 'primary',
+    section: 'advanced',
   },
   {
-    href: '/evidence/quality',
+    href: '/admin/intelligence/evidence/quality',
     icon: 'evidence-quality',
     id: 'evidence-quality',
-    label: 'Quality Audit',
+    label: 'Evidence Quality',
+    matchPrefixes: [
+      '/evidence/quality',
+      '/admin/intelligence/evidence/quality',
+    ],
     minimumRole: 'ANALYST',
     section: 'advanced',
   },
   {
-    href: '/evidence/review',
+    href: '/admin/intelligence/evidence/review',
     icon: 'evidence-review',
     id: 'evidence-review',
-    label: 'Review Gate',
-    matchPrefixes: ['/admin/intelligence/evidence/review'],
+    label: 'Evidence Review',
+    matchPrefixes: ['/evidence/review', '/admin/intelligence/evidence/review'],
     minimumRole: 'ANALYST',
     section: 'advanced',
   },
   {
-    href: '/research',
+    href: '/admin/intelligence/research/reviews',
     icon: 'research-tables',
     id: 'research',
-    label: 'Research',
-    matchPrefixes: ['/admin/intelligence/research/reviews'],
+    label: 'Research Tables',
+    matchPrefixes: ['/research', '/admin/intelligence/research/reviews'],
     minimumRole: 'ANALYST',
-    section: 'primary',
+    section: 'advanced',
   },
   {
     href: '/admin',
@@ -174,25 +178,13 @@ export function buildBreadcrumbs(
     return [{ href: '/home', label: 'Home' }];
   }
 
-  if (normalizedPathname === '/evidence') {
-    return [{ href: '/home', label: 'Home' }];
-  }
-
-  if (normalizedPathname === '/evidence/quality') {
-    return [
-      { href: '/home', label: 'Home' },
-      { href: '/evidence', label: 'Evidence' },
-    ];
-  }
-
-  if (normalizedPathname === '/evidence/review') {
-    return [
-      { href: '/home', label: 'Home' },
-      { href: '/evidence', label: 'Evidence' },
-    ];
-  }
-
-  if (normalizedPathname === '/research') {
+  if (
+    normalizedPathname === '/evidence' ||
+    normalizedPathname === '/evidence/quality' ||
+    normalizedPathname === '/evidence/review' ||
+    normalizedPathname === '/research' ||
+    normalizedPathname === '/admin/intelligence/evidence/quality'
+  ) {
     return [{ href: '/home', label: 'Home' }];
   }
 

@@ -11,12 +11,15 @@
 - Prisma client is generated with `pnpm prisma:generate`.
 - A local or configured Postgres database is available for database validation.
 - Local app testing uses the Docker-backed local view stack.
+- `.env.example` has been copied to `.env` or equivalent shell variables are exported for local runtime settings.
 
 ## Setup
 
 1. Apply database migrations with `pnpm run db:migrate:dev` in development or `pnpm run db:migrate:deploy` for local-view style validation.
 2. Seed local users and baseline data with `pnpm run db:bootstrap` or the E2E bootstrap path when running Playwright.
-3. Build or start the local stack with `pnpm run local:view:up` after implementation validation.
+3. Keep real `AUTH_SECRET`, LLM provider keys, and hosted database credentials in `.env`, shell exports, a local secret manager, or GitHub Secrets. Do not put real values into committed examples.
+4. Set `METREV_UNPAYWALL_EMAIL`, `METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT`, and `METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT` when you need to tune evidence discovery or acquisition. Keep `METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN=false` for stable local review sessions, and set it to `true` only when a quality-audit gap should automatically trigger provider discovery.
+5. Build or start the local stack with `pnpm run local:view:up` after implementation validation.
 
 ## Happy path
 
@@ -44,6 +47,7 @@
 
 - `pnpm run validate:fast`
 - `pnpm run validate:advanced`
+- `pnpm run validate:db`
 - `pnpm run test:db`
 - `pnpm run test:e2e`
 - `pnpm run validate:local:smoke`

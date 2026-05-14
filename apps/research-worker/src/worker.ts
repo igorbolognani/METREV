@@ -1,17 +1,17 @@
 import {
-  type EvidenceAuditRepository,
-  type ResearchRepository,
+    type EvidenceAuditRepository,
+    type ResearchRepository,
 } from '@metrev/database';
 import { researchExtractionResultSchema } from '@metrev/domain-contracts';
 import {
-  processQueuedEvidenceDiscovery,
-  runEvidenceDiscovery,
+    processQueuedEvidenceDiscovery,
+    runEvidenceDiscovery,
 } from '@metrev/evidence-discovery';
 import {
-  RESEARCH_RUNTIME_EXTRACTOR_VERSION,
-  executeResearchExtraction,
-  hydrateResearchPaperText,
-  type HydratedResearchPaperText,
+    RESEARCH_RUNTIME_EXTRACTOR_VERSION,
+    executeResearchExtraction,
+    hydrateResearchPaperText,
+    type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 
 export interface ResearchWorkerCycleResult {
@@ -165,6 +165,7 @@ async function processExtractions(
 }
 
 async function processEvidenceDiscovery(input: {
+  autoRunWithoutTargets: boolean;
   evidenceAuditRepository: EvidenceAuditRepository;
   maxAcquisitionAttempts: number;
   maxTargets: number;
@@ -178,7 +179,11 @@ async function processEvidenceDiscovery(input: {
       )
     : [];
 
-  if (latestReport && latestReportTargets.length === 0) {
+  if (
+    latestReport &&
+    latestReportTargets.length === 0 &&
+    input.autoRunWithoutTargets
+  ) {
     return runEvidenceDiscovery({
       repository: input.evidenceAuditRepository,
       researchRepository: input.researchRepository,
@@ -200,6 +205,7 @@ export async function runResearchWorkerCycle(input: {
   backfillLimit?: number;
   evidenceAcquisitionLimit?: number;
   evidenceAuditRepository?: EvidenceAuditRepository;
+  evidenceDiscoveryAutoRun?: boolean;
   evidenceDiscoveryLimit?: number;
   extractionLimit?: number;
   repository: ResearchRepository;
@@ -214,6 +220,7 @@ export async function runResearchWorkerCycle(input: {
   );
   const evidenceDiscovery = input.evidenceAuditRepository
     ? await processEvidenceDiscovery({
+        autoRunWithoutTargets: input.evidenceDiscoveryAutoRun ?? false,
         evidenceAuditRepository: input.evidenceAuditRepository,
         maxAcquisitionAttempts: input.evidenceAcquisitionLimit ?? 25,
         maxTargets: input.evidenceDiscoveryLimit ?? 5,

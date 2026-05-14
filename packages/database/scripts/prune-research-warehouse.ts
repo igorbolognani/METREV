@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    getDefaultResearchColumns,
-    runDeterministicResearchExtraction,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  getDefaultResearchColumns,
+  runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 
 import { assertLocalEvaluationResetAllowed } from '../src/evaluation-reset';
@@ -13,6 +13,11 @@ import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 import { PrismaResearchRepository } from '../src/research-repository';
 
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
+import {
+  evaluateTechnicalCompleteness,
+  hasTechnicalResearchTechnologyClass,
+  type TechnicalCompletenessCandidate,
+} from './table-ready-completeness';
 
 loadWorkspaceEnv(import.meta.url);
 
@@ -34,6 +39,7 @@ type EligibilityPlan = {
   keepSources: SourceCandidate[];
   linkedRecordsSeen: number;
   sourceRecordsBefore: number;
+  tableReadySourceRecords: number;
 };
 
 function hasFlag(flag: string): boolean {
@@ -61,6 +67,28 @@ function isFixtureLikeSource(source: SourceCandidate): boolean {
     haystack.includes('fixture') ||
     haystack.includes('metrev local evidence lab')
   );
+}
+
+export function shouldKeepResearchSourceForPrune(input: {
+  eligibilityStatus: 'eligible' | 'excluded';
+  sourceDocumentId: string;
+  tableReadyOnly: boolean;
+  tableReadySourceIds: ReadonlySet<string>;
+  technologyClasses: string[];
+}): boolean {
+  if (input.tableReadyOnly) {
+    return input.tableReadySourceIds.has(input.sourceDocumentId);
+  }
+
+  if (input.eligibilityStatus !== 'eligible') {
+    return false;
+  }
+
+  if (!hasTechnicalResearchTechnologyClass(input.technologyClasses)) {
+    return false;
+  }
+
+  return true;
 }
 
 function sortReviewSources(sources: SourceCandidate[]): SourceCandidate[] {
@@ -116,10 +144,114 @@ async function loadLinkedSourcePage(lastId: string | null) {
   });
 }
 
-async function collectEligibilityPlan(): Promise<EligibilityPlan> {
+async function loadTableReadySourceIds(): Promise<Set<string>> {
+  const records = await getPrismaClient().externalEvidenceCatalogItem.findMany({
+    where: {
+      reviewStatus: 'ACCEPTED',
+    },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      sourceRecordId: true,
+      claimCount: true,
+      extractionStatus: true,
+      evidenceQuality: true,
+      tags: true,
+      sourceRecord: {
+        select: {
+          abstractText: true,
+          doi: true,
+          pdfUrl: true,
+          sourceCategory: true,
+          sourceType: true,
+          sourceUrl: true,
+          xmlUrl: true,
+          _count: {
+            select: {
+              sourceArtifacts: true,
+              sourceTextChunks: true,
+            },
+          },
+        },
+      },
+      scientificFacts: {
+        where: {
+          factLayer: 'canonical_scientific_fact_v1',
+        },
+        select: {
+          canonicalKey: true,
+          componentType: true,
+          decisionReady: true,
+          factType: true,
+          fieldKey: true,
+          material: true,
+          metricType: true,
+          normalizedUnit: true,
+          normalizedValue: true,
+          reactorType: true,
+          systemType: true,
+        },
+      },
+      benchmarkRecords: {
+        select: {
+          application: true,
+          componentType: true,
+          decisionReady: true,
+          material: true,
+          metricType: true,
+          normalizedUnit: true,
+          normalizedValue: true,
+          systemType: true,
+        },
+      },
+    },
+  });
+
+  return new Set(
+    records
+      .filter(
+        (record) =>
+          evaluateTechnicalCompleteness({
+            abstractAvailable: Boolean(
+              record.sourceRecord.abstractText?.trim(),
+            ),
+            benchmarkRecords: record.benchmarkRecords,
+            canonicalFacts: record.scientificFacts,
+            catalogItemId: record.id,
+            claimCount: record.claimCount,
+            doiAvailable: Boolean(record.sourceRecord.doi),
+            evidenceQuality: record.evidenceQuality,
+            extractionStatus: record.extractionStatus,
+            fullTextAvailable: Boolean(
+              record.sourceRecord._count.sourceArtifacts > 0 ||
+              record.sourceRecord.pdfUrl ||
+              record.sourceRecord.xmlUrl,
+            ),
+            sourceArtifactCount: record.sourceRecord._count.sourceArtifacts,
+            sourceCategory: record.sourceRecord.sourceCategory,
+            sourceRecordId: record.sourceRecordId,
+            sourceTextChunkCount: record.sourceRecord._count.sourceTextChunks,
+            sourceType: record.sourceRecord.sourceType.toLowerCase(),
+            sourceUrlAvailable: Boolean(record.sourceRecord.sourceUrl),
+            summary: record.summary,
+            tags: record.tags,
+            title: record.title,
+          } satisfies TechnicalCompletenessCandidate).strictTableReady,
+      )
+      .map((record) => record.sourceRecordId),
+  );
+}
+
+async function collectEligibilityPlan(input: {
+  tableReadyOnly: boolean;
+}): Promise<EligibilityPlan> {
   const repository = new PrismaResearchRepository(getPrismaClient());
   const sourceRecordsBefore =
     await getPrismaClient().externalSourceRecord.count();
+  const tableReadySourceIds = input.tableReadyOnly
+    ? await loadTableReadySourceIds()
+    : new Set<string>();
   const keepIds = new Set<string>();
   const keepSources: SourceCandidate[] = [];
   let fixtureLikeRecordsToDelete = 0;
@@ -154,10 +286,13 @@ async function collectEligibilityPlan(): Promise<EligibilityPlan> {
       }
 
       if (
-        item.status === 'eligible' &&
-        item.technology_classes.some((technology) =>
-          ['MFC', 'MEC', 'MET'].includes(technology),
-        )
+        shouldKeepResearchSourceForPrune({
+          eligibilityStatus: item.status,
+          sourceDocumentId: item.source_document_id,
+          tableReadyOnly: input.tableReadyOnly,
+          tableReadySourceIds,
+          technologyClasses: item.technology_classes,
+        })
       ) {
         keepIds.add(item.source_document_id);
         keepSources.push(source);
@@ -173,6 +308,7 @@ async function collectEligibilityPlan(): Promise<EligibilityPlan> {
     fixtureLikeRecordsToDelete,
     linkedRecordsSeen,
     sourceRecordsBefore,
+    tableReadySourceRecords: tableReadySourceIds.size,
   };
 }
 
@@ -394,20 +530,26 @@ async function main(): Promise<void> {
 
   const execute = hasFlag('--execute');
   const dryRun = hasFlag('--dryRun') || !execute;
+  const tableReadyOnly =
+    hasFlag('--table-ready-only') || hasFlag('--tableReadyOnly');
   const reviewLimit = optionNumber('reviewLimit', DEFAULT_REVIEW_LIMIT);
   assertLocalEvaluationResetAllowed({ databaseUrl: process.env.DATABASE_URL });
 
   const prisma = getPrismaClient();
 
   try {
-    const plan = await collectEligibilityPlan();
+    const plan = await collectEligibilityPlan({ tableReadyOnly });
 
     console.log(
       JSON.stringify(
         {
           mode: dryRun ? 'dry_run' : 'execute',
+          eligibility_mode: tableReadyOnly
+            ? 'table_ready_only'
+            : 'warehouse_eligible',
           source_records_before: plan.sourceRecordsBefore,
           linked_records_seen: plan.linkedRecordsSeen,
+          table_ready_source_records: plan.tableReadySourceRecords,
           eligible_records_to_keep: plan.keepIds.size,
           fixture_like_records_to_delete: plan.fixtureLikeRecordsToDelete,
           records_to_delete: plan.sourceRecordsBefore - plan.keepIds.size,
@@ -472,4 +614,14 @@ async function main(): Promise<void> {
   }
 }
 
-void main();
+if (process.argv[1]?.endsWith('prune-research-warehouse.ts')) {
+  void main().catch((error) => {
+    console.error(
+      JSON.stringify({
+        event: 'research_hard_prune_failed',
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    process.exitCode = 1;
+  });
+}

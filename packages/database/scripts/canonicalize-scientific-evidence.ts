@@ -4,42 +4,42 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '../generated/prisma/client';
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 import {
-    buildEvidenceVeracityScore,
-    buildMetadataQualityProfile,
-    chunkTextPages,
-    mapAccessStatusToDatabase,
+  buildEvidenceVeracityScore,
+  buildMetadataQualityProfile,
+  chunkTextPages,
+  mapAccessStatusToDatabase,
 } from '../src/source-artifacts';
 
 import {
-    researchPaperMetadataSchema,
-    type ExternalEvidenceAccessStatus,
-    type ResearchPaperMetadata,
+  researchPaperMetadataSchema,
+  type ExternalEvidenceAccessStatus,
+  type ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import type {
-    CanonicalEvidenceMeasurementCandidate,
-    CanonicalEvidenceQualitativeCandidate,
+  CanonicalEvidenceMeasurementCandidate,
+  CanonicalEvidenceQualitativeCandidate,
 } from '@metrev/llm-adapter';
 import {
-    generateCanonicalEvidenceMeasurementCandidates,
-    generateCanonicalEvidenceQualitativeCandidates,
+  generateCanonicalEvidenceMeasurementCandidates,
+  generateCanonicalEvidenceQualitativeCandidates,
 } from '@metrev/llm-adapter';
 import {
-    hydrateResearchPaperText,
-    type HydratedResearchPaperText,
+  hydrateResearchPaperText,
+  type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 
 import {
-    CANONICAL_FACT_LAYER,
-    CANONICALIZATION_STATUSES,
-    canonicalizeMaterial,
-    canonicalizeScientificEvidenceRecord,
-    normalizeScientificMeasurement,
+  CANONICAL_FACT_LAYER,
+  CANONICALIZATION_STATUSES,
+  canonicalizeMaterial,
+  canonicalizeScientificEvidenceRecord,
+  normalizeScientificMeasurement,
 } from './canonical-scientific-evidence.mjs';
 import {
-    optionFlag,
-    optionNumber,
-    optionValue,
-    parseScriptOptions,
+  optionFlag,
+  optionNumber,
+  optionValue,
+  parseScriptOptions,
 } from './external-ingestion-shared.mjs';
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 
@@ -114,6 +114,35 @@ const ALLOWED_LLM_THEORY_FIELDS = new Set([
 ]);
 
 type PrismaClientLike = ReturnType<typeof getPrismaClient>;
+
+export function stripPostgresNullBytes(value: string): string {
+  return value.includes('\u0000') ? value.replace(/\u0000/g, '') : value;
+}
+
+function sanitizePostgresText<T>(value: T): T {
+  if (typeof value === 'string') {
+    return stripPostgresNullBytes(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizePostgresText(entry)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    if (value instanceof Date) {
+      return value;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        sanitizePostgresText(entry),
+      ]),
+    ) as T;
+  }
+
+  return value;
+}
 
 interface CanonicalizationCliConfig {
   batchSize: number;
@@ -214,7 +243,7 @@ function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue | null {
     typeof value === 'number' ||
     typeof value === 'boolean'
   ) {
-    return value;
+    return typeof value === 'string' ? stripPostgresNullBytes(value) : value;
   }
 
   if (Array.isArray(value)) {
@@ -469,7 +498,8 @@ function buildHydratedSourcePersistence(input: {
   hydrated: HydratedResearchPaperText;
   record: any;
 }): CanonicalizationHydrationPersistence {
-  const { hydrated, record } = input;
+  const { record } = input;
+  const hydrated = sanitizePostgresText(input.hydrated);
   const sourceRecord = record.sourceRecord ?? {};
   const { accessStatus } = canPersistHydratedSourceText(record);
   const extractionMethod = `${HYDRATED_FULL_TEXT_EXTRACTOR_VERSION}:${hydrated.source}`;
@@ -1106,11 +1136,15 @@ export async function canonicalizeCatalogRecordWithRuntime(
     fullTextMode: baselineMode,
     llmMode: input.llmMode,
   });
+  const hasExistingSourceTextChunks =
+    Array.isArray(record.sourceRecord?.sourceTextChunks) &&
+    record.sourceRecord.sourceTextChunks.length > 0;
+  const shouldAttemptHydration =
+    input.fullTextMode === 'hydrate' &&
+    (baselineResult.status === CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT ||
+      !hasExistingSourceTextChunks);
 
-  if (
-    input.fullTextMode !== 'hydrate' ||
-    baselineResult.status !== CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT
-  ) {
+  if (!shouldAttemptHydration) {
     const result = {
       record,
       ...baselineResult,
@@ -1434,7 +1468,7 @@ function buildBenchmarkRecord(input: {
       ? Math.trunc(normalizedValue)
       : null;
 
-  return {
+  return sanitizePostgresText({
     id: randomUUID(),
     sourceRecordId: fact.sourceRecordId,
     catalogItemId: fact.catalogItemId,
@@ -1475,11 +1509,11 @@ function buildBenchmarkRecord(input: {
       locator: fact.payload?.locator,
       no_fabrication: true,
     }),
-  };
+  });
 }
 
 function toFactCreateInput(fact: any, runId: string | null) {
-  return {
+  return sanitizePostgresText({
     id: fact.id,
     sourceRecordId: fact.sourceRecordId,
     catalogItemId: fact.catalogItemId,
@@ -1512,7 +1546,7 @@ function toFactCreateInput(fact: any, runId: string | null) {
     operatingConditionKey: fact.operatingConditionKey,
     evidenceQuality: fact.evidenceQuality,
     payload: toPrismaJsonValue(fact.payload),
-  };
+  });
 }
 
 async function persistCanonicalizationBatch(input: {
@@ -1634,10 +1668,18 @@ async function persistCanonicalizationBatch(input: {
       }
 
       for (const result of results) {
-        const persistence = result.hydration.persistence;
+        const persistence = result.hydration.persistence
+          ? sanitizePostgresText(result.hydration.persistence)
+          : null;
         if (!persistence) {
           continue;
         }
+        const artifactTitle = sanitizePostgresText(
+          result.record.sourceRecord?.title ?? result.record.title ?? null,
+        );
+        const artifactDoi = sanitizePostgresText(
+          result.record.sourceRecord?.doi ?? null,
+        );
 
         const artifact = await tx.sourceArtifactRecord.upsert({
           where: { fileHash: persistence.fileHash },
@@ -1650,8 +1692,8 @@ async function persistCanonicalizationBatch(input: {
             pageCount: persistence.pageCount,
             extractionMethod: persistence.extractionMethod,
             ingestionStatus: 'parsed',
-            title: result.record.sourceRecord?.title ?? result.record.title,
-            doi: result.record.sourceRecord?.doi ?? null,
+            title: artifactTitle,
+            doi: artifactDoi,
             license: persistence.license,
             accessStatus: persistence.accessStatus,
             metadataQuality: persistence.metadataQuality,
@@ -1669,8 +1711,8 @@ async function persistCanonicalizationBatch(input: {
             pageCount: persistence.pageCount,
             extractionMethod: persistence.extractionMethod,
             ingestionStatus: 'parsed',
-            title: result.record.sourceRecord?.title ?? result.record.title,
-            doi: result.record.sourceRecord?.doi ?? null,
+            title: artifactTitle,
+            doi: artifactDoi,
             license: persistence.license,
             accessStatus: persistence.accessStatus,
             metadataQuality: persistence.metadataQuality,

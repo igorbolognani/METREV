@@ -7,18 +7,18 @@ import * as React from 'react';
 import { RecentRunsTable } from '@/components/dashboard/recent-runs-table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
-    WorkspaceStatCard,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
+  WorkspaceStatCard,
 } from '@/components/workspace-chrome';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchDashboardWorkspace } from '@/lib/api';
 import {
-    type DashboardTab,
-    useDashboardTab,
+  type DashboardTab,
+  useDashboardTab,
 } from '@/lib/dashboard-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 
@@ -350,8 +350,8 @@ export function DashboardWorkspaceView({
                 <h3>Research and evidence operations stay separate</h3>
                 <p>
                   This page stays focused on client decision work. Evidence
-                  intake, review queues, and research backfill remain under
-                  Admin Intelligence.
+                  intake, review queues, and curated research tables remain
+                  under Admin Intelligence.
                 </p>
               </WorkspaceDataCard>
             </div>

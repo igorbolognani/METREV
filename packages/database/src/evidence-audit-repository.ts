@@ -1,14 +1,16 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 
 import {
-  acquisitionAttemptSchema,
-  discoveryTargetSchema,
-  evidenceQualityReportSchema,
-  funnelStageCountSchema,
-  type AcquisitionAttempt,
-  type DiscoveryTarget,
-  type EvidenceQualityReport,
-  type FunnelStageCount,
+    acceptedEvidenceReadinessCandidateSchema,
+    acquisitionAttemptSchema,
+    discoveryTargetSchema,
+    evidenceQualityReportSchema,
+    funnelStageCountSchema,
+    type AcceptedEvidenceReadinessCandidate,
+    type AcquisitionAttempt,
+    type DiscoveryTarget,
+    type EvidenceQualityReport,
+    type FunnelStageCount,
 } from '@metrev/domain-contracts';
 
 import { getPrismaClient } from './prisma-client';
@@ -83,6 +85,9 @@ export interface EvidenceAuditRepository {
     limit?: number,
   ): Promise<OutlierCandidateRow[]>;
   getEvidenceFunnelCounts(): Promise<FunnelStageCount[]>;
+  getAcceptedEvidenceReadinessCandidates(
+    limit?: number,
+  ): Promise<AcceptedEvidenceReadinessCandidate[]>;
   createDiscoveryTargets(targets: DiscoveryTarget[]): Promise<string[]>;
   getQueuedDiscoveryTargets(limit?: number): Promise<DiscoveryTarget[]>;
   listDiscoveryTargets(limit?: number): Promise<DiscoveryTarget[]>;
@@ -169,6 +174,12 @@ export class MemoryEvidenceAuditRepository implements EvidenceAuditRepository {
     ].map((stage) =>
       funnelStageCountSchema.parse({ stage, count: 0, conversion_rate: null }),
     );
+  }
+
+  async getAcceptedEvidenceReadinessCandidates(): Promise<
+    AcceptedEvidenceReadinessCandidate[]
+  > {
+    return [];
   }
 
   async createDiscoveryTargets(targets: DiscoveryTarget[]): Promise<string[]> {
@@ -348,6 +359,69 @@ function mapAuditReport(record: {
     funnel_metrics: record.funnelMetrics,
     summary: record.summary,
     created_at: toIso(record.createdAt),
+  });
+}
+
+function mapAcceptedEvidenceReadinessCandidate(record: {
+  id: string;
+  sourceRecordId: string;
+  title: string;
+  extractionStatus: string;
+  normalizationStatus: string;
+  evidenceQuality: string | null;
+  claimCount: number;
+  sourceRecord: {
+    sourceType: string;
+    publishedAt: Date | null;
+    doi: string | null;
+    sourceUrl: string | null;
+    pdfUrl: string | null;
+    xmlUrl: string | null;
+    abstractText: string | null;
+    _count: {
+      sourceArtifacts: number;
+      sourceTextChunks: number;
+    };
+  };
+  scientificFacts: Array<{
+    decisionReady: boolean;
+  }>;
+  benchmarkRecords: Array<{
+    decisionReady: boolean;
+  }>;
+}): AcceptedEvidenceReadinessCandidate {
+  return acceptedEvidenceReadinessCandidateSchema.parse({
+    catalog_item_id: record.id,
+    source_record_id: record.sourceRecordId,
+    title: record.title,
+    source_type: record.sourceRecord.sourceType.toLowerCase(),
+    published_at: record.sourceRecord.publishedAt
+      ? toIso(record.sourceRecord.publishedAt)
+      : null,
+    extraction_status: record.extractionStatus,
+    normalization_status: record.normalizationStatus,
+    evidence_quality: record.evidenceQuality,
+    claim_count: record.claimCount,
+    canonical_fact_count: record.scientificFacts.length,
+    decision_ready_fact_count: record.scientificFacts.filter(
+      (fact) => fact.decisionReady,
+    ).length,
+    benchmark_record_count: record.benchmarkRecords.length,
+    decision_ready_benchmark_count: record.benchmarkRecords.filter(
+      (benchmark) => benchmark.decisionReady,
+    ).length,
+    abstract_available: Boolean(record.sourceRecord.abstractText?.trim()),
+    full_text_available: Boolean(
+      record.sourceRecord._count.sourceArtifacts > 0 ||
+      record.sourceRecord.pdfUrl ||
+      record.sourceRecord.xmlUrl,
+    ),
+    source_artifact_count: record.sourceRecord._count.sourceArtifacts,
+    source_text_chunk_count: record.sourceRecord._count.sourceTextChunks,
+    doi_available: Boolean(record.sourceRecord.doi),
+    source_url_available: Boolean(record.sourceRecord.sourceUrl),
+    pdf_url_available: Boolean(record.sourceRecord.pdfUrl),
+    xml_url_available: Boolean(record.sourceRecord.xmlUrl),
   });
 }
 
@@ -611,6 +685,59 @@ export function createEvidenceAuditRepository(
       );
     },
 
+    async getAcceptedEvidenceReadinessCandidates(limit = 500) {
+      const records = await prisma.externalEvidenceCatalogItem.findMany({
+        where: {
+          reviewStatus: 'ACCEPTED',
+        },
+        select: {
+          id: true,
+          sourceRecordId: true,
+          title: true,
+          extractionStatus: true,
+          normalizationStatus: true,
+          evidenceQuality: true,
+          claimCount: true,
+          sourceRecord: {
+            select: {
+              sourceType: true,
+              publishedAt: true,
+              doi: true,
+              sourceUrl: true,
+              pdfUrl: true,
+              xmlUrl: true,
+              abstractText: true,
+              _count: {
+                select: {
+                  sourceArtifacts: true,
+                  sourceTextChunks: true,
+                },
+              },
+            },
+          },
+          scientificFacts: {
+            where: {
+              factLayer: CANONICAL_FACT_LAYER,
+            },
+            select: {
+              decisionReady: true,
+            },
+          },
+          benchmarkRecords: {
+            select: {
+              decisionReady: true,
+            },
+          },
+        },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: limit,
+      });
+
+      return records.map((record) =>
+        mapAcceptedEvidenceReadinessCandidate(record),
+      );
+    },
+
     async createDiscoveryTargets(targets) {
       const parsedTargets = targets.map((target) =>
         discoveryTargetSchema.parse(target),
@@ -813,6 +940,7 @@ export function createEvidenceAuditRepository(
           },
           sourceArtifacts: { none: {} },
           sourceTextChunks: { none: {} },
+          acquisitionAttempts: { none: {} },
         },
         select: {
           id: true,

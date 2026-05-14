@@ -165,6 +165,46 @@ const qualityReport = {
         recommendation: 'Run targeted discovery for cathode COD removal.',
       },
     ],
+    accepted_record_readiness: [
+      {
+        catalog_item_id: 'catalog-item-accepted-001',
+        source_record_id: 'source-record-accepted-001',
+        title: 'Accepted source missing full text',
+        source_type: 'crossref',
+        published_at: '2025-05-10T00:00:00.000Z',
+        extraction_status: 'needs_full_text',
+        normalization_status: 'pending',
+        evidence_quality: 'moderate',
+        claim_count: 1,
+        canonical_fact_count: 1,
+        decision_ready_fact_count: 0,
+        benchmark_record_count: 0,
+        decision_ready_benchmark_count: 0,
+        abstract_available: true,
+        full_text_available: false,
+        source_artifact_count: 0,
+        source_text_chunk_count: 0,
+        doi_available: true,
+        source_url_available: true,
+        pdf_url_available: false,
+        xml_url_available: false,
+        issue_flags: ['missing_full_text', 'missing_source_text_chunks'],
+        table_ready: false,
+        recommended_action: 'reacquire_full_text',
+        rationale:
+          'The record is accepted but still lacks traceable full text or source chunks for reliable table extraction.',
+      },
+    ],
+    accepted_record_summary: {
+      total_accepted_records: 3,
+      table_ready_records: 1,
+      keep_count: 1,
+      reacquire_full_text_count: 1,
+      rerun_extraction_count: 1,
+      quarantine_for_review_count: 0,
+      reject_from_intake_count: 0,
+      delete_record_count: 0,
+    },
     funnel_metrics: [
       {
         stage: 'raw_records',
@@ -228,8 +268,12 @@ describe('evidence quality workspace', () => {
     expect(html).toContain('Gap queue');
     expect(html).toContain('MFC cathode COD removal pilot evidence');
     expect(html).toContain('Outlier review');
+    expect(html).toContain('Accepted record readiness');
+    expect(html).toContain('Accepted source missing full text');
+    expect(html).toContain('Reacquire Full Text');
     expect(html).toContain('Evidence funnel');
     expect(html).toContain('discovery queue');
     expect(html).toContain('acquisition queue');
+    expect(html).toContain('table ready 1');
   });
 });

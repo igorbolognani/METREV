@@ -681,7 +681,7 @@ describe('research API flow', () => {
     }
   });
 
-  it('queues preset backfills and exposes warehouse progress', async () => {
+  it('rejects warehouse backfill queue creation and keeps progress read-only', async () => {
     const app = await buildApp({
       repository: evaluationRepository,
       researchRepository,
@@ -704,15 +704,9 @@ describe('research API flow', () => {
         },
       });
 
-      expect(queueResponse.statusCode).toBe(201);
+      expect(queueResponse.statusCode).toBe(410);
       expect(queueResponse.json()).toMatchObject({
-        items: [
-          expect.objectContaining({
-            query: 'microbial fuel cell wastewater',
-            target_records: 120,
-            records_remaining: 120,
-          }),
-        ],
+        error: 'research_backfill_removed',
       });
 
       const progressResponse = await app.inject({
@@ -725,8 +719,8 @@ describe('research API flow', () => {
 
       expect(progressResponse.statusCode).toBe(200);
       expect(progressResponse.json()).toMatchObject({
-        target_records: 120,
-        queued_backfills: 1,
+        target_records: 0,
+        queued_backfills: 0,
         completion_ratio: 0,
       });
 
@@ -743,12 +737,10 @@ describe('research API flow', () => {
         },
       });
 
-      expect(presetResponse.statusCode).toBe(201);
+      expect(presetResponse.statusCode).toBe(410);
       expect(presetResponse.json()).toMatchObject({
-        preset_id: 'mfc_mec_30000',
-        queued_runs: expect.any(Number),
+        error: 'research_backfill_removed',
       });
-      expect(presetResponse.json().queued_runs).toBeGreaterThan(10);
 
       const updatedProgressResponse = await app.inject({
         method: 'GET',
@@ -760,12 +752,9 @@ describe('research API flow', () => {
 
       expect(updatedProgressResponse.statusCode).toBe(200);
       expect(updatedProgressResponse.json()).toMatchObject({
-        target_records: 30120,
-        queued_backfills: expect.any(Number),
+        target_records: 0,
+        queued_backfills: 0,
       });
-      expect(updatedProgressResponse.json().queued_backfills).toBeGreaterThan(
-        10,
-      );
     } finally {
       await app.close();
     }

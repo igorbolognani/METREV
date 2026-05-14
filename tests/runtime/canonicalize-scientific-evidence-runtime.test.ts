@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CANONICALIZATION_STATUSES } from '../../packages/database/scripts/canonical-scientific-evidence.mjs';
 import {
-    canPersistHydratedSourceText,
-    canonicalizeCatalogRecordWithRuntime,
+  canPersistHydratedSourceText,
+  canonicalizeCatalogRecordWithRuntime,
+  stripPostgresNullBytes,
 } from '../../packages/database/scripts/canonicalize-scientific-evidence';
 
 function buildSourceRecord(overrides: Record<string, unknown> = {}) {
@@ -44,6 +45,64 @@ function buildCatalogRecord(overrides: Record<string, unknown> = {}) {
 }
 
 describe('canonicalize scientific evidence runtime hydrate path', () => {
+  it('hydrates lawful full text when metadata already extracts facts but chunks are absent', async () => {
+    const hydratePaperText = vi.fn(async () => ({
+      blocks: [
+        {
+          kind: 'table' as const,
+          text: 'Table 1 reports power density of 900 mW/m2 with COD removal of 81%.',
+          sourceLocator: 'html:https://example.org/full-text:block:0',
+          pageNumber: null,
+          sectionLabel: 'Results',
+          tableLabel: 'Table 1',
+          cellLocator: 'Table 1:block:0',
+          caption:
+            'Table 1 reports power density of 900 mW/m2 with COD removal of 81%.',
+        },
+      ],
+      contentType: 'text/html',
+      fetchedFrom: 'https://example.org/full-text',
+      source: 'html' as const,
+      text: 'The microbial fuel cell used a carbon felt anode and achieved power density of 900 mW/m2 with COD removal of 81%.',
+      trace: [
+        {
+          source: 'full_text' as const,
+          source_document_id: 'source-runtime-001',
+          text_span:
+            'The microbial fuel cell used a carbon felt anode and achieved power density of 900 mW/m2 with COD removal of 81%.',
+          source_locator: 'html:https://example.org/full-text',
+          page_number: null,
+        },
+      ],
+    }));
+
+    const result = await canonicalizeCatalogRecordWithRuntime(
+      buildCatalogRecord({
+        summary:
+          'The microbial fuel cell used a carbon felt anode and achieved power density of 900 mW/m2.',
+        title:
+          'Microbial fuel cell wastewater treatment with measured power density',
+        sourceRecord: buildSourceRecord({
+          abstractText:
+            'The microbial fuel cell used a carbon felt anode and achieved power density of 900 mW/m2.',
+          sourceTextChunks: [],
+          title:
+            'Microbial fuel cell wastewater treatment with measured power density',
+        }),
+      }),
+      {
+        fullTextMode: 'hydrate',
+        hydratePaperText,
+        llmMode: 'disabled',
+      },
+    );
+
+    expect(hydratePaperText).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe(CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED);
+    expect(result.hydration.fetched).toBe(true);
+    expect(result.hydration.persistence?.chunks.length).toBeGreaterThan(0);
+  });
+
   it('allows persisted hydrate text to promote a needs_full_text record into canonical extracted facts', async () => {
     const result = await canonicalizeCatalogRecordWithRuntime(
       buildCatalogRecord(),
@@ -114,6 +173,55 @@ describe('canonicalize scientific evidence runtime hydrate path', () => {
         }),
       ]),
     );
+  });
+
+  it('strips hydrated NUL bytes before source-text persistence', async () => {
+    expect(stripPostgresNullBytes('power\u0000 density')).toBe('power density');
+
+    const result = await canonicalizeCatalogRecordWithRuntime(
+      buildCatalogRecord(),
+      {
+        fullTextMode: 'hydrate',
+        llmMode: 'disabled',
+        hydratePaperText: async () => ({
+          blocks: [
+            {
+              kind: 'table',
+              text: 'The microbial fuel cell achieved power\u0000 density of 900 mW/m2 with carbon felt anode support.',
+              sourceLocator: 'html:https://example.org/full-text:\u0000block:0',
+              pageNumber: null,
+              sectionLabel: 'Results\u0000',
+              tableLabel: 'Table 1',
+              cellLocator: null,
+              caption: null,
+            },
+          ],
+          contentType: 'text/html',
+          fetchedFrom: 'https://example.org/full-text',
+          source: 'html',
+          text: 'The microbial fuel cell achieved power\u0000 density of 900 mW/m2 with carbon felt anode support.',
+          trace: [
+            {
+              source: 'full_text',
+              source_document_id: 'source-runtime-001',
+              text_span:
+                'The microbial fuel cell achieved power\u0000 density of 900 mW/m2 with carbon felt anode support.',
+              source_locator:
+                'html:https://example.org/full-text:\u0000block:0',
+              page_number: null,
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(result.status).toBe(CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED);
+    const persistedChunk = result.hydration.persistence?.chunks[0];
+
+    expect(persistedChunk?.text).not.toContain('\u0000');
+    expect(persistedChunk?.sourceLocator).not.toContain('\u0000');
+    expect(JSON.stringify(persistedChunk?.metadata)).not.toContain('\u0000');
+    expect(persistedChunk?.text).toContain('power density of 900 mW/m2');
   });
 
   it('blocks hydrate persistence when access policy is not permissive', async () => {

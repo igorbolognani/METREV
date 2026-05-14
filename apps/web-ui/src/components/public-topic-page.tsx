@@ -3,8 +3,8 @@ import * as React from 'react';
 
 import type { PublicTopicConfig } from '@/components/public-topic-content';
 import {
-  PUBLIC_TOPIC_PAGES,
-  getPublicTopicHref,
+    PUBLIC_TOPIC_PAGES,
+    getPublicTopicHref,
 } from '@/components/public-topic-content';
 import { PublicTopicInfographic } from '@/components/public-topic-infographics';
 import { PublicTopicNav } from '@/components/public-topic-nav';
@@ -80,9 +80,9 @@ export function PublicTopicPage({ topic }: { topic: PublicTopicConfig }) {
           ) : (
             <Link
               className="public-route-topic__pager-link"
-              href={loginHref('/dashboard')}
+              href={loginHref('/home')}
             >
-              Open dashboard
+              Open workspace
             </Link>
           )}
         </div>

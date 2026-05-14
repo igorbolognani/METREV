@@ -8,6 +8,7 @@ import {
     StatusBar,
 } from '@metrev/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,12 +20,30 @@ import {
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 
+void React;
+
 function qualityTone(level: string): 'healthy' | 'warning' | 'critical' {
   if (level === 'ready' || level === 'strong' || level === 'sufficient') {
     return 'healthy';
   }
 
   if (level === 'partial' || level === 'sparse' || level === 'aging') {
+    return 'warning';
+  }
+
+  return 'critical';
+}
+
+function actionTone(action: string): 'healthy' | 'warning' | 'critical' {
+  if (action === 'keep') {
+    return 'healthy';
+  }
+
+  if (
+    action === 'reacquire_full_text' ||
+    action === 'rerun_extraction' ||
+    action === 'quarantine_for_review'
+  ) {
     return 'warning';
   }
 
@@ -87,6 +106,7 @@ export function EvidenceQualityWorkspace() {
     report?.gaps.filter((gap) => gap.severity === 'critical') ?? [];
   const topGaps = report?.gaps.slice(0, 8) ?? [];
   const topOutliers = report?.outliers.slice(0, 6) ?? [];
+  const acceptedRecordReadiness = report?.accepted_record_readiness ?? [];
 
   return (
     <section className="evidence-quality-workspace">
@@ -141,6 +161,17 @@ export function EvidenceQualityWorkspace() {
                 : `${Math.round(report.summary.coverage_ratio * 100)}%`,
             tone:
               (report?.summary.coverage_ratio ?? 0) >= 0.7
+                ? 'healthy'
+                : 'warning',
+          },
+          {
+            key: 'table-ready',
+            label: 'table ready',
+            value: String(
+              report?.accepted_record_summary?.table_ready_records ?? 0,
+            ),
+            tone:
+              (report?.accepted_record_summary?.table_ready_records ?? 0) > 0
                 ? 'healthy'
                 : 'warning',
           },
@@ -251,6 +282,33 @@ export function EvidenceQualityWorkspace() {
           </div>
         </Panel>
       </div>
+
+      <Panel
+        title="Accepted record readiness"
+        meta={`${acceptedRecordReadiness.length} visible`}
+      >
+        <div className="quality-list">
+          {acceptedRecordReadiness.slice(0, 8).map((record) => (
+            <div className="quality-list__row" key={record.catalog_item_id}>
+              <SignalBadge level={actionTone(record.recommended_action)}>
+                {formatToken(record.recommended_action)}
+              </SignalBadge>
+              <strong>{record.title}</strong>
+              <span>
+                {record.decision_ready_fact_count} ready fact(s) ·{' '}
+                {record.decision_ready_benchmark_count} ready benchmark row(s) ·{' '}
+                {record.source_text_chunk_count} chunk(s)
+              </span>
+            </div>
+          ))}
+          {report && acceptedRecordReadiness.length === 0 ? (
+            <p className="muted">
+              No accepted records were available for per-record readiness
+              triage.
+            </p>
+          ) : null}
+        </div>
+      </Panel>
 
       {(auditMutation.error || discoveryMutation.error) && (
         <Panel className="workspace-empty-panel" title="Action failed">

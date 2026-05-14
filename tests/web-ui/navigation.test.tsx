@@ -53,7 +53,12 @@ describe('navigation registry', () => {
       getNavItemsForRole('ANALYST')
         .filter((item) => item.section === 'advanced')
         .map((item) => item.href),
-    ).toEqual(['/evidence/quality', '/evidence/review']);
+    ).toEqual([
+      '/admin/intelligence/evidence/explorer',
+      '/admin/intelligence/evidence/quality',
+      '/admin/intelligence/evidence/review',
+      '/admin/intelligence/research/reviews',
+    ]);
   });
 
   it('builds breadcrumbs for all required route patterns', () => {
@@ -87,8 +92,11 @@ describe('navigation registry', () => {
 
     expect(buildBreadcrumbs('/evidence/quality', {})).toEqual([
       { href: '/home', label: 'Home' },
-      { href: '/evidence', label: 'Evidence' },
     ]);
+
+    expect(
+      buildBreadcrumbs('/admin/intelligence/evidence/quality', {}),
+    ).toEqual([{ href: '/home', label: 'Home' }]);
 
     expect(buildBreadcrumbs('/research', {})).toEqual([
       { href: '/home', label: 'Home' },
@@ -189,7 +197,7 @@ describe('navigation registry', () => {
     expect(html).toContain('Client workspace');
     expect(html).toContain('Admin intelligence');
     expect(html).toContain('Evaluate');
-    expect(html).toContain('Evidence');
-    expect(html).toContain('Research');
+    expect(html).toContain('Evidence Explorer');
+    expect(html).toContain('Research Tables');
   });
 });

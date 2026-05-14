@@ -1,10 +1,14 @@
 'use client';
 
+import * as React from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { Tooltip } from '@/components/ui/tooltip';
 import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';
+
+void React;
 
 export interface PrimaryNavProps {
   collapsed?: boolean;

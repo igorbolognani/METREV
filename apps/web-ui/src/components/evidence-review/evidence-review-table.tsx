@@ -80,6 +80,10 @@ export function EvidenceReviewTable({
       {items.map((item) => {
         const isSelected = selectedIds.includes(item.id);
         const isSpotlight = highlightIds.includes(item.id);
+        const extractedClaimCount = Math.max(
+          item.claim_count,
+          item.extracted_claims.length,
+        );
 
         return (
           <article
@@ -151,7 +155,13 @@ export function EvidenceReviewTable({
                     Veracity: {formatToken(item.veracity_score.level)}
                   </span>
                 ) : null}
-                <span>Claims captured: {item.extracted_claims.length}</span>
+                <span>Claims captured: {extractedClaimCount}</span>
+                {typeof item.canonical_fact_count === 'number' ? (
+                  <span>Canonical facts: {item.canonical_fact_count}</span>
+                ) : null}
+                {typeof item.benchmark_record_count === 'number' ? (
+                  <span>Benchmark rows: {item.benchmark_record_count}</span>
+                ) : null}
               </div>
 
               <div className="evidence-review-cell-stack">
@@ -160,6 +170,18 @@ export function EvidenceReviewTable({
                 <span>{item.publisher ?? 'Publisher not stated'}</span>
                 <span>{formatOptionalDate(item.published_at)}</span>
                 <span>{item.source_category ?? 'Category not stated'}</span>
+                {typeof item.source_text_chunk_count === 'number' ? (
+                  <span>
+                    Source text: {item.source_artifact_count ?? 0} artifact(s),{' '}
+                    {item.source_text_chunk_count} chunk(s)
+                  </span>
+                ) : null}
+                {typeof item.full_text_available === 'boolean' ? (
+                  <span>
+                    Full text{' '}
+                    {item.full_text_available ? 'available' : 'not captured'}
+                  </span>
+                ) : null}
               </div>
 
               <div className="evidence-review-cell-stack evidence-review-card__scope">

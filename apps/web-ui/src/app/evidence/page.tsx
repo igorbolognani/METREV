@@ -1,20 +1,21 @@
-import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
-import { ExternalEvidenceExplorer } from '@/components/evidence-explorer/external-evidence-explorer';
-import { requireRoleSession } from '@/lib/require-session';
+import { redirect } from 'next/navigation';
 
-export default async function EvidenceWorkspacePage() {
-  const { session, authorized } = await requireRoleSession(
-    '/evidence',
-    'ANALYST',
-  );
+import {
+  buildLegacyRouteRedirectTarget,
+  type LegacyRouteSearchParams,
+} from '@/lib/legacy-route-redirect';
 
-  if (!authorized) {
-    return <AnalystRoleRequiredPanel email={session.user.email} />;
-  }
+type EvidenceWorkspacePageProps = {
+  searchParams?: Promise<LegacyRouteSearchParams>;
+};
 
-  return (
-    <main>
-      <ExternalEvidenceExplorer />
-    </main>
+export default async function EvidenceWorkspacePage({
+  searchParams,
+}: EvidenceWorkspacePageProps = {}) {
+  redirect(
+    await buildLegacyRouteRedirectTarget(
+      '/admin/intelligence/evidence/explorer',
+      searchParams,
+    ),
   );
 }

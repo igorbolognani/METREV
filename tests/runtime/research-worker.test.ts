@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { MemoryResearchRepository } from '@metrev/database';
+import {
+    type EvidenceAuditRepository,
+    MemoryResearchRepository,
+} from '@metrev/database';
 import {
     DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
     getDefaultResearchColumns,
@@ -64,5 +67,39 @@ describe('research worker', () => {
 
     const updatedReview = await repository.getResearchReview(review.review_id);
     expect(updatedReview?.completed_result_count).toBeGreaterThan(0);
+  });
+
+  it('does not auto-create evidence discovery targets unless explicitly enabled', async () => {
+    const repository = new MemoryResearchRepository();
+    const evidenceAuditRepository = {
+      getLatestEvidenceQualityAuditReport: vi.fn(async () => ({
+        report_id: 'audit-report-without-targets',
+      })),
+      listDiscoveryTargets: vi.fn(async () => []),
+      getQueuedDiscoveryTargets: vi.fn(async () => []),
+      getNeedsFullTextSourceRecords: vi.fn(async () => []),
+      createDiscoveryTargets: vi.fn(async () => {
+        throw new Error('unexpected auto discovery target creation');
+      }),
+      createAcquisitionAttempt: vi.fn(async () => {
+        throw new Error('unexpected acquisition attempt creation');
+      }),
+    } as unknown as EvidenceAuditRepository;
+
+    const cycle = await runResearchWorkerCycle({
+      repository,
+      evidenceAuditRepository,
+      evidenceDiscoveryAutoRun: false,
+      evidenceDiscoveryLimit: 5,
+      extractionLimit: 0,
+      backfillLimit: 0,
+    });
+
+    expect(cycle.evidenceDiscoveryTargetsCreated).toBe(0);
+    expect(cycle.evidenceDiscoveryRecordsStaged).toBe(0);
+    expect(evidenceAuditRepository.listDiscoveryTargets).toHaveBeenCalled();
+    expect(
+      evidenceAuditRepository.createDiscoveryTargets,
+    ).not.toHaveBeenCalled();
   });
 });

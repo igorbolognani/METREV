@@ -13,13 +13,11 @@ describe('web auth routing helpers', () => {
     );
   });
 
-  it('falls back to the dashboard for empty, unsafe, or login callback paths', () => {
-    expect(normalizeCallbackPath('')).toBe('/dashboard');
-    expect(normalizeCallbackPath('https://example.com/evil')).toBe(
-      '/dashboard',
-    );
-    expect(normalizeCallbackPath('//example.com/evil')).toBe('/dashboard');
-    expect(normalizeCallbackPath('/login')).toBe('/dashboard');
+  it('falls back to home for empty, unsafe, or login callback paths', () => {
+    expect(normalizeCallbackPath('')).toBe('/home');
+    expect(normalizeCallbackPath('https://example.com/evil')).toBe('/home');
+    expect(normalizeCallbackPath('//example.com/evil')).toBe('/home');
+    expect(normalizeCallbackPath('/login')).toBe('/home');
   });
 
   it('builds the login redirect with a preserved callback path', () => {

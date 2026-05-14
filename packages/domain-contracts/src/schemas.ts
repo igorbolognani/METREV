@@ -1178,6 +1178,124 @@ export const evidenceOutlierSchema = z.object({
   action: evidenceOutlierActionSchema,
 });
 
+export const externalEvidenceScientificFactSchema = z.object({
+  id: z.string().min(1),
+  fact_layer: z.string().min(1),
+  fact_type: z.string().min(1),
+  field_key: z.string().min(1),
+  canonical_key: z.string().nullable().default(null),
+  decision_ready: z.boolean().default(false),
+  extraction_status: z.string().min(1),
+  normalization_status: z.string().min(1),
+  original_value: z.string().nullable().default(null),
+  original_unit: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_text: z.string().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  confidence: z.number().min(0).max(1),
+  evidence_quality: z.string().nullable().default(null),
+  system_type: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  quality_flags: z.array(z.string().min(1)).default([]),
+  payload: z.unknown(),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const externalEvidenceBenchmarkRecordSchema = z.object({
+  id: z.string().min(1),
+  canonical_key: z.string().nullable().default(null),
+  decision_ready: z.boolean().default(false),
+  confidence: z.number().min(0).max(1).nullable().default(null),
+  system_type: z.string().nullable().default(null),
+  application: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  membrane_separator: z.string().nullable().default(null),
+  operating_condition_key: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
+  scale: z.string().nullable().default(null),
+  trl: z.number().int().nullable().default(null),
+  cost_indicator: z.string().nullable().default(null),
+  risk_indicator: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  payload: z.unknown(),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const externalEvidenceSourceTextStatusSchema = z.object({
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  abstract_available: z.boolean().default(false),
+  source_artifact_count: z.number().int().nonnegative(),
+  source_text_chunk_count: z.number().int().nonnegative(),
+  source_url_available: z.boolean().default(false),
+  pdf_url_available: z.boolean().default(false),
+  xml_url_available: z.boolean().default(false),
+  full_text_available: z.boolean().default(false),
+});
+
+export const acceptedEvidenceReadinessActionSchema = z.enum([
+  'keep',
+  'reacquire_full_text',
+  'rerun_extraction',
+  'quarantine_for_review',
+  'reject_from_intake',
+  'delete_record',
+]);
+
+export const acceptedEvidenceReadinessCandidateSchema = z.object({
+  catalog_item_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  title: z.string().min(1),
+  source_type: externalEvidenceSourceTypeSchema,
+  published_at: z.string().nullable().default(null),
+  extraction_status: z.string().min(1),
+  normalization_status: z.string().min(1),
+  evidence_quality: z.string().nullable().default(null),
+  claim_count: z.number().int().nonnegative(),
+  canonical_fact_count: z.number().int().nonnegative(),
+  decision_ready_fact_count: z.number().int().nonnegative(),
+  benchmark_record_count: z.number().int().nonnegative(),
+  decision_ready_benchmark_count: z.number().int().nonnegative(),
+  abstract_available: z.boolean().default(false),
+  full_text_available: z.boolean().default(false),
+  source_artifact_count: z.number().int().nonnegative(),
+  source_text_chunk_count: z.number().int().nonnegative(),
+  doi_available: z.boolean().default(false),
+  source_url_available: z.boolean().default(false),
+  pdf_url_available: z.boolean().default(false),
+  xml_url_available: z.boolean().default(false),
+});
+
+export const acceptedEvidenceReadinessRecordSchema =
+  acceptedEvidenceReadinessCandidateSchema.extend({
+    issue_flags: z.array(z.string().min(1)).default([]),
+    table_ready: z.boolean().default(false),
+    recommended_action: acceptedEvidenceReadinessActionSchema,
+    rationale: z.string().min(1),
+  });
+
+export const acceptedEvidenceReadinessSummarySchema = z.object({
+  total_accepted_records: z.number().int().nonnegative(),
+  table_ready_records: z.number().int().nonnegative(),
+  keep_count: z.number().int().nonnegative(),
+  reacquire_full_text_count: z.number().int().nonnegative(),
+  rerun_extraction_count: z.number().int().nonnegative(),
+  quarantine_for_review_count: z.number().int().nonnegative(),
+  reject_from_intake_count: z.number().int().nonnegative(),
+  delete_record_count: z.number().int().nonnegative(),
+});
+
 export const readinessScoreSchema = z.object({
   case_archetype: z.string().min(1),
   technology_family: technologyFamilySchema,
@@ -1203,6 +1321,10 @@ export const evidenceQualityReportSchema = z.object({
   gaps: z.array(evidenceGapSchema).default([]),
   outliers: z.array(evidenceOutlierSchema).default([]),
   readiness_scores: z.array(readinessScoreSchema).default([]),
+  accepted_record_readiness: z
+    .array(acceptedEvidenceReadinessRecordSchema)
+    .optional(),
+  accepted_record_summary: acceptedEvidenceReadinessSummarySchema.optional(),
   funnel_metrics: z.array(funnelStageCountSchema).default([]),
   summary: z.object({
     total_benchmark_records: z.number().int().nonnegative(),
@@ -1596,6 +1718,14 @@ export const externalEvidenceCatalogSummarySchema = z.object({
   review_status: externalEvidenceReviewStatusSchema,
   source_state: externalEvidenceSourceStateSchema,
   source_type: externalEvidenceSourceTypeSchema,
+  canonical_fact_count: z.number().int().nonnegative().optional(),
+  decision_ready_fact_count: z.number().int().nonnegative().optional(),
+  benchmark_record_count: z.number().int().nonnegative().optional(),
+  decision_ready_benchmark_count: z.number().int().nonnegative().optional(),
+  source_artifact_count: z.number().int().nonnegative().optional(),
+  source_text_chunk_count: z.number().int().nonnegative().optional(),
+  abstract_available: z.boolean().optional(),
+  full_text_available: z.boolean().optional(),
   source_category: z.string().nullable(),
   source_url: z.string().nullable(),
   doi: z.string().nullable(),
@@ -1781,6 +1911,11 @@ export const externalEvidenceCatalogDetailSchema =
   externalEvidenceCatalogSummarySchema.extend({
     source_document: sourceDocumentRecordSchema.optional(),
     claims: z.array(evidenceClaimSchema).default([]),
+    scientific_facts: z.array(externalEvidenceScientificFactSchema).optional(),
+    benchmark_records: z
+      .array(externalEvidenceBenchmarkRecordSchema)
+      .optional(),
+    source_text_status: externalEvidenceSourceTextStatusSchema.optional(),
     supplier_documents: z.array(supplierDocumentSchema).default([]),
     source_artifacts: z.array(sourceArtifactSchema).default([]),
     abstract_text: z.string().nullable(),
@@ -1999,6 +2134,27 @@ export type ExternalEvidenceCatalogItemDetail = z.infer<
 export type SourceDocumentRecord = z.infer<typeof sourceDocumentRecordSchema>;
 export type SourceTextChunk = z.infer<typeof sourceTextChunkSchema>;
 export type SourceArtifact = z.infer<typeof sourceArtifactSchema>;
+export type ExternalEvidenceScientificFact = z.infer<
+  typeof externalEvidenceScientificFactSchema
+>;
+export type ExternalEvidenceBenchmarkRecord = z.infer<
+  typeof externalEvidenceBenchmarkRecordSchema
+>;
+export type ExternalEvidenceSourceTextStatus = z.infer<
+  typeof externalEvidenceSourceTextStatusSchema
+>;
+export type AcceptedEvidenceReadinessAction = z.infer<
+  typeof acceptedEvidenceReadinessActionSchema
+>;
+export type AcceptedEvidenceReadinessCandidate = z.infer<
+  typeof acceptedEvidenceReadinessCandidateSchema
+>;
+export type AcceptedEvidenceReadinessRecord = z.infer<
+  typeof acceptedEvidenceReadinessRecordSchema
+>;
+export type AcceptedEvidenceReadinessSummary = z.infer<
+  typeof acceptedEvidenceReadinessSummarySchema
+>;
 export type EvidenceClaimReview = z.infer<typeof evidenceClaimReviewSchema>;
 export type EvidenceOntologyMapping = z.infer<
   typeof evidenceOntologyMappingSchema

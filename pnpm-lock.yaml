@@ -71,6 +71,12 @@ importers:
       '@metrev/electrochem-models':
         specifier: workspace:*
         version: link:../../packages/electrochem-models
+      '@metrev/evidence-audit':
+        specifier: workspace:*
+        version: link:../../packages/evidence-audit
+      '@metrev/evidence-discovery':
+        specifier: workspace:*
+        version: link:../../packages/evidence-discovery
       '@metrev/llm-adapter':
         specifier: workspace:*
         version: link:../../packages/llm-adapter
@@ -102,6 +108,9 @@ importers:
       '@metrev/domain-contracts':
         specifier: workspace:*
         version: link:../../packages/domain-contracts
+      '@metrev/evidence-discovery':
+        specifier: workspace:*
+        version: link:../../packages/evidence-discovery
       '@metrev/research-intelligence':
         specifier: workspace:*
         version: link:../../packages/research-intelligence
@@ -127,6 +136,9 @@ importers:
       '@metrev/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@metrev/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
       '@metrev/domain-contracts':
         specifier: workspace:*
         version: link:../../packages/domain-contracts
@@ -261,6 +273,19 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/design-system:
+    dependencies:
+      react:
+        specifier: ^19.1.0
+        version: 19.2.5
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/domain-contracts:
     dependencies:
       '@metrev/utils':
@@ -278,6 +303,26 @@ importers:
         version: 5.9.3
 
   packages/electrochem-models:
+    dependencies:
+      '@metrev/domain-contracts':
+        specifier: workspace:*
+        version: link:../domain-contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/evidence-audit:
+    dependencies:
+      '@metrev/domain-contracts':
+        specifier: workspace:*
+        version: link:../domain-contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/evidence-discovery:
     dependencies:
       '@metrev/domain-contracts':
         specifier: workspace:*

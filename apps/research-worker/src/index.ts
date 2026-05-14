@@ -1,16 +1,16 @@
 import {
-  assertRuntimeDatabaseReady,
-  createEvidenceAuditRepository,
-  createResearchRepository,
-  type EvidenceAuditRepository,
-  type ResearchRepository,
+    assertRuntimeDatabaseReady,
+    createEvidenceAuditRepository,
+    createResearchRepository,
+    type EvidenceAuditRepository,
+    type ResearchRepository,
 } from '@metrev/database';
 import { initializeTelemetry } from '@metrev/telemetry/node';
 
 import {
-  createWorkerHealthMonitor,
-  startWorkerHealthServer,
-  type StartedWorkerHealthServer,
+    createWorkerHealthMonitor,
+    startWorkerHealthServer,
+    type StartedWorkerHealthServer,
 } from './health';
 import { runResearchWorkerCycle, summarizeWorkerCycle } from './worker';
 
@@ -52,6 +52,8 @@ async function main() {
     process.env.METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT,
     5,
   );
+  const evidenceDiscoveryAutoRun =
+    process.env.METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN === 'true';
   const evidenceAcquisitionLimit = parsePositiveInteger(
     process.env.METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT,
     25,
@@ -91,6 +93,7 @@ async function main() {
         extractionLimit,
         backfillLimit,
         evidenceAcquisitionLimit,
+        evidenceDiscoveryAutoRun,
         evidenceAuditRepository,
         evidenceDiscoveryLimit,
       });

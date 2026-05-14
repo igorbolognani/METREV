@@ -29,11 +29,18 @@ describe('command palette navigation items', () => {
 
     expect(
       items
-        .filter((item) => item.hint?.startsWith('/evidence'))
+        .filter((item) => item.hint?.startsWith('/admin/intelligence'))
         .map((item) => item.hint),
-    ).toEqual(['/evidence', '/evidence/quality', '/evidence/review']);
+    ).toEqual([
+      '/admin/intelligence/evidence/explorer',
+      '/admin/intelligence/evidence/quality',
+      '/admin/intelligence/evidence/review',
+      '/admin/intelligence/research/reviews',
+    ]);
 
     items.find((item) => item.id === 'research')?.onSelect();
-    expect(onSelectHref).toHaveBeenCalledWith('/research');
+    expect(onSelectHref).toHaveBeenCalledWith(
+      '/admin/intelligence/research/reviews',
+    );
   });
 });
