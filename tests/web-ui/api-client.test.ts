@@ -3,22 +3,32 @@ import rawFixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
+import type {
+  AcquisitionStatusResponse,
+  DiscoveryStatusResponse,
+  EvidenceQualityAuditResponse,
+} from '@metrev/domain-contracts/browser';
 
 import {
   addResearchColumn,
   createResearchEvidencePack,
   createResearchReview,
   evaluateCase,
+  fetchAcquisitionStatus,
   fetchEvaluationCsvExport,
   fetchEvaluationList,
+  fetchDiscoveryStatus,
   fetchEvidenceExplorerAssistant,
   fetchEvidenceExplorerCsvExport,
   fetchEvidenceExplorerWorkspace,
+  fetchEvidenceQualityReport,
   fetchExternalEvidenceCatalog,
   fetchResearchEvidencePackDecisionInput,
   fetchResearchReview,
   fetchResearchReviews,
+  runEvidenceDiscovery,
   runResearchExtractions,
+  triggerEvidenceQualityAudit,
 } from '../../apps/web-ui/src/lib/api';
 import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 
@@ -31,6 +41,76 @@ function getWorkspaceFixtures() {
   workspaceFixturesPromise ??= buildWorkspaceViewFixtures();
   return workspaceFixturesPromise;
 }
+
+const evidenceQualityResponse = {
+  report: {
+    report_id: 'quality-report-client-001',
+    trigger_mode: 'manual',
+    coverage_matrix: [
+      {
+        system_type: 'MFC',
+        component_type: 'anode',
+        material: 'carbon felt',
+        metric_type: 'power_density',
+        scale: 'pilot',
+        trl: 6,
+        record_count: 12,
+        coverage_level: 'strong',
+        newest_publication_year: 2025,
+        recency_status: 'current',
+      },
+    ],
+    gaps: [],
+    outliers: [],
+    readiness_scores: [
+      {
+        case_archetype: 'MFC wastewater retrofit',
+        technology_family: 'microbial_fuel_cell',
+        primary_objective: 'wastewater_treatment',
+        readiness_level: 'ready',
+        primary_metrics_coverage: 3,
+        material_comparison_count: 4,
+        operating_window_count: 5,
+        critical_gaps: [],
+        recommendation: 'Evidence base is ready for deterministic scoring.',
+      },
+    ],
+    funnel_metrics: [
+      {
+        stage: 'raw_records',
+        count: 100,
+        conversion_rate: null,
+      },
+    ],
+    summary: {
+      total_benchmark_records: 80,
+      decision_ready_records: 72,
+      coverage_ratio: 0.9,
+      critical_gap_count: 0,
+      stale_metric_count: 0,
+      outlier_count: 0,
+    },
+    created_at: '2026-05-13T12:00:00.000Z',
+  },
+} satisfies EvidenceQualityAuditResponse;
+
+const discoveryStatusResponse = {
+  active_targets: 1,
+  queued_targets: 2,
+  completed_targets: 3,
+  failed_targets: 0,
+  total_records_staged: 5,
+  targets: [],
+} satisfies DiscoveryStatusResponse;
+
+const acquisitionStatusResponse = {
+  queued_attempts: 4,
+  running_attempts: 1,
+  successful_attempts: 8,
+  failed_attempts: 0,
+  skipped_attempts: 0,
+  attempts: [],
+} satisfies AcquisitionStatusResponse;
 
 describe('web API client helpers', () => {
   afterEach(() => {
@@ -189,6 +269,118 @@ describe('web API client helpers', () => {
       'http://localhost:4000/api/workspace/evidence/explorer?status=accepted&q=benchmark&sourceType=crossref&page=2&pageSize=50',
       expect.objectContaining({
         cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('uses the evidence intelligence quality audit endpoints', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(evidenceQualityResponse), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+
+    await expect(fetchEvidenceQualityReport()).resolves.toEqual(
+      evidenceQualityResponse,
+    );
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/evidence-intelligence/quality-report',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(evidenceQualityResponse), {
+        status: 201,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+
+    await triggerEvidenceQualityAudit({
+      trigger_mode: 'manual',
+      include_golden_cases: false,
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/evidence-intelligence/quality-report',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        headers: expect.objectContaining({
+          'content-type': 'application/json',
+        }),
+        body: JSON.stringify({
+          trigger_mode: 'manual',
+          include_golden_cases: false,
+        }),
+      }),
+    );
+  });
+
+  it('uses the evidence discovery and acquisition endpoints', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(discoveryStatusResponse), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(acquisitionStatusResponse), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ queued_targets: 2 }), {
+        status: 202,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    );
+
+    await expect(fetchDiscoveryStatus()).resolves.toEqual(
+      discoveryStatusResponse,
+    );
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/evidence-intelligence/discovery/status',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    await expect(fetchAcquisitionStatus()).resolves.toEqual(
+      acquisitionStatusResponse,
+    );
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/evidence-intelligence/acquisition/status',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+      }),
+    );
+
+    await expect(runEvidenceDiscovery()).resolves.toEqual({
+      queued_targets: 2,
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:4000/api/evidence-intelligence/discovery/run',
+      expect.objectContaining({
+        method: 'POST',
         credentials: 'include',
       }),
     );

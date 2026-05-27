@@ -22,7 +22,9 @@
     "evidence:ingest": "tsx scripts/ingest-scientific-evidence.ts",
     "evidence:canonicalize": "tsx scripts/canonicalize-scientific-evidence.ts",
     "evidence:benchmark:refresh": "tsx scripts/refresh-evidence-benchmarks.ts",
+    "evidence:expand-table-ready-corpus": "tsx scripts/expand-table-ready-corpus.ts",
     "evidence:quality-report": "tsx scripts/evidence-quality-report.ts",
+    "evidence:readiness-report": "tsx scripts/evidence-readiness-report.ts",
     "bootstrap:bigdata": "tsx scripts/bootstrap-bigdata.ts",
     "research:hard-prune": "tsx scripts/prune-research-warehouse.ts",
     "queue:research:backfill-preset": "tsx scripts/queue-research-backfill-target.ts"

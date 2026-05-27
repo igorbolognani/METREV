@@ -1,10 +1,14 @@
 'use client';
 
+import * as React from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { Tooltip } from '@/components/ui/tooltip';
 import { getNavItemsForRole, type NavIcon } from '@/lib/navigation';
+
+void React;
 
 export interface PrimaryNavProps {
   collapsed?: boolean;
@@ -77,6 +81,7 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
         </svg>
       );
     case 'evidence-review':
+    case 'evidence-quality':
       return (
         <svg
           aria-hidden="true"
@@ -97,6 +102,27 @@ function NavigationIcon({ icon }: { icon: NavIcon }) {
           />
           <path
             d="m15 17 2 2 3-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+        </svg>
+      );
+    case 'admin':
+      return (
+        <svg
+          aria-hidden="true"
+          className="app-sidebar__nav-icon"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M12 4 5 7v5c0 4 3 7 7 8 4-1 7-4 7-8V7z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M9 12h6M12 9v6"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
@@ -173,7 +199,12 @@ export function PrimaryNav({ collapsed = false, role }: PrimaryNavProps) {
           {section.items.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== '/' && pathname.startsWith(item.href));
+              (item.href !== '/' && pathname.startsWith(item.href)) ||
+              Boolean(
+                item.matchPrefixes?.some((prefix) =>
+                  pathname.startsWith(prefix),
+                ),
+              );
 
             const navItem = item.disabled ? (
               <span

@@ -1,20 +1,23 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
-import { reportConversationRequestSchema } from '@metrev/domain-contracts';
+import {
+  reportConversationRequestSchema,
+  type EvidenceIntelligenceSummary,
+} from '@metrev/domain-contracts';
 import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 import { withSpan } from '@metrev/telemetry';
 
 import {
-    buildCaseHistoryWorkspace,
-    buildDashboardWorkspace,
-    buildEvaluationComparison,
-    buildEvaluationWorkspace,
-    buildEvidenceExplorerAssistantResponse,
-    buildEvidenceExplorerWorkspace,
-    buildEvidenceReviewWorkspace,
-    buildPrintableEvaluationReport,
-    buildRuntimeVersions,
+  buildCaseHistoryWorkspace,
+  buildDashboardWorkspace,
+  buildEvaluationComparison,
+  buildEvaluationWorkspace,
+  buildEvidenceExplorerAssistantResponse,
+  buildEvidenceExplorerWorkspace,
+  buildEvidenceReviewWorkspace,
+  buildPrintableEvaluationReport,
+  buildRuntimeVersions,
 } from '../presenters/workspace-presenters';
 import { createPersistedReportConversation } from '../services/report-conversation';
 import { parseExternalEvidenceListQuery } from './external-evidence-query';
@@ -90,6 +93,59 @@ function buildVersionsFromEvaluation(input?: {
   });
 }
 
+async function buildEvidenceIntelligenceSummary(
+  app: FastifyInstance,
+): Promise<EvidenceIntelligenceSummary | undefined> {
+  try {
+    const [latestReport, discoveryStatus] = await Promise.all([
+      app.evidenceAuditRepository.getLatestEvidenceQualityAuditReport(),
+      app.evidenceAuditRepository.getDiscoveryStatusSummary(1),
+    ]);
+
+    if (!latestReport) {
+      return {
+        readiness_level: 'no_audit',
+        critical_gap_count: 0,
+        stale_metric_count: 0,
+        decision_ready_records: 0,
+        coverage_ratio: null,
+        last_audit_at: null,
+        discovery_active:
+          discoveryStatus.active_targets > 0 ||
+          discoveryStatus.queued_targets > 0,
+      };
+    }
+
+    const readinessLevel = latestReport.readiness_scores.some(
+      (score) => score.readiness_level === 'insufficient',
+    )
+      ? 'insufficient'
+      : latestReport.readiness_scores.some(
+            (score) => score.readiness_level === 'partial',
+          )
+        ? 'partial'
+        : 'ready';
+
+    return {
+      readiness_level: readinessLevel,
+      critical_gap_count: latestReport.summary.critical_gap_count,
+      stale_metric_count: latestReport.summary.stale_metric_count,
+      decision_ready_records: latestReport.summary.decision_ready_records,
+      coverage_ratio: latestReport.summary.coverage_ratio,
+      last_audit_at: latestReport.created_at,
+      discovery_active:
+        discoveryStatus.active_targets > 0 ||
+        discoveryStatus.queued_targets > 0,
+    };
+  } catch (error) {
+    app.log.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'evidence intelligence dashboard summary failed',
+    );
+    return undefined;
+  }
+}
+
 export async function registerWorkspaceRoutes(
   app: FastifyInstance,
 ): Promise<void> {
@@ -118,9 +174,15 @@ export async function registerWorkspaceRoutes(
           },
         )
       : null;
+    const evidenceIntelligence = await withSpan(
+      'workspace.dashboard.evidence_intelligence',
+      () => buildEvidenceIntelligenceSummary(app),
+      { actor_id: actor.userId },
+    );
     return reply.send(
       buildDashboardWorkspace({
         evaluationList,
+        evidenceIntelligence,
         latestEvaluation,
         versions: buildVersionsFromEvaluation(),
       }),

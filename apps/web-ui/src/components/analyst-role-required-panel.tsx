@@ -12,12 +12,12 @@ export function AnalystRoleRequiredPanel({ email }: { email: string }) {
         <h1>Analyst role required</h1>
         <p className="muted">
           {email} is authenticated, but only analyst-level users can access this
-          Advanced/Internal workspace. Dashboard, evaluations, and reports
-          remain available.
+          Advanced/Internal workspace. Home, evaluations, and reports remain
+          available.
         </p>
         <div className="hero-actions">
-          <Link className="button secondary" href="/dashboard">
-            Back to dashboard
+          <Link className="button secondary" href="/home">
+            Back to home
           </Link>
         </div>
       </section>

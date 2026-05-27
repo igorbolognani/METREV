@@ -133,6 +133,9 @@ describe('root workflow assets', () => {
     expect(packageJson.scripts?.['validate:local:smoke']).toBe(
       'node scripts/run-local-validation.mjs --smoke-only',
     );
+    expect(packageJson.scripts?.['validate:db']).toBe(
+      'pnpm run db:migrate:deploy && pnpm run test:db',
+    );
   });
 
   it('keeps CI aligned with the promoted workflow gates and debugging outputs', () => {
@@ -143,8 +146,15 @@ describe('root workflow assets', () => {
     expect(ciWorkflow).toContain('pnpm run lint:workflow-semantics');
     expect(ciWorkflow).toContain('Run fast validation matrix');
     expect(ciWorkflow).toContain('pnpm run validate:fast');
+    expect(ciWorkflow).toContain('METREV_CI_AUTH_SECRET');
+    expect(ciWorkflow).toContain('METREV_UNPAYWALL_EMAIL');
     expect(ciWorkflow).toContain('Check workflow formatting');
     expect(ciWorkflow).toContain('pnpm run format:workflow-assets');
+    expect(ciWorkflow).toContain('validate-postgres');
+    expect(ciWorkflow).toContain(
+      'Run Postgres migration and persistence validation',
+    );
+    expect(ciWorkflow).toContain('pnpm run validate:db');
     expect(ciWorkflow).toContain('Run local-view smoke validation');
     expect(ciWorkflow).toContain('pnpm run validate:local:smoke');
     expect(ciWorkflow).toContain('Run local acceptance matrix');

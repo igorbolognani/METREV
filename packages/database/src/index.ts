@@ -15,9 +15,12 @@ import {
     evidenceTypeSchema,
     evidenceVeracityScoreSchema,
     externalEvidenceAccessStatusSchema,
+    externalEvidenceBenchmarkRecordSchema,
     externalEvidenceBulkReviewResponseSchema,
     externalEvidenceCatalogDetailSchema,
     externalEvidenceCatalogListResponseSchema,
+    externalEvidenceScientificFactSchema,
+    externalEvidenceSourceTextStatusSchema,
     metadataQualityProfileSchema,
     ontologyMappingSourceSchema,
     reportConversationTurnSchema,
@@ -55,6 +58,16 @@ const PRISMA_TRANSACTION_OPTIONS = {
   timeout: 60_000,
 } as const;
 
+export {
+    createEvidenceAuditRepository,
+    MemoryEvidenceAuditRepository,
+    type AcquisitionStatusSummary,
+    type DiscoveryStatusSummary,
+    type EvidenceAuditRepository,
+    type OutlierCandidateRow,
+    type RawCoverageRow,
+    type SourceRecordForAcquisition
+} from './evidence-audit-repository';
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
     MFC_MEC_30000_PRESET_ID,
@@ -1445,8 +1458,54 @@ function createExternalEvidenceSummary(record: {
     doi: string | null;
     publisher: string | null;
     publishedAt: Date | null;
+    abstractText?: string | null;
+    pdfUrl?: string | null;
+    xmlUrl?: string | null;
+    sourceArtifacts?: Array<{
+      chunks?: Array<unknown>;
+    }>;
+    _count?: {
+      sourceArtifacts: number;
+      sourceTextChunks: number;
+    };
   };
+  scientificFacts?: Array<{
+    decisionReady: boolean;
+    factLayer?: string;
+  }>;
+  benchmarkRecords?: Array<{
+    decisionReady: boolean;
+  }>;
 }): ExternalEvidenceCatalogItemSummary {
+  const canonicalFacts = (record.scientificFacts ?? []).filter(
+    (fact) =>
+      (fact.factLayer ?? canonicalScientificFactLayer) ===
+      canonicalScientificFactLayer,
+  );
+  const sourceArtifactCount =
+    record.sourceRecord._count?.sourceArtifacts ??
+    record.sourceRecord.sourceArtifacts?.length;
+  const sourceTextChunkCount =
+    record.sourceRecord._count?.sourceTextChunks ??
+    record.sourceRecord.sourceArtifacts?.reduce(
+      (total, artifact) => total + (artifact.chunks?.length ?? 0),
+      0,
+    );
+  const abstractAvailable =
+    record.sourceRecord.abstractText === undefined
+      ? undefined
+      : Boolean(record.sourceRecord.abstractText?.trim());
+  const fullTextAvailable =
+    sourceArtifactCount === undefined &&
+    record.sourceRecord.pdfUrl === undefined &&
+    record.sourceRecord.xmlUrl === undefined
+      ? undefined
+      : Boolean(
+          (sourceArtifactCount ?? 0) > 0 ||
+          record.sourceRecord.pdfUrl ||
+          record.sourceRecord.xmlUrl,
+        );
+
   return {
     id: record.id,
     title: record.title,
@@ -1476,6 +1535,20 @@ function createExternalEvidenceSummary(record: {
     extraction_status: record.extractionStatus ?? 'pending',
     normalization_status: record.normalizationStatus ?? 'pending',
     evidence_quality: record.evidenceQuality ?? null,
+    canonical_fact_count: record.scientificFacts
+      ? canonicalFacts.length
+      : undefined,
+    decision_ready_fact_count: record.scientificFacts
+      ? canonicalFacts.filter((fact) => fact.decisionReady).length
+      : undefined,
+    benchmark_record_count: record.benchmarkRecords?.length,
+    decision_ready_benchmark_count: record.benchmarkRecords
+      ? record.benchmarkRecords.filter((entry) => entry.decisionReady).length
+      : undefined,
+    source_artifact_count: sourceArtifactCount,
+    source_text_chunk_count: sourceTextChunkCount,
+    abstract_available: abstractAvailable,
+    full_text_available: fullTextAvailable,
     applicability_scope:
       (record.applicabilityScope as Record<string, unknown>) ?? {},
     extracted_claims: Array.isArray(record.extractedClaims)
@@ -1574,6 +1647,57 @@ function createExternalEvidenceDetail(record: {
       note: string | null;
     }>;
   }>;
+  scientificFacts?: Array<{
+    id: string;
+    factLayer: string;
+    factType: string;
+    fieldKey: string;
+    canonicalKey: string | null;
+    decisionReady: boolean;
+    originalValue: string | null;
+    originalUnit: string | null;
+    normalizedValue: number | null;
+    normalizedText: string | null;
+    normalizedUnit: string | null;
+    confidence: number;
+    extractionStatus: string;
+    normalizationStatus: string;
+    systemType: string | null;
+    componentType: string | null;
+    material: string | null;
+    metricType: string | null;
+    evidenceQuality: string | null;
+    sourceTextHash: string | null;
+    qualityFlags: string[];
+    payload: unknown;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+  benchmarkRecords?: Array<{
+    id: string;
+    canonicalKey: string | null;
+    decisionReady: boolean;
+    confidence: number | null;
+    systemType: string | null;
+    application: string | null;
+    componentType: string | null;
+    material: string | null;
+    membraneSeparator: string | null;
+    operatingConditionKey: string | null;
+    metricType: string | null;
+    normalizedValue: number | null;
+    normalizedUnit: string | null;
+    publicationYear: number | null;
+    evidenceQuality: string | null;
+    scale: string | null;
+    trl: number | null;
+    costIndicator: string | null;
+    riskIndicator: string | null;
+    sourceTextHash: string | null;
+    payload: unknown;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
   sourceRecord: {
     id: string;
     sourceType: DatabaseExternalSourceType;
@@ -1652,12 +1776,25 @@ function createExternalEvidenceDetail(record: {
       title: string | null;
       veracityScore: unknown;
     }>;
+    _count?: {
+      sourceArtifacts: number;
+      sourceTextChunks: number;
+    };
   };
 }): ExternalEvidenceCatalogItemDetail {
   return {
     ...createExternalEvidenceSummary(record),
     source_document: createSourceDocumentRecord(record.sourceRecord),
     claims: (record.claims ?? []).map((claim) => createEvidenceClaim(claim)),
+    scientific_facts: (record.scientificFacts ?? []).map((fact) =>
+      createScientificEvidenceFactRecord(fact),
+    ),
+    benchmark_records: (record.benchmarkRecords ?? []).map((recordEntry) =>
+      createEvidenceBenchmarkRecord(recordEntry),
+    ),
+    source_text_status: createExternalEvidenceSourceTextStatus(
+      record.sourceRecord,
+    ),
     supplier_documents: (record.sourceRecord.supplierDocuments ?? []).map(
       (document) => createSupplierDocument(document),
     ),
@@ -1781,6 +1918,156 @@ function createSourceArtifactRecord(record: {
           : {},
       created_at: chunk.createdAt.toISOString(),
     })),
+  });
+}
+
+function createScientificEvidenceFactRecord(record: {
+  id: string;
+  factLayer: string;
+  factType: string;
+  fieldKey: string;
+  canonicalKey: string | null;
+  decisionReady: boolean;
+  originalValue: string | null;
+  originalUnit: string | null;
+  normalizedValue: number | null;
+  normalizedText: string | null;
+  normalizedUnit: string | null;
+  confidence: number;
+  extractionStatus: string;
+  normalizationStatus: string;
+  systemType: string | null;
+  componentType: string | null;
+  material: string | null;
+  metricType: string | null;
+  evidenceQuality: string | null;
+  sourceTextHash: string | null;
+  qualityFlags: string[];
+  payload: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return externalEvidenceScientificFactSchema.parse({
+    id: record.id,
+    fact_layer: record.factLayer,
+    fact_type: record.factType,
+    field_key: record.fieldKey,
+    canonical_key: record.canonicalKey,
+    decision_ready: record.decisionReady,
+    extraction_status: record.extractionStatus,
+    normalization_status: record.normalizationStatus,
+    original_value: record.originalValue,
+    original_unit: record.originalUnit,
+    normalized_value: record.normalizedValue,
+    normalized_text: record.normalizedText,
+    normalized_unit: record.normalizedUnit,
+    confidence: record.confidence,
+    evidence_quality: record.evidenceQuality,
+    system_type: record.systemType,
+    component_type: record.componentType,
+    material: record.material,
+    metric_type: record.metricType,
+    source_locator: readJsonStringField(record.payload, 'locator'),
+    source_text_hash: record.sourceTextHash,
+    quality_flags: record.qualityFlags,
+    payload: record.payload,
+    created_at: record.createdAt.toISOString(),
+    updated_at: record.updatedAt.toISOString(),
+  });
+}
+
+function createEvidenceBenchmarkRecord(record: {
+  id: string;
+  canonicalKey: string | null;
+  decisionReady: boolean;
+  confidence: number | null;
+  systemType: string | null;
+  application: string | null;
+  componentType: string | null;
+  material: string | null;
+  membraneSeparator: string | null;
+  operatingConditionKey: string | null;
+  metricType: string | null;
+  normalizedValue: number | null;
+  normalizedUnit: string | null;
+  publicationYear: number | null;
+  evidenceQuality: string | null;
+  scale: string | null;
+  trl: number | null;
+  costIndicator: string | null;
+  riskIndicator: string | null;
+  sourceTextHash: string | null;
+  payload: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return externalEvidenceBenchmarkRecordSchema.parse({
+    id: record.id,
+    canonical_key: record.canonicalKey,
+    decision_ready: record.decisionReady,
+    confidence: record.confidence,
+    system_type: record.systemType,
+    application: record.application,
+    component_type: record.componentType,
+    material: record.material,
+    membrane_separator: record.membraneSeparator,
+    operating_condition_key: record.operatingConditionKey,
+    metric_type: record.metricType,
+    normalized_value: record.normalizedValue,
+    normalized_unit: record.normalizedUnit,
+    publication_year: record.publicationYear,
+    evidence_quality: record.evidenceQuality,
+    scale: record.scale,
+    trl: record.trl,
+    cost_indicator: record.costIndicator,
+    risk_indicator: record.riskIndicator,
+    source_locator: readJsonStringField(record.payload, 'locator'),
+    source_text_hash: record.sourceTextHash,
+    payload: record.payload,
+    created_at: record.createdAt.toISOString(),
+    updated_at: record.updatedAt.toISOString(),
+  });
+}
+
+function createExternalEvidenceSourceTextStatus(sourceRecord: {
+  accessStatus?: 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN';
+  abstractText?: string | null;
+  sourceUrl?: string | null;
+  pdfUrl?: string | null;
+  xmlUrl?: string | null;
+  sourceArtifacts?: Array<{
+    chunks?: Array<unknown>;
+  }>;
+  _count?: {
+    sourceArtifacts: number;
+    sourceTextChunks: number;
+  };
+}) {
+  const sourceArtifactCount =
+    sourceRecord._count?.sourceArtifacts ??
+    sourceRecord.sourceArtifacts?.length ??
+    0;
+  const sourceTextChunkCount =
+    sourceRecord._count?.sourceTextChunks ??
+    sourceRecord.sourceArtifacts?.reduce(
+      (total, artifact) => total + (artifact.chunks?.length ?? 0),
+      0,
+    ) ??
+    0;
+
+  return externalEvidenceSourceTextStatusSchema.parse({
+    access_status: externalEvidenceAccessStatusSchema.parse(
+      (sourceRecord.accessStatus ?? 'UNKNOWN').toLowerCase(),
+    ),
+    abstract_available: Boolean(sourceRecord.abstractText?.trim()),
+    source_artifact_count: sourceArtifactCount,
+    source_text_chunk_count: sourceTextChunkCount,
+    source_url_available: Boolean(sourceRecord.sourceUrl),
+    pdf_url_available: Boolean(sourceRecord.pdfUrl),
+    xml_url_available: Boolean(sourceRecord.xmlUrl),
+    full_text_available: Boolean(
+      sourceArtifactCount > 0 || sourceRecord.pdfUrl || sourceRecord.xmlUrl,
+    ),
   });
 }
 
@@ -3252,6 +3539,29 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                       doi: true,
                       publisher: true,
                       publishedAt: true,
+                      abstractText: true,
+                      pdfUrl: true,
+                      xmlUrl: true,
+                      _count: {
+                        select: {
+                          sourceArtifacts: true,
+                          sourceTextChunks: true,
+                        },
+                      },
+                    },
+                  },
+                  scientificFacts: {
+                    where: {
+                      factLayer: canonicalScientificFactLayer,
+                    },
+                    select: {
+                      decisionReady: true,
+                      factLayer: true,
+                    },
+                  },
+                  benchmarkRecords: {
+                    select: {
+                      decisionReady: true,
                     },
                   },
                   claims: {
@@ -3644,6 +3954,12 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
             include: {
               sourceRecord: {
                 include: {
+                  _count: {
+                    select: {
+                      sourceArtifacts: true,
+                      sourceTextChunks: true,
+                    },
+                  },
                   sourceArtifacts: {
                     include: {
                       chunks: {
@@ -3654,6 +3970,15 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                   },
                   supplierDocuments: true,
                 },
+              },
+              scientificFacts: {
+                where: {
+                  factLayer: canonicalScientificFactLayer,
+                },
+                orderBy: [{ decisionReady: 'desc' }, { confidence: 'desc' }],
+              },
+              benchmarkRecords: {
+                orderBy: [{ decisionReady: 'desc' }, { updatedAt: 'desc' }],
               },
               claims: {
                 include: {

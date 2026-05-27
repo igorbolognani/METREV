@@ -169,6 +169,26 @@ export interface ContractStackOntology {
   cross_cutting_layers: Record<string, unknown>;
 }
 
+export interface ContractEvidenceQualityAuditPolicy {
+  version?: string;
+  policy_name?: string;
+  coverage_policy: Record<string, unknown>;
+  recency_policy: Record<string, unknown>;
+  outlier_policy: Record<string, unknown>;
+  readiness_levels: Record<string, unknown>;
+  funnel_stages: string[];
+  primary_metrics_by_objective: Record<string, string[]>;
+}
+
+export interface ContractEvidenceDiscoveryPolicy {
+  version?: string;
+  policy_name?: string;
+  discovery_policy: Record<string, unknown>;
+  query_generation: Record<string, unknown>;
+  acquisition_policy: Record<string, unknown>;
+  batch_policy: Record<string, unknown>;
+}
+
 export function loadYamlFile<T>(filePath: string): T {
   return yaml.load(readFileSync(filePath, 'utf8')) as T;
 }
@@ -242,6 +262,18 @@ export function loadContractPropertyDictionary(): ContractPropertyDictionary {
 export function loadContractStackOntology(): ContractStackOntology {
   return loadYamlFile<ContractStackOntology>(
     resolve(contractsRootPath, 'ontology/stack.yaml'),
+  );
+}
+
+export function loadEvidenceQualityAuditPolicy(): ContractEvidenceQualityAuditPolicy {
+  return loadYamlFile<ContractEvidenceQualityAuditPolicy>(
+    resolve(contractsRootPath, 'rules/evidence_quality_audit.yaml'),
+  );
+}
+
+export function loadEvidenceDiscoveryPolicy(): ContractEvidenceDiscoveryPolicy {
+  return loadYamlFile<ContractEvidenceDiscoveryPolicy>(
+    resolve(contractsRootPath, 'rules/evidence_discovery.yaml'),
   );
 }
 

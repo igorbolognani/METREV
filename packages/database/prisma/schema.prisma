@@ -233,29 +233,29 @@ model CaseRecord {
 }
 
 model EvaluationRecord {
-  id                     String                      @id
-  caseId                 String
-  idempotencyKey         String?                     @unique
-  decisionOutput         Json
-  auditRecord            Json
-  narrative              String?
-  narrativeMetadata      Json
-  confidenceLevel        String
-  provenanceSummary      Json
-  scoringSummary         Json
-  defaultsUsed           String[]
-  missingData            String[]
-  assumptions            String[]
-  createdAt              DateTime                    @default(now())
-  case                   CaseRecord                  @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  simulationArtifact     SimulationArtifactRecord?
+  id                      String                         @id
+  caseId                  String
+  idempotencyKey          String?                        @unique
+  decisionOutput          Json
+  auditRecord             Json
+  narrative               String?
+  narrativeMetadata       Json
+  confidenceLevel         String
+  provenanceSummary       Json
+  scoringSummary          Json
+  defaultsUsed            String[]
+  missingData             String[]
+  assumptions             String[]
+  createdAt               DateTime                       @default(now())
+  case                    CaseRecord                     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  simulationArtifact      SimulationArtifactRecord?
   evidenceDecisionContext EvidenceDecisionContextRecord?
-  supplierShortlistItems SupplierShortlistItem[]
-  sourceUsages           EvaluationSourceUsage[]
-  claimUsages            EvaluationClaimUsage[]
-  workspaceSnapshots     WorkspaceSnapshotRecord[]
-  auditEvents            AuditEvent[]
-  reportConversations    ReportConversationSession[]
+  supplierShortlistItems  SupplierShortlistItem[]
+  sourceUsages            EvaluationSourceUsage[]
+  claimUsages             EvaluationClaimUsage[]
+  workspaceSnapshots      WorkspaceSnapshotRecord[]
+  auditEvents             AuditEvent[]
+  reportConversations     ReportConversationSession[]
 }
 
 model EvidenceDecisionContextRecord {
@@ -366,6 +366,7 @@ model ExternalSourceRecord {
   benchmarkRecords     EvidenceBenchmarkRecord[]
   ingestionAudits      EvidenceIngestionAudit[]
   duplicateMatches     EvidenceDuplicateDecision[]   @relation("DuplicateMatchedSource")
+  acquisitionAttempts  EvidenceAcquisitionAttempt[]
 
   @@unique([sourceType, sourceKey])
   @@index([sourceType, publishedAt])
@@ -575,30 +576,30 @@ model EvidenceDuplicateDecision {
 }
 
 model ScientificEvidenceFact {
-  id                    String                      @id @default(cuid())
+  id                    String                       @id @default(cuid())
   sourceRecordId        String
   catalogItemId         String
   claimId               String?
   extractionRunId       String?
-  factLayer             String                      @default("extracted")
+  factLayer             String                       @default("extracted")
   factType              String
   fieldKey              String
   canonicalKey          String?
   normalizationRuleId   String?
-  decisionReady         Boolean                     @default(false)
+  decisionReady         Boolean                      @default(false)
   extractionSource      String?
   missingFields         Json?
-  qualityFlags          String[]                    @default([])
+  qualityFlags          String[]                     @default([])
   sourceTextHash        String?
-  originalValue         String?                     @db.Text
+  originalValue         String?                      @db.Text
   originalUnit          String?
   normalizedValue       Float?
-  normalizedText        String?                     @db.Text
+  normalizedText        String?                      @db.Text
   normalizedUnit        String?
   uncertainty           String?
-  confidence            Float                       @default(0)
-  extractionStatus      String                      @default("pending")
-  normalizationStatus   String                      @default("pending")
+  confidence            Float                        @default(0)
+  extractionStatus      String                       @default("pending")
+  normalizationStatus   String                       @default("pending")
   systemType            String?
   reactorType           String?
   componentType         String?
@@ -607,11 +608,11 @@ model ScientificEvidenceFact {
   operatingConditionKey String?
   evidenceQuality       String?
   payload               Json
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime                    @updatedAt
-  sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
-  catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
-  claim                 EvidenceClaim?              @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  sourceRecord          ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  catalogItem           ExternalEvidenceCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  claim                 EvidenceClaim?               @relation(fields: [claimId], references: [id], onDelete: SetNull)
   canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
   benchmarkRecords      EvidenceBenchmarkRecord[]
 
@@ -634,14 +635,14 @@ model ScientificEvidenceFact {
 }
 
 model EvidenceBenchmarkRecord {
-  id                    String                      @id @default(cuid())
+  id                    String                       @id @default(cuid())
   sourceRecordId        String
   catalogItemId         String
   factId                String?
   extractionRunId       String?
   canonicalKey          String?
   normalizationRuleId   String?
-  decisionReady         Boolean                     @default(false)
+  decisionReady         Boolean                      @default(false)
   confidence            Float?
   sourceTextHash        String?
   systemType            String?
@@ -660,11 +661,11 @@ model EvidenceBenchmarkRecord {
   costIndicator         String?
   riskIndicator         String?
   payload               Json
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime                    @updatedAt
-  sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
-  catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
-  fact                  ScientificEvidenceFact?     @relation(fields: [factId], references: [id], onDelete: SetNull)
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  sourceRecord          ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+  catalogItem           ExternalEvidenceCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  fact                  ScientificEvidenceFact?      @relation(fields: [factId], references: [id], onDelete: SetNull)
   canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
 
   @@index([sourceRecordId])
@@ -686,31 +687,31 @@ model EvidenceBenchmarkRecord {
 }
 
 model EvidenceCanonicalizationRun {
-  id                         String                    @id @default(cuid())
-  triggerMode                String
-  status                     IngestionRunStatus
-  targetTotal                Int?
-  batchSize                  Int?
-  recordsProcessed           Int                       @default(0)
-  recordsCanonicalExtracted  Int                       @default(0)
-  recordsInsufficientSource  Int                       @default(0)
-  recordsNeedsFullText       Int                       @default(0)
-  recordsNeedsReview         Int                       @default(0)
-  recordsFailed              Int                       @default(0)
-  recordsSkipped             Int                       @default(0)
-  canonicalFactsStored       Int                       @default(0)
-  benchmarkRecordsStored     Int                       @default(0)
-  checkpoint                 Json?
-  summary                    Json
-  failureDetail              Json?
-  snapshotCutoff             DateTime?
-  startedAt                  DateTime
-  completedAt                DateTime?
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
-  scientificFacts            ScientificEvidenceFact[]
-  benchmarkRecords           EvidenceBenchmarkRecord[]
-  benchmarkAggregates        EvidenceBenchmarkAggregate[]
+  id                        String                       @id @default(cuid())
+  triggerMode               String
+  status                    IngestionRunStatus
+  targetTotal               Int?
+  batchSize                 Int?
+  recordsProcessed          Int                          @default(0)
+  recordsCanonicalExtracted Int                          @default(0)
+  recordsInsufficientSource Int                          @default(0)
+  recordsNeedsFullText      Int                          @default(0)
+  recordsNeedsReview        Int                          @default(0)
+  recordsFailed             Int                          @default(0)
+  recordsSkipped            Int                          @default(0)
+  canonicalFactsStored      Int                          @default(0)
+  benchmarkRecordsStored    Int                          @default(0)
+  checkpoint                Json?
+  summary                   Json
+  failureDetail             Json?
+  snapshotCutoff            DateTime?
+  startedAt                 DateTime
+  completedAt               DateTime?
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+  scientificFacts           ScientificEvidenceFact[]
+  benchmarkRecords          EvidenceBenchmarkRecord[]
+  benchmarkAggregates       EvidenceBenchmarkAggregate[]
 
   @@index([triggerMode, status, updatedAt])
   @@index([status, updatedAt])
@@ -755,6 +756,58 @@ model EvidenceBenchmarkAggregate {
   @@index([evidenceQuality])
   @@index([scale])
   @@index([trl])
+}
+
+model EvidenceQualityAuditReport {
+  id               String                    @id @default(cuid())
+  triggerMode      String
+  coverageMatrix   Json
+  gaps             Json
+  outliers         Json
+  readinessScores  Json
+  funnelMetrics    Json
+  summary          Json
+  createdAt        DateTime                  @default(now())
+  discoveryTargets EvidenceDiscoveryTarget[]
+
+  @@index([triggerMode, createdAt])
+}
+
+model EvidenceDiscoveryTarget {
+  id            String                      @id @default(cuid())
+  auditReportId String?
+  gapId         String
+  query         String                      @db.Text
+  providers     String[]
+  priority      Int
+  status        String                      @default("queued")
+  recordsFound  Int                         @default(0)
+  recordsStaged Int                         @default(0)
+  failureDetail Json?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+  completedAt   DateTime?
+  auditReport   EvidenceQualityAuditReport? @relation(fields: [auditReportId], references: [id], onDelete: SetNull)
+
+  @@index([status, priority])
+  @@index([auditReportId])
+  @@index([gapId])
+}
+
+model EvidenceAcquisitionAttempt {
+  id                String               @id @default(cuid())
+  sourceRecordId    String
+  strategy          String
+  status            String               @default("queued")
+  foundUrl          String?
+  foundAccessStatus String?
+  failureReason     String?              @db.Text
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  sourceRecord      ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([sourceRecordId, strategy])
+  @@index([status, createdAt])
 }
 
 model EvidenceClaimReview {

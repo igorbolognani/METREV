@@ -1,14 +1,16 @@
 import {
-  assertRuntimeDatabaseReady,
-  createResearchRepository,
-  type ResearchRepository,
+    assertRuntimeDatabaseReady,
+    createEvidenceAuditRepository,
+    createResearchRepository,
+    type EvidenceAuditRepository,
+    type ResearchRepository,
 } from '@metrev/database';
 import { initializeTelemetry } from '@metrev/telemetry/node';
 
 import {
-  createWorkerHealthMonitor,
-  startWorkerHealthServer,
-  type StartedWorkerHealthServer,
+    createWorkerHealthMonitor,
+    startWorkerHealthServer,
+    type StartedWorkerHealthServer,
 } from './health';
 import { runResearchWorkerCycle, summarizeWorkerCycle } from './worker';
 
@@ -46,6 +48,16 @@ async function main() {
     process.env.METREV_RESEARCH_WORKER_BACKFILL_LIMIT,
     1,
   );
+  const evidenceDiscoveryLimit = parsePositiveInteger(
+    process.env.METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT,
+    5,
+  );
+  const evidenceDiscoveryAutoRun =
+    process.env.METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN === 'true';
+  const evidenceAcquisitionLimit = parsePositiveInteger(
+    process.env.METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT,
+    25,
+  );
   const healthPort = parseNonNegativeInteger(
     process.env.METREV_RESEARCH_WORKER_HEALTH_PORT,
     4020,
@@ -55,12 +67,14 @@ async function main() {
   const healthMonitor = createWorkerHealthMonitor();
   let keepRunning = true;
   let healthServer: StartedWorkerHealthServer | null = null;
+  let evidenceAuditRepository: EvidenceAuditRepository | null = null;
   let repository: ResearchRepository | null = null;
 
   try {
     await initializeTelemetry('metrev-research-worker');
     await assertRuntimeDatabaseReady();
     repository = createResearchRepository();
+    evidenceAuditRepository = createEvidenceAuditRepository();
 
     if (healthPort > 0) {
       healthServer = await startWorkerHealthServer({
@@ -78,6 +92,10 @@ async function main() {
         repository,
         extractionLimit,
         backfillLimit,
+        evidenceAcquisitionLimit,
+        evidenceDiscoveryAutoRun,
+        evidenceAuditRepository,
+        evidenceDiscoveryLimit,
       });
       healthMonitor.markCycleComplete(result);
       console.log(`[research-worker] ${summarizeWorkerCycle(result)}`);

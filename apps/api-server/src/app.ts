@@ -6,15 +6,19 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { SessionResolver } from '@metrev/auth';
 import {
   createEvaluationRepository,
+  createEvidenceAuditRepository,
   createResearchRepository,
+  MemoryEvidenceAuditRepository,
   MemoryResearchRepository,
   type EvaluationRepository,
+  type EvidenceAuditRepository,
   type ResearchRepository,
 } from '@metrev/database';
 
 import { authPlugin } from './plugins/auth';
 import { registerCaseRoutes } from './routes/cases';
 import { registerEvaluationRoutes } from './routes/evaluations';
+import { registerEvidenceAuditRoutes } from './routes/evidence-audit';
 import { registerExportRoutes } from './routes/exports';
 import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
@@ -24,11 +28,13 @@ import { registerWorkspaceRoutes } from './routes/workspace';
 declare module 'fastify' {
   interface FastifyInstance {
     evaluationRepository: EvaluationRepository;
+    evidenceAuditRepository: EvidenceAuditRepository;
     researchRepository: ResearchRepository;
   }
 }
 
 export interface BuildAppOptions {
+  evidenceAuditRepository?: EvidenceAuditRepository;
   researchRepository?: ResearchRepository;
   repository?: EvaluationRepository;
   rateLimit?: false;
@@ -53,8 +59,14 @@ export async function buildApp(
     (options.repository
       ? new MemoryResearchRepository()
       : createResearchRepository());
+  const evidenceAuditRepository =
+    options.evidenceAuditRepository ??
+    (options.repository
+      ? new MemoryEvidenceAuditRepository()
+      : createEvidenceAuditRepository());
 
   app.decorate('evaluationRepository', repository);
+  app.decorate('evidenceAuditRepository', evidenceAuditRepository);
   app.decorate('researchRepository', researchRepository);
 
   await app.register(cors, {
@@ -78,6 +90,9 @@ export async function buildApp(
   await app.register(registerEvaluationRoutes, { prefix: '/api/evaluations' });
   await app.register(registerExternalEvidenceRoutes, {
     prefix: '/api/external-evidence',
+  });
+  await app.register(registerEvidenceAuditRoutes, {
+    prefix: '/api/evidence-intelligence',
   });
   await app.register(registerResearchRoutes, { prefix: '/api/research' });
   await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });

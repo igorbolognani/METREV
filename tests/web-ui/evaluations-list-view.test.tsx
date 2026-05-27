@@ -164,6 +164,6 @@ describe('evaluations list view', () => {
     expect(emptyHtml).toContain('No saved evaluations yet');
     expect(emptyHtml).toContain('The evaluation registry is empty');
     expect(emptyHtml).toContain('Configure stack');
-    expect(emptyHtml).toContain('Dashboard');
+    expect(emptyHtml).toContain('Home');
   });
 });

@@ -185,6 +185,8 @@ pnpm run evidence:canonicalize -- --batch-size=1000 --replace-placeholders=true 
 
 `docker compose` and the `local:view:*` wrappers forward the same `METREV_LLM_*` and `OLLAMA_API_KEY` environment variables to the API and research-worker services. Keep the real key out of `.env.example`, `docker-compose.yml`, and committed docs.
 
+The evidence intelligence discovery layer also reads `METREV_UNPAYWALL_EMAIL` when it checks open-access full-text locations. Keep it as `metadata@metrev.local` for offline/local stub-style runs, and set it to a monitored address in deployed environments. The research worker exposes `METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT` and `METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT` so discovery and acquisition throughput can be tuned without code changes. `METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN` defaults to `false`, so the worker drains explicit discovery queues without automatically expanding the warehouse after every new quality audit report; set it to `true` only when you intentionally want audit gaps to trigger provider discovery.
+
 The canonicalizer reads accepted `ExternalEvidenceCatalogItem` rows, linked `ExternalSourceRecord` metadata, accepted claims, and persisted `SourceTextChunkRecord` text when available. With `--full-text=hydrate`, it also attempts external XML, HTML, or PDF hydration through the shared research full-text runtime when local text is insufficient. It never invents missing scientific facts. If title, abstract, claims, existing chunks, and policy-allowed hydrated text still do not contain a technical field, the article is classified as `insufficient_source` or `needs_full_text` instead of being filled with synthetic values.
 
 Canonical facts use `factLayer=canonical_scientific_fact_v1` and carry `canonicalKey`, `normalizationRuleId`, `decisionReady`, `extractionSource`, `missingFields`, `qualityFlags`, `sourceTextHash`, and `extractionRunId`. The deterministic extractor currently covers system type, reactor type, anode/cathode/membrane/catalyst/current-collector materials, substrate, inoculum, pH, temperature, conductivity, COD, HRT, current density, power density, coulombic efficiency, hydrogen production, methane/biogas signals, removal efficiency, scale, TRL, cost indicators, limitations, failure modes, and trade-offs. When `--llm-mode=schema_validated` is combined with `METREV_LLM_MODE=ollama`, the runtime also accepts Ollama-compatible structured measurement candidates from a local or cloud endpoint after exact-span verification and deterministic normalization, plus whitelisted qualitative candidates for materials, reactor architecture, limitations, and scientific theory after exact-span verification.
@@ -269,10 +271,13 @@ That means the Next.js app still runs and builds normally, but the custom web ex
 4. Run `pnpm install`.
 5. On a fresh machine, run `pnpm run test:e2e:install` before Playwright-based checks.
 6. Run `pnpm run db:bootstrap`.
-7. Start the API with `pnpm run dev:api`.
-8. Start the research worker with `pnpm run dev:research-worker`.
-9. Start the web app with `pnpm run dev:web`.
-10. Open `http://localhost:3000/login`.
+7. Run `pnpm run validate:db` when `DATABASE_URL` and `DIRECT_URL` point at a disposable local or hosted Postgres database.
+8. Start the API with `pnpm run dev:api`.
+9. Start the research worker with `pnpm run dev:research-worker`.
+10. Start the web app with `pnpm run dev:web`.
+11. Open `http://localhost:3000/login`.
+
+CI uses GitHub Secrets for `METREV_CI_AUTH_SECRET`, `METREV_LLM_API_KEY`, and `OLLAMA_API_KEY`, plus the GitHub Variable `METREV_UNPAYWALL_EMAIL`. The deterministic CI path keeps `METREV_LLM_MODE=stub`, so LLM provider secrets are optional unless a workflow is intentionally changed to exercise provider-backed extraction.
 
 ## First GitHub publish
 

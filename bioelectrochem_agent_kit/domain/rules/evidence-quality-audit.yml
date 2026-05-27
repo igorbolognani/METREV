@@ -1,0 +1,110 @@
+version: 0.1
+domain: bioelectrochemical-evidence-intelligence
+canonical_vocabulary_source:
+  stack_taxonomy: bioelectrochem_agent_kit/domain/ontology/stack-taxonomy.yml
+  research_taxonomy: bioelectrochem_agent_kit/domain/ontology/research-taxonomy.yml
+  metric_normalization: bioelectrochem_agent_kit/domain/rules/research-metric-normalization.yml
+
+principle: Evidence readiness is a measurable decision-support condition. Sparse, stale, outlier-heavy, or untraceable evidence must be visible before recommendations are trusted.
+
+coverage_policy:
+  minimum_benchmark_records: 3
+  minimum_for_strong_coverage: 8
+  coverage_dimensions:
+    - system_type
+    - component_type
+    - material
+    - metric_type
+    - scale
+    - trl
+  primary_coverage_matrix:
+    rows:
+      - system_type
+      - component_type
+      - material
+    columns:
+      - metric_type
+    cell_value: decision_ready_record_count
+  classification:
+    absent: record_count == 0
+    sparse: record_count > 0 and record_count < minimum_benchmark_records
+    sufficient: record_count >= minimum_benchmark_records and record_count < minimum_for_strong_coverage
+    strong: record_count >= minimum_for_strong_coverage
+
+recency_policy:
+  warning_threshold_years: 4
+  stale_threshold_years: 6
+  recency_dimensions:
+    - system_type
+    - component_type
+    - metric_type
+  rationale: BES material and operating literature moves quickly enough that old-only benchmark coverage must lower confidence or trigger review.
+
+outlier_policy:
+  z_score_threshold: 3.0
+  minimum_records_for_outlier_detection: 5
+  action: flag_for_review
+  rationale: Outliers may indicate unit conversion errors, measurement artifacts, unusual operating regimes, or real high-performance cases. They are flagged, not automatically excluded.
+
+readiness_levels:
+  ready:
+    conditions:
+      - primary_metrics_coverage == strong_or_sufficient
+      - material_comparison_records >= 3
+      - operating_window_records >= 2
+      - critical_metric_absent == false
+    output_behavior:
+      - keep_confidence_unpenalized_by_evidence_readiness
+  partial:
+    conditions:
+      - primary_metrics_coverage == sufficient_or_sparse
+      - critical_metric_absent == false
+    output_behavior:
+      - add_to_provenance_notes: evidence_base_has_partial_coverage
+  insufficient:
+    conditions:
+      - primary_metrics_coverage == absent_or_below_minimum
+      - critical_metric_absent == true
+    output_behavior:
+      - add_to_missing_data: evidence_base_insufficient_for_configuration
+      - add_to_confidence_notes: benchmark_coverage_sparse
+      - recommend_next_measurements: targeted_literature_review
+
+funnel_stages:
+  - ingested
+  - accepted
+  - canonicalized
+  - decision_ready
+  - benchmark_aggregated
+
+primary_metrics_by_objective:
+  wastewater_treatment:
+    - power_density_w_m2
+    - cod_removal_pct
+    - coulombic_efficiency_pct
+    - internal_resistance_ohm
+  hydrogen_recovery:
+    - current_density_a_m2
+    - hydrogen_production_ml_l_d
+    - hydrogen_yield_mol_mol
+    - coulombic_efficiency_pct
+  nitrogen_recovery:
+    - ammonium_recovery_pct
+    - current_density_a_m2
+    - energy_input_kwh_m3
+  sensing:
+    - voltage_v
+    - internal_resistance_ohm
+    - durability_d
+  low_power_generation:
+    - power_density_w_m2
+    - voltage_v
+    - internal_resistance_ohm
+  biogas_synergy:
+    - cod_removal_pct
+    - current_density_a_m2
+    - energy_input_kwh_m3
+  other:
+    - current_density_a_m2
+    - coulombic_efficiency_pct
+    - durability_d

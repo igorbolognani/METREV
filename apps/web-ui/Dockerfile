@@ -10,7 +10,7 @@ WORKDIR /workspace
 
 COPY . .
 
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL

@@ -6,16 +6,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-    researchBackfillSummarySchema,
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchExtractionResultSchema,
-    researchPaperMetadataSchema,
-    researchPaperSearchFailureSchema,
-    researchPaperSearchResultSchema,
-    researchReviewDetailSchema,
-    researchWarehouseProgressResponseSchema,
-    sourceArtifactSchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchExtractionResultSchema,
+  researchPaperMetadataSchema,
+  researchPaperSearchFailureSchema,
+  researchPaperSearchResultSchema,
+  researchReviewDetailSchema,
+  sourceArtifactSchema,
 } from '@metrev/domain-contracts';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 
@@ -42,14 +40,10 @@ vi.mock('@/lib/api', () => ({
   addResearchColumn: vi.fn(),
   createResearchEvidencePack: vi.fn(),
   createResearchReview: vi.fn(),
-  fetchResearchBackfills: vi.fn(),
-  fetchResearchWarehouseProgress: vi.fn(),
   fetchResearchEvidencePackDecisionInput: vi.fn(),
   fetchResearchReview: vi.fn(),
   fetchResearchReviews: vi.fn(),
   importLocalSources: vi.fn(),
-  queueResearchBackfill: vi.fn(),
-  queueResearchBackfillPreset: vi.fn(),
   searchResearchPapers: vi.fn(),
   stageResearchPapers: vi.fn(),
   runResearchExtractions: vi.fn(),
@@ -510,31 +504,6 @@ describe('research review workspace UI', () => {
     const createHtml = renderToStaticMarkup(
       React.createElement(ResearchReviewListView, {
         activeTab: 'create',
-        backfillMaxPages: 3,
-        backfillPending: false,
-        backfills: [
-          researchBackfillSummarySchema.parse({
-            run_id: 'run-001',
-            query: 'microbial fuel cell wastewater',
-            status: 'queued',
-            providers: ['openalex', 'crossref', 'europe_pmc'],
-            per_provider_limit: 25,
-            max_pages: 3,
-            target_records: 75,
-            next_page: 1,
-            pages_completed: 0,
-            records_fetched: 0,
-            records_stored: 0,
-            records_remaining: 75,
-            completion_ratio: 0,
-            failed_providers: [],
-            created_at: now,
-            updated_at: now,
-            completed_at: null,
-            failure_message: null,
-          }),
-        ],
-        presetBackfillPending: false,
         createPending: false,
         importPending: false,
         importedPapers: [
@@ -559,44 +528,16 @@ describe('research review workspace UI', () => {
         localPdfArtifacts: [buildSourceArtifactFixture()],
         localPdfImportPending: false,
         localPdfPaths: '/tmp/fixture.pdf',
-        onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
         onImportLocalPdfs: vi.fn(),
-        onQueueBackfill: vi.fn(),
         onImportSelected: vi.fn(),
         onLimitChange: vi.fn(),
         onLocalPdfPathsChange: vi.fn(),
         onRunSearch: vi.fn(),
-        onQueuePresetBackfill: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
         onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
-        warehouseProgress: researchWarehouseProgressResponseSchema.parse({
-          target_records: 30000,
-          stored_records: 683,
-          fetched_records: 1200,
-          records_remaining: 29317,
-          completion_ratio: 0.0227666667,
-          pending_records: 683,
-          accepted_records: 0,
-          rejected_records: 0,
-          high_quality_records: 214,
-          linked_document_records: 312,
-          pdf_records: 0,
-          xml_records: 0,
-          queued_backfills: 5,
-          running_backfills: 1,
-          completed_backfills: 2,
-          failed_backfills: 0,
-          source_breakdown: [
-            { key: 'openalex', label: 'OpenAlex', count: 400 },
-            { key: 'crossref', label: 'Crossref', count: 200 },
-          ],
-          metadata_quality_levels: [{ key: 'high', label: 'High', count: 214 }],
-          veracity_levels: [],
-          last_updated_at: now,
-        }),
         searchFailures: [
           researchPaperSearchFailureSchema.parse({
             provider: 'crossref',
@@ -646,10 +587,6 @@ describe('research review workspace UI', () => {
     const reviewsHtml = renderToStaticMarkup(
       React.createElement(ResearchReviewListView, {
         activeTab: 'reviews',
-        backfillMaxPages: 3,
-        backfillPending: false,
-        backfills: [],
-        presetBackfillPending: false,
         createPending: false,
         importPending: false,
         importedPapers: [],
@@ -657,20 +594,16 @@ describe('research review workspace UI', () => {
         localPdfArtifacts: [],
         localPdfImportPending: false,
         localPdfPaths: '',
-        onBackfillMaxPagesChange: vi.fn(),
         onCreate: vi.fn(),
         onImportSelected: vi.fn(),
         onImportLocalPdfs: vi.fn(),
         onLimitChange: vi.fn(),
         onLocalPdfPathsChange: vi.fn(),
-        onQueueBackfill: vi.fn(),
-        onQueuePresetBackfill: vi.fn(),
         onRunSearch: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onTabChange: vi.fn(),
         onToggleSearchResult: vi.fn(),
         onTitleChange: vi.fn(),
-        warehouseProgress: null,
         searchFailures: [],
         searchPending: false,
         searchResults: [],
@@ -700,10 +633,10 @@ describe('research review workspace UI', () => {
     expect(createHtml).toContain('Local PDF import');
     expect(createHtml).toContain('Metadata quality');
     expect(createHtml).toContain('fixture.pdf');
-    expect(createHtml).toContain('Warehouse backfill');
-    expect(createHtml).toContain('MFC/MEC warehouse expansion');
-    expect(createHtml).toContain('Queue MFC/MEC 30,000 preset');
-    expect(createHtml).toContain('Queue warehouse backfill');
+    expect(createHtml).not.toContain('Warehouse backfill');
+    expect(createHtml).not.toContain('MFC/MEC warehouse expansion');
+    expect(createHtml).not.toContain('Queue MFC/MEC 30,000 preset');
+    expect(createHtml).not.toContain('Queue warehouse backfill');
     expect(createHtml).toContain('External paper search');
     expect(createHtml).toContain('Live search fixture paper');
     expect(createHtml).toContain('Import selected papers');
@@ -783,6 +716,131 @@ describe('research review workspace UI', () => {
     expect(papersHtml).toContain('0.85 W/m2');
     expect(packHtml).toContain('Evidence pack');
     expect(packHtml).toContain('No evidence pack selected');
+  });
+
+  it('renders explicit no-full-text labels when a paper lacks abstract and linked full text', async () => {
+    const { ResearchReviewDetailWorkspace } =
+      await import('../../apps/web-ui/src/components/research/research-review-detail');
+    const client = createQueryClient();
+    const review = buildReviewFixture();
+
+    review.papers[0] = researchPaperMetadataSchema.parse({
+      ...review.papers[0],
+      abstract_text: null,
+      pdf_url: null,
+      xml_url: null,
+    });
+
+    review.extraction_results = review.extraction_results.map((result) =>
+      result.column_id === 'summary' ||
+      result.column_id === 'performance_metrics'
+        ? researchExtractionResultSchema.parse({
+            ...result,
+            status: 'valid',
+            answer: {},
+            evidence_trace: [],
+            missing_fields: [],
+            validation_errors: [],
+          })
+        : result,
+    );
+
+    client.setQueryData(['research-review', 'review-001'], review);
+
+    const papersHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'papers',
+        reviewId: 'review-001',
+      }),
+      client,
+    );
+
+    expect(papersHtml).toContain('No abstract or full text available');
+    expect(papersHtml).toContain('No full text available');
+    expect(papersHtml).toContain(
+      'No abstract or full text available for this paper.',
+    );
+  });
+
+  it('renders extraction-state labels instead of generic missing placeholders', async () => {
+    const { ResearchReviewDetailWorkspace } =
+      await import('../../apps/web-ui/src/components/research/research-review-detail');
+    const client = createQueryClient();
+    const review = buildReviewFixture();
+    const paper = review.papers[0];
+
+    review.extraction_results = review.extraction_results.map((result) => {
+      if (result.column_id === 'technology_application') {
+        return researchExtractionResultSchema.parse({
+          ...result,
+          status: 'valid',
+          answer: {},
+          evidence_trace: [],
+          missing_fields: [],
+          validation_errors: [],
+        });
+      }
+
+      if (result.column_id === 'material_properties') {
+        return researchExtractionResultSchema.parse({
+          ...result,
+          status: 'valid',
+          answer: {},
+          evidence_trace: [
+            {
+              source: 'abstract',
+              source_document_id: paper.source_document_id,
+              text_span: paper.abstract_text,
+              source_locator: 'abstract',
+              page_number: null,
+            },
+          ],
+          missing_fields: [],
+          validation_errors: [],
+        });
+      }
+
+      if (result.column_id === 'product_outputs') {
+        return researchExtractionResultSchema.parse({
+          ...result,
+          status: 'valid',
+          answer: {},
+          evidence_trace: [],
+          missing_fields: ['product_outputs'],
+          validation_errors: [],
+        });
+      }
+
+      if (result.column_id === 'implementation_factors') {
+        return researchExtractionResultSchema.parse({
+          ...result,
+          status: 'invalid',
+          answer: {
+            validation_errors: ['schema mismatch'],
+          },
+          evidence_trace: [],
+          missing_fields: [],
+          validation_errors: ['schema mismatch'],
+        });
+      }
+
+      return result;
+    });
+
+    client.setQueryData(['research-review', 'review-001'], review);
+
+    const papersHtml = renderWithClient(
+      React.createElement(ResearchReviewDetailWorkspace, {
+        activeTab: 'papers',
+        reviewId: 'review-001',
+      }),
+      client,
+    );
+
+    expect(papersHtml).toContain('Not extracted');
+    expect(papersHtml).toContain('Not stated in source');
+    expect(papersHtml).toContain('Missing after extraction');
+    expect(papersHtml).toContain('Extraction failed');
   });
 
   it('renders every paper card in the papers tab instead of truncating after three items', async () => {

@@ -60,6 +60,80 @@ function toStructuredClaimRows(
   return item.extracted_claims;
 }
 
+function formatStructuredValue(
+  value: number | string | null | undefined,
+  unit?: string | null,
+) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  return unit ? `${value} ${unit}` : String(value);
+}
+
+function toScientificFactRows(
+  item: ExternalEvidenceCatalogItemDetail,
+): unknown[] {
+  return (item.scientific_facts ?? []).map((fact) => ({
+    claim: fact.canonical_key ?? fact.field_key,
+    detail: [
+      formatToken(fact.fact_type),
+      fact.normalized_value !== null
+        ? formatStructuredValue(fact.normalized_value, fact.normalized_unit)
+        : (fact.normalized_text ??
+          formatStructuredValue(fact.original_value, fact.original_unit)),
+      `Decision ready ${fact.decision_ready ? 'yes' : 'no'}`,
+      `Confidence ${Math.round(fact.confidence * 100)}%`,
+      fact.evidence_quality
+        ? `Quality ${formatToken(fact.evidence_quality)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    id: fact.id,
+    scope:
+      fact.source_locator ??
+      ([fact.system_type, fact.component_type, fact.material, fact.metric_type]
+        .filter(Boolean)
+        .map((value) => formatToken(value as string))
+        .join(' · ') ||
+        fact.field_key),
+  }));
+}
+
+function toBenchmarkRows(item: ExternalEvidenceCatalogItemDetail): unknown[] {
+  return (item.benchmark_records ?? []).map((record) => ({
+    claim: record.canonical_key ?? record.metric_type ?? 'Benchmark row',
+    detail: [
+      formatStructuredValue(record.normalized_value, record.normalized_unit),
+      `Decision ready ${record.decision_ready ? 'yes' : 'no'}`,
+      record.confidence !== null
+        ? `Confidence ${Math.round(record.confidence * 100)}%`
+        : null,
+      record.evidence_quality
+        ? `Quality ${formatToken(record.evidence_quality)}`
+        : null,
+      record.scale ? `Scale ${formatToken(record.scale)}` : null,
+      record.trl !== null ? `TRL ${record.trl}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    id: record.id,
+    scope:
+      record.source_locator ??
+      ([
+        record.system_type,
+        record.application,
+        record.component_type,
+        record.material,
+      ]
+        .filter(Boolean)
+        .map((value) => formatToken(value as string))
+        .join(' · ') ||
+        'Benchmark payload'),
+  }));
+}
+
 function buildReviewPayload(
   action: ExternalEvidenceReviewAction,
   note: string,
@@ -253,11 +327,24 @@ export function ExternalEvidenceDetailView({
     item.applicability_scope ?? {},
   ).length;
   const structuredClaims = toStructuredClaimRows(item);
+  const scientificFactRows = toScientificFactRows(item);
+  const benchmarkRows = toBenchmarkRows(item);
+  const extractedRowCount =
+    structuredClaims.length + scientificFactRows.length + benchmarkRows.length;
   const sourceDocument = item.source_document;
+  const sourceTextStatus = item.source_text_status;
+  const sourceArtifactCount =
+    sourceTextStatus?.source_artifact_count ??
+    item.source_artifact_count ??
+    item.source_artifacts.length;
+  const sourceTextChunkCount =
+    sourceTextStatus?.source_text_chunk_count ??
+    item.source_text_chunk_count ??
+    0;
   const resolvedActiveTab = activeTab ?? defaultTab;
   const tabs = [
     { label: 'Overview', value: 'overview' },
-    { badge: structuredClaims.length, label: 'Claims', value: 'claims' },
+    { badge: extractedRowCount, label: 'Claims', value: 'claims' },
     {
       badge: sourceDocument
         ? 1 + item.supplier_documents.length + item.source_artifacts.length
@@ -276,11 +363,28 @@ export function ExternalEvidenceDetailView({
       value: formatToken(item.review_status),
     },
     {
-      detail: `${item.reviewed_claim_count} reviewed claim(s) recorded.`,
-      key: 'claims',
-      label: 'Structured claims',
+      detail: `${structuredClaims.length} claim row(s), ${scientificFactRows.length} canonical fact(s), ${benchmarkRows.length} benchmark row(s).`,
+      key: 'rows',
+      label: 'Structured rows',
       tone: 'accent' as const,
-      value: structuredClaims.length,
+      value: extractedRowCount,
+    },
+    {
+      detail: `${item.decision_ready_fact_count ?? scientificFactRows.length} decision-ready fact(s) and ${item.decision_ready_benchmark_count ?? benchmarkRows.length} decision-ready benchmark row(s).`,
+      key: 'canonical-facts',
+      label: 'Canonical facts',
+      tone: 'success' as const,
+      value: item.canonical_fact_count ?? scientificFactRows.length,
+    },
+    {
+      detail: `${sourceArtifactCount} artifact(s) and ${sourceTextChunkCount} chunk(s) retained for audit.`,
+      key: 'source-text',
+      label: 'Source text',
+      tone:
+        (sourceTextStatus?.full_text_available ?? item.full_text_available)
+          ? ('success' as const)
+          : ('warning' as const),
+      value: sourceTextChunkCount,
     },
     {
       detail: sourceDocument
@@ -293,15 +397,6 @@ export function ExternalEvidenceDetailView({
         (sourceDocument ? 1 : 0) +
         item.supplier_documents.length +
         item.source_artifacts.length,
-    },
-    {
-      detail:
-        item.publisher ??
-        item.source_category ??
-        'No publisher metadata stated.',
-      key: 'tags',
-      label: 'Tags',
-      value: item.tags.length,
     },
   ];
 
@@ -481,17 +576,124 @@ export function ExternalEvidenceDetailView({
                 />
               </div>
             </WorkspaceSection>
+
+            <WorkspaceSection
+              description="Accepted-vs-table-ready stays explicit by surfacing canonical extraction, benchmark rows, and source-text coverage together."
+              eyebrow="Readiness"
+              title="Canonical extraction and source coverage"
+            >
+              <div className="workspace-card-list">
+                <WorkspaceDataCard
+                  tone={
+                    (sourceTextStatus?.full_text_available ??
+                    item.full_text_available)
+                      ? 'success'
+                      : 'warning'
+                  }
+                >
+                  <h3>Source-text coverage</h3>
+                  <ul className="list-block">
+                    <li>
+                      Abstract{' '}
+                      {(sourceTextStatus?.abstract_available ??
+                      item.abstract_available)
+                        ? 'captured'
+                        : 'missing'}
+                    </li>
+                    <li>
+                      Full text{' '}
+                      {(sourceTextStatus?.full_text_available ??
+                      item.full_text_available)
+                        ? 'available'
+                        : 'not captured'}
+                    </li>
+                    <li>{sourceArtifactCount} artifact(s)</li>
+                    <li>{sourceTextChunkCount} chunk(s)</li>
+                    <li>
+                      Access{' '}
+                      {formatToken(
+                        sourceTextStatus?.access_status ??
+                          sourceDocument?.access_status ??
+                          'unknown',
+                      )}
+                    </li>
+                  </ul>
+                </WorkspaceDataCard>
+
+                <WorkspaceDataCard
+                  tone={scientificFactRows.length > 0 ? 'accent' : 'warning'}
+                >
+                  <h3>Canonical scientific facts</h3>
+                  <ul className="list-block">
+                    <li>
+                      {item.canonical_fact_count ?? scientificFactRows.length}{' '}
+                      stored fact(s)
+                    </li>
+                    <li>
+                      {item.decision_ready_fact_count ??
+                        scientificFactRows.length}{' '}
+                      decision-ready fact(s)
+                    </li>
+                    <li>
+                      {scientificFactRows.length > 0
+                        ? 'Preview rows available in the claims tab.'
+                        : 'No canonical facts were stored for this record yet.'}
+                    </li>
+                  </ul>
+                </WorkspaceDataCard>
+
+                <WorkspaceDataCard
+                  tone={benchmarkRows.length > 0 ? 'success' : 'warning'}
+                >
+                  <h3>Benchmark rows</h3>
+                  <ul className="list-block">
+                    <li>
+                      {item.benchmark_record_count ?? benchmarkRows.length}{' '}
+                      benchmark row(s)
+                    </li>
+                    <li>
+                      {item.decision_ready_benchmark_count ??
+                        benchmarkRows.length}{' '}
+                      decision-ready benchmark row(s)
+                    </li>
+                    <li>
+                      {benchmarkRows.length > 0
+                        ? 'Benchmark values remain available for research-table extraction.'
+                        : 'No benchmark rows were stored for this record yet.'}
+                    </li>
+                  </ul>
+                </WorkspaceDataCard>
+              </div>
+            </WorkspaceSection>
           </div>
         </TabsContent>
 
         <TabsContent value="claims">
-          <WorkspaceSection
-            description="Structured rows surface extracted claims first, while raw payloads remain in a separate audit tab."
-            eyebrow="Claims"
-            title="Structured claims"
-          >
-            <EvidenceClaimsTable claims={structuredClaims} />
-          </WorkspaceSection>
+          <div className="workspace-card-list">
+            <WorkspaceSection
+              description="Structured rows surface extracted claims first, while raw payloads remain in a separate audit tab."
+              eyebrow="Claims"
+              title="Structured claims"
+            >
+              <EvidenceClaimsTable claims={structuredClaims} />
+            </WorkspaceSection>
+
+            <WorkspaceSection
+              description="Canonical facts expose the normalized scientific fields that determine whether a record is ready for downstream use."
+              eyebrow="Canonical"
+              title="Canonical scientific facts"
+            >
+              <EvidenceClaimsTable claims={scientificFactRows} />
+            </WorkspaceSection>
+
+            <WorkspaceSection
+              description="Benchmark rows expose the normalized measurements that can feed readiness and research-table workflows."
+              eyebrow="Benchmarks"
+              title="Benchmark rows"
+            >
+              <EvidenceClaimsTable claims={benchmarkRows} />
+            </WorkspaceSection>
+          </div>
         </TabsContent>
 
         <TabsContent value="provenance">

@@ -18,6 +18,8 @@
     "@metrev/database": "workspace:*",
     "@metrev/domain-contracts": "workspace:*",
     "@metrev/electrochem-models": "workspace:*",
+    "@metrev/evidence-audit": "workspace:*",
+    "@metrev/evidence-discovery": "workspace:*",
     "@metrev/llm-adapter": "workspace:*",
     "@metrev/research-intelligence": "workspace:*",
     "@metrev/rule-engine": "workspace:*",

@@ -217,7 +217,7 @@ function normalizeChipItems(items: string[]) {
 
 function renderChipList(
   items: string[],
-  emptyLabel = 'Not reported',
+  emptyLabel = 'Unavailable',
   options?: {
     limit?: number;
   },
@@ -249,6 +249,113 @@ function renderChipList(
 
 function QuietState({ label }: { label: string }) {
   return <span className="research-review-quiet-state">{label}</span>;
+}
+
+// Spec 037 / Phase 4: surface honest research-cell provenance derived by the
+// deterministic extractor. Returns a small chip when the cells[] payload
+// records a non-filled status or a missing_reason. Stays additive: returns
+// null when no cell record is available (legacy extractor outputs).
+function ResearchCellProvenanceChip({
+  result,
+}: {
+  result?: ResearchExtractionResult;
+}) {
+  if (!result) return null;
+  const payload = (result.normalized_payload ?? {}) as Record<string, unknown>;
+  const cells = Array.isArray(payload.cells)
+    ? (payload.cells as Array<Record<string, unknown>>)
+    : null;
+  const cell = cells?.[0];
+  if (!cell) return null;
+  const status = typeof cell.status === 'string' ? cell.status : null;
+  const missingReason =
+    typeof cell.missing_reason === 'string' ? cell.missing_reason : null;
+  if (!status) return null;
+  if (status === 'filled_with_trace') return null;
+  const label =
+    status === 'filled_without_enough_trace'
+      ? 'Filled · no trace'
+      : status === 'not_reported_by_paper'
+        ? 'Not reported by paper'
+        : status === 'extraction_failed'
+          ? 'Extraction failed'
+          : status === 'needs_analyst_review'
+            ? 'Needs analyst review'
+            : status === 'full_text_missing'
+              ? 'Full text missing'
+              : status === 'document_parse_failed'
+                ? 'Document parse failed'
+                : status === 'table_detected_but_no_match'
+                  ? 'Table detected · no match'
+                  : status === 'queued'
+                    ? 'Queued'
+                    : status;
+  const traceCount = Array.isArray(cell.evidence_trace)
+    ? (cell.evidence_trace as unknown[]).length
+    : 0;
+  const tooltip = missingReason
+    ? `missing_reason=${missingReason} · traces=${traceCount}`
+    : `traces=${traceCount}`;
+  return (
+    <span
+      className="meta-chip research-review-provenance-chip"
+      data-status={status}
+      title={tooltip}
+    >
+      {label}
+    </span>
+  );
+}
+
+function paperHasLinkedFullText(paper: ResearchPaperMetadata) {
+  return Boolean(
+    sanitizeVisibleText(paper.pdf_url) || sanitizeVisibleText(paper.xml_url),
+  );
+}
+
+function paperHasReadableSourceText(paper: ResearchPaperMetadata) {
+  return Boolean(
+    sanitizeVisibleText(paper.abstract_text) || paperHasLinkedFullText(paper),
+  );
+}
+
+function emptyResearchCellLabel(input: {
+  column: ResearchColumnDefinition;
+  paper: ResearchPaperMetadata;
+  result?: ResearchExtractionResult;
+}) {
+  const { column, paper, result } = input;
+
+  if (!result) {
+    return 'Queued';
+  }
+
+  if (result.status === 'invalid') {
+    return result.validation_errors.length > 0
+      ? 'Extraction failed'
+      : result.missing_fields.length > 0
+        ? 'Missing after extraction'
+        : 'Invalid result';
+  }
+
+  if (
+    !paperHasReadableSourceText(paper) &&
+    result.evidence_trace.length === 0
+  ) {
+    return column.column_id === 'summary'
+      ? 'No abstract or full text available'
+      : 'No full text available';
+  }
+
+  if (result.missing_fields.length > 0) {
+    return 'Missing after extraction';
+  }
+
+  if (result.evidence_trace.length === 0) {
+    return 'Not extracted';
+  }
+
+  return 'Not stated in source';
 }
 
 function metricLabel(metric: unknown): string | null {
@@ -512,6 +619,7 @@ function summarizeStructuredResult(answer: Record<string, unknown>) {
 function renderResultFallback(
   answer: Record<string, unknown>,
   compact: boolean,
+  emptyLabel: string,
 ) {
   const summary = sanitizeVisibleText(answer.summary);
   if (summary) {
@@ -525,12 +633,12 @@ function renderResultFallback(
 
   const structuredItems = summarizeStructuredResult(answer);
   if (structuredItems.length > 0) {
-    return renderChipList(structuredItems, 'Not reported', {
+    return renderChipList(structuredItems, emptyLabel, {
       limit: compact ? 3 : undefined,
     });
   }
 
-  return <span className="muted">Structured result</span>;
+  return <QuietState label={emptyLabel} />;
 }
 
 function resultTraceCount(result: ResearchExtractionResult | undefined) {
@@ -540,19 +648,39 @@ function resultTraceCount(result: ResearchExtractionResult | undefined) {
 function renderCell(
   column: ResearchColumnDefinition,
   result: ResearchExtractionResult | undefined,
+  paper: ResearchPaperMetadata,
+  options?: {
+    compact?: boolean;
+  },
+) {
+  const body = renderCellBody(column, result, paper, options);
+  return (
+    <>
+      <ResearchCellProvenanceChip result={result} />
+      {body}
+    </>
+  );
+}
+
+function renderCellBody(
+  column: ResearchColumnDefinition,
+  result: ResearchExtractionResult | undefined,
+  paper: ResearchPaperMetadata,
   options?: {
     compact?: boolean;
   },
 ) {
   const compact = options?.compact ?? false;
+  const emptyLabel = emptyResearchCellLabel({ column, paper, result });
+
   if (!result) {
-    return <QuietState label="Queued" />;
+    return <QuietState label={emptyLabel} />;
   }
 
   if (result.status === 'invalid') {
     return (
       <div className="research-review-invalid-cell">
-        <span className="error">Invalid</span>
+        <span className="error">{emptyLabel}</span>
         {collectStringList(
           (result.answer as Record<string, unknown>)?.validation_errors,
         )
@@ -571,7 +699,7 @@ function renderCell(
     if (column.column_id === 'summary') {
       const summary = sanitizeVisibleText(answer.summary);
       if (!summary) {
-        return <QuietState label="Not reported" />;
+        return <QuietState label={emptyLabel} />;
       }
 
       return compact ? truncateVisibleText(summary, 220) : summary;
@@ -587,35 +715,27 @@ function renderCell(
           application ? `application ${application}` : null,
           scale ? `scale ${scale}` : null,
         ].filter((value): value is string => Boolean(value)),
-        'Not reported',
+        emptyLabel,
         { limit: compact ? 3 : undefined },
       );
     }
 
     if (column.column_id === 'design_parameters') {
-      return renderChipList(summarizeDesignParameters(answer), 'Not reported', {
+      return renderChipList(summarizeDesignParameters(answer), emptyLabel, {
         limit: compact ? 3 : undefined,
       });
     }
 
     if (column.column_id === 'material_properties') {
-      return renderChipList(
-        summarizeMaterialProperties(answer),
-        'Not reported',
-        {
-          limit: compact ? 3 : undefined,
-        },
-      );
+      return renderChipList(summarizeMaterialProperties(answer), emptyLabel, {
+        limit: compact ? 3 : undefined,
+      });
     }
 
     if (column.column_id === 'operating_conditions') {
-      return renderChipList(
-        summarizeOperatingConditions(answer),
-        'Not reported',
-        {
-          limit: compact ? 3 : undefined,
-        },
-      );
+      return renderChipList(summarizeOperatingConditions(answer), emptyLabel, {
+        limit: compact ? 3 : undefined,
+      });
     }
 
     if (column.column_id === 'performance_metrics') {
@@ -632,7 +752,7 @@ function renderCell(
           ).map((metric) => metricLabel(metric)),
         ),
       );
-      return renderChipList(metrics, 'Not reported', {
+      return renderChipList(metrics, emptyLabel, {
         limit: compact ? 4 : undefined,
       });
     }
@@ -645,7 +765,7 @@ function renderCell(
             : []
           ).map((metric) => metricLabel(metric)),
         ),
-        'Not reported',
+        emptyLabel,
         { limit: compact ? 3 : undefined },
       );
     }
@@ -654,7 +774,7 @@ function renderCell(
       const items = summarizeLimitations(answer).concat(
         collectStringList(answer.items),
       );
-      return renderChipList(items, 'Not reported', {
+      return renderChipList(items, emptyLabel, {
         limit: compact ? 3 : undefined,
       });
     }
@@ -662,7 +782,7 @@ function renderCell(
     if (column.column_id === 'implementation_factors') {
       return renderChipList(
         summarizeImplementationFactors(answer),
-        'Not reported',
+        emptyLabel,
         {
           limit: compact ? 3 : undefined,
         },
@@ -688,7 +808,7 @@ function renderCell(
                 : null,
               ...blockingGaps.map((gap) => `gap ${formatToken(gap)}`),
             ].filter((value): value is string => Boolean(value)),
-            summary ? 'No readiness tags' : 'Not reported',
+            summary ? 'No readiness tags' : emptyLabel,
             { limit: compact ? 3 : undefined },
           )}
         </div>
@@ -698,13 +818,13 @@ function renderCell(
     if (Array.isArray(answer.items)) {
       const items = collectStringList(answer.items);
       if (items.length > 0) {
-        return renderChipList(items, 'Not reported', {
+        return renderChipList(items, emptyLabel, {
           limit: compact ? 3 : undefined,
         });
       }
     }
 
-    return renderResultFallback(answer, compact);
+    return renderResultFallback(answer, compact, emptyLabel);
   }
 
   const scalarValue = sanitizeVisibleText(String(result.answer));
@@ -715,7 +835,7 @@ function renderCell(
       scalarValue
     )
   ) : (
-    <QuietState label="Not reported" />
+    <QuietState label={emptyLabel} />
   );
 }
 
@@ -742,7 +862,7 @@ function formatPreviewValue(value: unknown) {
     return value ? 'Yes' : 'No';
   }
 
-  return 'Not reported';
+  return 'Unavailable';
 }
 
 function metricCandidateEntries(
@@ -881,10 +1001,11 @@ function ResearchReviewRow({
               renderCell(
                 summaryColumn,
                 cells.get(resultKey(paper.paper_id, summaryColumn.column_id)),
+                paper,
                 { compact: true },
               )
             ) : (
-              <span className="muted">Not reported</span>
+              <QuietState label="No summary column configured" />
             )}
           </div>
         </div>
@@ -903,6 +1024,7 @@ function ResearchReviewRow({
                   {renderCell(
                     column,
                     cells.get(resultKey(paper.paper_id, column.column_id)),
+                    paper,
                     { compact: true },
                   )}
                 </div>
@@ -1431,7 +1553,10 @@ function PaperDetailsPanel({
         <div>
           <h3>{sanitizeVisibleText(paper.title) ?? 'Untitled paper'}</h3>
           <p>
-            {sanitizeVisibleText(paper.abstract_text) ?? 'No abstract stored.'}
+            {sanitizeVisibleText(paper.abstract_text) ??
+              (paperHasLinkedFullText(paper)
+                ? 'Abstract not stored; extraction may rely on linked full text.'
+                : 'No abstract or full text available for this paper.')}
           </p>
         </div>
         <div className="workspace-chip-list compact">
@@ -1458,7 +1583,7 @@ function PaperDetailsPanel({
                 <TableCell>
                   <strong>{column.name}</strong>
                 </TableCell>
-                <TableCell>{renderCell(column, result)}</TableCell>
+                <TableCell>{renderCell(column, result, paper)}</TableCell>
                 <TableCell>{result?.confidence ?? 'queued'}</TableCell>
                 <TableCell>{resultTraceCount(result)} trace(s)</TableCell>
               </TableRow>
@@ -1549,7 +1674,10 @@ function EvidencePackViewer({
           </div>
           <details className="research-evidence-pack-raw">
             <summary>Raw decision preview</summary>
-            <pre className="code-block payload-preview">
+            <pre
+              className="code-block payload-preview"
+              data-layout-scroll="true"
+            >
               {JSON.stringify(
                 {
                   evidence_records: decisionInput.evidence_records.length,

@@ -1,20 +1,20 @@
 import {
-    researchDataMetadataReadinessExtractionSchema,
-    researchExtractionResultSchema,
-    researchImplementationFactorsExtractionSchema,
-    researchSystemPerformanceExtractionSchema,
-    type ConfidenceLevel,
-    type EvidenceClaim,
-    type ResearchColumnDefinition,
-    type ResearchComponentProfile,
-    type ResearchComponentType,
-    type ResearchEvidenceTrace,
-    type ResearchExtractedParameter,
-    type ResearchExtractionResult,
-    type ResearchMetricMeasurement,
-    type ResearchPaperMetadata,
-    type ResearchParameterKind,
-    type ResearchSystemPerformanceExtraction,
+  researchDataMetadataReadinessExtractionSchema,
+  researchExtractionResultSchema,
+  researchImplementationFactorsExtractionSchema,
+  researchSystemPerformanceExtractionSchema,
+  type ConfidenceLevel,
+  type EvidenceClaim,
+  type ResearchColumnDefinition,
+  type ResearchComponentProfile,
+  type ResearchComponentType,
+  type ResearchEvidenceTrace,
+  type ResearchExtractedParameter,
+  type ResearchExtractionResult,
+  type ResearchMetricMeasurement,
+  type ResearchPaperMetadata,
+  type ResearchParameterKind,
+  type ResearchSystemPerformanceExtraction,
 } from '@metrev/domain-contracts';
 
 import { extractMetricMeasurements } from '../normalization/metric-normalization';
@@ -1616,6 +1616,80 @@ export function runDeterministicResearchExtraction(
       ? baseTrace(input)
       : built.trace;
 
+  // Spec 037 / Phase 4: honest research-cell record alongside the legacy
+  // result. Derivation follows contracts/research-cell-coverage.md.
+  const hasSubstantiveAnswer = (() => {
+    const value = built.answer;
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') {
+      return value.trim().length > 0 && value !== 'not_reported';
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>).length > 0;
+    }
+    return false;
+  })();
+
+  const confidenceNumeric =
+    built.confidence === 'high'
+      ? 0.85
+      : built.confidence === 'medium'
+        ? 0.6
+        : 0.3;
+
+  let cellStatus:
+    | 'filled_with_trace'
+    | 'filled_without_enough_trace'
+    | 'not_reported_by_paper'
+    | 'extraction_failed'
+    | 'needs_analyst_review';
+  let missingReason:
+    | 'not_reported_by_paper'
+    | 'extraction_failed'
+    | 'needs_analyst_review'
+    | null;
+
+  if (validationErrors.length > 0) {
+    cellStatus = 'extraction_failed';
+    missingReason = 'extraction_failed';
+  } else if (!hasSubstantiveAnswer) {
+    cellStatus = 'not_reported_by_paper';
+    missingReason = 'not_reported_by_paper';
+  } else if (evidenceTrace.length === 0) {
+    cellStatus = 'filled_without_enough_trace';
+    missingReason = null;
+  } else {
+    cellStatus = 'filled_with_trace';
+    missingReason = null;
+  }
+
+  if (cellStatus !== 'extraction_failed' && confidenceNumeric < 0.4) {
+    cellStatus = 'needs_analyst_review';
+    missingReason = 'needs_analyst_review';
+  }
+
+  const cell = {
+    paper_id: input.paper.paper_id,
+    review_id: input.reviewId,
+    column_id: input.column.column_id,
+    output_schema_key: input.column.output_schema_key,
+    value_display: null,
+    normalized_value: null,
+    unit: null,
+    status: cellStatus,
+    missing_reason: missingReason,
+    confidence: confidenceNumeric,
+    evidence_trace: evidenceTrace,
+    extractor_version: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  };
+
+  const normalizedPayloadWithCells = {
+    ...(built.normalizedPayload as Record<string, unknown>),
+    cells: [cell],
+  };
+
   return researchExtractionResultSchema.parse({
     review_id: input.reviewId,
     paper_id: input.paper.paper_id,
@@ -1626,7 +1700,7 @@ export function runDeterministicResearchExtraction(
     confidence: validationErrors.length > 0 ? 'low' : built.confidence,
     missing_fields: built.missingFields,
     validation_errors: validationErrors,
-    normalized_payload: built.normalizedPayload,
+    normalized_payload: normalizedPayloadWithCells,
     extractor_version: DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
   });
 }

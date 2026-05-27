@@ -1,15 +1,19 @@
 import type {
+    AcquisitionStatusResponse,
     AddResearchColumnRequest,
     CaseHistoryWorkspaceResponse,
     CreateResearchEvidencePackRequest,
     CreateResearchReviewRequest,
     DashboardWorkspaceResponse,
+    DiscoveryStatusResponse,
     EvaluationComparisonResponse,
     EvaluationListResponse,
     EvaluationResponse,
     EvaluationWorkspaceResponse,
     EvidenceExplorerAssistantResponse,
     EvidenceExplorerWorkspaceResponse,
+    EvidenceQualityAuditRequest,
+    EvidenceQualityAuditResponse,
     EvidenceReviewWorkspaceResponse,
     ExportCsvResponseMetadata,
     ExternalEvidenceBulkReviewRequest,
@@ -21,20 +25,15 @@ import type {
     LocalSourceImportRequest,
     LocalSourceImportResponse,
     PrintableEvaluationReportResponse,
-    QueueResearchBackfillPresetRequest,
-    QueueResearchBackfillPresetResponse,
-    QueueResearchBackfillRequest,
     RawCaseInput,
     ReportConversationRequest,
     ReportConversationResponse,
-    ResearchBackfillListResponse,
     ResearchDecisionIngestionPreview,
     ResearchEvidencePack,
     ResearchReviewDetail,
     ResearchReviewListResponse,
     ResearchWarehouseEligibilityRequest,
     ResearchWarehouseEligibilityResponse,
-    ResearchWarehouseProgressResponse,
     RunResearchExtractionsRequest,
     RunResearchExtractionsResponse,
     SearchResearchPapersRequest,
@@ -44,17 +43,21 @@ import type {
     StageResearchPapersResponse,
 } from '@metrev/domain-contracts/browser';
 import {
+    acquisitionStatusResponseSchema,
     addResearchColumnRequestSchema,
     caseHistoryWorkspaceResponseSchema,
     createResearchEvidencePackRequestSchema,
     createResearchReviewRequestSchema,
     dashboardWorkspaceResponseSchema,
+    discoveryStatusResponseSchema,
     evaluationComparisonResponseSchema,
     evaluationListResponseSchema,
     evaluationResponseSchema,
     evaluationWorkspaceResponseSchema,
     evidenceExplorerAssistantResponseSchema,
     evidenceExplorerWorkspaceResponseSchema,
+    evidenceQualityAuditRequestSchema,
+    evidenceQualityAuditResponseSchema,
     evidenceReviewWorkspaceResponseSchema,
     externalEvidenceBulkReviewRequestSchema,
     externalEvidenceBulkReviewResponseSchema,
@@ -64,20 +67,15 @@ import {
     localSourceImportRequestSchema,
     localSourceImportResponseSchema,
     printableEvaluationReportResponseSchema,
-    queueResearchBackfillPresetRequestSchema,
-    queueResearchBackfillPresetResponseSchema,
-    queueResearchBackfillRequestSchema,
     rawCaseInputSchema,
     reportConversationRequestSchema,
     reportConversationResponseSchema,
-    researchBackfillListResponseSchema,
     researchDecisionIngestionPreviewSchema,
     researchEvidencePackSchema,
     researchReviewDetailSchema,
     researchReviewListResponseSchema,
     researchWarehouseEligibilityRequestSchema,
     researchWarehouseEligibilityResponseSchema,
-    researchWarehouseProgressResponseSchema,
     runResearchExtractionsRequestSchema,
     runResearchExtractionsResponseSchema,
     searchResearchPapersRequestSchema,
@@ -255,6 +253,95 @@ export async function fetchDashboardWorkspace(): Promise<DashboardWorkspaceRespo
     response,
     dashboardWorkspaceResponseSchema,
     'dashboard workspace response',
+  );
+}
+
+export async function fetchEvidenceQualityReport(): Promise<EvidenceQualityAuditResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/quality-report`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    evidenceQualityAuditResponseSchema,
+    'evidence quality audit response',
+  );
+}
+
+export async function triggerEvidenceQualityAudit(
+  payload: EvidenceQualityAuditRequest = {
+    trigger_mode: 'manual',
+    include_golden_cases: true,
+  },
+): Promise<EvidenceQualityAuditResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/quality-report`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: toJsonBody(evidenceQualityAuditRequestSchema, payload),
+    },
+  );
+
+  return parseJson(
+    response,
+    evidenceQualityAuditResponseSchema,
+    'evidence quality audit response',
+  );
+}
+
+export async function runEvidenceDiscovery(): Promise<unknown> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/discovery/run`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  return response.json();
+}
+
+export async function fetchDiscoveryStatus(): Promise<DiscoveryStatusResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/discovery/status`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    discoveryStatusResponseSchema,
+    'evidence discovery status response',
+  );
+}
+
+export async function fetchAcquisitionStatus(): Promise<AcquisitionStatusResponse> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/evidence-intelligence/acquisition/status`,
+    {
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+
+  return parseJson(
+    response,
+    acquisitionStatusResponseSchema,
+    'evidence acquisition status response',
   );
 }
 
@@ -783,54 +870,6 @@ export async function createResearchReview(
   );
 }
 
-export async function fetchResearchBackfills(): Promise<ResearchBackfillListResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/research/backfills`, {
-    cache: 'no-store',
-    credentials: 'include',
-  });
-
-  return parseJson(
-    response,
-    researchBackfillListResponseSchema,
-    'research backfill list response',
-  );
-}
-
-export async function queueResearchBackfill(
-  payload: QueueResearchBackfillRequest,
-): Promise<ResearchBackfillListResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/research/backfills`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: toJsonBody(queueResearchBackfillRequestSchema, payload),
-  });
-
-  return parseJson(
-    response,
-    researchBackfillListResponseSchema,
-    'research backfill queue response',
-  );
-}
-
-export async function fetchResearchWarehouseProgress(): Promise<ResearchWarehouseProgressResponse> {
-  const response = await fetch(
-    `${apiBaseUrl}/api/research/warehouse-progress`,
-    {
-      cache: 'no-store',
-      credentials: 'include',
-    },
-  );
-
-  return parseJson(
-    response,
-    researchWarehouseProgressResponseSchema,
-    'research warehouse progress response',
-  );
-}
-
 export async function fetchResearchWarehouseEligibility(
   payload: Partial<ResearchWarehouseEligibilityRequest> = {},
 ): Promise<ResearchWarehouseEligibilityResponse> {
@@ -877,25 +916,6 @@ export async function runResearchWarehouseEligibilitySweep(
     response,
     researchWarehouseEligibilityResponseSchema,
     'research warehouse eligibility sweep response',
-  );
-}
-
-export async function queueResearchBackfillPreset(
-  payload: QueueResearchBackfillPresetRequest,
-): Promise<QueueResearchBackfillPresetResponse> {
-  const response = await fetch(`${apiBaseUrl}/api/research/backfills/presets`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: toJsonBody(queueResearchBackfillPresetRequestSchema, payload),
-  });
-
-  return parseJson(
-    response,
-    queueResearchBackfillPresetResponseSchema,
-    'research backfill preset response',
   );
 }
 

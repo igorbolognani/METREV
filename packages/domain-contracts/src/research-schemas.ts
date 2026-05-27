@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
 import {
-    confidenceLevelSchema,
-    evidenceStrengthSchema,
-    evidenceTypeSchema,
-    externalEvidenceAccessStatusSchema,
-    externalEvidenceSourceTypeSchema,
-    rawEvidenceRecordSchema,
-    runtimeVersionSchema,
-    sourceArtifactSchema,
+  acquisitionAttemptSchema,
+  confidenceLevelSchema,
+  discoveryTargetSchema,
+  evidenceQualityAuditTriggerModeSchema,
+  evidenceQualityReportSchema,
+  evidenceStrengthSchema,
+  evidenceTypeSchema,
+  externalEvidenceAccessStatusSchema,
+  externalEvidenceSourceTypeSchema,
+  rawEvidenceRecordSchema,
+  runtimeVersionSchema,
+  sourceArtifactSchema,
 } from './schemas';
 
 const flexibleObjectSchema = z.object({}).catchall(z.unknown());
@@ -410,6 +414,68 @@ function hasSubstantiveAnswer(value: unknown): boolean {
   return false;
 }
 
+// Spec 037 / Phase 4: research-cell provenance v1.
+// Cell-status + missingReason enums and a normalized cell record.
+export const researchCellStatusSchema = z.enum([
+  'filled_with_trace',
+  'filled_without_enough_trace',
+  'not_reported_by_paper',
+  'full_text_missing',
+  'document_parse_failed',
+  'table_detected_but_no_match',
+  'extraction_failed',
+  'queued',
+  'needs_analyst_review',
+]);
+
+export const researchCellMissingReasonSchema = z.enum([
+  'not_reported_by_paper',
+  'full_text_missing',
+  'document_parse_failed',
+  'table_detected_but_no_match',
+  'extraction_failed',
+  'queued',
+  'needs_analyst_review',
+]);
+
+export const researchCellSchema = z
+  .object({
+    paper_id: z.string().min(1),
+    review_id: z.string().min(1),
+    column_id: z.string().min(1),
+    output_schema_key: z.string().min(1),
+    value_display: z.string().nullable().default(null),
+    normalized_value: z.union([z.number(), z.string(), z.null()]).default(null),
+    unit: z.string().nullable().default(null),
+    status: researchCellStatusSchema,
+    missing_reason: researchCellMissingReasonSchema.nullable().default(null),
+    confidence: z.number().min(0).max(1),
+    evidence_trace: z.array(researchEvidenceTraceSchema).default([]),
+    extractor_version: z.string().min(1),
+    created_at: z.string().min(1).optional(),
+    updated_at: z.string().min(1).optional(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.status === 'filled_with_trace' &&
+      value.evidence_trace.length === 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'filled_with_trace cells require at least one evidence_trace entry',
+        path: ['evidence_trace'],
+      });
+    }
+    if (!value.status.startsWith('filled_') && value.missing_reason === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'non-filled cells require a missing_reason',
+        path: ['missing_reason'],
+      });
+    }
+  });
+
 export const researchExtractionResultSchema = z
   .object({
     result_id: z.string().min(1).optional(),
@@ -679,6 +745,33 @@ export const researchReviewListResponseSchema = z.object({
   items: z.array(researchReviewSummarySchema),
 });
 
+export const evidenceQualityAuditRequestSchema = z.object({
+  trigger_mode: evidenceQualityAuditTriggerModeSchema.default('manual'),
+  include_golden_cases: z.boolean().default(true),
+});
+
+export const evidenceQualityAuditResponseSchema = z.object({
+  report: evidenceQualityReportSchema,
+});
+
+export const discoveryStatusResponseSchema = z.object({
+  active_targets: z.number().int().nonnegative(),
+  queued_targets: z.number().int().nonnegative(),
+  completed_targets: z.number().int().nonnegative(),
+  failed_targets: z.number().int().nonnegative().default(0),
+  total_records_staged: z.number().int().nonnegative(),
+  targets: z.array(discoveryTargetSchema).default([]),
+});
+
+export const acquisitionStatusResponseSchema = z.object({
+  queued_attempts: z.number().int().nonnegative(),
+  running_attempts: z.number().int().nonnegative(),
+  successful_attempts: z.number().int().nonnegative(),
+  failed_attempts: z.number().int().nonnegative(),
+  skipped_attempts: z.number().int().nonnegative().default(0),
+  attempts: z.array(acquisitionAttemptSchema).default([]),
+});
+
 export type ResearchReviewStatus = z.infer<typeof researchReviewStatusSchema>;
 export type ResearchSearchProvider = z.infer<
   typeof researchSearchProviderSchema
@@ -706,6 +799,11 @@ export type ResearchEligibilityReason = z.infer<
 export type ResearchComponentType = z.infer<typeof researchComponentTypeSchema>;
 export type ResearchParameterKind = z.infer<typeof researchParameterKindSchema>;
 export type ResearchEvidenceTrace = z.infer<typeof researchEvidenceTraceSchema>;
+export type ResearchCellStatus = z.infer<typeof researchCellStatusSchema>;
+export type ResearchCellMissingReason = z.infer<
+  typeof researchCellMissingReasonSchema
+>;
+export type ResearchCell = z.infer<typeof researchCellSchema>;
 export type ResearchExtractedParameter = z.infer<
   typeof researchExtractedParameterSchema
 >;
@@ -812,6 +910,18 @@ export type CreateResearchEvidencePackRequest = z.infer<
 >;
 export type ResearchReviewListResponse = z.infer<
   typeof researchReviewListResponseSchema
+>;
+export type EvidenceQualityAuditRequest = z.infer<
+  typeof evidenceQualityAuditRequestSchema
+>;
+export type EvidenceQualityAuditResponse = z.infer<
+  typeof evidenceQualityAuditResponseSchema
+>;
+export type DiscoveryStatusResponse = z.infer<
+  typeof discoveryStatusResponseSchema
+>;
+export type AcquisitionStatusResponse = z.infer<
+  typeof acquisitionStatusResponseSchema
 >;
 
 export const researchEvidenceTypeSchema = evidenceTypeSchema;

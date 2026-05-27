@@ -1,0 +1,96 @@
+version: 0.1
+canonical_vocabulary_source:
+  stack: bioelectro-copilot-contracts/contracts/ontology/stack.yaml
+  properties: bioelectro-copilot-contracts/contracts/ontology/property_dictionary.yaml
+  evidence_schema: bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml
+
+policy_name: evidence_quality_audit
+principle: Evidence readiness must be serialized, validated, and audit-visible before it affects decision confidence.
+
+coverage_policy:
+  minimum_benchmark_records: 3
+  minimum_for_strong_coverage: 8
+  coverage_dimensions:
+    - system_type
+    - component_type
+    - material
+    - metric_type
+    - scale
+    - trl
+  coverage_levels:
+    - absent
+    - sparse
+    - sufficient
+    - strong
+  primary_coverage_matrix:
+    rows:
+      - system_type
+      - component_type
+      - material
+    columns:
+      - metric_type
+    cell_value: decision_ready_record_count
+
+recency_policy:
+  warning_threshold_years: 4
+  stale_threshold_years: 6
+  recency_statuses:
+    - current
+    - aging
+    - stale
+
+outlier_policy:
+  z_score_threshold: 3.0
+  minimum_records_for_outlier_detection: 5
+  actions:
+    - flag_for_review
+    - confirmed_outlier
+    - dismissed
+
+readiness_levels:
+  allowed_values:
+    - ready
+    - partial
+    - insufficient
+    - no_audit
+  insufficient_missing_data_flag: evidence_base_insufficient_for_configuration
+  partial_provenance_note: evidence_base_has_partial_coverage
+
+funnel_stages:
+  - ingested
+  - accepted
+  - canonicalized
+  - decision_ready
+  - benchmark_aggregated
+
+primary_metrics_by_objective:
+  wastewater_treatment:
+    - power_density_w_m2
+    - cod_removal_pct
+    - coulombic_efficiency_pct
+    - internal_resistance_ohm
+  hydrogen_recovery:
+    - current_density_a_m2
+    - hydrogen_production_ml_l_d
+    - hydrogen_yield_mol_mol
+    - coulombic_efficiency_pct
+  nitrogen_recovery:
+    - ammonium_recovery_pct
+    - current_density_a_m2
+    - energy_input_kwh_m3
+  sensing:
+    - voltage_v
+    - internal_resistance_ohm
+    - durability_d
+  low_power_generation:
+    - power_density_w_m2
+    - voltage_v
+    - internal_resistance_ohm
+  biogas_synergy:
+    - cod_removal_pct
+    - current_density_a_m2
+    - energy_input_kwh_m3
+  other:
+    - current_density_a_m2
+    - coulombic_efficiency_pct
+    - durability_d

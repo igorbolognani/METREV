@@ -31,6 +31,14 @@ const item: ExternalEvidenceCatalogItemDetail = {
   provenance_note: 'Imported and accepted for analyst intake.',
   claim_count: 1,
   reviewed_claim_count: 1,
+  canonical_fact_count: 2,
+  decision_ready_fact_count: 1,
+  benchmark_record_count: 1,
+  decision_ready_benchmark_count: 1,
+  source_artifact_count: 1,
+  source_text_chunk_count: 3,
+  abstract_available: true,
+  full_text_available: true,
   applicability_scope: {
     influent: 'industrial sidestream',
     temperature_window: 'mesophilic',
@@ -89,6 +97,106 @@ const item: ExternalEvidenceCatalogItemDetail = {
       updated_at: '2026-04-16T09:15:00.000Z',
     },
   ],
+  scientific_facts: [
+    {
+      id: 'fact-001',
+      fact_layer: 'canonical',
+      fact_type: 'metric',
+      field_key: 'power_density',
+      canonical_key: 'power_density',
+      decision_ready: true,
+      extraction_status: 'canonical_extracted',
+      normalization_status: 'normalized',
+      original_value: '1.8',
+      original_unit: 'W/m2',
+      normalized_value: 1.8,
+      normalized_text: '1.8 W/m2',
+      normalized_unit: 'W/m2',
+      confidence: 0.92,
+      evidence_quality: 'high',
+      system_type: 'MFC',
+      component_type: 'anode',
+      material: 'carbon_felt',
+      metric_type: 'power_density',
+      source_locator: 'results.table_1',
+      source_text_hash: 'hash-fact-001',
+      quality_flags: [],
+      payload: {
+        locator: 'results.table_1',
+      },
+      created_at: '2026-04-16T08:00:00.000Z',
+      updated_at: '2026-04-16T09:15:00.000Z',
+    },
+    {
+      id: 'fact-002',
+      fact_layer: 'canonical',
+      fact_type: 'metric',
+      field_key: 'cod_removal',
+      canonical_key: 'cod_removal',
+      decision_ready: false,
+      extraction_status: 'needs_review',
+      normalization_status: 'normalized',
+      original_value: '82',
+      original_unit: '%',
+      normalized_value: 82,
+      normalized_text: '82 %',
+      normalized_unit: '%',
+      confidence: 0.7,
+      evidence_quality: 'moderate',
+      system_type: 'MFC',
+      component_type: 'anode',
+      material: 'carbon_felt',
+      metric_type: 'cod_removal',
+      source_locator: 'results.table_2',
+      source_text_hash: 'hash-fact-002',
+      quality_flags: ['needs_review'],
+      payload: {
+        locator: 'results.table_2',
+      },
+      created_at: '2026-04-16T08:00:00.000Z',
+      updated_at: '2026-04-16T09:15:00.000Z',
+    },
+  ],
+  benchmark_records: [
+    {
+      id: 'benchmark-001',
+      canonical_key: 'power_density',
+      decision_ready: true,
+      confidence: 0.91,
+      system_type: 'MFC',
+      application: 'industrial sidestream retrofit',
+      component_type: 'anode',
+      material: 'carbon_felt',
+      membrane_separator: null,
+      operating_condition_key: 'mesophilic',
+      metric_type: 'power_density',
+      normalized_value: 1.8,
+      normalized_unit: 'W/m2',
+      publication_year: 2025,
+      evidence_quality: 'high',
+      scale: 'pilot',
+      trl: 6,
+      cost_indicator: null,
+      risk_indicator: null,
+      source_locator: 'results.table_1',
+      source_text_hash: 'hash-benchmark-001',
+      payload: {
+        locator: 'results.table_1',
+      },
+      created_at: '2026-04-16T08:00:00.000Z',
+      updated_at: '2026-04-16T09:15:00.000Z',
+    },
+  ],
+  source_text_status: {
+    access_status: 'green',
+    abstract_available: true,
+    source_artifact_count: 1,
+    source_text_chunk_count: 3,
+    source_url_available: true,
+    pdf_url_available: false,
+    xml_url_available: false,
+    full_text_available: true,
+  },
   supplier_documents: [
     {
       id: 'supplier-document-001',
@@ -131,6 +239,9 @@ describe('external evidence detail view', () => {
     expect(html).toContain('Source identity and timestamps');
     expect(html).toContain('Metadata quality and veracity');
     expect(html).toContain('Applicability scope');
+    expect(html).toContain('Canonical extraction and source coverage');
+    expect(html).toContain('Source-text coverage');
+    expect(html).toContain('Canonical scientific facts');
   });
 
   it('renders the structured claims tab on demand', () => {
@@ -148,9 +259,12 @@ describe('external evidence detail view', () => {
     );
 
     expect(html).toContain('Structured claims');
+    expect(html).toContain('Canonical scientific facts');
+    expect(html).toContain('Benchmark rows');
     expect(html).toContain(
       'Stable COD removal uplift was observed after separator redesign.',
     );
+    expect(html).toContain('power_density');
   });
 
   it('renders the provenance and payload tabs when selected', () => {

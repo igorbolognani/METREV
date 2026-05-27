@@ -4,17 +4,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-    MFC_MEC_30000_PRESET_ID,
-    planResearchBackfillPreset,
-} from '@metrev/database';
-import {
     addResearchColumnRequestSchema,
     createResearchEvidencePackRequestSchema,
     createResearchReviewRequestSchema,
     localSourceImportRequestSchema,
-    queueResearchBackfillPresetRequestSchema,
-    queueResearchBackfillPresetResponseSchema,
-    queueResearchBackfillRequestSchema,
     researchWarehouseEligibilityRequestSchema,
     researchWarehouseProgressResponseSchema,
     runResearchExtractionsRequestSchema,
@@ -109,10 +102,6 @@ function countBucketValue(
   value: string,
 ) {
   return buckets.find((bucket) => bucket.value === value)?.count ?? 0;
-}
-
-function normalizeQueuedQuery(value: string) {
-  return value.trim().toLowerCase();
 }
 
 async function reconcileDefaultColumns(
@@ -496,34 +485,11 @@ export async function registerResearchRoutes(
       return reply;
     }
 
-    const parsed = queueResearchBackfillRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid_input',
-        details: parsed.error.flatten(),
-      });
-    }
-
-    await withSpan(
-      'research.backfills.enqueue',
-      () =>
-        app.researchRepository.enqueueResearchBackfill({
-          ...parsed.data,
-          actorId: actor.userId,
-        }),
-      {
-        actor_id: actor.userId,
-        query: parsed.data.query,
-      },
-    );
-
-    const response = await withSpan(
-      'research.backfills.list',
-      () => app.researchRepository.listResearchBackfills(),
-      { actor_id: actor.userId },
-    );
-
-    return reply.code(201).send(response);
+    return reply.code(410).send({
+      error: 'research_backfill_removed',
+      message:
+        'Research warehouse backfill queuing has been removed. Use curated search, staging, and review workflows for evidence intake.',
+    });
   });
 
   app.post(
@@ -535,76 +501,11 @@ export async function registerResearchRoutes(
         return reply;
       }
 
-      const parsed = queueResearchBackfillPresetRequestSchema.safeParse(
-        request.body ?? {},
-      );
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: 'invalid_input',
-          details: parsed.error.flatten(),
-        });
-      }
-
-      const plan = planResearchBackfillPreset({
-        presetId: MFC_MEC_30000_PRESET_ID,
-        targetRecords: parsed.data.target_records,
+      return reply.code(410).send({
+        error: 'research_backfill_removed',
+        message:
+          'Research warehouse backfill presets have been removed. Use curated search, staging, and review workflows for evidence intake.',
       });
-      const existing = await withSpan(
-        'research.backfills.list',
-        () => app.researchRepository.listResearchBackfills(),
-        { actor_id: actor.userId },
-      );
-      const activeQueries = new Set(
-        existing.items
-          .filter(
-            (backfill) =>
-              backfill.status === 'queued' || backfill.status === 'running',
-          )
-          .map((backfill) => normalizeQueuedQuery(backfill.query)),
-      );
-      const skippedQueries: string[] = [];
-      let queuedRuns = 0;
-
-      for (const backfill of plan.plannedBackfills) {
-        const normalizedQuery = normalizeQueuedQuery(backfill.query);
-
-        if (activeQueries.has(normalizedQuery)) {
-          skippedQueries.push(backfill.query);
-          continue;
-        }
-
-        await withSpan(
-          'research.backfills.enqueue',
-          () =>
-            app.researchRepository.enqueueResearchBackfill({
-              ...backfill,
-              actorId: actor.userId,
-            }),
-          {
-            actor_id: actor.userId,
-            preset_id: parsed.data.preset_id,
-            query: backfill.query,
-          },
-        );
-        activeQueries.add(normalizedQuery);
-        queuedRuns += 1;
-      }
-
-      const backfills = await withSpan(
-        'research.backfills.list',
-        () => app.researchRepository.listResearchBackfills(),
-        { actor_id: actor.userId },
-      );
-
-      return reply.code(201).send(
-        queueResearchBackfillPresetResponseSchema.parse({
-          preset_id: parsed.data.preset_id,
-          target_records: plan.targetRecords,
-          queued_runs: queuedRuns,
-          skipped_queries: skippedQueries,
-          backfills: backfills.items,
-        }),
-      );
     },
   );
 

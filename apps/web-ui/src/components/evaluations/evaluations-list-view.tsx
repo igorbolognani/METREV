@@ -204,8 +204,8 @@ export function EvaluationsWorkspaceView({
 }) {
   const headerActions = (
     <>
-      <Link className="button secondary" href="/dashboard">
-        Dashboard
+      <Link className="button secondary" href="/home">
+        Home
       </Link>
       <Link className="button" href="/cases/new">
         Configure stack

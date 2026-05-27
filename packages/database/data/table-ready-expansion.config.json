@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "defaults": {
+    "perQueryLimit": 50,
+    "pageSize": 50,
+    "maxPages": 3
+  },
+  "queries": [
+    "microbial fuel cell wastewater COD removal coulombic efficiency power density",
+    "microbial fuel cell wastewater current density carbon felt anode cathode",
+    "microbial fuel cell acetate wastewater polarization power density internal resistance",
+    "microbial fuel cell industrial wastewater graphite brush anode performance",
+    "microbial fuel cell air cathode catalyst wastewater power density",
+    "microbial fuel cell membrane separator fouling wastewater coulombic efficiency",
+    "microbial electrolysis cell wastewater hydrogen production current density",
+    "microbial electrolysis cell cathode catalyst hydrogen recovery wastewater",
+    "microbial electrolysis cell acetate wastewater coulombic efficiency hydrogen yield",
+    "microbial electrolysis cell stainless steel cathode wastewater performance",
+    "bioelectrochemical system wastewater nutrient recovery ammonium removal current density",
+    "bioelectrochemical system wastewater reactor electrode material performance",
+    "bioelectrochemical reactor pilot scale wastewater COD removal current density",
+    "electroactive biofilm anode wastewater carbon cloth current density",
+    "bioelectrochemical membrane reactor wastewater COD removal energy recovery",
+    "microbial desalination cell wastewater salinity removal power density",
+    "microbial electrosynthesis reactor cathode material acetate production current density",
+    "electromethanogenesis bioelectrochemical reactor cathode material methane production",
+    "constructed wetland microbial fuel cell wastewater COD removal power density",
+    "sediment microbial fuel cell anode material power density coulombic efficiency",
+    "bioelectrochemical perchlorate nitrate removal wastewater current density",
+    "bioelectrochemical heavy metal removal wastewater electrode material performance",
+    "microbial fuel cell leachate wastewater COD removal power density",
+    "microbial electrolysis cell brewery wastewater hydrogen production",
+    "microbial fuel cell dairy wastewater power density coulombic efficiency",
+    "microbial electrolysis cell sludge hydrolysis hydrogen production current density",
+    "microbial fuel cell swine wastewater ammonium COD removal performance",
+    "bioelectrochemical system sulfide removal wastewater power density",
+    "microbial fuel cell scale up stack wastewater power density",
+    "microbial electrolysis cell pilot scale wastewater hydrogen production"
+  ],
+  "sources": {
+    "openalex": {
+      "enabled": true,
+      "perQueryLimit": 50,
+      "pageSize": 50,
+      "maxPages": 3
+    },
+    "crossref": {
+      "enabled": true,
+      "perQueryLimit": 50,
+      "pageSize": 50,
+      "maxPages": 3
+    },
+    "europepmc": {
+      "enabled": true,
+      "perQueryLimit": 50,
+      "pageSize": 50,
+      "maxPages": 3
+    }
+  },
+  "manifests": ["../data/curated-bigdata-manifest.json"]
+}

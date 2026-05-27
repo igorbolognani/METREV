@@ -9,7 +9,7 @@ WORKDIR /workspace
 
 COPY . .
 
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 EXPOSE 4000
 

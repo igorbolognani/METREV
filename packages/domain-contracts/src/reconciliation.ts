@@ -93,6 +93,27 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
       'apps/web-ui/src/components/evaluation-cockpit.tsx#EvaluationCockpit',
     note: 'UI rendering and runtime validation must fail if any canonical output section drifts.',
   },
+  {
+    concern: 'evidence_quality_audit',
+    domain_source:
+      'bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml',
+    contract_source:
+      'bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml',
+    runtime_path:
+      'evidence_quality_report.coverage_matrix | evidence_quality_report.gaps | evidence_quality_report.readiness_scores',
+    ui_surface: 'apps/web-ui/src/app/evidence/quality/page.tsx',
+    note: 'Evidence coverage, gaps, recency, outliers, readiness, and funnel metrics must stay contract-validated before display or confidence use.',
+  },
+  {
+    concern: 'evidence_discovery_targets',
+    domain_source:
+      'bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml',
+    contract_source:
+      'bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml',
+    runtime_path: 'evidence_discovery_target | evidence_acquisition_attempt',
+    ui_surface: 'apps/web-ui/src/app/admin/page.tsx',
+    note: 'Discovery and acquisition may stage upstream evidence candidates but must not bypass review, canonicalization, or admissibility gates.',
+  },
 ];
 
 export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
@@ -159,6 +180,24 @@ export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
     runtime_consumer:
       'packages/domain-contracts/src/loaders.ts#loadContractSensitivityPolicy',
     note: 'Sensitivity framing remains loaded from the hardened contract boundary.',
+  },
+  {
+    concern: 'contract_evidence_quality_audit_policy',
+    file_path:
+      'bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml',
+    authority_role: 'runtime_loaded',
+    runtime_consumer:
+      'packages/domain-contracts/src/loaders.ts#loadEvidenceQualityAuditPolicy',
+    note: 'Evidence audit thresholds and readiness policy are loaded from the hardened contract boundary.',
+  },
+  {
+    concern: 'contract_evidence_discovery_policy',
+    file_path:
+      'bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml',
+    authority_role: 'runtime_loaded',
+    runtime_consumer:
+      'packages/domain-contracts/src/loaders.ts#loadEvidenceDiscoveryPolicy',
+    note: 'Evidence discovery query and acquisition policies are loaded from the hardened contract boundary.',
   },
   {
     concern: 'contract_output_definition',

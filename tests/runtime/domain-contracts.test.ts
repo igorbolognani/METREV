@@ -7,8 +7,11 @@ import {
   createRawInputFromDomainTemplate,
   loadContractInputDefinition,
   loadContractOutputDefinition,
+  loadEvidenceDiscoveryPolicy,
+  loadEvidenceQualityAuditPolicy,
   normalizeCaseInput,
   normalizedCaseInputSchema,
+  primaryObjectiveSchema,
   rawCaseInputSchema,
   runtimeAuthorityDecision,
   runtimeFutureFacingReferenceFiles,
@@ -222,6 +225,32 @@ describe('domain-contract runtime alignment', () => {
     );
     expect(canonicalOutputSections).toHaveLength(
       contractOutput.normalized_decision_output.required_sections.length,
+    );
+  });
+
+  it('keeps evidence-intelligence policies aligned with canonical objectives', () => {
+    const auditPolicy = loadEvidenceQualityAuditPolicy();
+    const discoveryPolicy = loadEvidenceDiscoveryPolicy();
+    const primaryObjectives = new Set(primaryObjectiveSchema.options);
+
+    expect(
+      Object.keys(auditPolicy.primary_metrics_by_objective).sort(),
+    ).toEqual([...primaryObjectives].sort());
+    expect(discoveryPolicy.acquisition_policy.preferred_access_order).toEqual(
+      expect.arrayContaining([
+        'locally_imported_full_text',
+        'source_text_chunk',
+        'open_access_pdf',
+      ]),
+    );
+    expect(auditPolicy.funnel_stages).toEqual(
+      expect.arrayContaining([
+        'ingested',
+        'accepted',
+        'canonicalized',
+        'decision_ready',
+        'benchmark_aggregated',
+      ]),
     );
   });
 });

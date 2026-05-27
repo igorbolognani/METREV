@@ -5,26 +5,27 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import {
-    PrismaResearchRepository,
-    disconnectPrismaClient,
-    getPrismaClient,
+  PrismaResearchRepository,
+  createEvidenceAuditRepository,
+  disconnectPrismaClient,
+  getPrismaClient,
 } from '@metrev/database';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    getDefaultResearchColumns,
-    runDeterministicResearchExtraction,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  getDefaultResearchColumns,
+  runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
 import {
-    normalizeOpenAlexWork,
-    persistNormalizedEntries,
+  normalizeOpenAlexWork,
+  persistNormalizedEntries,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 const caseId = 'CASE-POSTGRES-SUITE';
@@ -39,6 +40,7 @@ const ingestionCatalogSourceKey = 'https://openalex.org/WPOSTGRESINGESTION';
 const initialIngestionRunId = 'postgres-ingestion-run-1';
 const reingestionRunId = 'postgres-ingestion-run-2';
 const legacyCatalogSourceKey = 'postgres-suite-curated-legacy-source';
+const acquisitionSourceKey = 'postgres-suite-acquisition-source';
 const researchSourceKey = 'postgres-suite-research-source';
 const researchQuery = 'postgres suite research fixture';
 const unmatchedResearchQuery = 'zzqvnomatchfixturetoken';
@@ -121,6 +123,12 @@ describe('postgres-backed persistence flow', () => {
         sourceKey: legacyCatalogSourceKey,
       },
     });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: acquisitionSourceKey,
+      },
+    });
     await prisma.researchReview.deleteMany({
       where: {
         query: {
@@ -170,6 +178,12 @@ describe('postgres-backed persistence flow', () => {
       where: {
         sourceType: 'CURATED_MANIFEST',
         sourceKey: legacyCatalogSourceKey,
+      },
+    });
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: acquisitionSourceKey,
       },
     });
     await prisma.researchReview.deleteMany({
@@ -1274,6 +1288,85 @@ describe('postgres-backed persistence flow', () => {
     } finally {
       await app.close();
     }
+  });
+
+  it('does not requeue full-text acquisition after a source already has an attempt', async () => {
+    const prisma = getPrismaClient();
+    const repository = createEvidenceAuditRepository();
+    await prisma.externalSourceRecord.deleteMany({
+      where: {
+        sourceType: 'OPENALEX',
+        sourceKey: acquisitionSourceKey,
+      },
+    });
+
+    const sourceRecord = await prisma.externalSourceRecord.create({
+      data: {
+        sourceType: 'OPENALEX',
+        sourceKey: acquisitionSourceKey,
+        title: 'Postgres suite acquisition retry source',
+        sourceCategory: 'scholarly_work',
+        sourceUrl: 'https://openalex.org/WPOSTGRESACQUISITION',
+        doi: '10.5555/postgres-suite-acquisition',
+        publisher: 'METREV Test Harness',
+        journal: 'Integration Verification Journal',
+        accessStatus: 'UNKNOWN',
+        publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+        asOf: new Date('2026-04-22T00:00:00.000Z'),
+        abstractText:
+          'Accepted source without persisted full text for acquisition retry regression coverage.',
+        rawPayload: {
+          fixture: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.externalEvidenceCatalogItem.create({
+      data: {
+        sourceRecordId: sourceRecord.id,
+        evidenceType: 'literature_evidence',
+        title: 'Accepted source requiring full-text acquisition',
+        summary:
+          'Accepted external evidence that needs full-text acquisition once.',
+        strengthLevel: 'moderate',
+        provenanceNote:
+          'Accepted through postgres acquisition regression fixture.',
+        reviewStatus: 'ACCEPTED',
+        sourceState: 'REVIEWED',
+        extractionStatus: 'needs_full_text',
+        applicabilityScope: {
+          test_fixture: true,
+        },
+        extractedClaims: [],
+        tags: ['postgres-suite', 'acquisition-retry'],
+        payload: {
+          fixture: true,
+        },
+      },
+      select: { id: true },
+    });
+
+    const beforeAttempt = await repository.getNeedsFullTextSourceRecords(5000);
+    expect(beforeAttempt.map((record) => record.source_record_id)).toContain(
+      sourceRecord.id,
+    );
+
+    await repository.createAcquisitionAttempt({
+      attempt_id: `postgres-suite-acquisition-attempt-${randomUUID()}`,
+      source_record_id: sourceRecord.id,
+      strategy: 'unpaywall',
+      status: 'failed',
+      found_url: null,
+      found_access_status: null,
+      failure_reason: 'fixture retry exhausted',
+      created_at: new Date().toISOString(),
+    });
+
+    const afterAttempt = await repository.getNeedsFullTextSourceRecords(5000);
+    expect(afterAttempt.map((record) => record.source_record_id)).not.toContain(
+      sourceRecord.id,
+    );
   });
 
   it('preserves analyst review posture and stable claim ids across re-ingestion', async () => {
