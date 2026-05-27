@@ -527,22 +527,288 @@ function buildNumericParameter(input: {
   };
 }
 
-function firstNumericMatch(
+const MAX_MEASUREMENT_CONTEXT_CHARS = 96;
+
+interface UnitVariant {
+  matchText: string;
+  requireBoundary?: boolean;
+  unit: string;
+}
+
+interface NumericMeasurementQuery {
+  labels: string[];
+  units: UnitVariant[];
+}
+
+function createUnitVariants(variants: UnitVariant[]): UnitVariant[] {
+  return [...variants].sort(
+    (left, right) => right.matchText.length - left.matchText.length,
+  );
+}
+
+const SURFACE_AREA_UNITS = createUnitVariants([
+  { matchText: 'm 2 / g', unit: 'm2/g' },
+  { matchText: 'm2/g', unit: 'm2/g' },
+  { matchText: 'm 2 g -1', unit: 'm2/g' },
+  { matchText: 'm2 g-1', unit: 'm2/g' },
+  { matchText: 'm2g-1', unit: 'm2/g' },
+  { matchText: 'cm 2', unit: 'cm2' },
+  { matchText: 'cm2', unit: 'cm2' },
+]);
+
+const CATALYST_LOADING_UNITS = createUnitVariants([
+  { matchText: 'mg / cm 2', unit: 'mg/cm2' },
+  { matchText: 'mg/cm2', unit: 'mg/cm2' },
+  { matchText: 'mg/cm 2', unit: 'mg/cm2' },
+  { matchText: 'mg cm -2', unit: 'mg/cm2' },
+  { matchText: 'mg cm-2', unit: 'mg/cm2' },
+  { matchText: 'mgcm-2', unit: 'mg/cm2' },
+]);
+
+const MEMBRANE_THICKNESS_UNITS = createUnitVariants([
+  { matchText: 'micrometers', unit: 'um' },
+  { matchText: 'micrometer', unit: 'um' },
+  { matchText: 'um', unit: 'um', requireBoundary: true },
+  { matchText: '\u00b5m', unit: 'um', requireBoundary: true },
+  { matchText: 'mm', unit: 'mm', requireBoundary: true },
+]);
+
+const STARTUP_TIME_UNITS = createUnitVariants([
+  { matchText: 'days', unit: 'days' },
+  { matchText: 'day', unit: 'day' },
+  { matchText: 'd', unit: 'd', requireBoundary: true },
+]);
+
+function isWhitespace(value: string | undefined): boolean {
+  return (
+    value === ' ' ||
+    value === '\n' ||
+    value === '\r' ||
+    value === '\t' ||
+    value === '\f' ||
+    value === '\v' ||
+    value === '\u00a0'
+  );
+}
+
+function isDigit(value: string | undefined): boolean {
+  return value !== undefined && value >= '0' && value <= '9';
+}
+
+function isAsciiLetterOrDigit(value: string | undefined): boolean {
+  if (value === undefined) {
+    return false;
+  }
+
+  return (
+    (value >= '0' && value <= '9') ||
+    (value >= 'A' && value <= 'Z') ||
+    (value >= 'a' && value <= 'z')
+  );
+}
+
+function skipWhitespace(text: string, index: number): number {
+  let cursor = index;
+  while (cursor < text.length && isWhitespace(text[cursor])) {
+    cursor += 1;
+  }
+
+  return cursor;
+}
+
+function readNumberAt(
   text: string,
-  patterns: RegExp[],
-): { unit: string; value: number } | null {
-  for (const pattern of patterns) {
-    const match = pattern.exec(text);
-    if (!match) {
+  index: number,
+): { end: number; value: number } | null {
+  let cursor = index;
+  let hasDigit = false;
+  let hasSeparator = false;
+
+  while (cursor < text.length) {
+    const current = text[cursor];
+
+    if (isDigit(current)) {
+      hasDigit = true;
+      cursor += 1;
       continue;
     }
 
-    const value = Number.parseFloat(match[1].replace(',', '.'));
-    if (Number.isFinite(value)) {
+    if (
+      (current === '.' || current === ',') &&
+      !hasSeparator &&
+      hasDigit &&
+      isDigit(text[cursor + 1])
+    ) {
+      hasSeparator = true;
+      cursor += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  if (!hasDigit) {
+    return null;
+  }
+
+  const value = Number.parseFloat(text.slice(index, cursor).replace(',', '.'));
+  return Number.isFinite(value) ? { end: cursor, value } : null;
+}
+
+function matchesUnitAt(
+  text: string,
+  index: number,
+  variant: UnitVariant,
+): number | null {
+  let textCursor = index;
+  let variantCursor = 0;
+
+  while (variantCursor < variant.matchText.length) {
+    const variantChar = variant.matchText[variantCursor];
+
+    if (isWhitespace(variantChar)) {
+      textCursor = skipWhitespace(text, textCursor);
+      variantCursor += 1;
+      continue;
+    }
+
+    if (
+      textCursor >= text.length ||
+      text[textCursor].toLowerCase() !== variantChar.toLowerCase()
+    ) {
+      return null;
+    }
+
+    textCursor += 1;
+    variantCursor += 1;
+  }
+
+  if (variant.requireBoundary && isAsciiLetterOrDigit(text[textCursor])) {
+    return null;
+  }
+
+  return textCursor;
+}
+
+function readUnitAt(
+  text: string,
+  index: number,
+  units: UnitVariant[],
+): { end: number; unit: string } | null {
+  for (const unitVariant of units) {
+    const end = matchesUnitAt(text, index, unitVariant);
+    if (end !== null) {
+      return { end, unit: unitVariant.unit };
+    }
+  }
+
+  return null;
+}
+
+function findFirstMeasurementInRange(
+  text: string,
+  startIndex: number,
+  endIndex: number,
+  units: UnitVariant[],
+): { end: number; unit: string; value: number } | null {
+  let cursor = startIndex;
+
+  while (cursor < endIndex) {
+    if (!isDigit(text[cursor])) {
+      cursor += 1;
+      continue;
+    }
+
+    const parsedNumber = readNumberAt(text, cursor);
+    if (!parsedNumber) {
+      cursor += 1;
+      continue;
+    }
+
+    const unitStart = skipWhitespace(text, parsedNumber.end);
+    const parsedUnit = readUnitAt(text, unitStart, units);
+    if (parsedUnit) {
       return {
-        value,
-        unit: match[2] ?? '',
+        end: parsedUnit.end,
+        unit: parsedUnit.unit,
+        value: parsedNumber.value,
       };
+    }
+
+    cursor = parsedNumber.end;
+  }
+
+  return null;
+}
+
+function findLastMeasurementInRange(
+  text: string,
+  startIndex: number,
+  endIndex: number,
+  units: UnitVariant[],
+): { end: number; unit: string; value: number } | null {
+  let cursor = startIndex;
+  let lastMatch: { end: number; unit: string; value: number } | null = null;
+
+  while (cursor < endIndex) {
+    const match = findFirstMeasurementInRange(text, cursor, endIndex, units);
+    if (!match) {
+      break;
+    }
+
+    lastMatch = match;
+    cursor = Math.max(match.end, cursor + 1);
+  }
+
+  return lastMatch;
+}
+
+function findNumericMeasurementNearLabels(
+  text: string,
+  query: NumericMeasurementQuery,
+): { unit: string; value: number } | null {
+  const lowerText = text.toLowerCase();
+
+  for (const label of query.labels) {
+    const lowerLabel = label.toLowerCase();
+    let searchFrom = 0;
+
+    while (searchFrom < lowerText.length) {
+      const labelIndex = lowerText.indexOf(lowerLabel, searchFrom);
+      if (labelIndex === -1) {
+        break;
+      }
+
+      const afterStart = labelIndex + label.length;
+      const afterEnd = Math.min(
+        text.length,
+        afterStart + MAX_MEASUREMENT_CONTEXT_CHARS,
+      );
+      const afterMatch = findFirstMeasurementInRange(
+        text,
+        afterStart,
+        afterEnd,
+        query.units,
+      );
+      if (afterMatch) {
+        return afterMatch;
+      }
+
+      const beforeStart = Math.max(
+        0,
+        labelIndex - MAX_MEASUREMENT_CONTEXT_CHARS,
+      );
+      const beforeMatch = findLastMeasurementInRange(
+        text,
+        beforeStart,
+        labelIndex,
+        query.units,
+      );
+      if (beforeMatch) {
+        return beforeMatch;
+      }
+
+      searchFrom = labelIndex + lowerLabel.length;
     }
   }
 
@@ -605,10 +871,10 @@ function buildScientificComponentParameters(input: {
   );
 
   const numericCandidates: ResearchExtractedParameter[] = [];
-  const surfaceArea = firstNumericMatch(input.text, [
-    /surface\s+area\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(m\s?2\s*\/\s*g|m\s?2\s*g\s?-?1|cm\s?2)/i,
-    /(\d+(?:[.,]\d+)?)\s*(m\s?2\s*\/\s*g|m\s?2\s*g\s?-?1|cm\s?2)\s+surface\s+area/i,
-  ]);
+  const surfaceArea = findNumericMeasurementNearLabels(input.text, {
+    labels: ['surface area'],
+    units: SURFACE_AREA_UNITS,
+  });
   if (surfaceArea) {
     numericCandidates.push(
       buildNumericParameter({
@@ -627,10 +893,10 @@ function buildScientificComponentParameters(input: {
     );
   }
 
-  const catalystLoading = firstNumericMatch(input.text, [
-    /catalyst\s+loading\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(mg\s*\/\s*cm\s?2|mg\s*cm\s?-?2)/i,
-    /(\d+(?:[.,]\d+)?)\s*(mg\s*\/\s*cm\s?2|mg\s*cm\s?-?2)\s+catalyst\s+loading/i,
-  ]);
+  const catalystLoading = findNumericMeasurementNearLabels(input.text, {
+    labels: ['catalyst loading'],
+    units: CATALYST_LOADING_UNITS,
+  });
   if (catalystLoading) {
     numericCandidates.push(
       buildNumericParameter({
@@ -649,10 +915,10 @@ function buildScientificComponentParameters(input: {
     );
   }
 
-  const membraneThickness = firstNumericMatch(input.text, [
-    /membrane\s+thickness\s+(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(um|\u00b5m|micrometers?|mm)/i,
-    /(\d+(?:[.,]\d+)?)\s*(um|\u00b5m|micrometers?|mm)\s+membrane\s+thickness/i,
-  ]);
+  const membraneThickness = findNumericMeasurementNearLabels(input.text, {
+    labels: ['membrane thickness'],
+    units: MEMBRANE_THICKNESS_UNITS,
+  });
   if (membraneThickness) {
     const unit = membraneThickness.unit.toLowerCase();
     const normalizedValue =
@@ -677,10 +943,10 @@ function buildScientificComponentParameters(input: {
     );
   }
 
-  const startupTime = firstNumericMatch(input.text, [
-    /(?:biofilm\s+)?startup\s+(?:time\s+)?(?:of\s+)?(\d+(?:[.,]\d+)?)\s*(d|day|days)/i,
-    /(\d+(?:[.,]\d+)?)\s*(d|day|days)\s+(?:biofilm\s+)?startup/i,
-  ]);
+  const startupTime = findNumericMeasurementNearLabels(input.text, {
+    labels: ['biofilm startup', 'startup time', 'startup'],
+    units: STARTUP_TIME_UNITS,
+  });
   if (startupTime) {
     numericCandidates.push(
       buildNumericParameter({

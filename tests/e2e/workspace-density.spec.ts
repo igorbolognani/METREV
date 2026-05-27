@@ -41,7 +41,7 @@ async function signInAsAnalyst(page: import('@playwright/test').Page) {
   await page.getByLabel('Email').fill(analystEmail);
   await page.getByLabel('Password').fill(analystPassword);
   await Promise.all([
-    page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 15_000 }),
+    page.waitForURL(/\/home(?:\?.*)?$/, { timeout: 15_000 }),
     page.getByRole('button', { name: 'Sign in' }).click(),
   ]);
 

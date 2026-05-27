@@ -67,7 +67,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     firstDialogTitle: 'Configure stack',
     firstDialogSnippet:
       'The workflow begins with explicit reactor, electrodes, separator, biology, auxiliaries',
-    nextLinkText: 'Open dashboard',
+    nextLinkText: 'Open workspace',
   },
 ];
 

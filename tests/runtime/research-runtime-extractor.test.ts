@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
 import {
-    executeResearchExtraction,
-    findDefaultResearchColumn,
-    runDeterministicResearchExtraction,
+  executeResearchExtraction,
+  findDefaultResearchColumn,
+  runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 
 import incompletePaperFixture from '../fixtures/research/incomplete-paper.json';
@@ -218,6 +218,59 @@ describe('research runtime extractor', () => {
         passed: true,
         table_count: 1,
       }),
+    );
+  });
+
+  it('extracts component measurements when values appear before labels', () => {
+    const column = findDefaultResearchColumn('performance_metrics');
+    if (!column) {
+      throw new Error('performance_metrics default column not registered');
+    }
+
+    const paper = researchPaperMetadataSchema.parse({
+      ...incompletePaperFixture,
+      abstract_text:
+        'A microbial fuel cell used carbon felt anodes with 1200 m2/g surface area, a Nafion membrane with 180 um membrane thickness, 0.5 mg/cm2 catalyst loading, and 12 days biofilm startup. Power density reached 950 mW/m2 with COD removal of 76%.',
+    });
+
+    const result = runDeterministicResearchExtraction({
+      reviewId: 'review-runtime-before-label-measurements',
+      paper,
+      column,
+      claims: [],
+    });
+
+    expect(result.status).toBe('valid');
+    const answer = result.answer as {
+      component_parameters?: Array<{
+        normalized_unit: string | null;
+        normalized_value: number | null;
+        parameter_key: string;
+      }>;
+    };
+    expect(answer.component_parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          parameter_key: 'component_parameters.anode_surface_area',
+          normalized_unit: 'm2/g',
+          normalized_value: 1200,
+        }),
+        expect.objectContaining({
+          parameter_key: 'component_parameters.membrane_separator_thickness',
+          normalized_unit: 'm',
+          normalized_value: 0.00018,
+        }),
+        expect.objectContaining({
+          parameter_key: 'component_parameters.catalyst_loading',
+          normalized_unit: 'mg/cm2',
+          normalized_value: 0.5,
+        }),
+        expect.objectContaining({
+          parameter_key: 'component_parameters.biofilm_startup_time',
+          normalized_unit: 'd',
+          normalized_value: 12,
+        }),
+      ]),
     );
   });
 

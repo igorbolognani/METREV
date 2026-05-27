@@ -3,11 +3,11 @@ import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 import {
-    analystEmail,
-    analystPassword,
-    playwrightApiBaseUrl,
-    seededResearchPaperTitle,
-    seededResearchReviewFixtures,
+  analystEmail,
+  analystPassword,
+  playwrightApiBaseUrl,
+  seededResearchPaperTitle,
+  seededResearchReviewFixtures,
 } from './support/local-runtime';
 
 function playwrightDatabaseEnv(): NodeJS.ProcessEnv {
@@ -27,11 +27,11 @@ async function signInAsAnalyst(page: import('@playwright/test').Page) {
   await page.getByLabel('Email').fill(analystEmail);
   await page.getByLabel('Password').fill(analystPassword);
   await Promise.all([
-    page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 15_000 }),
+    page.waitForURL(/\/home(?:\?.*)?$/, { timeout: 15_000 }),
     page.getByRole('button', { name: 'Sign in' }).click(),
   ]);
 
-  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  await expect(page).toHaveURL(/\/home(?:\?.*)?$/);
 }
 
 test.describe('seeded research review fixtures', () => {
