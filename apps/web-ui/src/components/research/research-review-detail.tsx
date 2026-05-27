@@ -175,13 +175,18 @@ function formatResearchFieldValue(key: string, value: number) {
 }
 
 function decodeHtmlEntities(value: string) {
-  return value
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'");
+  const entityMap: Record<string, string> = {
+    '#39': "'",
+    amp: '&',
+    gt: '>',
+    lt: '<',
+    nbsp: ' ',
+    quot: '"',
+  };
+
+  return value.replace(/&(#39|amp|gt|lt|nbsp|quot);/gi, (entity, key) => {
+    return entityMap[String(key).toLowerCase()] ?? entity;
+  });
 }
 
 function sanitizeVisibleText(value: unknown) {
