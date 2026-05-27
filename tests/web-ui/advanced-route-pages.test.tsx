@@ -95,16 +95,24 @@ describe('advanced route pages', () => {
   });
 
   it('redirects legacy evidence and research routes to admin intelligence pages', async () => {
-    await expect(EvidenceWorkspacePage()).rejects.toMatchObject({
+    await expect(
+      EvidenceWorkspacePage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
       digest: expect.stringContaining('/admin/intelligence/evidence/explorer'),
     });
-    await expect(EvidenceQualityPage()).rejects.toMatchObject({
+    await expect(
+      EvidenceQualityPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
       digest: expect.stringContaining('/admin/intelligence/evidence/quality'),
     });
-    await expect(EvidenceReviewPage()).rejects.toMatchObject({
+    await expect(
+      EvidenceReviewPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
       digest: expect.stringContaining('/admin/intelligence/evidence/review'),
     });
-    await expect(ResearchWorkspacePage()).rejects.toMatchObject({
+    await expect(
+      ResearchWorkspacePage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
       digest: expect.stringContaining('/admin/intelligence/research/reviews'),
     });
   });

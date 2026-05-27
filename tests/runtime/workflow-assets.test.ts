@@ -134,7 +134,7 @@ describe('root workflow assets', () => {
       'node scripts/run-local-validation.mjs --smoke-only',
     );
     expect(packageJson.scripts?.['validate:db']).toBe(
-      'pnpm run db:migrate:deploy && pnpm run test:db',
+      'pnpm run db:migrate:deploy && pnpm run db:seed && pnpm run test:db',
     );
   });
 
