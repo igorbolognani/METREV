@@ -879,7 +879,7 @@ describe('research review workspace UI', () => {
     review.papers[0] = researchPaperMetadataSchema.parse({
       ...review.papers[0],
       abstract_text:
-        '<h4>Background</h4>This study uses &lt;i&gt;E. coli&lt;/i&gt; in wastewater treatment.',
+        '<h4>Background</h4>This study uses &lt;i&gt;E. coli&lt;/i&gt; in wastewater treatment. Encoded &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt; stays encoded.',
     });
 
     review.extraction_results = review.extraction_results.map((result) =>
@@ -918,6 +918,9 @@ describe('research review workspace UI', () => {
     expect(tableHtml).not.toContain('jats:p');
     expect(papersHtml).toContain(
       'Background This study uses E. coli in wastewater treatment.',
+    );
+    expect(papersHtml).toContain(
+      'Encoded &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt; stays encoded.',
     );
     expect(papersHtml).not.toContain('&lt;i&gt;');
     expect(papersHtml).not.toContain('&lt;h4&gt;');
