@@ -1,13 +1,32 @@
 import { z } from 'zod';
 
-export const technologyFamilySchema = z.enum([
+export const activeTechnologyFamilyValues = [
   'microbial_fuel_cell',
   'microbial_electrolysis_cell',
+  'electrochemical_biosensor',
+] as const;
+
+export const activeTechnologyFamilySchema = z.enum(
+  activeTechnologyFamilyValues,
+);
+
+/** Includes historical and normalization sentinel values for stored-case reads. */
+export const technologyFamilySchema = z.enum([
+  ...activeTechnologyFamilyValues,
   'microbial_electrochemical_technology',
+  'unclassified',
 ]);
 
-export const primaryObjectiveSchema = z.enum([
+export const activePrimaryObjectiveValues = [
   'wastewater_treatment',
+  'biosensing',
+] as const;
+
+export const primaryObjectiveSchema = z.enum(activePrimaryObjectiveValues);
+
+/** Historical values are accepted only when reading stored cases and normalized before active evaluation. */
+export const primaryObjectiveReadSchema = z.enum([
+  ...activePrimaryObjectiveValues,
   'hydrogen_recovery',
   'nitrogen_recovery',
   'sensing',
@@ -365,7 +384,7 @@ export const businessContextSchema = flexibleObjectSchema.extend({
   priorities: z.array(z.string()).optional(),
   hard_constraints: z.array(z.string()).optional(),
   local_energy_cost_note: z.string().optional(),
-  primary_objective: primaryObjectiveSchema.optional(),
+  primary_objective: primaryObjectiveReadSchema.optional(),
 });
 
 export const technologyContextSchema = flexibleObjectSchema.extend({
@@ -379,6 +398,24 @@ export const technologyContextSchema = flexibleObjectSchema.extend({
   membrane_presence: z.string().optional(),
 });
 
+export const scientificModelParameterSchema = z.object({
+  value: z.number().finite(),
+  unit: z.string().trim().min(1),
+  source_kind: z.enum([
+    'measured',
+    'literature',
+    'default',
+    'assumption',
+    'test_fixture',
+  ]),
+  source_ref: z.string().trim().min(1),
+  original_value: z.number().finite().optional(),
+  original_unit: z.string().trim().min(1).optional(),
+  normalization_rule_id: z.string().trim().min(1).optional(),
+  uncertainty: z.number().nonnegative().optional(),
+  uncertainty_unit: z.string().trim().min(1).optional(),
+});
+
 export const feedAndOperationSchema = flexibleObjectSchema.extend({
   influent_type: z.string().optional(),
   substrate_profile: z.string().optional(),
@@ -389,7 +426,187 @@ export const feedAndOperationSchema = flexibleObjectSchema.extend({
   hydraulic_retention_time_h: z.number().optional(),
   salinity_or_conductivity_context: z.string().optional(),
   operating_regime: z.string().optional(),
+  water_quality: z
+    .object({
+      bod5_mg_o2_l: scientificModelParameterSchema.optional(),
+      cod_mg_cod_l: scientificModelParameterSchema.optional(),
+      tss_mg_l: scientificModelParameterSchema.optional(),
+      alkalinity_mol_m3: scientificModelParameterSchema.optional(),
+      total_nitrogen_mg_n_l: scientificModelParameterSchema.optional(),
+      ammonium_mg_n_l: scientificModelParameterSchema.optional(),
+      nitrate_mg_n_l: scientificModelParameterSchema.optional(),
+      total_phosphorus_mg_p_l: scientificModelParameterSchema.optional(),
+      sulfate_mg_s_l: scientificModelParameterSchema.optional(),
+      chloride_mg_l: scientificModelParameterSchema.optional(),
+      salinity_kg_m3: scientificModelParameterSchema.optional(),
+      turbidity_ntu: scientificModelParameterSchema.optional(),
+      volatile_fatty_acids_mol_m3: scientificModelParameterSchema.optional(),
+      dissolved_oxygen_mg_l: scientificModelParameterSchema.optional(),
+      temperature_c: scientificModelParameterSchema.optional(),
+      ph: scientificModelParameterSchema.optional(),
+      conductivity_ms_per_cm: scientificModelParameterSchema.optional(),
+      sample_method: z.string().optional(),
+      sampling_point: z.string().optional(),
+      filtered_or_total: z
+        .enum(['filtered', 'total', 'not_applicable'])
+        .optional(),
+    })
+    .optional(),
 });
+
+const modelParameter = scientificModelParameterSchema;
+
+/**
+ * Isothermal 0D coupled reactor input for an MFC or MEC.
+ * Quantities use SI units and carry their evidence reference at the point of use.
+ */
+export const mechanisticModelInputSchema = z.object({
+  model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
+  system_type: z.enum(['MFC', 'MEC']),
+  geometry: z.object({
+    anode_chamber_volume_m3: modelParameter,
+    cathode_chamber_volume_m3: modelParameter,
+    anode_area_m2: modelParameter,
+    cathode_area_m2: modelParameter,
+    electrode_gap_m: modelParameter,
+    membrane_present: z.boolean(),
+    membrane_area_m2: modelParameter.optional(),
+    membrane_thickness_m: modelParameter.optional(),
+    membrane_conductivity_s_m: modelParameter.optional(),
+  }),
+  materials: z.object({
+    anode_material_family: z.string().trim().min(1),
+    anode_material_source_ref: z.string().trim().min(1),
+    cathode_material_family: z.string().trim().min(1),
+    cathode_material_source_ref: z.string().trim().min(1),
+    separator_material_family: z.string().trim().min(1).optional(),
+    separator_material_source_ref: z.string().trim().min(1).optional(),
+    anode_electroactive_area_factor: modelParameter,
+    cathode_electroactive_area_factor: modelParameter,
+    biofilm_electroactive_fraction: modelParameter,
+  }),
+  operation: z.object({
+    flow_m3_s: modelParameter,
+    influent_cod_kg_m3: modelParameter,
+    temperature_k: modelParameter,
+    influent_ph: modelParameter,
+    initial_ph_anode: modelParameter,
+    initial_ph_cathode: modelParameter,
+    initial_cod_kg_m3: modelParameter,
+    initial_biomass_kg_m3: modelParameter,
+    biomass_washout_rate_s_inv: modelParameter,
+    initial_dissolved_oxygen_kg_m3: modelParameter.optional(),
+    oxygen_saturation_kg_m3: modelParameter.optional(),
+    electrolyte_conductivity_s_m: modelParameter,
+    auxiliary_power_w: modelParameter,
+    duration_s: modelParameter,
+    time_step_s: modelParameter,
+  }),
+  biology: z.object({
+    max_specific_cod_uptake_kg_cod_kg_biomass_s: modelParameter,
+    half_saturation_cod_kg_m3: modelParameter,
+    biomass_yield_kg_biomass_kg_cod: modelParameter,
+    decay_rate_s_inv: modelParameter,
+    coulombic_efficiency: modelParameter,
+    ph_optimum: modelParameter,
+    ph_tolerance: modelParameter,
+    activation_energy_j_mol: modelParameter,
+    reference_temperature_k: modelParameter,
+    buffer_capacity_anode_mol_m3_ph: modelParameter,
+    buffer_capacity_cathode_mol_m3_ph: modelParameter,
+    proton_transfer_coefficient_mol_s_ph: modelParameter,
+  }),
+  electrochemistry: z.object({
+    cathode_reaction: z.enum(['oxygen_reduction', 'hydrogen_evolution']),
+    reversible_cell_voltage_v: modelParameter,
+    anode_exchange_current_density_a_m2: modelParameter,
+    cathode_exchange_current_density_a_m2: modelParameter,
+    anode_charge_transfer_coefficient: modelParameter,
+    cathode_charge_transfer_coefficient: modelParameter,
+    oxygen_mass_transfer_coefficient_m_s: modelParameter.optional(),
+    contact_resistance_ohm: modelParameter,
+    external_load_ohm: modelParameter.optional(),
+    applied_voltage_v: modelParameter.optional(),
+    hydrogen_faraday_efficiency: modelParameter.optional(),
+    hydrogen_capture_fraction: modelParameter.optional(),
+  }),
+});
+
+/** Draft input shape supports incremental entry; the solver validates the full shape before execution. */
+export const mechanisticModelDraftInputSchema = z.object({
+  model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
+  system_type: z.enum(['MFC', 'MEC']),
+  geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(),
+  materials: mechanisticModelInputSchema.shape.materials.partial().optional(),
+  operation: mechanisticModelInputSchema.shape.operation.partial().optional(),
+  biology: mechanisticModelInputSchema.shape.biology.partial().optional(),
+  electrochemistry: mechanisticModelInputSchema.shape.electrochemistry
+    .partial()
+    .optional(),
+});
+
+export const biosensorConfigurationSchema = z.object({
+  deployment_mode: z.enum(['standalone', 'mfc_integrated', 'mec_integrated']),
+  power_source: z.enum(['external', 'mfc_harvested', 'mec_power_bus']),
+  analyte_id: z.string().trim().min(1),
+  measurand: z.string().trim().min(1),
+  concentration_unit: z.string().trim().min(1),
+  matrix: z.string().trim().min(1),
+  recognition_element: z.string().trim().min(1),
+  working_electrode_material: z.string().trim().min(1),
+  reference_electrode_material: z.string().trim().min(1),
+  counter_electrode_material: z.string().trim().min(1),
+  electrode_material_source_ref: z.string().trim().min(1),
+  electrode_immobilization_method: z.string().trim().min(1),
+  electrode_coating_or_membrane: z.string().trim().min(1),
+  electron_transfer_mediator: z.string().trim().min(1).optional(),
+  working_electrode_area_m2: modelParameter,
+  biorecognition_loading_mg_cm2: modelParameter.optional(),
+  ionic_strength_mol_m3: modelParameter,
+  transduction_mode: z.enum(['amperometric', 'potentiometric', 'impedimetric']),
+  concentration: modelParameter,
+  temperature_k: modelParameter,
+  ph: modelParameter,
+  calibration: z.object({
+    model: z.enum(['linear', 'langmuir', 'michaelis_menten']),
+    sensitivity_a_per_unit: modelParameter.optional(),
+    intercept_a: modelParameter.optional(),
+    maximum_current_a: modelParameter.optional(),
+    half_saturation_concentration: modelParameter.optional(),
+    calibration_date: z.string().trim().min(1),
+    reference_method: z.string().trim().min(1),
+    range_min: modelParameter,
+    range_max: modelParameter,
+  }),
+  analytical_performance: z.object({
+    lod: modelParameter,
+    loq: modelParameter,
+    response_time_s: modelParameter,
+    recovery_time_s: modelParameter,
+    noise_std_a: modelParameter,
+    drift_a_per_day: modelParameter,
+    repeatability_cv_pct: modelParameter,
+    accuracy_pct: modelParameter,
+    selectivity_pct: modelParameter,
+    interferences: z.array(z.string().trim().min(1)).default([]),
+    calibration_r2: modelParameter,
+    replicate_count: modelParameter,
+  }),
+  power_consumption_w: modelParameter,
+  power_available_w: modelParameter,
+});
+
+export const biosensorConfigurationDraftSchema = biosensorConfigurationSchema
+  .extend({
+    calibration: biosensorConfigurationSchema.shape.calibration
+      .partial()
+      .optional(),
+    analytical_performance:
+      biosensorConfigurationSchema.shape.analytical_performance
+        .partial()
+        .optional(),
+  })
+  .partial();
 
 const reactorArchitectureSchema = flexibleObjectSchema.extend({
   architecture_type: z.string().default('needs_classification'),
@@ -435,6 +652,7 @@ const sensorsAndAnalyticsSchema = flexibleObjectSchema.extend({
   data_quality: z.string().default('medium'),
   voltage_current_logging: z.string().default('unknown'),
   water_quality_coverage: z.string().default('unknown'),
+  biosensor: biosensorConfigurationDraftSchema.optional(),
 });
 
 const operationalBiologySchema = flexibleObjectSchema.extend({
@@ -497,6 +715,7 @@ export const rawCaseInputSchema = z.object({
   business_context: businessContextSchema.optional(),
   technology_context: technologyContextSchema.optional(),
   feed_and_operation: feedAndOperationSchema.optional(),
+  mechanistic_model: mechanisticModelDraftInputSchema.optional(),
   stack_blocks: z.object({}).catchall(flexibleObjectSchema).optional(),
   cross_cutting_layers: crossCuttingLayersSchema.partial().optional(),
   measured_metrics: z.record(z.string(), z.unknown()).optional(),
@@ -514,10 +733,11 @@ export const normalizedCaseInputSchema = z.object({
   case_id: z.string().min(1),
   technology_family: technologyFamilySchema,
   architecture_family: z.string().min(1),
-  primary_objective: primaryObjectiveSchema,
+  primary_objective: primaryObjectiveReadSchema,
   business_context: businessContextSchema.default({}),
   technology_context: technologyContextSchema.default({}),
   feed_and_operation: feedAndOperationSchema.default({}),
+  mechanistic_model: mechanisticModelDraftInputSchema.optional(),
   stack_blocks: stackBlocksSchema,
   cross_cutting_layers: crossCuttingLayersSchema,
   measured_metrics: z.record(z.string(), z.unknown()).default({}),
@@ -679,8 +899,8 @@ export const simulationEnrichmentSchema = z.object({
 export const evidenceDecisionContextSystemTypeSchema = z.enum([
   'MFC',
   'MEC',
-  'MET',
-  'BES',
+  'BIOSENSOR',
+  'UNCLASSIFIED',
 ]);
 
 export const evidenceDecisionContextQuerySchema = z.object({
@@ -883,7 +1103,7 @@ export const evaluationSummarySchema = z.object({
   created_at: z.string().min(1),
   confidence_level: confidenceLevelSchema,
   technology_family: technologyFamilySchema,
-  primary_objective: primaryObjectiveSchema,
+  primary_objective: primaryObjectiveReadSchema,
   summary: z.string().min(1),
   narrative_available: z.boolean(),
   simulation_summary: simulationSummarySchema.optional(),
@@ -919,7 +1139,7 @@ export const caseSnapshotSchema = z.object({
   case_id: z.string().min(1),
   technology_family: technologyFamilySchema,
   architecture_family: z.string().min(1),
-  primary_objective: primaryObjectiveSchema,
+  primary_objective: primaryObjectiveReadSchema,
   raw_intake_snapshot: rawCaseInputSchema,
   normalized_case: normalizedCaseInputSchema,
   defaults_used: z.array(z.string()),
@@ -1299,7 +1519,7 @@ export const acceptedEvidenceReadinessSummarySchema = z.object({
 export const readinessScoreSchema = z.object({
   case_archetype: z.string().min(1),
   technology_family: technologyFamilySchema,
-  primary_objective: primaryObjectiveSchema,
+  primary_objective: primaryObjectiveReadSchema,
   readiness_level: evidenceReadinessLevelSchema.exclude(['no_audit']),
   primary_metrics_coverage: z.number().int().nonnegative(),
   material_comparison_count: z.number().int().nonnegative(),
@@ -1972,6 +2192,19 @@ export type PrimaryObjective = z.infer<typeof primaryObjectiveSchema>;
 export type SupplierContext = z.infer<typeof supplierContextSchema>;
 export type RawEvidenceRecord = z.infer<typeof rawEvidenceRecordSchema>;
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
+export type ScientificModelParameter = z.infer<
+  typeof scientificModelParameterSchema
+>;
+export type MechanisticModelInput = z.infer<typeof mechanisticModelInputSchema>;
+export type MechanisticModelDraftInput = z.infer<
+  typeof mechanisticModelDraftInputSchema
+>;
+export type BiosensorConfiguration = z.infer<
+  typeof biosensorConfigurationSchema
+>;
+export type BiosensorConfigurationDraft = z.infer<
+  typeof biosensorConfigurationDraftSchema
+>;
 export type NormalizedCaseInput = z.infer<typeof normalizedCaseInputSchema>;
 export type RecommendationRecord = z.infer<typeof recommendationRecordSchema>;
 export type DecisionOutput = z.infer<typeof decisionOutputSchema>;

@@ -40,6 +40,14 @@ const manifestGroups = [
     test: (filePath) => filePath === 'packages/electrochem-models/src/index.ts',
   },
   {
+    key: 'mechanisticModelSource',
+    label: 'packages/electrochem-models/src model implementations',
+    test: (filePath) =>
+      filePath.startsWith('packages/electrochem-models/src/') &&
+      filePath.endsWith('.ts') &&
+      filePath !== 'packages/electrochem-models/src/index.ts',
+  },
+  {
     key: 'researchIntelligence',
     label: 'packages/research-intelligence/src/**/*.ts',
     test: (filePath) =>
@@ -102,6 +110,34 @@ const manifestGroups = [
     label: 'packages/utils/src/**/*.ts',
     test: (filePath) =>
       filePath.startsWith('packages/utils/src/') && filePath.endsWith('.ts'),
+  },
+  {
+    key: 'designSystemSource',
+    label: 'packages/design-system/src/**/*.{ts,tsx}',
+    test: (filePath) =>
+      filePath.startsWith('packages/design-system/src/') &&
+      (filePath.endsWith('.ts') || filePath.endsWith('.tsx')),
+  },
+  {
+    key: 'documentIntelligenceSource',
+    label: 'packages/document-intelligence/src/**/*.ts',
+    test: (filePath) =>
+      filePath.startsWith('packages/document-intelligence/src/') &&
+      filePath.endsWith('.ts'),
+  },
+  {
+    key: 'evidenceAuditSource',
+    label: 'packages/evidence-audit/src/**/*.ts',
+    test: (filePath) =>
+      filePath.startsWith('packages/evidence-audit/src/') &&
+      filePath.endsWith('.ts'),
+  },
+  {
+    key: 'evidenceDiscoverySource',
+    label: 'packages/evidence-discovery/src/**/*.ts',
+    test: (filePath) =>
+      filePath.startsWith('packages/evidence-discovery/src/') &&
+      filePath.endsWith('.ts'),
   },
   {
     key: 'apiServerSource',
@@ -1712,6 +1748,7 @@ function sourceFilesForCoverageComparison(manifest) {
     ...manifest.domainContracts,
     ...manifest.ruleEngine,
     ...manifest.electrochemModels,
+    ...manifest.mechanisticModelSource,
     ...manifest.researchIntelligence,
     ...manifest.prismaSchema,
     ...manifest.databaseMigrations,
@@ -1722,6 +1759,10 @@ function sourceFilesForCoverageComparison(manifest) {
     ...manifest.telemetrySource,
     ...manifest.llmAdapterSource,
     ...manifest.utilsSource,
+    ...manifest.designSystemSource,
+    ...manifest.documentIntelligenceSource,
+    ...manifest.evidenceAuditSource,
+    ...manifest.evidenceDiscoverySource,
     ...manifest.apiServerSource,
     ...manifest.researchWorkerSource,
     ...manifest.webUiSource,
@@ -1733,7 +1774,10 @@ function packageImportCoverageGroups(manifest) {
   return new Map([
     ['@metrev/domain-contracts', manifest.domainContracts],
     ['@metrev/rule-engine', manifest.ruleEngine],
-    ['@metrev/electrochem-models', manifest.electrochemModels],
+    [
+      '@metrev/electrochem-models',
+      [...manifest.electrochemModels, ...manifest.mechanisticModelSource],
+    ],
     ['@metrev/research-intelligence', manifest.researchIntelligence],
     ['@metrev/database', manifest.databaseSource],
     ['@metrev/auth', manifest.authSource],
@@ -1741,6 +1785,10 @@ function packageImportCoverageGroups(manifest) {
     ['@metrev/telemetry', manifest.telemetrySource],
     ['@metrev/llm-adapter', manifest.llmAdapterSource],
     ['@metrev/utils', manifest.utilsSource],
+    ['@metrev/design-system', manifest.designSystemSource],
+    ['@metrev/document-intelligence', manifest.documentIntelligenceSource],
+    ['@metrev/evidence-audit', manifest.evidenceAuditSource],
+    ['@metrev/evidence-discovery', manifest.evidenceDiscoverySource],
   ]);
 }
 
@@ -2196,6 +2244,9 @@ function renderElectrochemModelsSection(manifest) {
         ),
       ].filter(Boolean),
     ),
+    ...manifest.mechanisticModelSource.map((sourcePath) =>
+      renderTypeScriptFileSection(sourcePath),
+    ),
   ].join('\n');
 }
 
@@ -2258,6 +2309,16 @@ function renderRuntimeSupportPackagesSection(manifest) {
     ['packages/telemetry/src/**/*.ts', manifest.telemetrySource],
     ['packages/llm-adapter/src/**/*.ts', manifest.llmAdapterSource],
     ['packages/utils/src/**/*.ts', manifest.utilsSource],
+    ['packages/design-system/src/**/*.{ts,tsx}', manifest.designSystemSource],
+    [
+      'packages/document-intelligence/src/**/*.ts',
+      manifest.documentIntelligenceSource,
+    ],
+    ['packages/evidence-audit/src/**/*.ts', manifest.evidenceAuditSource],
+    [
+      'packages/evidence-discovery/src/**/*.ts',
+      manifest.evidenceDiscoverySource,
+    ],
   ];
 
   return [

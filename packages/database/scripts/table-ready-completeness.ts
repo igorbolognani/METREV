@@ -76,22 +76,17 @@ export type TechnicalCompletenessAssessment = {
 export const TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES = [
   'MFC',
   'MEC',
-  'MET',
-  'BES',
+  'electrochemical_biosensor',
 ] as const;
 
 const DOMAIN_TERMS = [
-  'bioelectrochemical',
-  'bio-electrochemical',
   'microbial fuel cell',
   'microbial electrolysis',
-  'microbial electrosynthesis',
-  'microbial desalination cell',
-  'electromethanogenesis',
-  'microbial electrochemical',
+  'electrochemical biosensor',
+  'bioelectrochemical sensor',
   'mfc',
   'mec',
-  'bes',
+  'biosensor',
 ];
 
 const BROAD_REVIEW_TERMS = [
@@ -118,14 +113,17 @@ const REACTOR_MATERIAL_TERMS = [
 ];
 
 const PERFORMANCE_METRIC_TERMS = [
+  'amperometric',
+  'biosensor',
   'cod',
   'coulombic',
   'current',
   'hydrogen',
-  'methane',
+  'lod',
+  'loq',
   'power',
-  'recovery',
   'removal',
+  'signal',
   'voltage',
 ];
 

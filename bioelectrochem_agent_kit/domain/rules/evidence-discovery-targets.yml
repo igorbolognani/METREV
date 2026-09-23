@@ -36,9 +36,10 @@ query_generation:
       MEC:
         - microbial electrolysis cell
         - microbial electrolyzer
-      MET:
-        - microbial electrochemical technology
-        - bioelectrochemical system
+      BIOSENSOR:
+        - electrochemical biosensor wastewater
+        - MFC based biosensor
+        - microbial fuel cell biosensor
     component_type:
       reactor:
         - reactor architecture
@@ -59,8 +60,14 @@ query_generation:
         - balance of plant
         - recirculation
       sensors_instrumentation:
-        - electrochemical diagnostics
-        - instrumentation
+        - electrochemical biosensor calibration
+        - amperometric wastewater biosensor
+      biosensor_recognition_element:
+        - biosensor biorecognition element
+        - enzyme microbial biosensor wastewater
+      biosensor_working_reference_counter_electrodes:
+        - biosensor working reference counter electrode
+        - electrode material amperometric biosensor
       biofilm:
         - biofilm
         - electroactive microbiome
@@ -85,20 +92,39 @@ query_generation:
         - H2 production
       hydrogen_yield_mol_mol:
         - hydrogen yield
-      ammonium_recovery_pct:
-        - ammonium recovery
-        - nitrogen recovery
       conductivity_ms_cm:
         - conductivity
-        - desalination
-      energy_input_kwh_m3:
-        - energy input
-        - energy consumption
-      product_selectivity_pct:
-        - product selectivity
       durability_d:
         - durability
         - long term operation
+      biosensor_sensitivity:
+        - biosensor sensitivity calibration
+        - amperometric biosensor calibration slope
+      biosensor_lod_loq:
+        - biosensor limit of detection quantification
+        - wastewater biosensor LOD LOQ
+      biosensor_interference:
+        - wastewater matrix interference biosensor
+        - biosensor selectivity interfering compounds
+
+    model_parameter:
+      Monod_kinetics:
+        - electroactive biofilm maximum specific substrate uptake rate
+        - Monod half saturation constant microbial fuel cell
+      biomass_yield_decay:
+        - electroactive biofilm biomass yield decay rate
+        - yield coefficient MFC substrate utilization
+      coulombic_efficiency:
+        - microbial fuel cell coulombic efficiency COD
+      Butler_Volmer_kinetics:
+        - microbial fuel cell exchange current density charge transfer coefficient
+        - microbial electrolysis anode cathode Butler Volmer parameters
+      membrane_transport:
+        - ion exchange membrane conductivity thickness bioelectrochemical cell
+      oxygen_mass_transfer:
+        - microbial fuel cell cathode oxygen mass transfer coefficient
+      pH_buffering:
+        - bioelectrochemical reactor buffer capacity proton transfer pH
 
 acquisition_policy:
   preferred_access_order:
@@ -116,7 +142,7 @@ acquisition_policy:
   do_not_acquire:
     - closed_access_without_alternative
     - license_uncertain_without_explicit_open_policy
-    - source_not_in_mfc_mec_met_scope
+    - source_not_in_mfc_mec_biosensor_or_wastewater_scope
   max_concurrent_fetches: 4
   fetch_timeout_ms: 15000
 

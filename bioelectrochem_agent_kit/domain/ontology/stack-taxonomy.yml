@@ -4,11 +4,18 @@ scope:
   primary_technologies:
     - microbial_fuel_cell
     - microbial_electrolysis_cell
-    - microbial_electrochemical_technology
-  product_role: decision_support_and_consulting
+    - electrochemical_biosensor
+  normalization_only_values:
+    - unclassified
+  product_role: source_grounded_system_modeling_and_decision_support
+  wastewater_role: wastewater_management_and_treatment
+  biosensor_deployments:
+    - standalone
+    - integrated_with_MFC
+    - integrated_with_MEC
   excluded_primary_scope:
-    - first_principles_multiphysics_solver
     - real_time_closed_loop_plant_control
+    - spatially_resolved_multiphysics_solver_until_validated
 
 stack_blocks:
   reactor_architecture:
@@ -17,8 +24,6 @@ stack_blocks:
       - single_chamber
       - dual_chamber
       - modular_stack
-      - wetland_coupled_system
-      - digester_coupled_system
       - batch_operation
       - continuous_operation
   anode_biofilm_support:
@@ -65,10 +70,17 @@ stack_blocks:
       - safety_and_venting
       - cleaning_or_maintenance_path
   sensors_and_analytics:
-    description: Instrumentation, diagnostics, telemetry, and process monitoring.
+    description: Process sensors and electrochemical biosensors, including standalone and reactor-integrated deployments.
     example_subdomains:
       - online_water_quality
       - electrochemical_diagnostics
+      - biosensor_analyte_and_measurand
+      - biorecognition_element
+      - amperometric_calibration
+      - working_range_lod_loq
+      - selectivity_and_matrix_interference
+      - response_recovery_time_and_drift
+      - sensor_power_budget
       - voltage_current_logging
       - alarming
       - data_pipeline
@@ -82,6 +94,20 @@ stack_blocks:
       - substrate_utilization_profile
       - microbial_stability
       - contamination_or_competition_risk
+
+mechanistic_model:
+  authority: bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+  executable_model: packages/electrochem-models/src/mechanistic.ts
+  version: coupled-0d-dae-v1
+  coupled_domains:
+    - wastewater_COD_and_biomass_mass_balance
+    - temperature_and_pH_dependent_biological_kinetics
+    - electrode_Butler_Volmer_charge_transfer
+    - electrolyte_and_membrane_ionic_resistance
+    - cathode_oxygen_mass_transfer
+    - MFC_load_line_or_MEC_applied_voltage_boundary
+    - chamber_proton_buffer_balance
+  parameter_rule: All executed model parameters carry an SI unit, source kind, and source reference.
 
 cross_cutting_layers:
   technoeconomics:

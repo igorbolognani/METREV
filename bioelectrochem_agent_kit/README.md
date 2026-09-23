@@ -1,42 +1,24 @@
-# Bioelectrochemical Agent Kit for AI-Assisted Development
+# METREV scientific domain foundation
 
-Repository note: in METREV, only `bioelectrochem_agent_kit/domain/` is a canonical source-of-truth surface. The nested `.github/` assets and guidance docs in this kit remain antecedent reference material unless they are intentionally promoted into the workspace root.
+METREV focuses on microbial fuel cells (MFC), microbial electrolysis cells (MEC), wastewater management and treatment, and electrochemical biosensors. Biosensors may operate as standalone instruments or be integrated with an MFC or MEC.
 
-## Purpose
+Only `bioelectrochem_agent_kit/domain/` is the canonical source for domain vocabulary and scientific rules. Runtime schemas and application code implement those contracts. Older `.github/` assets and feature packs remain historical context unless promoted explicitly.
 
-This kit adds a domain-specific bioelectrochemical decision-support layer to an existing GitHub Copilot Pro + VS Code repository that already contains:
-
-- repository-wide instructions
-- implementation instructions
-- testing instructions
-- documentation instructions
-- planning, review, and test-generation prompts
-- baseline planning/review agents
-- spec, ADR, eval, and test scaffolding
-
-This kit does **not** replace your existing repository constitution.
-It extends it with a **bioelectrochemical operating layer** for MFC, MEC, and broader MET work.
-
-The product scope assumed by this kit is:
-
-> A technical decision-support and consulting platform that helps companies, system integrators, and bioelectrochemical technology teams diagnose current stacks, compare plausible alternatives, prioritize improvements, shortlist suppliers, and justify decisions with evidence, rules, and transparent uncertainty.
-
-This kit is intentionally aligned with that scope.
-It is **not** designed as a multiphysics simulator-first architecture.
+The executable foundation includes a source-referenced, lumped 0D MFC/MEC model and standalone/integrated amperometric biosensor response. The model is a decision-support baseline, not a spatially resolved or independently validated multiphysics solver.
 
 ---
 
 ## Practical conclusion
 
-The correct development posture for this product is:
+The active development direction is:
 
-1. treat the system as an **auditable decision engine**
-2. structure knowledge before generating recommendations
-3. normalize client data before scoring alternatives
-4. start with deterministic rules, ranges, compatibility checks, and sensitivity analysis
-5. use the LLM mainly for explanation, synthesis, prioritization, and report generation
-6. expose uncertainty, defaults, data gaps, and next tests explicitly
-7. add MCP where it reduces external-research friction, not where it creates premature complexity
+1. define wastewater feed, reactor geometry, materials, biology, electrochemistry, operation, and sensors as one explicit case
+2. require units and source/value metadata for model parameters; do not invent missing measurements
+3. run the coupled MFC/MEC 0D model or return an actionable insufficient-data result
+4. model standalone and integrated amperometric biosensors with a separate power budget
+5. compare model results with reviewed, context-matched evidence while keeping the two distinct
+6. expose assumptions, data gaps, model limits, and next tests explicitly
+7. generate decision explanations only after structured model and evidence results exist
 
 That is the central design principle behind every file in this kit.
 
@@ -98,9 +80,10 @@ domain/
   cases/
     templates/
       client-case-template.yml
-    golden/
-      case-001-high-strength-industrial-wastewater.yml
-      case-002-digester-sidestream-nitrogen-recovery.yml
+    historical/
+      case-001 through case-005 (unvalidated illustrative records)
+
+The historical records are not active presets, model calibration data, or source-backed wastewater cases. Use spec 038's empty MFC/MEC/wastewater and biosensor intake templates for current work.
 
 reports/
   templates/

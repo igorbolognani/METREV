@@ -483,7 +483,7 @@ async function createCleanReview(input: {
   const repository = new PrismaResearchRepository(getPrismaClient());
   const columns = getDefaultResearchColumns();
   const review = await repository.createResearchReview({
-    title: 'Eligible MFC/MEC/MET research corpus',
+    title: 'Eligible MFC/MEC/wastewater/biosensor research corpus',
     query:
       'strict eligible MFC MEC microbial electrochemical technologies local corpus',
     limit: input.reviewLimit,

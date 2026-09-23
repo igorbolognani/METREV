@@ -5,8 +5,8 @@ import * as React from 'react';
 
 import type { Role } from '@metrev/auth';
 import type {
-    ExternalEvidenceCatalogItemSummary,
-    ResearchDecisionIngestionPreview,
+  ExternalEvidenceCatalogItemSummary,
+  ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
 
 import { CaseFormContextStep } from '@/components/case-form/case-form-context-step';
@@ -18,37 +18,38 @@ import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
 import { Collapsible } from '@/components/ui/collapsible';
 import {
-    WorkspaceDataCard,
-    WorkspacePageHeader,
-    WorkspaceSection,
+  WorkspaceDataCard,
+  WorkspacePageHeader,
+  WorkspaceSection,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { fetchResearchEvidencePackDecisionInput } from '@/lib/api';
 import {
-    clearPendingSubmission,
-    clearSubmissionError,
-    loadDraftInput,
-    loadSubmissionError,
-    saveDraftInput,
-    savePendingSubmission,
+  clearPendingSubmission,
+  clearSubmissionError,
+  loadDraftInput,
+  loadSubmissionError,
+  saveDraftInput,
+  savePendingSubmission,
 } from '@/lib/case-draft';
 import {
-    caseFormSteps,
-    caseFormStepValues,
-    getCaseFormStepIndex,
-    useCaseFormStep,
-    type CaseFormStep,
+  caseFormSteps,
+  caseFormStepValues,
+  getCaseFormStepIndex,
+  useCaseFormStep,
+  type CaseFormStep,
 } from '@/lib/case-form-query-state';
 import {
-    buildCaseInputFromFormValues,
-    caseIntakePresets,
-    defaultCaseIntakeFormValues,
-    findCaseIntakePreset,
-    getCaseIntakeParameterMode,
-    hydrateCaseIntakeFormValues,
-    type CaseIntakeFormValues,
-    type CaseIntakeParameterFieldId,
-    type CaseIntakeParameterMode,
+  buildCaseInputFromFormValues,
+  caseIntakePresets,
+  defaultCaseIntakeFormValues,
+  findCaseIntakePreset,
+  getCaseIntakeParameterMode,
+  hydrateCaseIntakeFormValues,
+  validateAdvancedInputJson,
+  type CaseIntakeFormValues,
+  type CaseIntakeParameterFieldId,
+  type CaseIntakeParameterMode,
 } from '@/lib/case-intake';
 import { formatToken } from '@/lib/formatting';
 
@@ -293,6 +294,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
         : null,
   };
   const hasNumericErrors = Object.values(numericFieldErrors).some(Boolean);
+  const advancedInputErrors = validateAdvancedInputJson(formValues);
   const contextIssues = [
     ...stepIssue(
       !formValues.currentTrl.trim(),
@@ -335,7 +337,14 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
       'Fix the highlighted numeric fields before continuing.',
     ),
   ];
-  const reviewIssues = [...contextIssues, ...reactorIssues, ...operationIssues];
+  const reviewIssues = [
+    ...contextIssues,
+    ...reactorIssues,
+    ...operationIssues,
+    ...Object.values(advancedInputErrors).map(
+      (message) => `Fix the scientific JSON input: ${message}`,
+    ),
+  ];
   const stepIssues: Record<CaseFormStep, string[]> = {
     'context-objective': contextIssues,
     'reactor-architecture': reactorIssues,
@@ -837,6 +846,7 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
       case 'review-submit':
         return (
           <CaseFormReviewSubmitStep
+            advancedInputErrors={advancedInputErrors}
             activePreset={activePreset}
             evidenceCount={evidenceCount}
             formValues={formValues}

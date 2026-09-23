@@ -5,11 +5,13 @@ Paste the following block into your root `AGENTS.md`.
 ```md
 ## Bioelectrochemical decision-support contract
 
-This repository contains a bioelectrochemical decision-support product focused on MFC, MEC, and broader MET use cases.
+This repository contains a scientific decision-support product focused on MFC, MEC, wastewater management/treatment, and electrochemical biosensors. Sensors may be standalone or integrated with an MFC or MEC.
 
 ### Product scope
-The product is not a multiphysics simulator-first system.
-Its primary job is to help users:
+
+The product couples a source-referenced lumped mechanistic model to evidence-backed decision support. Its primary job is to:
+
+- model wastewater, biological, electrochemical, materials, operating, and sensing inputs as one declared system
 - diagnose current stacks
 - compare technically plausible alternatives
 - prioritize improvements
@@ -17,8 +19,10 @@ Its primary job is to help users:
 - justify decisions with evidence, rules, and explicit uncertainty
 
 ### Mandatory output posture
+
 Do not answer as if the system has absolute truth.
 Every recommendation must separate:
+
 - observed input
 - normalized input
 - defaults used
@@ -30,7 +34,9 @@ Every recommendation must separate:
 - next tests or data to collect
 
 ### Output contract
+
 For any non-trivial stack evaluation, the preferred output shape is:
+
 1. current stack diagnosis
 2. prioritized improvement options
 3. impact map (cost, risk, maturity, evidence strength, dependencies)
@@ -38,7 +44,9 @@ For any non-trivial stack evaluation, the preferred output shape is:
 5. phased roadmap
 
 ### Domain modeling rules
+
 The stack should be modeled at minimum across these areas:
+
 - reactor architecture
 - anode
 - cathode
@@ -52,7 +60,9 @@ The stack should be modeled at minimum across these areas:
 Treat technoeconomics as a cross-cutting decision layer, not as a single hardware component.
 
 ### Evidence rules
+
 Do not mix these categories:
+
 - literature evidence
 - internal benchmark
 - supplier claim
@@ -62,15 +72,19 @@ Do not mix these categories:
 Every substantial recommendation should point to an evidence category and a rule or rationale category.
 
 ### Default and missing-data policy
+
 Missing parameters may be normalized with defaults only when necessary.
 Whenever a default is used:
+
 - record it explicitly
 - lower confidence accordingly
 - avoid pseudo-precision
 - recommend what to measure next
 
 ### Inference rules
+
 Prefer this order:
+
 1. deterministic validation
 2. plausible-range checks
 3. compatibility heuristics
@@ -82,7 +96,9 @@ Prefer this order:
 Use generative language only after the structured reasoning artifacts exist.
 
 ### Safety against hallucination
+
 Do not invent:
+
 - supplier capabilities
 - material properties
 - operating data
@@ -94,14 +110,18 @@ Do not invent:
 If evidence is sparse or conflicting, say so clearly.
 
 ### Repository workflow expectations
+
 When changing ontology, rules, or report contracts:
+
 - update the relevant spec
 - update ADR if the architecture changed
 - update evals/checklists if validation rules changed
 - keep golden cases aligned with the new logic
 
 ### Review expectations
+
 Before concluding medium or large domain changes, check:
+
 - ontology consistency
 - naming consistency
 - unit consistency
@@ -112,6 +132,7 @@ Before concluding medium or large domain changes, check:
 - report contract alignment
 
 ### MCP guidance
+
 Treat MCP as an augmentation layer.
 Do not let MCP-derived content bypass normalization, evidence typing, or rule validation.
 Read-only MCP enrichment is preferred unless there is a strong reason otherwise.

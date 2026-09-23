@@ -2,38 +2,43 @@
 
 # METREV Full Repository Functional Description — Machine-Readable Export
 
-Generated at: 2026-05-13T10:04:56.254Z
+Generated at: 2026-09-23T15:27:43.863Z
 Generator version: full-export-v3
-Source branch: main
-Source commit: d1ccb2a88f75482e8f5bc891137275ab16fa44dd
+Source branch: codex/focus-mfc-mec-wastewater-biosensors
+Source commit: e7f77ec32d34417bcca1fedc01a7efb16a95d8db
 
 This document is generated from tracked repository files for downstream LLM use without repository file access.
 
 ## Manifest
 
-Tracked files scanned: 707
+Tracked files scanned: 830
 
 | Scope | Count | First Match |
 | --- | ---: | --- |
 | packages/domain-contracts/src/*.ts | 10 | packages/domain-contracts/src/agent-pipeline.ts |
 | packages/rule-engine/src/index.ts | 1 | packages/rule-engine/src/index.ts |
 | packages/electrochem-models/src/index.ts | 1 | packages/electrochem-models/src/index.ts |
+| packages/electrochem-models/src model implementations | 1 | packages/electrochem-models/src/mechanistic.ts |
 | packages/research-intelligence/src/**/*.ts | 10 | packages/research-intelligence/src/columns/column-registry.ts |
 | packages/database/prisma/schema.prisma | 1 | packages/database/prisma/schema.prisma |
-| packages/database/prisma/migrations/**/*.sql | 12 | packages/database/prisma/migrations/20260412175504_add_auth_models/migration.sql |
-| packages/database/src/**/*.ts | 8 | packages/database/src/evaluation-reset.ts |
-| packages/database/scripts/**/*.{ts,d.ts} | 14 | packages/database/scripts/bootstrap-bigdata.ts |
+| packages/database/prisma/migrations/**/*.sql | 13 | packages/database/prisma/migrations/20260412175504_add_auth_models/migration.sql |
+| packages/database/src/**/*.ts | 9 | packages/database/src/evaluation-reset.ts |
+| packages/database/scripts/**/*.{ts,d.ts} | 17 | packages/database/scripts/bootstrap-bigdata.ts |
 | packages/auth/src/**/*.ts | 5 | packages/auth/src/index.ts |
 | packages/audit/src/**/*.ts | 1 | packages/audit/src/index.ts |
 | packages/telemetry/src/**/*.ts | 2 | packages/telemetry/src/index.ts |
 | packages/llm-adapter/src/**/*.ts | 1 | packages/llm-adapter/src/index.ts |
 | packages/utils/src/**/*.ts | 1 | packages/utils/src/index.ts |
-| apps/api-server/src/**/*.ts | 15 | apps/api-server/src/app.ts |
+| packages/design-system/src/**/*.{ts,tsx} | 20 | packages/design-system/src/index.ts |
+| packages/document-intelligence/src/**/*.ts | 1 | packages/document-intelligence/src/index.ts |
+| packages/evidence-audit/src/**/*.ts | 7 | packages/evidence-audit/src/coverage-matrix.ts |
+| packages/evidence-discovery/src/**/*.ts | 4 | packages/evidence-discovery/src/fulltext-resolver.ts |
+| apps/api-server/src/**/*.ts | 16 | apps/api-server/src/app.ts |
 | apps/research-worker/src/*.ts | 3 | apps/research-worker/src/health.ts |
-| apps/web-ui/src/**/*.{ts,tsx} | 140 | apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page.tsx |
-| tests/**/*.{ts,tsx} | 65 | tests/e2e/global.setup.ts |
+| apps/web-ui/src/**/*.{ts,tsx} | 151 | apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page.tsx |
+| tests/**/*.{ts,tsx} | 75 | tests/e2e/global.setup.ts |
 | tracked TypeScript tooling/config surfaces | 5 | apps/web-ui/next-env.d.ts |
-| specs/**/*.md | 179 | specs/002-runtime-monorepo-foundation/contracts/supplier-runtime-mapping.md |
+| specs/**/*.md | 206 | specs/002-runtime-monorepo-foundation/contracts/supplier-runtime-mapping.md |
 
 ## packages/domain-contracts/src/*.ts
 
@@ -102,7 +107,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/domain-contracts/src/loaders.ts
-LINES: 253
+LINES: 309
 EXPORTS:
 - ContractInputDefinition : interface — export interface ContractInputDefinition
 - ContractLifecycleSourceState : type — export type ContractLifecycleSourceState = | 'raw' | 'parsed' | 'normalized' | 'reviewed';
@@ -119,8 +124,11 @@ EXPORTS:
 - ContractSensitivityPolicy : interface — export interface ContractSensitivityPolicy
 - ContractSupplierNormalization : interface — export interface ContractSupplierNormalization
 - ContractEvidenceSchema : interface — export interface ContractEvidenceSchema
+- MechanisticModelDefinition : interface — export interface MechanisticModelDefinition
 - ContractPropertyDictionary : interface — export interface ContractPropertyDictionary
 - ContractStackOntology : interface — export interface ContractStackOntology
+- ContractEvidenceQualityAuditPolicy : interface — export interface ContractEvidenceQualityAuditPolicy
+- ContractEvidenceDiscoveryPolicy : interface — export interface ContractEvidenceDiscoveryPolicy
 - loadYamlFile : function — export function loadYamlFile<T>(filePath: string): T
 - loadContractInputDefinition : function — export function loadContractInputDefinition(): ContractInputDefinition
 - loadContractOutputDefinition : function — export function loadContractOutputDefinition(): ContractOutputDefinition
@@ -134,7 +142,10 @@ EXPORTS:
 - loadContractEvidenceSchema : function — export function loadContractEvidenceSchema(): ContractEvidenceSchema
 - loadContractPropertyDictionary : function — export function loadContractPropertyDictionary(): ContractPropertyDictionary
 - loadContractStackOntology : function — export function loadContractStackOntology(): ContractStackOntology
+- loadEvidenceQualityAuditPolicy : function — export function loadEvidenceQualityAuditPolicy(): ContractEvidenceQualityAuditPolicy
+- loadEvidenceDiscoveryPolicy : function — export function loadEvidenceDiscoveryPolicy(): ContractEvidenceDiscoveryPolicy
 - loadDomainCaseTemplate : function — export function loadDomainCaseTemplate(): Record<string, unknown>
+- loadMechanisticModelDefinition : function — export function loadMechanisticModelDefinition(): MechanisticModelDefinition
 SCHEMAS (Zod):
 - none
 LOADS_FROM_YAML:
@@ -150,7 +161,10 @@ LOADS_FROM_YAML:
 - ontology/evidence_schema.yaml → loadContractEvidenceSchema (ontology)
 - ontology/property_dictionary.yaml → loadContractPropertyDictionary (ontology)
 - ontology/stack.yaml → loadContractStackOntology (ontology)
+- rules/evidence_quality_audit.yaml → loadEvidenceQualityAuditPolicy (rules)
+- rules/evidence_discovery.yaml → loadEvidenceDiscoveryPolicy (rules)
 - cases/templates/client-case-template.yml → loadDomainCaseTemplate (cases)
+- rules/mechanistic-model.yml → loadMechanisticModelDefinition (rules)
 CALLS_TO:
 - js-yaml:default -> yaml.load
 - loadYamlFile
@@ -162,7 +176,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/domain-contracts/src/normalize.ts
-LINES: 791
+LINES: 812
 EXPORTS:
 - createRawInputFromDomainTemplate : function — export function createRawInputFromDomainTemplate(): RawCaseInput
 - normalizeCaseInput : function — export function normalizeCaseInput(input: RawCaseInput): NormalizedCaseInput
@@ -224,47 +238,46 @@ LOGIC_FLOW:
 - Step 14: normalizeCaseInput -> const caseId = isNonEmptyString(raw.case_id) ? raw.case_id : randomUUID();
 - Step 15: normalizeCaseInput -> if (!isNonEmptyString(raw.case_id))
 - Step 16: normalizeCaseInput -> const typedEvidence = normalizeEvidenceRecords( raw.evidence_records, caseId, defaultsUsed, );
-- Step 17: normalizeCaseInput -> const technologyFamilyInput = raw.technology_family ?? technologyContext.technology_family;
-- Step 18: normalizeCaseInput -> const technologyFamily = normalizeTechnologyFamily( technologyFamilyInput ?? template.technology_context?.technology_family, defaultsUsed, missingData, );
-- Step 19: normalizeCaseInput -> if (!isNonEmptyString(raw.technology_family) && !isNonEmptyString(technologyContext.technology_family))
-- Step 20: normalizeCaseInput -> const architectureFamilyInput = raw.architecture_family ?? technologyContext.architecture_family ?? template.technology_context?.architecture_family;
-- Step 21: normalizeCaseInput -> const architectureFamily = isNonEmptyString(architectureFamilyInput) ? architectureFamilyInput : 'needs_classification';
-- Step 22: normalizeCaseInput -> if (!isNonEmptyString(architectureFamilyInput))
-- Step 23: normalizeCaseInput -> const primaryObjectiveInput = raw.primary_objective ?? businessContext.primary_objective ?? template.business_context?.primary_objective;
-- Step 24: normalizeCaseInput -> const primaryObjective = normalizePrimaryObjective( primaryObjectiveInput, defaultsUsed, missingData, );
-- Step 25: normalizeCaseInput -> if (!isNonEmptyString(raw.primary_objective) && !isNonEmptyString(businessContext.primary_objective))
-- Step 26: normalizeCaseInput -> const normalizedBusinessContext = compactObject({ ...businessContext, primary_objective: primaryObjective, priorities: toStringArray(businessContext.priorities), hard_constraints: toStringArray(businessContext.hard_co...
-- Step 27: normalizeCaseInput -> const scaleContext = firstNonEmptyString( technologyContext.scale_context, inferScaleContext(technologyContext.current_trl), ) ?? undefined;
-- Step 28: normalizeCaseInput -> if (!isNonEmptyString(technologyContext.scale_context) && scaleContext)
-- Step 29: normalizeCaseInput -> const normalizedTechnologyContext = compactObject({ ...technologyContext, technology_family: technologyFamily, architecture_family: architectureFamily, scale_context: scaleContext, current_pain_points: toStringArray(t...
-- Step 30: normalizeCaseInput -> const normalizedFeedAndOperation = compactObject({ ...feedAndOperation, influent_cod_mg_per_l: toNumberOrUndefined( feedAndOperation.influent_cod_mg_per_l, ), pH: toNumberOrUndefined(feedAndOperation.pH), temperature_...
-- Step 31: normalizeCaseInput -> if (!isNonEmptyString(feedAndOperation.influent_type))
-- Step 32: normalizeCaseInput -> const rawReactorArchitecture = mergeStackBlock( rawStackBlocks.reactor_architecture, templateStackBlocks.reactor_architecture, );
-- Step 33: normalizeCaseInput -> const rawAnodeBlock = mergeStackBlock( rawStackBlocks.anode_biofilm_support, templateStackBlocks.anode_biofilm_support, );
-- Step 34: normalizeCaseInput -> const rawCathodeBlock = mergeStackBlock( rawStackBlocks.cathode_catalyst_support, templateStackBlocks.cathode_catalyst_support, );
-- Step 35: normalizeCaseInput -> const rawMembraneBlock = mergeStackBlock( rawStackBlocks.membrane_or_separator, templateStackBlocks.membrane_or_separator, );
-- Step 36: normalizeCaseInput -> const rawElectricalBlock = mergeStackBlock( rawStackBlocks.electrical_interconnect_and_sealing, templateStackBlocks.electrical_interconnect_and_sealing, );
-- Step 37: normalizeCaseInput -> const rawBalanceBlock = mergeStackBlock( rawStackBlocks.balance_of_plant, templateStackBlocks.balance_of_plant, );
-- Step 38: normalizeCaseInput -> const rawSensorsBlock = mergeStackBlock( rawStackBlocks.sensors_and_analytics, templateStackBlocks.sensors_and_analytics, );
-- Step 39: normalizeCaseInput -> const rawBiologyBlock = mergeStackBlock( rawStackBlocks.operational_biology, templateStackBlocks.operational_biology, );
-- Step 40: normalizeCaseInput -> const sensorDataQuality = firstNonEmptyString(rawSensorsBlock.data_quality) ?? defaultDataQuality;
-- Step 41: normalizeCaseInput -> if (!isNonEmptyString(rawSensorsBlock.data_quality))
-- Step 42: normalizeCaseInput -> const biofilmMaturity = inferBiofilmMaturity( rawBiologyBlock, toStringArray(technologyContext.current_pain_points), );
-- Step 43: normalizeCaseInput -> if (!isNonEmptyString(rawBiologyBlock.biofilm_maturity))
-- Step 44: normalizeCaseInput -> const membranePresence = normalizeMembranePresence( technologyContext.membrane_presence ?? rawReactorArchitecture.membrane_presence, );
-- Step 45: normalizeCaseInput -> const flowControl = firstNonEmptyString(rawBalanceBlock.flow_control) ?? inferFlowControl(rawBalanceBlock.bop_summary);
-- Step 46: normalizeCaseInput -> const serviceabilityLevel = firstNonEmptyString( rawReactorArchitecture.serviceability_level, businessContext.serviceability_priority, ) ?? 'unknown';
-- Step 47: normalizeCaseInput -> const normalizedStackBlocks = { reactor_architecture: compactObject({ ...rawReactorArchitecture, architecture_type: firstNonEmptyString( rawReactorArchitecture.architecture_type, rawReactorArchitecture.family, ) ?? ar...
-- Step 48: normalizeCaseInput -> const normalizedTrl = normalizeTrl( technologyContext.current_trl, defaultsUsed, missingData, );
-- Step 49: normalizeCaseInput -> const maintenanceBurden = firstNonEmptyString( ensureRecord(crossCuttingLayers.technoeconomics).maintenance_burden, ) ?? defaultMaintenanceBurden;
-- Step 50: normalizeCaseInput -> if (!isNonEmptyString( ensureRecord(crossCuttingLayers.technoeconomics).maintenance_burden, ))
-- Step 51: normalizeCaseInput -> const normalizedCrossCuttingLayers = { technoeconomics: compactObject({ ...ensureRecord(crossCuttingLayers.technoeconomics), maintenance_burden: maintenanceBurden, capex_constraint_level: businessContext.capex_constra...
-- Step 52: normalizeCaseInput -> if (typedEvidence.length === 0)
-- Step 53: normalizeCaseInput -> const normalized = normalizedCaseInputSchema.parse({ case_id: caseId, technology_family: technologyFamily, architecture_family: architectureFamily, primary_objective: primaryObjective, business_context: normalizedBusi...
-- Step 54: normalizeCaseInput -> return normalized;
+- Step 17: normalizeCaseInput -> const technologyFamilyInput = raw.technology_family ?? ensureRecord(raw.technology_context).technology_family;
+- Step 18: normalizeCaseInput -> const technologyFamily = normalizeTechnologyFamily( technologyFamilyInput, defaultsUsed, missingData, );
+- Step 19: normalizeCaseInput -> const architectureFamilyInput = raw.architecture_family ?? technologyContext.architecture_family ?? template.technology_context?.architecture_family;
+- Step 20: normalizeCaseInput -> const architectureFamily = isNonEmptyString(architectureFamilyInput) ? architectureFamilyInput : 'needs_classification';
+- Step 21: normalizeCaseInput -> if (!isNonEmptyString(architectureFamilyInput))
+- Step 22: normalizeCaseInput -> const primaryObjectiveInput = raw.primary_objective ?? businessContext.primary_objective ?? template.business_context?.primary_objective;
+- Step 23: normalizeCaseInput -> const primaryObjective = normalizePrimaryObjective( primaryObjectiveInput, defaultsUsed, missingData, );
+- Step 24: normalizeCaseInput -> if (!isNonEmptyString(raw.primary_objective) && !isNonEmptyString(businessContext.primary_objective))
+- Step 25: normalizeCaseInput -> const normalizedBusinessContext = compactObject({ ...businessContext, primary_objective: primaryObjective, priorities: toStringArray(businessContext.priorities), hard_constraints: toStringArray(businessContext.hard_co...
+- Step 26: normalizeCaseInput -> const scaleContext = firstNonEmptyString( technologyContext.scale_context, inferScaleContext(technologyContext.current_trl), ) ?? undefined;
+- Step 27: normalizeCaseInput -> if (!isNonEmptyString(technologyContext.scale_context) && scaleContext)
+- Step 28: normalizeCaseInput -> const normalizedTechnologyContext = compactObject({ ...technologyContext, technology_family: technologyFamily, architecture_family: architectureFamily, scale_context: scaleContext, current_pain_points: toStringArray(t...
+- Step 29: normalizeCaseInput -> const normalizedFeedAndOperation = compactObject({ ...feedAndOperation, influent_cod_mg_per_l: toNumberOrUndefined( feedAndOperation.influent_cod_mg_per_l, ), pH: toNumberOrUndefined(feedAndOperation.pH), temperature_...
+- Step 30: normalizeCaseInput -> if (!isNonEmptyString(feedAndOperation.influent_type))
+- Step 31: normalizeCaseInput -> const rawReactorArchitecture = mergeStackBlock( rawStackBlocks.reactor_architecture, templateStackBlocks.reactor_architecture, );
+- Step 32: normalizeCaseInput -> const rawAnodeBlock = mergeStackBlock( rawStackBlocks.anode_biofilm_support, templateStackBlocks.anode_biofilm_support, );
+- Step 33: normalizeCaseInput -> const rawCathodeBlock = mergeStackBlock( rawStackBlocks.cathode_catalyst_support, templateStackBlocks.cathode_catalyst_support, );
+- Step 34: normalizeCaseInput -> const rawMembraneBlock = mergeStackBlock( rawStackBlocks.membrane_or_separator, templateStackBlocks.membrane_or_separator, );
+- Step 35: normalizeCaseInput -> const rawElectricalBlock = mergeStackBlock( rawStackBlocks.electrical_interconnect_and_sealing, templateStackBlocks.electrical_interconnect_and_sealing, );
+- Step 36: normalizeCaseInput -> const rawBalanceBlock = mergeStackBlock( rawStackBlocks.balance_of_plant, templateStackBlocks.balance_of_plant, );
+- Step 37: normalizeCaseInput -> const rawSensorsBlock = mergeStackBlock( rawStackBlocks.sensors_and_analytics, templateStackBlocks.sensors_and_analytics, );
+- Step 38: normalizeCaseInput -> const rawBiologyBlock = mergeStackBlock( rawStackBlocks.operational_biology, templateStackBlocks.operational_biology, );
+- Step 39: normalizeCaseInput -> const sensorDataQuality = firstNonEmptyString(rawSensorsBlock.data_quality) ?? defaultDataQuality;
+- Step 40: normalizeCaseInput -> if (!isNonEmptyString(rawSensorsBlock.data_quality))
+- Step 41: normalizeCaseInput -> const biofilmMaturity = inferBiofilmMaturity( rawBiologyBlock, toStringArray(technologyContext.current_pain_points), );
+- Step 42: normalizeCaseInput -> if (!isNonEmptyString(rawBiologyBlock.biofilm_maturity))
+- Step 43: normalizeCaseInput -> const membranePresence = normalizeMembranePresence( technologyContext.membrane_presence ?? rawReactorArchitecture.membrane_presence, );
+- Step 44: normalizeCaseInput -> const flowControl = firstNonEmptyString(rawBalanceBlock.flow_control) ?? inferFlowControl(rawBalanceBlock.bop_summary);
+- Step 45: normalizeCaseInput -> const serviceabilityLevel = firstNonEmptyString( rawReactorArchitecture.serviceability_level, businessContext.serviceability_priority, ) ?? 'unknown';
+- Step 46: normalizeCaseInput -> const normalizedStackBlocks = { reactor_architecture: compactObject({ ...rawReactorArchitecture, architecture_type: firstNonEmptyString( rawReactorArchitecture.architecture_type, rawReactorArchitecture.family, ) ?? ar...
+- Step 47: normalizeCaseInput -> const normalizedTrl = normalizeTrl( technologyContext.current_trl, defaultsUsed, missingData, );
+- Step 48: normalizeCaseInput -> const maintenanceBurden = firstNonEmptyString( ensureRecord(crossCuttingLayers.technoeconomics).maintenance_burden, ) ?? defaultMaintenanceBurden;
+- Step 49: normalizeCaseInput -> if (!isNonEmptyString( ensureRecord(crossCuttingLayers.technoeconomics).maintenance_burden, ))
+- Step 50: normalizeCaseInput -> const normalizedCrossCuttingLayers = { technoeconomics: compactObject({ ...ensureRecord(crossCuttingLayers.technoeconomics), maintenance_burden: maintenanceBurden, capex_constraint_level: businessContext.capex_constra...
+- Step 51: normalizeCaseInput -> if (typedEvidence.length === 0)
+- Step 52: normalizeCaseInput -> const normalized = normalizedCaseInputSchema.parse({ case_id: caseId, technology_family: technologyFamily, architecture_family: architectureFamily, primary_objective: primaryObjective, business_context: normalizedBusi...
+- Step 53: normalizeCaseInput -> return normalized;
 INVARIANTS_ENFORCED:
 - technologyFamilySchema.safeParse( technologyFamilyAliases[candidate] ?? candidate, )
-- primaryObjectiveSchema.safeParse(candidate)
+- primaryObjectiveSchema.safeParse(normalizedCandidate)
 - evidenceRecordSchema.parse({ ...rawRecord, evidence_id: evidenceId, applicability_scope: ensureRecord(rawRecord.applicability_scope), quantitative_metrics: ensureRecord(rawRecord.quantitative_metrics), operating_condi...
 - rawCaseInputSchema.parse(sanitizeNulls(loadDomainCaseTemplate()))
 - rawCaseInputSchema.parse(input)
@@ -289,7 +302,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/domain-contracts/src/reconciliation.ts
-LINES: 254
+LINES: 293
 EXPORTS:
 - ReconciliationEntry : interface — export interface ReconciliationEntry
 - RuntimeAuthorityRole : type — export type RuntimeAuthorityRole = | 'semantic_source' | 'runtime_loaded' | 'validation_reference' | 'reference_only' | 'future_facing_reference';
@@ -314,7 +327,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/domain-contracts/src/research-schemas.ts
-LINES: 819
+LINES: 958
 EXPORTS:
 - researchReviewStatusSchema : schema — const researchReviewStatusSchema = z.enum(['active', 'archived'])
 - researchSearchProviderSchema : schema — const researchSearchProviderSchema = z.enum([ 'openalex', 'crossref', 'europe_pmc', ])
@@ -323,7 +336,7 @@ EXPORTS:
 - researchBackfillStatusSchema : schema — const researchBackfillStatusSchema = z.enum([ 'queued', 'running', 'completed', 'failed', ])
 - researchExtractionResultStatusSchema : schema — const researchExtractionResultStatusSchema = z.enum([ 'valid', 'invalid', ])
 - researchEvidencePackStatusSchema : schema — const researchEvidencePackStatusSchema = z.enum(['draft', 'reviewed'])
-- researchTechnologyClassSchema : schema — const researchTechnologyClassSchema = z.enum([ 'MFC', 'MEC', 'MET', 'MDC', 'BES', 'bioelectrochemical_sensor', 'hybrid_system', 'not_reported', ])
+- researchTechnologyClassSchema : schema — const researchTechnologyClassSchema = z.preprocess((value) => { if (typeof value !== 'string') return value; const normalized = value.trim().toLowerCase(); if ( [ 'biosensor', 'bioelectrochemical_sensor', 'electrochemical sensor', ].includes(normalized) ) { return 'electrochemical_biosensor'; }...
 - researchDocumentTypeSchema : schema — const researchDocumentTypeSchema = z.enum([ 'paper', 'review', 'patent', 'datasheet', 'manual_sop', 'technical_report', 'supplier_document', 'case_study', 'market_report', 'regulatory_report', 'curated_manifest', 'manual', ])
 - researchEligibilityStatusSchema : schema — const researchEligibilityStatusSchema = z.enum(['eligible', 'excluded'])
 - researchEligibilityReasonSchema : schema — const researchEligibilityReasonSchema = z.enum([ 'full_access_traceable', 'access_closed', 'access_unknown', 'missing_license_or_access_policy', 'missing_full_text_link', 'out_of_scope_technology', 'supplier_or_market_context_only', 'insufficient_source_metadata', ])
@@ -344,6 +357,9 @@ EXPORTS:
 - researchSystemPerformanceExtractionSchema : schema — const researchSystemPerformanceExtractionSchema = z.object({ technology_class: z.array(researchTechnologyClassSchema).default([]), reactor_architecture: z .object({ type: z.string().nullable().default(null), useful_volume_ml: z.number().nullable().default(null), electrode_area_cm2: z.number().nullable().de...
 - researchImplementationFactorsExtractionSchema : schema — const researchImplementationFactorsExtractionSchema = z.object({ performance_limitations: z.array(z.string()).default([]), internal_resistance_issues: z.array(z.string()).default([]), electrode_limitations: z.array(z.string()).default([]), cathode_limitations: z.array(z.string()).default([]), membrane_limitati...
 - researchDataMetadataReadinessExtractionSchema : schema — const researchDataMetadataReadinessExtractionSchema = z.object({ summary: z.string().nullable().default(null), metadata_categories: z .object({ signal_generation: z.array(z.string()).default([]), signal_quality: z.array(z.string()).default([]), contextual_annotations: z.array(z.string()).default([]), data_line...
+- researchCellStatusSchema : schema — const researchCellStatusSchema = z.enum([ 'filled_with_trace', 'filled_without_enough_trace', 'not_reported_by_paper', 'full_text_missing', 'document_parse_failed', 'table_detected_but_no_match', 'extraction_failed', 'queued', 'needs_analyst_review', ])
+- researchCellMissingReasonSchema : schema — const researchCellMissingReasonSchema = z.enum([ 'not_reported_by_paper', 'full_text_missing', 'document_parse_failed', 'table_detected_but_no_match', 'extraction_failed', 'queued', 'needs_analyst_review', ])
+- researchCellSchema : schema — const researchCellSchema = z .object({ paper_id: z.string().min(1), review_id: z.string().min(1), column_id: z.string().min(1), output_schema_key: z.string().min(1), value_display: z.string().nullable().default(null), normalized_value: z.union([z.number(), z.string(), z.null()]).defa...
 - researchExtractionResultSchema : schema — const researchExtractionResultSchema = z .object({ result_id: z.string().min(1).optional(), review_id: z.string().min(1), paper_id: z.string().min(1), column_id: z.string().min(1), status: researchExtractionResultStatusSchema, answer: z.unknown(), evidence_trace: z.array(researchEvidenceTraceSch...
 - researchExtractionJobSchema : schema — const researchExtractionJobSchema = z.object({ job_id: z.string().min(1), review_id: z.string().min(1), paper_id: z.string().min(1), column_id: z.string().min(1), status: researchExtractionJobStatusSchema, extractor_version: z.string().min(1), failure_detail: flexibleObjectSchema.nullable().d...
 - researchEvidencePackSchema : schema — const researchEvidencePackSchema = z.object({ pack_id: z.string().min(1), review_id: z.string().min(1), title: z.string().min(1), status: researchEvidencePackStatusSchema, source_result_ids: z.array(z.string().min(1)).default([]), evidence_items: z.array(rawEvidenceRecordSchema).default([]),...
@@ -356,8 +372,8 @@ EXPORTS:
 - stageResearchPapersRequestSchema : schema — const stageResearchPapersRequestSchema = z.object({ query: z.string().trim().min(3).max(500).optional(), items: z.array(researchPaperSearchResultSchema).min(1).max(100), })
 - stageResearchPapersResponseSchema : schema — const stageResearchPapersResponseSchema = z.object({ query: z.string().nullable().default(null), imported_count: z.number().int().nonnegative(), source_document_ids: z.array(z.string().min(1)).default([]), papers: z.array(researchPaperMetadataSchema).default([]), })
 - queueResearchBackfillRequestSchema : schema — const queueResearchBackfillRequestSchema = z.object({ query: z.string().trim().min(3).max(500), providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(), per_provider_limit: z.number().int().min(1).max(1000).default(25), max_pages: z.number().int().min(1).max(500).default(1), target...
-- queueResearchBackfillPresetSchema : schema — const queueResearchBackfillPresetSchema = z.enum(['mfc_mec_30000'])
-- queueResearchBackfillPresetRequestSchema : schema — const queueResearchBackfillPresetRequestSchema = z.object({ preset_id: queueResearchBackfillPresetSchema.default('mfc_mec_30000'), target_records: z.number().int().min(1).max(300000).default(30000), })
+- queueResearchBackfillPresetSchema : schema — const queueResearchBackfillPresetSchema = z.enum([ 'mfc_mec_wastewater_biosensors', ])
+- queueResearchBackfillPresetRequestSchema : schema — const queueResearchBackfillPresetRequestSchema = z.object({ preset_id: queueResearchBackfillPresetSchema.default( 'mfc_mec_wastewater_biosensors', ), target_records: z.number().int().min(60).max(5000).default(500), })
 - researchBackfillSummarySchema : schema — const researchBackfillSummarySchema = z.object({ run_id: z.string().min(1), query: z.string().min(1), status: researchBackfillStatusSchema, providers: z.array(researchSearchProviderSchema).default([]), per_provider_limit: z.number().int().positive(), max_pages: z.number().int().positive(), targ...
 - researchBackfillListResponseSchema : schema — const researchBackfillListResponseSchema = z.object({ items: z.array(researchBackfillSummarySchema).default([]), })
 - researchWarehouseProgressBucketSchema : schema — const researchWarehouseProgressBucketSchema = z.object({ key: z.string().min(1), label: z.string().min(1), count: z.number().int().nonnegative(), })
@@ -365,12 +381,16 @@ EXPORTS:
 - researchWarehouseEligibilityItemSchema : schema — const researchWarehouseEligibilityItemSchema = z.object({ source_document_id: z.string().min(1), title: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, document_type: researchDocumentTypeSchema, access_status: externalEvidenceAccessStatusSchema, source_license: z.string().min(1).nullab...
 - researchWarehouseEligibilityResponseSchema : schema — const researchWarehouseEligibilityResponseSchema = z.object({ dry_run: z.boolean().default(true), total_linked_records: z.number().int().nonnegative(), eligible_records: z.number().int().nonnegative(), excluded_records: z.number().int().nonnegative(), inaccessible_records: z.number().int().nonnegative(), ou...
 - researchWarehouseEligibilityRequestSchema : schema — const researchWarehouseEligibilityRequestSchema = z.object({ dry_run: z.boolean().default(true), limit: z.number().int().min(1).max(500).default(100), include_items: z.boolean().default(true), source_document_ids: z.array(z.string().min(1)).max(500).optional(), })
-- queueResearchBackfillPresetResponseSchema : schema — const queueResearchBackfillPresetResponseSchema = z.object({ preset_id: queueResearchBackfillPresetSchema, target_records: z.number().int().positive(), queued_runs: z.number().int().nonnegative(), skipped_queries: z.array(z.string().min(1)).default([]), backfills: z.array(researchBackfillSummarySchema).def...
+- queueResearchBackfillPresetResponseSchema : schema — const queueResearchBackfillPresetResponseSchema = z.object({ preset_id: queueResearchBackfillPresetSchema, target_records: z.number().int().positive(), estimated_max_records: z.number().int().positive(), query_count: z.number().int().positive(), queued_runs: z.number().int().nonnegative(), skipped_queries:...
 - addResearchColumnRequestSchema : schema — const addResearchColumnRequestSchema = researchColumnDefinitionSchema .omit({ position: true }) .extend({ position: z.number().int().nonnegative().optional(), })
 - runResearchExtractionsRequestSchema : schema — const runResearchExtractionsRequestSchema = z.object({ limit: z.number().int().min(1).max(200).default(50), column_ids: z.array(z.string().min(1)).optional(), paper_ids: z.array(z.string().min(1)).optional(), })
 - runResearchExtractionsResponseSchema : schema — const runResearchExtractionsResponseSchema = z.object({ review_id: z.string().min(1), attempted: z.number().int().nonnegative(), completed: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), results: z.array(researchExtractionResultSchema).default([]), })
 - createResearchEvidencePackRequestSchema : schema — const createResearchEvidencePackRequestSchema = z.object({ title: z.string().trim().min(1).max(160).optional(), status: researchEvidencePackStatusSchema.default('draft'), })
 - researchReviewListResponseSchema : schema — const researchReviewListResponseSchema = z.object({ items: z.array(researchReviewSummarySchema), })
+- evidenceQualityAuditRequestSchema : schema — const evidenceQualityAuditRequestSchema = z.object({ trigger_mode: evidenceQualityAuditTriggerModeSchema.default('manual'), include_golden_cases: z.boolean().default(true), })
+- evidenceQualityAuditResponseSchema : schema — const evidenceQualityAuditResponseSchema = z.object({ report: evidenceQualityReportSchema, })
+- discoveryStatusResponseSchema : schema — const discoveryStatusResponseSchema = z.object({ active_targets: z.number().int().nonnegative(), queued_targets: z.number().int().nonnegative(), completed_targets: z.number().int().nonnegative(), failed_targets: z.number().int().nonnegative().default(0), total_records_staged: z.number().int().n...
+- acquisitionStatusResponseSchema : schema — const acquisitionStatusResponseSchema = z.object({ queued_attempts: z.number().int().nonnegative(), running_attempts: z.number().int().nonnegative(), successful_attempts: z.number().int().nonnegative(), failed_attempts: z.number().int().nonnegative(), skipped_attempts: z.number().int().nonnegativ...
 - ResearchReviewStatus : type — export type ResearchReviewStatus = z.infer<typeof researchReviewStatusSchema>;
 - ResearchSearchProvider : type — export type ResearchSearchProvider = z.infer< typeof researchSearchProviderSchema >;
 - ResearchColumnType : type — export type ResearchColumnType = z.infer<typeof researchColumnTypeSchema>;
@@ -384,6 +404,9 @@ EXPORTS:
 - ResearchComponentType : type — export type ResearchComponentType = z.infer<typeof researchComponentTypeSchema>;
 - ResearchParameterKind : type — export type ResearchParameterKind = z.infer<typeof researchParameterKindSchema>;
 - ResearchEvidenceTrace : type — export type ResearchEvidenceTrace = z.infer<typeof researchEvidenceTraceSchema>;
+- ResearchCellStatus : type — export type ResearchCellStatus = z.infer<typeof researchCellStatusSchema>;
+- ResearchCellMissingReason : type — export type ResearchCellMissingReason = z.infer< typeof researchCellMissingReasonSchema >;
+- ResearchCell : type — export type ResearchCell = z.infer<typeof researchCellSchema>;
 - ResearchExtractedParameter : type — export type ResearchExtractedParameter = z.infer< typeof researchExtractedParameterSchema >;
 - ResearchComponentProfile : type — export type ResearchComponentProfile = z.infer< typeof researchComponentProfileSchema >;
 - ResearchExtractionQualityGate : type — export type ResearchExtractionQualityGate = z.infer< typeof researchExtractionQualityGateSchema >;
@@ -423,6 +446,10 @@ EXPORTS:
 - RunResearchExtractionsResponse : type — export type RunResearchExtractionsResponse = z.infer< typeof runResearchExtractionsResponseSchema >;
 - CreateResearchEvidencePackRequest : type — export type CreateResearchEvidencePackRequest = z.infer< typeof createResearchEvidencePackRequestSchema >;
 - ResearchReviewListResponse : type — export type ResearchReviewListResponse = z.infer< typeof researchReviewListResponseSchema >;
+- EvidenceQualityAuditRequest : type — export type EvidenceQualityAuditRequest = z.infer< typeof evidenceQualityAuditRequestSchema >;
+- EvidenceQualityAuditResponse : type — export type EvidenceQualityAuditResponse = z.infer< typeof evidenceQualityAuditResponseSchema >;
+- DiscoveryStatusResponse : type — export type DiscoveryStatusResponse = z.infer< typeof discoveryStatusResponseSchema >;
+- AcquisitionStatusResponse : type — export type AcquisitionStatusResponse = z.infer< typeof acquisitionStatusResponseSchema >;
 - researchEvidenceTypeSchema : schema — const researchEvidenceTypeSchema = evidenceTypeSchema
 - researchEvidenceStrengthSchema : schema — const researchEvidenceStrengthSchema = evidenceStrengthSchema
 SCHEMAS (Zod):
@@ -435,7 +462,8 @@ SCHEMAS (Zod):
 - researchBackfillStatusSchema: z.enum([ 'queued', 'running', 'completed', 'failed', ])
 - researchExtractionResultStatusSchema: z.enum([ 'valid', 'invalid', ])
 - researchEvidencePackStatusSchema: z.enum(['draft', 'reviewed'])
-- researchTechnologyClassSchema: z.enum([ 'MFC', 'MEC', 'MET', 'MDC', 'BES', 'bioelectrochemical_sensor', 'hybrid_system', 'not_reported', ])
+- activeResearchTechnologyClassSchema: z.enum([ 'MFC', 'MEC', 'electrochemical_biosensor', 'not_reported', ])
+- researchTechnologyClassSchema: z.preprocess((value) => { if (typeof value !== 'string') return value; const normalized = value.trim().toLowerCase(); if ( [ 'biosensor', 'bioelectrochemical_sensor', 'electrochemical sensor', ].includes(normalized) ) { return 'electrochemical_biosensor'; } if ( [ 'met', 'mdc', 'bes', 'hybrid_system', 'bioelectrochemical_system', ].includes(normalized) ) { return 'not_reported'; } return value; }, activeResearchTechnologyClassSchema)
 - researchDocumentTypeSchema: z.enum([ 'paper', 'review', 'patent', 'datasheet', 'manual_sop', 'technical_report', 'supplier_document', 'case_study', 'market_report', 'regulatory_report', 'curated_manifest', 'manual', ])
 - researchEligibilityStatusSchema: z.enum(['eligible', 'excluded'])
 - researchEligibilityReasonSchema: z.enum([ 'full_access_traceable', 'access_closed', 'access_unknown', 'missing_license_or_access_policy', 'missing_full_text_link', 'out_of_scope_technology', 'supplier_or_market_context_only', 'insufficient_source_metadata', ])
@@ -455,6 +483,9 @@ SCHEMAS (Zod):
 - researchSystemPerformanceExtractionSchema: { technology_class: z.array(researchTechnologyClassSchema).default([]), reactor_architecture: z .object({ type: z.string().nullable().default(null), useful_volume_ml: z.number().nullable().default(null), electrode_area_cm2: z.number().nullable().default(null), electrode_spacing_cm: z.number().nullable().default(null), geometry: z.string().nullable().default(null), }) .default({}), anode: z .object({ material: z.string().nullable().default(null), material_class: z.string().nullable().default(null), surface_area_m2_g: z.number().nullable().default(null), modification: z.string().nullable().default(null), properties: z.array(z.string()).default([]), }) .default({}), cathode: z .object({ material: z.string().nullable().default(null), catalyst: z.string().nullable().default(null), loading_mg_cm2: z.number().nullable().default(null), properties: z.array(z.string()).default([]), }) .default({}), membrane_or_separator: z .object({ type: z.string().nullable().default(null), properties: z.array(z.string()).default([]), }) .default({}), substrate_feedstock: z.array(z.string()).default([]), operating_conditions: flexibleObjectSchema.default({}), electrochemical_metrics: z.array(researchMetricMeasurementSchema).default([]), treatment_metrics: z.array(researchMetricMeasurementSchema).default([]), product_outputs: z.array(researchMetricMeasurementSchema).default([]), component_parameters: z.array(researchExtractedParameterSchema).default([]), component_profiles: z.array(researchComponentProfileSchema).default([]), quality_gate: researchExtractionQualityGateSchema.optional(), scale: z.string().nullable().default(null), implementation_limitations: z.array(z.string()).default([]), missing_fields: z.array(z.string()).default([]), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), confidence: confidenceLevelSchema }
 - researchImplementationFactorsExtractionSchema: { performance_limitations: z.array(z.string()).default([]), internal_resistance_issues: z.array(z.string()).default([]), electrode_limitations: z.array(z.string()).default([]), cathode_limitations: z.array(z.string()).default([]), membrane_limitations: z.array(z.string()).default([]), biofilm_limitations: z.array(z.string()).default([]), substrate_limitations: z.array(z.string()).default([]), fouling_and_scaling: z.array(z.string()).default([]), operational_risks: z.array(z.string()).default([]), scale_up_barriers: z.array(z.string()).default([]), economic_barriers: z.array(z.string()).default([]), durability_issues: z.array(z.string()).default([]), reproducibility_issues: z.array(z.string()).default([]), data_gaps: z.array(z.string()).default([]), maturity_signals: z.array(z.string()).default([]), implementation_dependencies: z.array(z.string()).default([]), supplier_relevance: z.array(z.string()).default([]), environmental_safety_factors: z.array(z.string()).default([]), missing_fields: z.array(z.string()).default([]), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), confidence: confidenceLevelSchema }
 - researchDataMetadataReadinessExtractionSchema: { summary: z.string().nullable().default(null), metadata_categories: z .object({ signal_generation: z.array(z.string()).default([]), signal_quality: z.array(z.string()).default([]), contextual_annotations: z.array(z.string()).default([]), data_lineage: z.array(z.string()).default([]), access_and_licensing: z.array(z.string()).default([]), review_state: z.array(z.string()).default([]), }) .default({}), training_and_extraction_applicability: z.array(z.string()).default([]), decision_use_readiness: z.enum([ 'ready_with_review', 'context_only', 'insufficient', ]), blocking_gaps: z.array(z.string()).default([]), recommended_uses: z.array(z.string()).default([]), missing_fields: z.array(z.string()).default([]), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), confidence: confidenceLevelSchema }
+- researchCellStatusSchema: z.enum([ 'filled_with_trace', 'filled_without_enough_trace', 'not_reported_by_paper', 'full_text_missing', 'document_parse_failed', 'table_detected_but_no_match', 'extraction_failed', 'queued', 'needs_analyst_review', ])
+- researchCellMissingReasonSchema: z.enum([ 'not_reported_by_paper', 'full_text_missing', 'document_parse_failed', 'table_detected_but_no_match', 'extraction_failed', 'queued', 'needs_analyst_review', ])
+- researchCellSchema: z .object({ paper_id: z.string().min(1), review_id: z.string().min(1), column_id: z.string().min(1), output_schema_key: z.string().min(1), value_display: z.string().nullable().default(null), normalized_value: z.union([z.number(), z.string(), z.null()]).default(null), unit: z.string().nullable().default(null), status: researchCellStatusSchema, missing_reason: researchCellMissingReasonSchema.nullable().default(null), confidence: z.number().min(0).max(1), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), extractor_version: z.string().min(1), created_at: z.string().min(1).optional(), updated_at: z.string().min(1).optional(), }) .superRefine((value, context) => { if ( value.status === 'filled_with_trace' && value.evidence_trace.length === 0 ) { context.addIssue({ code: z.ZodIssueCode.custom, message: 'filled_with_trace cells require at least one evidence_trace entry', path: ['evidence_trace'], }); } if (!value.status.startsWith('filled_') && value.missing_reason === null) { context.addIssue({ code: z.ZodIssueCode.custom, message: 'non-filled cells require a missing_reason', path: ['missing_reason'], }); } })
 - researchExtractionResultSchema: z .object({ result_id: z.string().min(1).optional(), review_id: z.string().min(1), paper_id: z.string().min(1), column_id: z.string().min(1), status: researchExtractionResultStatusSchema, answer: z.unknown(), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), confidence: confidenceLevelSchema, missing_fields: z.array(z.string()).default([]), validation_errors: z.array(z.string()).default([]), normalized_payload: flexibleObjectSchema.default({}), extractor_version: z.string().min(1), created_at: z.string().min(1).optional(), updated_at: z.string().min(1).optional(), }) .superRefine((value, context) => { if ( value.status === 'valid' && hasSubstantiveAnswer(value.answer) && value.evidence_trace.length === 0 ) { context.addIssue({ code: z.ZodIssueCode.custom, message: 'valid extraction results with substantive answers require evidence_trace', path: ['evidence_trace'], }); } })
 - researchExtractionJobSchema: { job_id: z.string().min(1), review_id: z.string().min(1), paper_id: z.string().min(1), column_id: z.string().min(1), status: researchExtractionJobStatusSchema, extractor_version: z.string().min(1), failure_detail: flexibleObjectSchema.nullable().default(null), created_at: z.string().min(1), updated_at: z.string().min(1) }
 - researchEvidencePackSchema: { pack_id: z.string().min(1), review_id: z.string().min(1), title: z.string().min(1), status: researchEvidencePackStatusSchema, source_result_ids: z.array(z.string().min(1)).default([]), evidence_items: z.array(rawEvidenceRecordSchema).default([]), metrics: z.array(researchMetricMeasurementSchema).default([]), missing_fields: z.array(z.string()).default([]), confidence: confidenceLevelSchema, payload: flexibleObjectSchema.default({}), runtime_versions: runtimeVersionSchema.optional(), created_at: z.string().min(1), updated_at: z.string().min(1) }
@@ -466,9 +497,9 @@ SCHEMAS (Zod):
 - searchResearchPapersResponseSchema: { query: z.string().min(1), providers: z.array(researchSearchProviderSchema).default([]), items: z.array(researchPaperSearchResultSchema).default([]), failed_providers: z.array(researchPaperSearchFailureSchema).default([]) }
 - stageResearchPapersRequestSchema: { query: z.string().trim().min(3).max(500).optional(), items: z.array(researchPaperSearchResultSchema).min(1).max(100) }
 - stageResearchPapersResponseSchema: { query: z.string().nullable().default(null), imported_count: z.number().int().nonnegative(), source_document_ids: z.array(z.string().min(1)).default([]), papers: z.array(researchPaperMetadataSchema).default([]) }
-- queueResearchBackfillRequestSchema: { query: z.string().trim().min(3).max(500), providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(), per_provider_limit: z.number().int().min(1).max(1000).default(25), max_pages: z.number().int().min(1).max(500).default(1), target_records: z.number().int().min(1).max(300000).optional() }
-- queueResearchBackfillPresetSchema: z.enum(['mfc_mec_30000'])
-- queueResearchBackfillPresetRequestSchema: { preset_id: queueResearchBackfillPresetSchema.default('mfc_mec_30000'), target_records: z.number().int().min(1).max(300000).default(30000) }
+- queueResearchBackfillRequestSchema: { query: z.string().trim().min(3).max(500), providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(), per_provider_limit: z.number().int().min(1).max(1000).default(25), max_pages: z.number().int().min(1).max(500).default(1), target_records: z.number().int().min(1).max(5000).optional() }
+- queueResearchBackfillPresetSchema: z.enum([ 'mfc_mec_wastewater_biosensors', ])
+- queueResearchBackfillPresetRequestSchema: { preset_id: queueResearchBackfillPresetSchema.default( 'mfc_mec_wastewater_biosensors', ), target_records: z.number().int().min(60).max(5000).default(500) }
 - researchBackfillSummarySchema: { run_id: z.string().min(1), query: z.string().min(1), status: researchBackfillStatusSchema, providers: z.array(researchSearchProviderSchema).default([]), per_provider_limit: z.number().int().positive(), max_pages: z.number().int().positive(), target_records: z.number().int().positive(), next_page: z.number().int().positive(), pages_completed: z.number().int().nonnegative(), records_fetched: z.number().int().nonnegative(), records_stored: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), failed_providers: z.array(researchPaperSearchFailureSchema).default([]), created_at: z.string().min(1), updated_at: z.string().min(1), completed_at: z.string().min(1).nullable().default(null), failure_message: z.string().min(1).nullable().default(null) }
 - researchBackfillListResponseSchema: { items: z.array(researchBackfillSummarySchema).default([]) }
 - researchWarehouseProgressBucketSchema: { key: z.string().min(1), label: z.string().min(1), count: z.number().int().nonnegative() }
@@ -476,15 +507,20 @@ SCHEMAS (Zod):
 - researchWarehouseEligibilityItemSchema: { source_document_id: z.string().min(1), title: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, document_type: researchDocumentTypeSchema, access_status: externalEvidenceAccessStatusSchema, source_license: z.string().min(1).nullable().default(null), has_full_text_link: z.boolean(), technology_classes: z.array(researchTechnologyClassSchema).default([]), status: researchEligibilityStatusSchema, reasons: z.array(researchEligibilityReasonSchema).default([]), active_surface: z.boolean() }
 - researchWarehouseEligibilityResponseSchema: { dry_run: z.boolean().default(true), total_linked_records: z.number().int().nonnegative(), eligible_records: z.number().int().nonnegative(), excluded_records: z.number().int().nonnegative(), inaccessible_records: z.number().int().nonnegative(), out_of_scope_records: z.number().int().nonnegative(), missing_full_text_records: z.number().int().nonnegative(), missing_license_records: z.number().int().nonnegative(), source_breakdown: z.array(researchWarehouseProgressBucketSchema).default([]), rejected_reason_buckets: z .array(researchWarehouseProgressBucketSchema) .default([]), items: z.array(researchWarehouseEligibilityItemSchema).default([]) }
 - researchWarehouseEligibilityRequestSchema: { dry_run: z.boolean().default(true), limit: z.number().int().min(1).max(500).default(100), include_items: z.boolean().default(true), source_document_ids: z.array(z.string().min(1)).max(500).optional() }
-- queueResearchBackfillPresetResponseSchema: { preset_id: queueResearchBackfillPresetSchema, target_records: z.number().int().positive(), queued_runs: z.number().int().nonnegative(), skipped_queries: z.array(z.string().min(1)).default([]), backfills: z.array(researchBackfillSummarySchema).default([]) }
+- queueResearchBackfillPresetResponseSchema: { preset_id: queueResearchBackfillPresetSchema, target_records: z.number().int().positive(), estimated_max_records: z.number().int().positive(), query_count: z.number().int().positive(), queued_runs: z.number().int().nonnegative(), skipped_queries: z.array(z.string().min(1)).default([]), backfills: z.array(researchBackfillSummarySchema).default([]) }
 - addResearchColumnRequestSchema: { position: z.number().int().nonnegative().optional() }
 - runResearchExtractionsRequestSchema: { limit: z.number().int().min(1).max(200).default(50), column_ids: z.array(z.string().min(1)).optional(), paper_ids: z.array(z.string().min(1)).optional() }
 - runResearchExtractionsResponseSchema: { review_id: z.string().min(1), attempted: z.number().int().nonnegative(), completed: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), results: z.array(researchExtractionResultSchema).default([]) }
 - createResearchEvidencePackRequestSchema: { title: z.string().trim().min(1).max(160).optional(), status: researchEvidencePackStatusSchema.default('draft') }
 - researchReviewListResponseSchema: { items: z.array(researchReviewSummarySchema) }
+- evidenceQualityAuditRequestSchema: { trigger_mode: evidenceQualityAuditTriggerModeSchema.default('manual'), include_golden_cases: z.boolean().default(true) }
+- evidenceQualityAuditResponseSchema: { report: evidenceQualityReportSchema }
+- discoveryStatusResponseSchema: { active_targets: z.number().int().nonnegative(), queued_targets: z.number().int().nonnegative(), completed_targets: z.number().int().nonnegative(), failed_targets: z.number().int().nonnegative().default(0), total_records_staged: z.number().int().nonnegative(), targets: z.array(discoveryTargetSchema).default([]) }
+- acquisitionStatusResponseSchema: { queued_attempts: z.number().int().nonnegative(), running_attempts: z.number().int().nonnegative(), successful_attempts: z.number().int().nonnegative(), failed_attempts: z.number().int().nonnegative(), skipped_attempts: z.number().int().nonnegative().default(0), attempts: z.array(acquisitionAttemptSchema).default([]) }
 LOADS_FROM_YAML:
 - none
 CALLS_TO:
+- ./schemas:evidenceQualityAuditTriggerModeSchema -> evidenceQualityAuditTriggerModeSchema.default
 - ./schemas:externalEvidenceAccessStatusSchema -> externalEvidenceAccessStatusSchema.default
 - ./schemas:runtimeVersionSchema -> runtimeVersionSchema.optional
 - hasSubstantiveAnswer
@@ -496,6 +532,7 @@ CALLS_TO:
 - zod:z -> z .object({ files: z.array(z.string().trim().min(1)).max(20).default([]), manifest_path: z.string().trim().min(1).optional(), access_status: externalEvidenceAccessStatusSchema.default('unknown'), license: z.string().trim().min(1).optional(), review_status: z.enum(['pending', 'accepted']).default('pending'), }) .refine
 - zod:z -> z .object({ material: z.string().nullable().default(null), catalyst: z.string().nullable().default(null), loading_mg_cm2: z.number().nullable().default(null), properties: z.array(z.string()).default([]), }) .default
 - zod:z -> z .object({ material: z.string().nullable().default(null), material_class: z.string().nullable().default(null), surface_area_m2_g: z.number().nullable().default(null), modification: z.string().nullable().default(null), properties: z.array(z.string()).default([]), }) .default
+- zod:z -> z .object({ paper_id: z.string().min(1), review_id: z.string().min(1), column_id: z.string().min(1), output_schema_key: z.string().min(1), value_display: z.string().nullable().default(null), normalized_value: z.union([z.number(), z.string(), z.null()]).default(null), unit: z.string().nullable().default(null), status: researchCellStatusSchema, missing_reason: researchCellMissingReasonSchema.nullable().default(null), confidence: z.number().min(0).max(1), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), extractor_version: z.string().min(1), created_at: z.string().min(1).optional(), updated_at: z.string().min(1).optional(), }) .superRefine
 - zod:z -> z .object({ result_id: z.string().min(1).optional(), review_id: z.string().min(1), paper_id: z.string().min(1), column_id: z.string().min(1), status: researchExtractionResultStatusSchema, answer: z.unknown(), evidence_trace: z.array(researchEvidenceTraceSchema).default([]), confidence: confidenceLevelSchema, missing_fields: z.array(z.string()).default([]), validation_errors: z.array(z.string()).default([]), normalized_payload: flexibleObjectSchema.default({}), extractor_version: z.string().min(1), created_at: z.string().min(1).optional(), updated_at: z.string().min(1).optional(), }) .superRefine
 - zod:z -> z .object({ signal_generation: z.array(z.string()).default([]), signal_quality: z.array(z.string()).default([]), contextual_annotations: z.array(z.string()).default([]), data_lineage: z.array(z.string()).default([]), access_and_licensing: z.array(z.string()).default([]), review_state: z.array(z.string()).default([]), }) .default
 - zod:z -> z .object({ type: z.string().nullable().default(null), properties: z.array(z.string()).default([]), }) .default
@@ -504,6 +541,8 @@ CALLS_TO:
 - zod:z -> z .string() .min
 - zod:z -> z .string() .min(1) .regex
 - zod:z -> z.array
+- zod:z -> z.array(acquisitionAttemptSchema).default
+- zod:z -> z.array(discoveryTargetSchema).default
 - zod:z -> z.array(flexibleObjectSchema).default
 - zod:z -> z.array(rawEvidenceRecordSchema).default
 - zod:z -> z.array(researchBackfillSummarySchema).default
@@ -543,6 +582,7 @@ CALLS_TO:
 - zod:z -> z.boolean().default
 - zod:z -> z.enum
 - zod:z -> z.enum(['pending', 'accepted']).default
+- zod:z -> z.null
 - zod:z -> z.number
 - zod:z -> z.number().int
 - zod:z -> z.number().int().min
@@ -550,10 +590,11 @@ CALLS_TO:
 - zod:z -> z.number().int().min(1).max(100).default
 - zod:z -> z.number().int().min(1).max(1000).default
 - zod:z -> z.number().int().min(1).max(200).default
-- zod:z -> z.number().int().min(1).max(300000).default
-- zod:z -> z.number().int().min(1).max(300000).optional
 - zod:z -> z.number().int().min(1).max(50).default
 - zod:z -> z.number().int().min(1).max(500).default
+- zod:z -> z.number().int().min(1).max(5000).optional
+- zod:z -> z.number().int().min(60).max
+- zod:z -> z.number().int().min(60).max(5000).default
 - zod:z -> z.number().int().nonnegative
 - zod:z -> z.number().int().nonnegative().default
 - zod:z -> z.number().int().nonnegative().nullable
@@ -569,6 +610,7 @@ CALLS_TO:
 - zod:z -> z.number().nullable().default
 - zod:z -> z.object
 - zod:z -> z.object({}).catchall
+- zod:z -> z.preprocess
 - zod:z -> z.string
 - zod:z -> z.string().min
 - zod:z -> z.string().min(1).nullable
@@ -584,19 +626,24 @@ CALLS_TO:
 - zod:z -> z.string().trim().min(3).max
 - zod:z -> z.string().trim().min(3).max(500).optional
 - zod:z -> z.union
+- zod:z -> z.union([z.number(), z.string(), z.null()]).default
 - zod:z -> z.union([z.number(), z.string()]).nullable
 - zod:z -> z.union([z.number(), z.string()]).nullable().default
 - zod:z -> z.unknown
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
-- Zod schemas declared in this file enforce 56 runtime validation contract(s).
+- Zod schemas declared in this file enforce 64 runtime validation contract(s).
 
 FILE: packages/domain-contracts/src/schemas.ts
-LINES: 1830
+LINES: 2436
 EXPORTS:
-- technologyFamilySchema : schema — const technologyFamilySchema = z.enum([ 'microbial_fuel_cell', 'microbial_electrolysis_cell', 'microbial_electrochemical_technology', ])
-- primaryObjectiveSchema : schema — const primaryObjectiveSchema = z.enum([ 'wastewater_treatment', 'hydrogen_recovery', 'nitrogen_recovery', 'sensing', 'low_power_generation', 'biogas_synergy', 'other', ])
+- activeTechnologyFamilyValues : const — const activeTechnologyFamilyValues = [ 'microbial_fuel_cell', 'microbial_electrolysis_cell', 'electrochemical_biosensor', ] as const
+- activeTechnologyFamilySchema : schema — const activeTechnologyFamilySchema = z.enum( activeTechnologyFamilyValues, )
+- technologyFamilySchema : schema — const technologyFamilySchema = z.enum([ ...activeTechnologyFamilyValues, 'microbial_electrochemical_technology', 'unclassified', ])
+- activePrimaryObjectiveValues : const — const activePrimaryObjectiveValues = [ 'wastewater_treatment', 'biosensing', ] as const
+- primaryObjectiveSchema : schema — const primaryObjectiveSchema = z.enum(activePrimaryObjectiveValues)
+- primaryObjectiveReadSchema : schema — const primaryObjectiveReadSchema = z.enum([ ...activePrimaryObjectiveValues, 'hydrogen_recovery', 'nitrogen_recovery', 'sensing', 'low_power_generation', 'biogas_synergy', 'other', ])
 - confidenceLevelSchema : schema — const confidenceLevelSchema = z.enum(['low', 'medium', 'high'])
 - signalSourceKindSchema : schema — const signalSourceKindSchema = z.enum([ 'measured', 'inferred', 'modeled', 'unavailable', ])
 - simulationEnrichmentStatusSchema : schema — const simulationEnrichmentStatusSchema = z.enum([ 'disabled', 'insufficient_data', 'completed', 'failed', ])
@@ -623,6 +670,15 @@ EXPORTS:
 - workspaceToneSchema : schema — const workspaceToneSchema = z.enum([ 'success', 'warning', 'critical', 'accent', 'muted', ])
 - parameterValueSourceSchema : schema — const parameterValueSourceSchema = z.enum([ 'client', 'system_default', 'unset', ])
 - parameterConfidenceImpactSchema : schema — const parameterConfidenceImpactSchema = z.enum([ 'low', 'medium', 'high', ])
+- evidenceCoverageLevelSchema : schema — const evidenceCoverageLevelSchema = z.enum([ 'strong', 'sufficient', 'sparse', 'absent', ])
+- evidenceRecencyStatusSchema : schema — const evidenceRecencyStatusSchema = z.enum([ 'current', 'aging', 'stale', ])
+- evidenceGapSeveritySchema : schema — const evidenceGapSeveritySchema = z.enum([ 'critical', 'moderate', 'minor', ])
+- evidenceReadinessLevelSchema : schema — const evidenceReadinessLevelSchema = z.enum([ 'ready', 'partial', 'insufficient', 'no_audit', ])
+- evidenceOutlierActionSchema : schema — const evidenceOutlierActionSchema = z.enum([ 'flag_for_review', 'confirmed_outlier', 'dismissed', ])
+- evidenceQualityAuditTriggerModeSchema : schema — const evidenceQualityAuditTriggerModeSchema = z.enum([ 'manual', 'scheduled', 'pre_evaluation', 'worker', ])
+- discoveryTargetStatusSchema : schema — const discoveryTargetStatusSchema = z.enum([ 'queued', 'running', 'completed', 'failed', 'skipped', ])
+- acquisitionAttemptStrategySchema : schema — const acquisitionAttemptStrategySchema = z.enum([ 'source_artifact', 'unpaywall', 'core', 'semantic_scholar', 'publisher_oa', 'direct_pdf', 'direct_html', 'direct_xml', ])
+- acquisitionAttemptStatusSchema : schema — const acquisitionAttemptStatusSchema = z.enum([ 'queued', 'running', 'success', 'failed', 'blocked', 'skipped', ])
 - metadataQualityLevelSchema : schema — const metadataQualityLevelSchema = z.enum(['low', 'medium', 'high'])
 - metadataQualityProfileSchema : schema — const metadataQualityProfileSchema = z.object({ score: z.number().min(0).max(1), level: metadataQualityLevelSchema, present_fields: z.array(z.string()).default([]), missing_fields: z.array(z.string()).default([]), categories: flexibleObjectSchema.default({}), notes: z.array(z.string()).default...
 - evidenceVeracityLevelSchema : schema — const evidenceVeracityLevelSchema = z.enum(['low', 'medium', 'high'])
@@ -633,11 +689,16 @@ EXPORTS:
 - evidenceRecordSchema : schema — const evidenceRecordSchema = rawEvidenceRecordSchema.extend({ evidence_id: z.string().min(1), })
 - businessContextSchema : schema — const businessContextSchema = flexibleObjectSchema.extend({ decision_horizon: z.string().optional(), deployment_context: z.string().optional(), capex_constraint_level: z.string().optional(), opex_sensitivity_level: z.string().optional(), retrofit_priority: z.string().optional(), service...
 - technologyContextSchema : schema — const technologyContextSchema = flexibleObjectSchema.extend({ technology_family: technologyFamilySchema.optional(), architecture_family: z.string().optional(), scale_context: z.string().optional(), current_trl: z.union([z.number(), z.string()]).optional(), current_pain_points: z.array(z.s...
+- scientificModelParameterSchema : schema — const scientificModelParameterSchema = z.object({ value: z.number().finite(), unit: z.string().trim().min(1), source_kind: z.enum([ 'measured', 'literature', 'default', 'assumption', 'test_fixture', ]), source_ref: z.string().trim().min(1), original_value: z.number().finite().optional(), origina...
 - feedAndOperationSchema : schema — const feedAndOperationSchema = flexibleObjectSchema.extend({ influent_type: z.string().optional(), substrate_profile: z.string().optional(), influent_cod_mg_per_l: z.number().optional(), pH: z.number().optional(), temperature_c: z.number().optional(), conductivity_ms_per_cm: z.number().o...
+- mechanisticModelInputSchema : schema — const mechanisticModelInputSchema = z.object({ model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'), system_type: z.enum(['MFC', 'MEC']), geometry: z.object({ anode_chamber_volume_m3: modelParameter, cathode_chamber_volume_m3: modelParameter, anode_area_m2: modelParamete...
+- mechanisticModelDraftInputSchema : schema — const mechanisticModelDraftInputSchema = z.object({ model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'), system_type: z.enum(['MFC', 'MEC']), geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(), materials: mechanisticModelInputSchema.shape.materials.par...
+- biosensorConfigurationSchema : schema — const biosensorConfigurationSchema = z.object({ deployment_mode: z.enum(['standalone', 'mfc_integrated', 'mec_integrated']), power_source: z.enum(['external', 'mfc_harvested', 'mec_power_bus']), analyte_id: z.string().trim().min(1), measurand: z.string().trim().min(1), concentration_unit: z.st...
+- biosensorConfigurationDraftSchema : schema — const biosensorConfigurationDraftSchema = biosensorConfigurationSchema .extend({ calibration: biosensorConfigurationSchema.shape.calibration .partial() .optional(), analytical_performance: biosensorConfigurationSchema.shape.analytical_performance .partial() .optional(), }) .partial()
 - stackBlocksSchema : schema — const stackBlocksSchema = z.object({ reactor_architecture: reactorArchitectureSchema.default({}), anode_biofilm_support: anodeBiofilmSupportSchema.default({}), cathode_catalyst_support: cathodeCatalystSupportSchema.default({}), membrane_or_separator: membraneOrSeparatorSchema.defaul...
 - crossCuttingLayersSchema : schema — const crossCuttingLayersSchema = z.object({ technoeconomics: technoeconomicsLayerSchema.default({}), evidence_and_provenance: evidenceAndProvenanceLayerSchema.default({}), risk_and_maturity: riskAndMaturityLayerSchema.default({}), })
 - rawCaseInputSchema : schema — const rawCaseInputSchema = z.object({ case_id: z.string().optional(), case_metadata: flexibleObjectSchema.optional(), technology_family: z.string().optional(), architecture_family: z.string().optional(), primary_objective: z.string().optional(), business_context: businessContextSchem...
-- normalizedCaseInputSchema : schema — const normalizedCaseInputSchema = z.object({ case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveSchema, business_context: businessContextSchema.default({}), technology_context: technologyContextSc...
+- normalizedCaseInputSchema : schema — const normalizedCaseInputSchema = z.object({ case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveReadSchema, business_context: businessContextSchema.default({}), technology_context: technologyConte...
 - recommendationRecordSchema : schema — const recommendationRecordSchema = z.object({ recommendation_id: z.string().min(1), linked_diagnosis: z.string().min(1), rationale: z.string().min(1), expected_benefit: z.string().min(1), implementation_effort: z.enum(['low', 'medium', 'high']), economic_plausibility: z.enum(['low', 'medium'...
 - currentStackDiagnosisSchema : schema — const currentStackDiagnosisSchema = z.object({ summary: z.string().min(1), block_findings: z.array( z.object({ block: z.string().min(1), status: z.enum(['documented', 'needs-data', 'attention']), finding: z.string().min(1), rule_refs: z.array(z.string()).default([]), severity: z.enum(['low',...
 - impactMapEntrySchema : schema — const impactMapEntrySchema = z.object({ option: z.string().min(1), technical_impact: z.string().min(1), economic_plausibility: z.string().min(1), maturity_or_readiness: z.string().min(1), dependencies: z.array(z.string()), confidence: confidenceLevelSchema, priority_score: z.number().m...
@@ -653,7 +714,7 @@ EXPORTS:
 - simulationProvenanceSchema : schema — const simulationProvenanceSchema = z.object({ provider: z.string().min(1), execution_mode: simulationExecutionModeSchema, source_version: z.string().min(1), generated_at: z.string().min(1), source_refs: z.array(z.string()).default([]), note: z.string().optional(), })
 - simulationSummarySchema : schema — const simulationSummarySchema = z.object({ status: simulationEnrichmentStatusSchema, model_version: z.string().min(1), confidence_level: confidenceLevelSchema, derived_observation_count: z.number().int().nonnegative(), has_series: z.boolean(), })
 - simulationEnrichmentSchema : schema — const simulationEnrichmentSchema = z.object({ status: simulationEnrichmentStatusSchema, model_version: z.string().min(1), input_snapshot: flexibleObjectSchema.default({}), derived_observations: z.array(derivedObservationSchema).default([]), series: z.array(simulationSeriesSchema).default([])...
-- evidenceDecisionContextSystemTypeSchema : schema — const evidenceDecisionContextSystemTypeSchema = z.enum([ 'MFC', 'MEC', 'MET', 'BES', ])
+- evidenceDecisionContextSystemTypeSchema : schema — const evidenceDecisionContextSystemTypeSchema = z.enum([ 'MFC', 'MEC', 'BIOSENSOR', 'UNCLASSIFIED', ])
 - evidenceDecisionContextQuerySchema : schema — const evidenceDecisionContextQuerySchema = z.object({ system_type: evidenceDecisionContextSystemTypeSchema, application: primaryObjectiveSchema, component_types: z.array(z.string()).default([]), materials: z.array(z.string()).default([]), metric_types: z.array(z.string()).default([]), limit: z.numbe...
 - evidenceDecisionBenchmarkRangeSchema : schema — const evidenceDecisionBenchmarkRangeSchema = z.object({ canonical_key: z.string().min(1), metric_type: z.string().min(1), normalized_unit: z.string().min(1), system_type: z.string().nullable().default(null), application: z.string().nullable().default(null), component_type: z.string().nullable().defaul...
 - evidenceDecisionMatchedEvidenceSchema : schema — const evidenceDecisionMatchedEvidenceSchema = z.object({ catalog_item_id: z.string().min(1), source_record_id: z.string().min(1), title: z.string().min(1), review_status: z.string().nullable().default(null), source_state: z.string().nullable().default(null), access_status: z.string().nullable().default...
@@ -668,11 +729,11 @@ EXPORTS:
 - workspaceMetaSchema : schema — const workspaceMetaSchema = z.object({ generated_at: z.string().min(1), versions: runtimeVersionSchema, traceability: traceabilitySummarySchema, })
 - auditRecordSchema : schema — const auditRecordSchema = z.object({ audit_id: z.string().min(1), timestamp: z.string().min(1), actor_role: z.string().min(1), actor_id: z.string().optional(), defaults_count: z.number().int().nonnegative(), missing_data_count: z.number().int().nonnegative(), confidence_level: confi...
 - evaluationResponseSchema : schema — const evaluationResponseSchema = z.object({ evaluation_id: z.string().min(1), case_id: z.string().min(1), normalized_case: normalizedCaseInputSchema, decision_output: decisionOutputSchema, audit_record: auditRecordSchema, evidence_decision_context: evidenceDecisionContextSchema .nullable()...
-- evaluationSummarySchema : schema — const evaluationSummarySchema = z.object({ evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveSchema, summary: z.string().min(1)...
+- evaluationSummarySchema : schema — const evaluationSummarySchema = z.object({ evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveReadSchema, summary: z.string().mi...
 - dashboardReportSummarySchema : schema — const dashboardReportSummarySchema = evaluationSummarySchema.extend({ report_href: z.string().min(1), })
 - evaluationListSummarySchema : schema — const evaluationListSummarySchema = z.object({ total: z.number().int().nonnegative(), filtered_total: z.number().int().nonnegative(), page: z.number().int().positive(), page_size: z.number().int().positive(), total_pages: z.number().int().positive(), returned: z.number().int().nonnegative(), })
 - evaluationListResponseSchema : schema — const evaluationListResponseSchema = z.object({ items: z.array(evaluationSummarySchema), summary: evaluationListSummarySchema, })
-- caseSnapshotSchema : schema — const caseSnapshotSchema = z.object({ case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveSchema, raw_intake_snapshot: rawCaseInputSchema, normalized_case: normalizedCaseInputSchema, default...
+- caseSnapshotSchema : schema — const caseSnapshotSchema = z.object({ case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveReadSchema, raw_intake_snapshot: rawCaseInputSchema, normalized_case: normalizedCaseInputSchema, def...
 - auditEventSchema : schema — const auditEventSchema = z.object({ event_id: z.string().min(1), case_id: z.string().optional(), evaluation_id: z.string().optional(), event_type: z.string().min(1), actor_role: z.string().min(1), actor_id: z.string().optional(), payload: flexibleObjectSchema, created_at: z.string(...
 - caseHistoryResponseSchema : schema — const caseHistoryResponseSchema = z.object({ case: caseSnapshotSchema, evaluations: z.array(evaluationSummarySchema), evidence_records: z.array(evidenceRecordSchema), audit_events: z.array(auditEventSchema), })
 - externalEvidenceCatalogListSummarySchema : schema — const externalEvidenceCatalogListSummarySchema = z.object({ total: z.number().int().nonnegative(), catalog_total: z.number().int().nonnegative().optional(), filtered_total: z.number().int().nonnegative().default(0), pending: z.number().int().nonnegative(), pending_review: z.number().int().nonnegative().op...
@@ -694,6 +755,23 @@ EXPORTS:
 - dashboardParameterSummarySchema : schema — const dashboardParameterSummarySchema = parameterStateSummarySchema
 - parameterStateAuditEntrySchema : schema — const parameterStateAuditEntrySchema = z.object({ key: z.string().min(1), label: z.string().min(1), included: z.boolean(), value_source: parameterValueSourceSchema, value_label: z.string().min(1), unit: z.string().min(1).nullable(), confidence_impact: parameterConfidenceImpactSchema.nullable(),...
 - parameterStateAuditSchema : schema — const parameterStateAuditSchema = z.object({ summary: parameterStateSummarySchema, entries: z.array(parameterStateAuditEntrySchema), })
+- coverageEntrySchema : schema — const coverageEntrySchema = z.object({ system_type: z.string().min(1).nullable().default(null), component_type: z.string().min(1).nullable().default(null), material: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), scale: z.string().min(1).nullable().default...
+- evidenceGapSchema : schema — const evidenceGapSchema = z.object({ gap_id: z.string().min(1), system_type: z.string().min(1).nullable().default(null), component_type: z.string().min(1).nullable().default(null), material: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), severity: eviden...
+- evidenceOutlierSchema : schema — const evidenceOutlierSchema = z.object({ fact_id: z.string().min(1), canonical_key: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), normalized_value: z.number(), aggregate_median: z.number(), z_score: z.number(), source_document_id: z.string().min(1), title:...
+- externalEvidenceScientificFactSchema : schema — const externalEvidenceScientificFactSchema = z.object({ id: z.string().min(1), fact_layer: z.string().min(1), fact_type: z.string().min(1), field_key: z.string().min(1), canonical_key: z.string().nullable().default(null), decision_ready: z.boolean().default(false), extraction_status: z.string().min(1)...
+- externalEvidenceBenchmarkRecordSchema : schema — const externalEvidenceBenchmarkRecordSchema = z.object({ id: z.string().min(1), canonical_key: z.string().nullable().default(null), decision_ready: z.boolean().default(false), confidence: z.number().min(0).max(1).nullable().default(null), system_type: z.string().nullable().default(null), application: z...
+- externalEvidenceSourceTextStatusSchema : schema — const externalEvidenceSourceTextStatusSchema = z.object({ access_status: externalEvidenceAccessStatusSchema.default('unknown'), abstract_available: z.boolean().default(false), source_artifact_count: z.number().int().nonnegative(), source_text_chunk_count: z.number().int().nonnegative(), source_url_avail...
+- acceptedEvidenceReadinessActionSchema : schema — const acceptedEvidenceReadinessActionSchema = z.enum([ 'keep', 'reacquire_full_text', 'rerun_extraction', 'quarantine_for_review', 'reject_from_intake', 'delete_record', ])
+- acceptedEvidenceReadinessCandidateSchema : schema — const acceptedEvidenceReadinessCandidateSchema = z.object({ catalog_item_id: z.string().min(1), source_record_id: z.string().min(1), title: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, published_at: z.string().nullable().default(null), extraction_status: z.string().min(1), normalizati...
+- acceptedEvidenceReadinessRecordSchema : schema — const acceptedEvidenceReadinessRecordSchema = acceptedEvidenceReadinessCandidateSchema.extend({ issue_flags: z.array(z.string().min(1)).default([]), table_ready: z.boolean().default(false), recommended_action: acceptedEvidenceReadinessActionSchema, rationale: z.string().min(1), })
+- acceptedEvidenceReadinessSummarySchema : schema — const acceptedEvidenceReadinessSummarySchema = z.object({ total_accepted_records: z.number().int().nonnegative(), table_ready_records: z.number().int().nonnegative(), keep_count: z.number().int().nonnegative(), reacquire_full_text_count: z.number().int().nonnegative(), rerun_extraction_count: z.number()...
+- readinessScoreSchema : schema — const readinessScoreSchema = z.object({ case_archetype: z.string().min(1), technology_family: technologyFamilySchema, primary_objective: primaryObjectiveReadSchema, readiness_level: evidenceReadinessLevelSchema.exclude(['no_audit']), primary_metrics_coverage: z.number().int().nonnegati...
+- funnelStageCountSchema : schema — const funnelStageCountSchema = z.object({ stage: z.string().min(1), count: z.number().int().nonnegative(), conversion_rate: z.number().min(0).max(1).nullable().default(null), })
+- evidenceFunnelGroupSchema : schema — const evidenceFunnelGroupSchema = z.object({ article: z.array(funnelStageCountSchema).default([]), document: z.array(funnelStageCountSchema).default([]), fact: z.array(funnelStageCountSchema).default([]), benchmark: z.array(funnelStageCountSchema).default([]), research_cell: z.array(funnelS...
+- evidenceQualityReportSchema : schema — const evidenceQualityReportSchema = z.object({ report_id: z.string().min(1), trigger_mode: evidenceQualityAuditTriggerModeSchema, coverage_matrix: z.array(coverageEntrySchema).default([]), gaps: z.array(evidenceGapSchema).default([]), outliers: z.array(evidenceOutlierSchema).default([]), read...
+- discoveryTargetSchema : schema — const discoveryTargetSchema = z.object({ target_id: z.string().min(1), audit_report_id: z.string().min(1).nullable().default(null), gap_id: z.string().min(1), query: z.string().min(1), providers: z .array(z.enum(['openalex', 'crossref', 'europe_pmc'])) .default([]), priority: z.number()...
+- acquisitionAttemptSchema : schema — const acquisitionAttemptSchema = z.object({ attempt_id: z.string().min(1), source_record_id: z.string().min(1), strategy: acquisitionAttemptStrategySchema, status: acquisitionAttemptStatusSchema, found_url: z.string().nullable().default(null), found_access_status: externalEvidenceAccessSta...
+- evidenceIntelligenceSummarySchema : schema — const evidenceIntelligenceSummarySchema = z.object({ readiness_level: evidenceReadinessLevelSchema, critical_gap_count: z.number().int().nonnegative(), stale_metric_count: z.number().int().nonnegative(), decision_ready_records: z.number().int().nonnegative(), coverage_ratio: z.number().min(0).max(1...
 - dashboardRunOutputStatusSchema : schema — const dashboardRunOutputStatusSchema = z.object({ report_available: z.boolean(), narrative_available: z.boolean(), modeled: z.boolean(), })
 - dashboardLatestRunOverviewSchema : schema — const dashboardLatestRunOverviewSchema = z.object({ title: z.string().min(1), subtitle: z.string().min(1), defaults_count: z.number().int().nonnegative(), missing_data_count: z.number().int().nonnegative(), assumptions_count: z.number().int().nonnegative(), evidence_count: z.number().int().nonnega...
 - dashboardWorkspaceResponseSchema : schema — const dashboardWorkspaceResponseSchema = z.object({ meta: workspaceMetaSchema, presentation: workspacePresentationSchema.optional(), summary: z.object({ total_runs: z.number().int().nonnegative(), total_cases: z.number().int().nonnegative(), high_confidence_runs: z.number().int().nonnegative(), mo...
@@ -732,16 +810,22 @@ EXPORTS:
 - evaluationClaimUsageSchema : schema — const evaluationClaimUsageSchema = z.object({ id: z.string().min(1), evaluation_id: z.string().min(1), claim_id: z.string().min(1), usage_type: evaluationEvidenceUsageTypeSchema, note: z.string().nullable(), runtime_versions: runtimeVersionSchema.optional(), created_at: z.string().min(1), })
 - workspaceSnapshotRecordSchema : schema — const workspaceSnapshotRecordSchema = z.object({ id: z.string().min(1), evaluation_id: z.string().nullable(), case_id: z.string().nullable(), snapshot_type: workspaceSnapshotTypeSchema, payload: z.unknown(), runtime_versions: runtimeVersionSchema.optional(), created_at: z.string().min(1), })
 - evaluationLineageSchema : schema — const evaluationLineageSchema = z.object({ source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]), claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]), workspace_snapshots: z .array(z.lazy(() => workspaceSnapshotRecordSchema)) .default([]), })
-- externalEvidenceCatalogDetailSchema : schema — const externalEvidenceCatalogDetailSchema = externalEvidenceCatalogSummarySchema.extend({ source_document: sourceDocumentRecordSchema.optional(), claims: z.array(evidenceClaimSchema).default([]), supplier_documents: z.array(supplierDocumentSchema).default([]), source_artifacts: z.array(sourceArtifact...
+- externalEvidenceCatalogDetailSchema : schema — const externalEvidenceCatalogDetailSchema = externalEvidenceCatalogSummarySchema.extend({ source_document: sourceDocumentRecordSchema.optional(), claims: z.array(evidenceClaimSchema).default([]), scientific_facts: z.array(externalEvidenceScientificFactSchema).optional(), benchmark_records: z .array(e...
 - externalEvidenceCatalogListResponseSchema : schema — const externalEvidenceCatalogListResponseSchema = z.object({ items: z.array(externalEvidenceCatalogSummarySchema), summary: externalEvidenceCatalogListSummarySchema, warehouse_aggregate: externalEvidenceCatalogWarehouseAggregateSchema, })
 - externalEvidenceReviewRequestSchema : schema — const externalEvidenceReviewRequestSchema = z.object({ action: externalEvidenceReviewActionSchema, note: z.string().trim().min(1).max(500).optional(), })
 - externalEvidenceBulkReviewRequestSchema : schema — const externalEvidenceBulkReviewRequestSchema = z.object({ ids: z.array(z.string().trim().min(1)).min(1).max(100), action: externalEvidenceReviewActionSchema, note: z.string().trim().min(1).max(500).optional(), })
 - externalEvidenceBulkReviewFailureSchema : schema — const externalEvidenceBulkReviewFailureSchema = z.object({ id: z.string().trim().min(1), message: z.string().trim().min(1), })
 - externalEvidenceBulkReviewResponseSchema : schema — const externalEvidenceBulkReviewResponseSchema = z.object({ action: externalEvidenceReviewActionSchema, attempted_ids: z.array(z.string().trim().min(1)), succeeded_ids: z.array(z.string().trim().min(1)), failed: z.array(externalEvidenceBulkReviewFailureSchema), note: z.string().trim().min(1).max(500).opti...
 - RawCaseInput : type — export type RawCaseInput = z.infer<typeof rawCaseInputSchema>;
+- PrimaryObjective : type — export type PrimaryObjective = z.infer<typeof primaryObjectiveSchema>;
 - SupplierContext : type — export type SupplierContext = z.infer<typeof supplierContextSchema>;
 - RawEvidenceRecord : type — export type RawEvidenceRecord = z.infer<typeof rawEvidenceRecordSchema>;
 - EvidenceRecord : type — export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
+- ScientificModelParameter : type — export type ScientificModelParameter = z.infer< typeof scientificModelParameterSchema >;
+- MechanisticModelInput : type — export type MechanisticModelInput = z.infer<typeof mechanisticModelInputSchema>;
+- MechanisticModelDraftInput : type — export type MechanisticModelDraftInput = z.infer< typeof mechanisticModelDraftInputSchema >;
+- BiosensorConfiguration : type — export type BiosensorConfiguration = z.infer< typeof biosensorConfigurationSchema >;
+- BiosensorConfigurationDraft : type — export type BiosensorConfigurationDraft = z.infer< typeof biosensorConfigurationDraftSchema >;
 - NormalizedCaseInput : type — export type NormalizedCaseInput = z.infer<typeof normalizedCaseInputSchema>;
 - RecommendationRecord : type — export type RecommendationRecord = z.infer<typeof recommendationRecordSchema>;
 - DecisionOutput : type — export type DecisionOutput = z.infer<typeof decisionOutputSchema>;
@@ -774,6 +858,20 @@ EXPORTS:
 - WorkspaceImpactItem : type — export type WorkspaceImpactItem = z.infer<typeof workspaceImpactItemSchema>;
 - WorkspaceMetricRecord : type — export type WorkspaceMetricRecord = z.infer<typeof workspaceMetricRecordSchema>;
 - ParameterStateAudit : type — export type ParameterStateAudit = z.infer<typeof parameterStateAuditSchema>;
+- EvidenceCoverageLevel : type — export type EvidenceCoverageLevel = z.infer<typeof evidenceCoverageLevelSchema>;
+- EvidenceRecencyStatus : type — export type EvidenceRecencyStatus = z.infer<typeof evidenceRecencyStatusSchema>;
+- EvidenceGapSeverity : type — export type EvidenceGapSeverity = z.infer<typeof evidenceGapSeveritySchema>;
+- EvidenceReadinessLevel : type — export type EvidenceReadinessLevel = z.infer< typeof evidenceReadinessLevelSchema >;
+- CoverageEntry : type — export type CoverageEntry = z.infer<typeof coverageEntrySchema>;
+- EvidenceGap : type — export type EvidenceGap = z.infer<typeof evidenceGapSchema>;
+- EvidenceOutlier : type — export type EvidenceOutlier = z.infer<typeof evidenceOutlierSchema>;
+- ReadinessScore : type — export type ReadinessScore = z.infer<typeof readinessScoreSchema>;
+- FunnelStageCount : type — export type FunnelStageCount = z.infer<typeof funnelStageCountSchema>;
+- EvidenceFunnelGroup : type — export type EvidenceFunnelGroup = z.infer<typeof evidenceFunnelGroupSchema>;
+- EvidenceQualityReport : type — export type EvidenceQualityReport = z.infer<typeof evidenceQualityReportSchema>;
+- DiscoveryTarget : type — export type DiscoveryTarget = z.infer<typeof discoveryTargetSchema>;
+- AcquisitionAttempt : type — export type AcquisitionAttempt = z.infer<typeof acquisitionAttemptSchema>;
+- EvidenceIntelligenceSummary : type — export type EvidenceIntelligenceSummary = z.infer< typeof evidenceIntelligenceSummarySchema >;
 - DashboardWorkspaceResponse : type — export type DashboardWorkspaceResponse = z.infer< typeof dashboardWorkspaceResponseSchema >;
 - EvaluationWorkspaceResponse : type — export type EvaluationWorkspaceResponse = z.infer< typeof evaluationWorkspaceResponseSchema >;
 - CaseHistoryTimelineItem : type — export type CaseHistoryTimelineItem = z.infer< typeof caseHistoryTimelineItemSchema >;
@@ -829,6 +927,13 @@ EXPORTS:
 - SourceDocumentRecord : type — export type SourceDocumentRecord = z.infer<typeof sourceDocumentRecordSchema>;
 - SourceTextChunk : type — export type SourceTextChunk = z.infer<typeof sourceTextChunkSchema>;
 - SourceArtifact : type — export type SourceArtifact = z.infer<typeof sourceArtifactSchema>;
+- ExternalEvidenceScientificFact : type — export type ExternalEvidenceScientificFact = z.infer< typeof externalEvidenceScientificFactSchema >;
+- ExternalEvidenceBenchmarkRecord : type — export type ExternalEvidenceBenchmarkRecord = z.infer< typeof externalEvidenceBenchmarkRecordSchema >;
+- ExternalEvidenceSourceTextStatus : type — export type ExternalEvidenceSourceTextStatus = z.infer< typeof externalEvidenceSourceTextStatusSchema >;
+- AcceptedEvidenceReadinessAction : type — export type AcceptedEvidenceReadinessAction = z.infer< typeof acceptedEvidenceReadinessActionSchema >;
+- AcceptedEvidenceReadinessCandidate : type — export type AcceptedEvidenceReadinessCandidate = z.infer< typeof acceptedEvidenceReadinessCandidateSchema >;
+- AcceptedEvidenceReadinessRecord : type — export type AcceptedEvidenceReadinessRecord = z.infer< typeof acceptedEvidenceReadinessRecordSchema >;
+- AcceptedEvidenceReadinessSummary : type — export type AcceptedEvidenceReadinessSummary = z.infer< typeof acceptedEvidenceReadinessSummarySchema >;
 - EvidenceClaimReview : type — export type EvidenceClaimReview = z.infer<typeof evidenceClaimReviewSchema>;
 - EvidenceOntologyMapping : type — export type EvidenceOntologyMapping = z.infer< typeof evidenceOntologyMappingSchema >;
 - EvidenceClaim : type — export type EvidenceClaim = z.infer<typeof evidenceClaimSchema>;
@@ -844,8 +949,10 @@ EXPORTS:
 - ExternalEvidenceBulkReviewFailure : type — export type ExternalEvidenceBulkReviewFailure = z.infer< typeof externalEvidenceBulkReviewFailureSchema >;
 - ExternalEvidenceBulkReviewResponse : type — export type ExternalEvidenceBulkReviewResponse = z.infer< typeof externalEvidenceBulkReviewResponseSchema >;
 SCHEMAS (Zod):
-- technologyFamilySchema: z.enum([ 'microbial_fuel_cell', 'microbial_electrolysis_cell', 'microbial_electrochemical_technology', ])
-- primaryObjectiveSchema: z.enum([ 'wastewater_treatment', 'hydrogen_recovery', 'nitrogen_recovery', 'sensing', 'low_power_generation', 'biogas_synergy', 'other', ])
+- activeTechnologyFamilySchema: z.enum( activeTechnologyFamilyValues, )
+- technologyFamilySchema: z.enum([ ...activeTechnologyFamilyValues, 'microbial_electrochemical_technology', 'unclassified', ])
+- primaryObjectiveSchema: z.enum(activePrimaryObjectiveValues)
+- primaryObjectiveReadSchema: z.enum([ ...activePrimaryObjectiveValues, 'hydrogen_recovery', 'nitrogen_recovery', 'sensing', 'low_power_generation', 'biogas_synergy', 'other', ])
 - confidenceLevelSchema: z.enum(['low', 'medium', 'high'])
 - signalSourceKindSchema: z.enum([ 'measured', 'inferred', 'modeled', 'unavailable', ])
 - simulationEnrichmentStatusSchema: z.enum([ 'disabled', 'insufficient_data', 'completed', 'failed', ])
@@ -872,6 +979,15 @@ SCHEMAS (Zod):
 - workspaceToneSchema: z.enum([ 'success', 'warning', 'critical', 'accent', 'muted', ])
 - parameterValueSourceSchema: z.enum([ 'client', 'system_default', 'unset', ])
 - parameterConfidenceImpactSchema: z.enum([ 'low', 'medium', 'high', ])
+- evidenceCoverageLevelSchema: z.enum([ 'strong', 'sufficient', 'sparse', 'absent', ])
+- evidenceRecencyStatusSchema: z.enum([ 'current', 'aging', 'stale', ])
+- evidenceGapSeveritySchema: z.enum([ 'critical', 'moderate', 'minor', ])
+- evidenceReadinessLevelSchema: z.enum([ 'ready', 'partial', 'insufficient', 'no_audit', ])
+- evidenceOutlierActionSchema: z.enum([ 'flag_for_review', 'confirmed_outlier', 'dismissed', ])
+- evidenceQualityAuditTriggerModeSchema: z.enum([ 'manual', 'scheduled', 'pre_evaluation', 'worker', ])
+- discoveryTargetStatusSchema: z.enum([ 'queued', 'running', 'completed', 'failed', 'skipped', ])
+- acquisitionAttemptStrategySchema: z.enum([ 'source_artifact', 'unpaywall', 'core', 'semantic_scholar', 'publisher_oa', 'direct_pdf', 'direct_html', 'direct_xml', ])
+- acquisitionAttemptStatusSchema: z.enum([ 'queued', 'running', 'success', 'failed', 'blocked', 'skipped', ])
 - flexibleObjectSchema: z.object({}).catchall(z.unknown())
 - metadataQualityLevelSchema: z.enum(['low', 'medium', 'high'])
 - metadataQualityProfileSchema: { score: z.number().min(0).max(1), level: metadataQualityLevelSchema, present_fields: z.array(z.string()).default([]), missing_fields: z.array(z.string()).default([]), categories: flexibleObjectSchema.default({}), notes: z.array(z.string()).default([]) }
@@ -882,24 +998,28 @@ SCHEMAS (Zod):
 - supplierContextSchema: { current_suppliers: z.array(z.string()).default([]), preferred_suppliers: z.array(z.string()).default([]), excluded_suppliers: z.array(z.string()).default([]), supplier_preference_notes: z.string().optional() }
 - rawEvidenceRecordSchema: { evidence_id: z.string().optional(), evidence_type: evidenceTypeSchema, title: z.string().min(1), summary: z.string().min(1), applicability_scope: flexibleObjectSchema.default({}), strength_level: evidenceStrengthSchema, provenance_note: z.string().min(1), quantitative_metrics: flexibleObjectSchema.optional(), operating_conditions: flexibleObjectSchema.optional(), block_mapping: z.array(z.string()).default([]), limitations: z.array(z.string()).default([]), contradiction_notes: z.array(z.string()).default([]), supplier_name: z.string().optional(), benchmark_context: z.string().optional(), tags: z.array(z.string()).default([]) }
 - evidenceRecordSchema: { evidence_id: z.string().min(1), evidence_type: evidenceTypeSchema, title: z.string().min(1), summary: z.string().min(1), applicability_scope: flexibleObjectSchema.default({}), strength_level: evidenceStrengthSchema, provenance_note: z.string().min(1), quantitative_metrics: flexibleObjectSchema.optional(), operating_conditions: flexibleObjectSchema.optional(), block_mapping: z.array(z.string()).default([]), limitations: z.array(z.string()).default([]), contradiction_notes: z.array(z.string()).default([]), supplier_name: z.string().optional(), benchmark_context: z.string().optional(), tags: z.array(z.string()).default([]) }
-- businessContextSchema: { decision_horizon: z.string().optional(), deployment_context: z.string().optional(), capex_constraint_level: z.string().optional(), opex_sensitivity_level: z.string().optional(), retrofit_priority: z.string().optional(), serviceability_priority: z.string().optional(), priorities: z.array(z.string()).optional(), hard_constraints: z.array(z.string()).optional(), local_energy_cost_note: z.string().optional(), primary_objective: primaryObjectiveSchema.optional() }
+- businessContextSchema: { decision_horizon: z.string().optional(), deployment_context: z.string().optional(), capex_constraint_level: z.string().optional(), opex_sensitivity_level: z.string().optional(), retrofit_priority: z.string().optional(), serviceability_priority: z.string().optional(), priorities: z.array(z.string()).optional(), hard_constraints: z.array(z.string()).optional(), local_energy_cost_note: z.string().optional(), primary_objective: primaryObjectiveReadSchema.optional() }
 - technologyContextSchema: { technology_family: technologyFamilySchema.optional(), architecture_family: z.string().optional(), scale_context: z.string().optional(), current_trl: z.union([z.number(), z.string()]).optional(), current_pain_points: z.array(z.string()).optional(), performance_claims_under_review: z.array(z.string()).optional(), target_maturity_window: z.string().optional(), membrane_presence: z.string().optional() }
-- feedAndOperationSchema: { influent_type: z.string().optional(), substrate_profile: z.string().optional(), influent_cod_mg_per_l: z.number().optional(), pH: z.number().optional(), temperature_c: z.number().optional(), conductivity_ms_per_cm: z.number().optional(), hydraulic_retention_time_h: z.number().optional(), salinity_or_conductivity_context: z.string().optional(), operating_regime: z.string().optional() }
+- scientificModelParameterSchema: { value: z.number().finite(), unit: z.string().trim().min(1), source_kind: z.enum([ 'measured', 'literature', 'default', 'assumption', 'test_fixture', ]), source_ref: z.string().trim().min(1), original_value: z.number().finite().optional(), original_unit: z.string().trim().min(1).optional(), normalization_rule_id: z.string().trim().min(1).optional(), uncertainty: z.number().nonnegative().optional(), uncertainty_unit: z.string().trim().min(1).optional() }
+- feedAndOperationSchema: { influent_type: z.string().optional(), substrate_profile: z.string().optional(), influent_cod_mg_per_l: z.number().optional(), pH: z.number().optional(), temperature_c: z.number().optional(), conductivity_ms_per_cm: z.number().optional(), hydraulic_retention_time_h: z.number().optional(), salinity_or_conductivity_context: z.string().optional(), operating_regime: z.string().optional(), water_quality: z .object({ bod5_mg_o2_l: scientificModelParameterSchema.optional(), cod_mg_cod_l: scientificModelParameterSchema.optional(), tss_mg_l: scientificModelParameterSchema.optional(), alkalinity_mol_m3: scientificModelParameterSchema.optional(), total_nitrogen_mg_n_l: scientificModelParameterSchema.optional(), ammonium_mg_n_l: scientificModelParameterSchema.optional(), nitrate_mg_n_l: scientificModelParameterSchema.optional(), total_phosphorus_mg_p_l: scientificModelParameterSchema.optional(), sulfate_mg_s_l: scientificModelParameterSchema.optional(), chloride_mg_l: scientificModelParameterSchema.optional(), salinity_kg_m3: scientificModelParameterSchema.optional(), turbidity_ntu: scientificModelParameterSchema.optional(), volatile_fatty_acids_mol_m3: scientificModelParameterSchema.optional(), dissolved_oxygen_mg_l: scientificModelParameterSchema.optional(), temperature_c: scientificModelParameterSchema.optional(), ph: scientificModelParameterSchema.optional(), conductivity_ms_per_cm: scientificModelParameterSchema.optional(), sample_method: z.string().optional(), sampling_point: z.string().optional(), filtered_or_total: z .enum(['filtered', 'total', 'not_applicable']) .optional(), }) .optional() }
+- mechanisticModelInputSchema: { model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'), system_type: z.enum(['MFC', 'MEC']), geometry: z.object({ anode_chamber_volume_m3: modelParameter, cathode_chamber_volume_m3: modelParameter, anode_area_m2: modelParameter, cathode_area_m2: modelParameter, electrode_gap_m: modelParameter, membrane_present: z.boolean(), membrane_area_m2: modelParameter.optional(), membrane_thickness_m: modelParameter.optional(), membrane_conductivity_s_m: modelParameter.optional(), }), materials: z.object({ anode_material_family: z.string().trim().min(1), anode_material_source_ref: z.string().trim().min(1), cathode_material_family: z.string().trim().min(1), cathode_material_source_ref: z.string().trim().min(1), separator_material_family: z.string().trim().min(1).optional(), separator_material_source_ref: z.string().trim().min(1).optional(), anode_electroactive_area_factor: modelParameter, cathode_electroactive_area_factor: modelParameter, biofilm_electroactive_fraction: modelParameter, }), operation: z.object({ flow_m3_s: modelParameter, influent_cod_kg_m3: modelParameter, temperature_k: modelParameter, influent_ph: modelParameter, initial_ph_anode: modelParameter, initial_ph_cathode: modelParameter, initial_cod_kg_m3: modelParameter, initial_biomass_kg_m3: modelParameter, biomass_washout_rate_s_inv: modelParameter, initial_dissolved_oxygen_kg_m3: modelParameter.optional(), oxygen_saturation_kg_m3: modelParameter.optional(), electrolyte_conductivity_s_m: modelParameter, auxiliary_power_w: modelParameter, duration_s: modelParameter, time_step_s: modelParameter, }), biology: z.object({ max_specific_cod_uptake_kg_cod_kg_biomass_s: modelParameter, half_saturation_cod_kg_m3: modelParameter, biomass_yield_kg_biomass_kg_cod: modelParameter, decay_rate_s_inv: modelParameter, coulombic_efficiency: modelParameter, ph_optimum: modelParameter, ph_tolerance: modelParameter, activation_energy_j_mol: modelParameter, reference_temperature_k: modelParameter, buffer_capacity_anode_mol_m3_ph: modelParameter, buffer_capacity_cathode_mol_m3_ph: modelParameter, proton_transfer_coefficient_mol_s_ph: modelParameter, }), electrochemistry: z.object({ cathode_reaction: z.enum(['oxygen_reduction', 'hydrogen_evolution']), reversible_cell_voltage_v: modelParameter, anode_exchange_current_density_a_m2: modelParameter, cathode_exchange_current_density_a_m2: modelParameter, anode_charge_transfer_coefficient: modelParameter, cathode_charge_transfer_coefficient: modelParameter, oxygen_mass_transfer_coefficient_m_s: modelParameter.optional(), contact_resistance_ohm: modelParameter, external_load_ohm: modelParameter.optional(), applied_voltage_v: modelParameter.optional(), hydrogen_faraday_efficiency: modelParameter.optional(), hydrogen_capture_fraction: modelParameter.optional(), }) }
+- mechanisticModelDraftInputSchema: { model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'), system_type: z.enum(['MFC', 'MEC']), geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(), materials: mechanisticModelInputSchema.shape.materials.partial().optional(), operation: mechanisticModelInputSchema.shape.operation.partial().optional(), biology: mechanisticModelInputSchema.shape.biology.partial().optional(), electrochemistry: mechanisticModelInputSchema.shape.electrochemistry .partial() .optional() }
+- biosensorConfigurationSchema: { deployment_mode: z.enum(['standalone', 'mfc_integrated', 'mec_integrated']), power_source: z.enum(['external', 'mfc_harvested', 'mec_power_bus']), analyte_id: z.string().trim().min(1), measurand: z.string().trim().min(1), concentration_unit: z.string().trim().min(1), matrix: z.string().trim().min(1), recognition_element: z.string().trim().min(1), working_electrode_material: z.string().trim().min(1), reference_electrode_material: z.string().trim().min(1), counter_electrode_material: z.string().trim().min(1), electrode_material_source_ref: z.string().trim().min(1), electrode_immobilization_method: z.string().trim().min(1), electrode_coating_or_membrane: z.string().trim().min(1), electron_transfer_mediator: z.string().trim().min(1).optional(), working_electrode_area_m2: modelParameter, biorecognition_loading_mg_cm2: modelParameter.optional(), ionic_strength_mol_m3: modelParameter, transduction_mode: z.enum(['amperometric', 'potentiometric', 'impedimetric']), concentration: modelParameter, temperature_k: modelParameter, ph: modelParameter, calibration: z.object({ model: z.enum(['linear', 'langmuir', 'michaelis_menten']), sensitivity_a_per_unit: modelParameter.optional(), intercept_a: modelParameter.optional(), maximum_current_a: modelParameter.optional(), half_saturation_concentration: modelParameter.optional(), calibration_date: z.string().trim().min(1), reference_method: z.string().trim().min(1), range_min: modelParameter, range_max: modelParameter, }), analytical_performance: z.object({ lod: modelParameter, loq: modelParameter, response_time_s: modelParameter, recovery_time_s: modelParameter, noise_std_a: modelParameter, drift_a_per_day: modelParameter, repeatability_cv_pct: modelParameter, accuracy_pct: modelParameter, selectivity_pct: modelParameter, interferences: z.array(z.string().trim().min(1)).default([]), calibration_r2: modelParameter, replicate_count: modelParameter, }), power_consumption_w: modelParameter, power_available_w: modelParameter }
 - reactorArchitectureSchema: { architecture_type: z.string().default('needs_classification'), solids_tolerance: z.string().default('unknown'), serviceability_level: z.string().default('unknown'), membrane_presence: z .enum(['present', 'absent', 'unknown']) .default('unknown') }
 - anodeBiofilmSupportSchema: { material_family: z.string().default('unknown'), surface_treatment: z.string().default('unknown'), biofilm_support_level: z.string().default('unknown') }
 - cathodeCatalystSupportSchema: { reaction_target: z.string().default('unknown'), catalyst_family: z.string().default('unknown'), mass_transport_limitation_risk: z.string().default('medium'), gas_handling_interface: z.string().default('unknown') }
 - membraneOrSeparatorSchema: { type: z.string().default('unknown'), fouling_risk: z.string().default('unknown'), crossover_control_level: z.string().default('unknown') }
 - electricalInterconnectSchema: { current_collection_strategy: z.string().default('unknown'), sealing_strategy: z.string().default('unknown'), corrosion_protection_level: z.string().default('unknown') }
 - balanceOfPlantSchema: { flow_control: z.string().default('unknown'), gas_handling_readiness: z.string().default('unknown'), dosing_capability: z.string().default('unknown') }
-- sensorsAndAnalyticsSchema: { data_quality: z.string().default('medium'), voltage_current_logging: z.string().default('unknown'), water_quality_coverage: z.string().default('unknown') }
+- sensorsAndAnalyticsSchema: { data_quality: z.string().default('medium'), voltage_current_logging: z.string().default('unknown'), water_quality_coverage: z.string().default('unknown'), biosensor: biosensorConfigurationDraftSchema.optional() }
 - operationalBiologySchema: { biofilm_maturity: z.string().default('unknown'), contamination_risk: z.string().default('unknown'), inoculum_source: z.string().default('unknown'), startup_protocol: z.string().default('unknown') }
 - stackBlocksSchema: { reactor_architecture: reactorArchitectureSchema.default({}), anode_biofilm_support: anodeBiofilmSupportSchema.default({}), cathode_catalyst_support: cathodeCatalystSupportSchema.default({}), membrane_or_separator: membraneOrSeparatorSchema.default({}), electrical_interconnect_and_sealing: electricalInterconnectSchema.default({}), balance_of_plant: balanceOfPlantSchema.default({}), sensors_and_analytics: sensorsAndAnalyticsSchema.default({}), operational_biology: operationalBiologySchema.default({}) }
 - technoeconomicsLayerSchema: { maintenance_burden: z.string().default('medium'), capex_constraint_level: z.string().optional(), opex_sensitivity_level: z.string().optional(), priorities: z.array(z.string()).default([]), hard_constraints: z.array(z.string()).default([]), local_energy_cost_note: z.string().optional() }
 - evidenceAndProvenanceLayerSchema: { evidence_profile: z.string().default('evidence_sparse'), supplier_claim_fraction: z.string().default('none'), typed_evidence: z.array(evidenceRecordSchema).default([]), evidence_refs: z.array(z.string()).default([]) }
 - riskAndMaturityLayerSchema: { trl: z.number().int().min(1).max(9).default(3), scale_up_risk: z.string().default('unknown'), serviceability_risk: z.string().default('unknown'), supplier_context: supplierContextSchema.default({ current_suppliers: [], preferred_suppliers: [], excluded_suppliers: [], }) }
 - crossCuttingLayersSchema: { technoeconomics: technoeconomicsLayerSchema.default({}), evidence_and_provenance: evidenceAndProvenanceLayerSchema.default({}), risk_and_maturity: riskAndMaturityLayerSchema.default({}) }
-- rawCaseInputSchema: { case_id: z.string().optional(), case_metadata: flexibleObjectSchema.optional(), technology_family: z.string().optional(), architecture_family: z.string().optional(), primary_objective: z.string().optional(), business_context: businessContextSchema.optional(), technology_context: technologyContextSchema.optional(), feed_and_operation: feedAndOperationSchema.optional(), stack_blocks: z.object({}).catchall(flexibleObjectSchema).optional(), cross_cutting_layers: crossCuttingLayersSchema.partial().optional(), measured_metrics: z.record(z.string(), z.unknown()).optional(), evidence_refs: z.array(z.string()).optional(), evidence_records: z.array(rawEvidenceRecordSchema).optional(), assumptions: z.array(z.string()).optional(), missing_data: z.array(z.string()).optional(), defaults_used: z.array(z.string()).optional(), parameter_state: z.record(z.string(), parameterStateSchema).optional(), supplier_context: supplierContextSchema.optional(), normalization_status: flexibleObjectSchema.optional() }
-- normalizedCaseInputSchema: { case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveSchema, business_context: businessContextSchema.default({}), technology_context: technologyContextSchema.default({}), feed_and_operation: feedAndOperationSchema.default({}), stack_blocks: stackBlocksSchema, cross_cutting_layers: crossCuttingLayersSchema, measured_metrics: z.record(z.string(), z.unknown()).default({}), evidence_refs: z.array(z.string()).default([]), assumptions: z.array(z.string()).default([]), missing_data: z.array(z.string()).default([]), defaults_used: z.array(z.string()).default([]) }
+- rawCaseInputSchema: { case_id: z.string().optional(), case_metadata: flexibleObjectSchema.optional(), technology_family: z.string().optional(), architecture_family: z.string().optional(), primary_objective: z.string().optional(), business_context: businessContextSchema.optional(), technology_context: technologyContextSchema.optional(), feed_and_operation: feedAndOperationSchema.optional(), mechanistic_model: mechanisticModelDraftInputSchema.optional(), stack_blocks: z.object({}).catchall(flexibleObjectSchema).optional(), cross_cutting_layers: crossCuttingLayersSchema.partial().optional(), measured_metrics: z.record(z.string(), z.unknown()).optional(), evidence_refs: z.array(z.string()).optional(), evidence_records: z.array(rawEvidenceRecordSchema).optional(), assumptions: z.array(z.string()).optional(), missing_data: z.array(z.string()).optional(), defaults_used: z.array(z.string()).optional(), parameter_state: z.record(z.string(), parameterStateSchema).optional(), supplier_context: supplierContextSchema.optional(), normalization_status: flexibleObjectSchema.optional() }
+- normalizedCaseInputSchema: { case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveReadSchema, business_context: businessContextSchema.default({}), technology_context: technologyContextSchema.default({}), feed_and_operation: feedAndOperationSchema.default({}), mechanistic_model: mechanisticModelDraftInputSchema.optional(), stack_blocks: stackBlocksSchema, cross_cutting_layers: crossCuttingLayersSchema, measured_metrics: z.record(z.string(), z.unknown()).default({}), evidence_refs: z.array(z.string()).default([]), assumptions: z.array(z.string()).default([]), missing_data: z.array(z.string()).default([]), defaults_used: z.array(z.string()).default([]) }
 - recommendationRecordSchema: { recommendation_id: z.string().min(1), linked_diagnosis: z.string().min(1), rationale: z.string().min(1), expected_benefit: z.string().min(1), implementation_effort: z.enum(['low', 'medium', 'high']), economic_plausibility: z.enum(['low', 'medium', 'high']), risk_level: z.enum(['low', 'medium', 'high']), maturity_level: z.enum(['low', 'medium', 'high']), evidence_strength_summary: z.string().min(1), assumptions: z.array(z.string()), missing_data_dependencies: z.array(z.string()), confidence_level: confidenceLevelSchema, supplier_candidates: z.array(z.string()).optional(), prerequisite_actions: z.array(z.string()).optional(), measurement_requests: z.array(z.string()).optional(), phase_assignment: z.string().optional(), rule_refs: z.array(z.string()).optional(), evidence_refs: z.array(z.string()).optional(), provenance_notes: z.array(z.string()).optional(), priority_score: z.number().min(0).max(100).optional() }
 - currentStackDiagnosisSchema: { summary: z.string().min(1), block_findings: z.array( z.object({ block: z.string().min(1), status: z.enum(['documented', 'needs-data', 'attention']), finding: z.string().min(1), rule_refs: z.array(z.string()).default([]), severity: z.enum(['low', 'medium', 'high']).optional(), }), ), main_weaknesses_or_blind_spots: z.array(z.string()).default([]) }
 - impactMapEntrySchema: { option: z.string().min(1), technical_impact: z.string().min(1), economic_plausibility: z.string().min(1), maturity_or_readiness: z.string().min(1), dependencies: z.array(z.string()), confidence: confidenceLevelSchema, priority_score: z.number().min(0).max(100).optional() }
@@ -915,7 +1035,7 @@ SCHEMAS (Zod):
 - simulationProvenanceSchema: { provider: z.string().min(1), execution_mode: simulationExecutionModeSchema, source_version: z.string().min(1), generated_at: z.string().min(1), source_refs: z.array(z.string()).default([]), note: z.string().optional() }
 - simulationSummarySchema: { status: simulationEnrichmentStatusSchema, model_version: z.string().min(1), confidence_level: confidenceLevelSchema, derived_observation_count: z.number().int().nonnegative(), has_series: z.boolean() }
 - simulationEnrichmentSchema: { status: simulationEnrichmentStatusSchema, model_version: z.string().min(1), input_snapshot: flexibleObjectSchema.default({}), derived_observations: z.array(derivedObservationSchema).default([]), series: z.array(simulationSeriesSchema).default([]), assumptions: z.array(z.string()).default([]), confidence: simulationConfidenceSchema, provenance: simulationProvenanceSchema, failure_detail: flexibleObjectSchema.optional() }
-- evidenceDecisionContextSystemTypeSchema: z.enum([ 'MFC', 'MEC', 'MET', 'BES', ])
+- evidenceDecisionContextSystemTypeSchema: z.enum([ 'MFC', 'MEC', 'BIOSENSOR', 'UNCLASSIFIED', ])
 - evidenceDecisionContextQuerySchema: { system_type: evidenceDecisionContextSystemTypeSchema, application: primaryObjectiveSchema, component_types: z.array(z.string()).default([]), materials: z.array(z.string()).default([]), metric_types: z.array(z.string()).default([]), limit: z.number().int().nonnegative(), decision_ready_only: z.boolean().default(true) }
 - evidenceDecisionBenchmarkRangeSchema: { canonical_key: z.string().min(1), metric_type: z.string().min(1), normalized_unit: z.string().min(1), system_type: z.string().nullable().default(null), application: z.string().nullable().default(null), component_type: z.string().nullable().default(null), material: z.string().nullable().default(null), publication_year: z.number().int().nullable().default(null), evidence_quality: z.string().nullable().default(null), record_count: z.number().int().nonnegative(), min_value: z.number().nullable().default(null), p25_value: z.number().nullable().default(null), median_value: z.number().nullable().default(null), p75_value: z.number().nullable().default(null), p90_value: z.number().nullable().default(null), max_value: z.number().nullable().default(null), mean_value: z.number().nullable().default(null), confidence_coverage: z.number().nullable().default(null) }
 - evidenceDecisionMatchedEvidenceSchema: { catalog_item_id: z.string().min(1), source_record_id: z.string().min(1), title: z.string().min(1), review_status: z.string().nullable().default(null), source_state: z.string().nullable().default(null), access_status: z.string().nullable().default(null), source_license: z.string().nullable().default(null), doi: z.string().nullable().default(null), source_url: z.string().nullable().default(null), canonical_key: z.string().nullable().default(null), metric_type: z.string().nullable().default(null), normalized_value: z.number().nullable().default(null), normalized_unit: z.string().nullable().default(null), material: z.string().nullable().default(null), component_type: z.string().nullable().default(null), evidence_quality: z.string().nullable().default(null), confidence: z.number().nullable().default(null), source_text_hash: z.string().nullable().default(null), source_locator: z.string().nullable().default(null), publication_year: z.number().int().nullable().default(null) }
@@ -930,11 +1050,11 @@ SCHEMAS (Zod):
 - workspaceMetaSchema: { generated_at: z.string().min(1), versions: runtimeVersionSchema, traceability: traceabilitySummarySchema }
 - auditRecordSchema: { audit_id: z.string().min(1), timestamp: z.string().min(1), actor_role: z.string().min(1), actor_id: z.string().optional(), defaults_count: z.number().int().nonnegative(), missing_data_count: z.number().int().nonnegative(), confidence_level: confidenceLevelSchema, summary: z.string().min(1), defaults_used: z.array(z.string()).default([]), missing_data: z.array(z.string()).default([]), assumptions: z.array(z.string()).default([]), next_tests: z.array(z.string()).default([]), provenance_notes: z.array(z.string()).default([]), raw_input_snapshot: rawCaseInputSchema, typed_evidence: z.array(evidenceRecordSchema).default([]), evidence_decision_context: evidenceDecisionContextSchema .nullable() .default(null), agent_pipeline_trace: z.array(agentPipelineStageSchema).default([]), runtime_versions: runtimeVersionSchema, traceability: traceabilitySummarySchema, idempotency_key: z.string().min(1).optional() }
 - evaluationResponseSchema: { evaluation_id: z.string().min(1), case_id: z.string().min(1), normalized_case: normalizedCaseInputSchema, decision_output: decisionOutputSchema, audit_record: auditRecordSchema, evidence_decision_context: evidenceDecisionContextSchema .nullable() .default(null), narrative: z.string().nullable(), narrative_metadata: narrativeMetadataSchema, simulation_enrichment: simulationEnrichmentSchema.optional(), source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]), claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]), workspace_snapshots: z .array(z.lazy(() => workspaceSnapshotRecordSchema)) .default([]) }
-- evaluationSummarySchema: { evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveSchema, summary: z.string().min(1), narrative_available: z.boolean(), simulation_summary: simulationSummarySchema.optional() }
-- dashboardReportSummarySchema: { evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveSchema, summary: z.string().min(1), narrative_available: z.boolean(), simulation_summary: simulationSummarySchema.optional(), report_href: z.string().min(1) }
+- evaluationSummarySchema: { evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveReadSchema, summary: z.string().min(1), narrative_available: z.boolean(), simulation_summary: simulationSummarySchema.optional() }
+- dashboardReportSummarySchema: { evaluation_id: z.string().min(1), case_id: z.string().min(1), created_at: z.string().min(1), confidence_level: confidenceLevelSchema, technology_family: technologyFamilySchema, primary_objective: primaryObjectiveReadSchema, summary: z.string().min(1), narrative_available: z.boolean(), simulation_summary: simulationSummarySchema.optional(), report_href: z.string().min(1) }
 - evaluationListSummarySchema: { total: z.number().int().nonnegative(), filtered_total: z.number().int().nonnegative(), page: z.number().int().positive(), page_size: z.number().int().positive(), total_pages: z.number().int().positive(), returned: z.number().int().nonnegative() }
 - evaluationListResponseSchema: { items: z.array(evaluationSummarySchema), summary: evaluationListSummarySchema }
-- caseSnapshotSchema: { case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveSchema, raw_intake_snapshot: rawCaseInputSchema, normalized_case: normalizedCaseInputSchema, defaults_used: z.array(z.string()), missing_data: z.array(z.string()), assumptions: z.array(z.string()), created_at: z.string().min(1), updated_at: z.string().min(1) }
+- caseSnapshotSchema: { case_id: z.string().min(1), technology_family: technologyFamilySchema, architecture_family: z.string().min(1), primary_objective: primaryObjectiveReadSchema, raw_intake_snapshot: rawCaseInputSchema, normalized_case: normalizedCaseInputSchema, defaults_used: z.array(z.string()), missing_data: z.array(z.string()), assumptions: z.array(z.string()), created_at: z.string().min(1), updated_at: z.string().min(1) }
 - auditEventSchema: { event_id: z.string().min(1), case_id: z.string().optional(), evaluation_id: z.string().optional(), event_type: z.string().min(1), actor_role: z.string().min(1), actor_id: z.string().optional(), payload: flexibleObjectSchema, created_at: z.string().min(1) }
 - caseHistoryResponseSchema: { case: caseSnapshotSchema, evaluations: z.array(evaluationSummarySchema), evidence_records: z.array(evidenceRecordSchema), audit_events: z.array(auditEventSchema) }
 - externalEvidenceCatalogListSummarySchema: { total: z.number().int().nonnegative(), catalog_total: z.number().int().nonnegative().optional(), filtered_total: z.number().int().nonnegative().default(0), pending: z.number().int().nonnegative(), pending_review: z.number().int().nonnegative().optional(), accepted: z.number().int().nonnegative(), rejected: z.number().int().nonnegative(), failed_ingestion: z.number().int().nonnegative().default(0), duplicate_skipped: z.number().int().nonnegative().default(0), canonical_processed: z.number().int().nonnegative().default(0), canonical_extracted: z.number().int().nonnegative().default(0), canonical_insufficient_source: z.number().int().nonnegative().default(0), canonical_needs_full_text: z.number().int().nonnegative().default(0), canonical_needs_review: z.number().int().nonnegative().default(0), canonical_failed: z.number().int().nonnegative().default(0), canonical_facts: z.number().int().nonnegative().default(0), benchmark_ready_facts: z.number().int().nonnegative().default(0), benchmark_aggregates: z.number().int().nonnegative().default(0), last_ingestion_batch: z.string().nullable().default(null), ingestion_progress: z .object({ active: z.boolean(), run_id: z.string().nullable().default(null), target_total: z.number().int().nonnegative(), current_total: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), records_fetched: z.number().int().nonnegative(), records_stored: z.number().int().nonnegative(), records_failed: z.number().int().nonnegative(), duplicates_skipped: z.number().int().nonnegative(), }) .nullable() .default(null), canonicalization_progress: z .object({ active: z.boolean(), run_id: z.string().nullable().default(null), target_total: z.number().int().nonnegative(), processed_total: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), canonical_facts: z.number().int().nonnegative(), benchmark_records: z.number().int().nonnegative(), insufficient_source: z.number().int().nonnegative(), needs_full_text: z.number().int().nonnegative(), needs_review: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), }) .nullable() .default(null), page: z.number().int().positive().default(1), page_size: z.number().int().positive().default(25), total_pages: z.number().int().positive().default(1), returned: z.number().int().nonnegative().default(0) }
@@ -955,9 +1075,26 @@ SCHEMAS (Zod):
 - parameterStateSummarySchema: { total: z.number().int().nonnegative(), client_values: z.number().int().nonnegative(), system_defaults: z.number().int().nonnegative(), excluded: z.number().int().nonnegative(), unresolved: z.number().int().nonnegative() }
 - parameterStateAuditEntrySchema: { key: z.string().min(1), label: z.string().min(1), included: z.boolean(), value_source: parameterValueSourceSchema, value_label: z.string().min(1), unit: z.string().min(1).nullable(), confidence_impact: parameterConfidenceImpactSchema.nullable(), default_rationale: z.string().min(1).nullable(), audit_note: z.string().min(1).nullable(), evidence_refs: z.array(z.string()).default([]) }
 - parameterStateAuditSchema: { summary: parameterStateSummarySchema, entries: z.array(parameterStateAuditEntrySchema) }
+- coverageEntrySchema: { system_type: z.string().min(1).nullable().default(null), component_type: z.string().min(1).nullable().default(null), material: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), scale: z.string().min(1).nullable().default(null), trl: z.number().int().nullable().default(null), record_count: z.number().int().nonnegative(), coverage_level: evidenceCoverageLevelSchema, newest_publication_year: z.number().int().nullable().default(null), recency_status: evidenceRecencyStatusSchema }
+- evidenceGapSchema: { gap_id: z.string().min(1), system_type: z.string().min(1).nullable().default(null), component_type: z.string().min(1).nullable().default(null), material: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), severity: evidenceGapSeveritySchema, affects_golden_cases: z.array(z.string().min(1)).default([]), recommended_query: z.string().min(1).nullable().default(null), priority: z.number().int().min(1).max(100) }
+- evidenceOutlierSchema: { fact_id: z.string().min(1), canonical_key: z.string().min(1).nullable().default(null), metric_type: z.string().min(1), normalized_value: z.number(), aggregate_median: z.number(), z_score: z.number(), source_document_id: z.string().min(1), title: z.string().min(1), action: evidenceOutlierActionSchema }
+- externalEvidenceScientificFactSchema: { id: z.string().min(1), fact_layer: z.string().min(1), fact_type: z.string().min(1), field_key: z.string().min(1), canonical_key: z.string().nullable().default(null), decision_ready: z.boolean().default(false), extraction_status: z.string().min(1), normalization_status: z.string().min(1), original_value: z.string().nullable().default(null), original_unit: z.string().nullable().default(null), normalized_value: z.number().nullable().default(null), normalized_text: z.string().nullable().default(null), normalized_unit: z.string().nullable().default(null), confidence: z.number().min(0).max(1), evidence_quality: z.string().nullable().default(null), system_type: z.string().nullable().default(null), component_type: z.string().nullable().default(null), material: z.string().nullable().default(null), metric_type: z.string().nullable().default(null), source_locator: z.string().nullable().default(null), source_text_hash: z.string().nullable().default(null), quality_flags: z.array(z.string().min(1)).default([]), payload: z.unknown(), created_at: z.string().min(1), updated_at: z.string().min(1) }
+- externalEvidenceBenchmarkRecordSchema: { id: z.string().min(1), canonical_key: z.string().nullable().default(null), decision_ready: z.boolean().default(false), confidence: z.number().min(0).max(1).nullable().default(null), system_type: z.string().nullable().default(null), application: z.string().nullable().default(null), component_type: z.string().nullable().default(null), material: z.string().nullable().default(null), membrane_separator: z.string().nullable().default(null), operating_condition_key: z.string().nullable().default(null), metric_type: z.string().nullable().default(null), normalized_value: z.number().nullable().default(null), normalized_unit: z.string().nullable().default(null), publication_year: z.number().int().nullable().default(null), evidence_quality: z.string().nullable().default(null), scale: z.string().nullable().default(null), trl: z.number().int().nullable().default(null), cost_indicator: z.string().nullable().default(null), risk_indicator: z.string().nullable().default(null), source_locator: z.string().nullable().default(null), source_text_hash: z.string().nullable().default(null), payload: z.unknown(), created_at: z.string().min(1), updated_at: z.string().min(1) }
+- externalEvidenceSourceTextStatusSchema: { access_status: externalEvidenceAccessStatusSchema.default('unknown'), abstract_available: z.boolean().default(false), source_artifact_count: z.number().int().nonnegative(), source_text_chunk_count: z.number().int().nonnegative(), source_url_available: z.boolean().default(false), pdf_url_available: z.boolean().default(false), xml_url_available: z.boolean().default(false), full_text_available: z.boolean().default(false) }
+- acceptedEvidenceReadinessActionSchema: z.enum([ 'keep', 'reacquire_full_text', 'rerun_extraction', 'quarantine_for_review', 'reject_from_intake', 'delete_record', ])
+- acceptedEvidenceReadinessCandidateSchema: { catalog_item_id: z.string().min(1), source_record_id: z.string().min(1), title: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, published_at: z.string().nullable().default(null), extraction_status: z.string().min(1), normalization_status: z.string().min(1), evidence_quality: z.string().nullable().default(null), claim_count: z.number().int().nonnegative(), canonical_fact_count: z.number().int().nonnegative(), decision_ready_fact_count: z.number().int().nonnegative(), benchmark_record_count: z.number().int().nonnegative(), decision_ready_benchmark_count: z.number().int().nonnegative(), abstract_available: z.boolean().default(false), full_text_available: z.boolean().default(false), source_artifact_count: z.number().int().nonnegative(), source_text_chunk_count: z.number().int().nonnegative(), doi_available: z.boolean().default(false), source_url_available: z.boolean().default(false), pdf_url_available: z.boolean().default(false), xml_url_available: z.boolean().default(false) }
+- acceptedEvidenceReadinessRecordSchema: { catalog_item_id: z.string().min(1), source_record_id: z.string().min(1), title: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, published_at: z.string().nullable().default(null), extraction_status: z.string().min(1), normalization_status: z.string().min(1), evidence_quality: z.string().nullable().default(null), claim_count: z.number().int().nonnegative(), canonical_fact_count: z.number().int().nonnegative(), decision_ready_fact_count: z.number().int().nonnegative(), benchmark_record_count: z.number().int().nonnegative(), decision_ready_benchmark_count: z.number().int().nonnegative(), abstract_available: z.boolean().default(false), full_text_available: z.boolean().default(false), source_artifact_count: z.number().int().nonnegative(), source_text_chunk_count: z.number().int().nonnegative(), doi_available: z.boolean().default(false), source_url_available: z.boolean().default(false), pdf_url_available: z.boolean().default(false), xml_url_available: z.boolean().default(false), issue_flags: z.array(z.string().min(1)).default([]), table_ready: z.boolean().default(false), recommended_action: acceptedEvidenceReadinessActionSchema, rationale: z.string().min(1) }
+- acceptedEvidenceReadinessSummarySchema: { total_accepted_records: z.number().int().nonnegative(), table_ready_records: z.number().int().nonnegative(), keep_count: z.number().int().nonnegative(), reacquire_full_text_count: z.number().int().nonnegative(), rerun_extraction_count: z.number().int().nonnegative(), quarantine_for_review_count: z.number().int().nonnegative(), reject_from_intake_count: z.number().int().nonnegative(), delete_record_count: z.number().int().nonnegative() }
+- readinessScoreSchema: { case_archetype: z.string().min(1), technology_family: technologyFamilySchema, primary_objective: primaryObjectiveReadSchema, readiness_level: evidenceReadinessLevelSchema.exclude(['no_audit']), primary_metrics_coverage: z.number().int().nonnegative(), material_comparison_count: z.number().int().nonnegative(), operating_window_count: z.number().int().nonnegative(), critical_gaps: z.array(z.string().min(1)).default([]), recommendation: z.string().min(1) }
+- funnelStageCountSchema: { stage: z.string().min(1), count: z.number().int().nonnegative(), conversion_rate: z.number().min(0).max(1).nullable().default(null) }
+- evidenceFunnelGroupSchema: { article: z.array(funnelStageCountSchema).default([]), document: z.array(funnelStageCountSchema).default([]), fact: z.array(funnelStageCountSchema).default([]), benchmark: z.array(funnelStageCountSchema).default([]), research_cell: z.array(funnelStageCountSchema).default([]) }
+- evidenceQualityReportSchema: { report_id: z.string().min(1), trigger_mode: evidenceQualityAuditTriggerModeSchema, coverage_matrix: z.array(coverageEntrySchema).default([]), gaps: z.array(evidenceGapSchema).default([]), outliers: z.array(evidenceOutlierSchema).default([]), readiness_scores: z.array(readinessScoreSchema).default([]), accepted_record_readiness: z .array(acceptedEvidenceReadinessRecordSchema) .optional(), accepted_record_summary: acceptedEvidenceReadinessSummarySchema.optional(), funnel_metrics: z.array(funnelStageCountSchema).default([]), funnels: evidenceFunnelGroupSchema.optional(), summary: z.object({ total_benchmark_records: z.number().int().nonnegative(), decision_ready_records: z.number().int().nonnegative(), coverage_ratio: z.number().min(0).max(1), critical_gap_count: z.number().int().nonnegative(), stale_metric_count: z.number().int().nonnegative(), outlier_count: z.number().int().nonnegative(), }), created_at: z.string().min(1) }
+- discoveryTargetSchema: { target_id: z.string().min(1), audit_report_id: z.string().min(1).nullable().default(null), gap_id: z.string().min(1), query: z.string().min(1), providers: z .array(z.enum(['openalex', 'crossref', 'europe_pmc'])) .default([]), priority: z.number().int().min(1).max(100), status: discoveryTargetStatusSchema, records_found: z.number().int().nonnegative().default(0), records_staged: z.number().int().nonnegative().default(0), failure_detail: flexibleObjectSchema.nullable().default(null), created_at: z.string().min(1), updated_at: z.string().min(1).optional(), completed_at: z.string().min(1).nullable().default(null) }
+- acquisitionAttemptSchema: { attempt_id: z.string().min(1), source_record_id: z.string().min(1), strategy: acquisitionAttemptStrategySchema, status: acquisitionAttemptStatusSchema, found_url: z.string().nullable().default(null), found_access_status: externalEvidenceAccessStatusSchema .nullable() .default(null), failure_reason: z.string().nullable().default(null), created_at: z.string().min(1), updated_at: z.string().min(1).optional() }
+- evidenceIntelligenceSummarySchema: { readiness_level: evidenceReadinessLevelSchema, critical_gap_count: z.number().int().nonnegative(), stale_metric_count: z.number().int().nonnegative(), decision_ready_records: z.number().int().nonnegative(), coverage_ratio: z.number().min(0).max(1).nullable().default(null), last_audit_at: z.string().min(1).nullable().default(null), discovery_active: z.boolean() }
 - dashboardRunOutputStatusSchema: { report_available: z.boolean(), narrative_available: z.boolean(), modeled: z.boolean() }
 - dashboardLatestRunOverviewSchema: { title: z.string().min(1), subtitle: z.string().min(1), defaults_count: z.number().int().nonnegative(), missing_data_count: z.number().int().nonnegative(), assumptions_count: z.number().int().nonnegative(), evidence_count: z.number().int().nonnegative(), attention_count: z.number().int().nonnegative(), parameter_summary: dashboardParameterSummarySchema, brief_cards: z.array(workspaceBriefCardSchema), attention_items: z.array(workspaceAttentionItemSchema), lead_action: workspaceLeadActionSchema, output_status: dashboardRunOutputStatusSchema }
-- dashboardWorkspaceResponseSchema: { meta: workspaceMetaSchema, presentation: workspacePresentationSchema.optional(), summary: z.object({ total_runs: z.number().int().nonnegative(), total_cases: z.number().int().nonnegative(), high_confidence_runs: z.number().int().nonnegative(), modeled_runs: z.number().int().nonnegative(), }), evidence_traceability: z.object({ accepted_refs_count: z.number().int().nonnegative(), decision_context_available: z.boolean(), source_refs_count: z.number().int().nonnegative(), excluded_evidence_count: z.number().int().nonnegative(), }), hero: z.object({ title: z.string().min(1), subtitle: z.string().min(1), latest_case_id: z.string().nullable(), latest_summary: z.string().nullable(), }), trends: z.object({ run_growth: z.array(z.number()).default([]), confidence: z.array(z.number()).default([]), model_coverage: z.array(z.number()).default([]), }), quick_actions: z.object({ new_evaluation_href: z.string().min(1), latest_evaluation_href: z.string().nullable(), latest_case_history_href: z.string().nullable(), }), latest_run_overview: dashboardLatestRunOverviewSchema.nullable(), recent_evaluations: z.array(evaluationSummarySchema), recent_reports: z.array(dashboardReportSummarySchema) }
+- dashboardWorkspaceResponseSchema: { meta: workspaceMetaSchema, presentation: workspacePresentationSchema.optional(), summary: z.object({ total_runs: z.number().int().nonnegative(), total_cases: z.number().int().nonnegative(), high_confidence_runs: z.number().int().nonnegative(), modeled_runs: z.number().int().nonnegative(), }), evidence_traceability: z.object({ accepted_refs_count: z.number().int().nonnegative(), decision_context_available: z.boolean(), source_refs_count: z.number().int().nonnegative(), excluded_evidence_count: z.number().int().nonnegative(), }), hero: z.object({ title: z.string().min(1), subtitle: z.string().min(1), latest_case_id: z.string().nullable(), latest_summary: z.string().nullable(), }), trends: z.object({ run_growth: z.array(z.number()).default([]), confidence: z.array(z.number()).default([]), model_coverage: z.array(z.number()).default([]), }), quick_actions: z.object({ new_evaluation_href: z.string().min(1), latest_evaluation_href: z.string().nullable(), latest_case_history_href: z.string().nullable(), }), evidence_intelligence: evidenceIntelligenceSummarySchema.optional(), latest_run_overview: dashboardLatestRunOverviewSchema.nullable(), recent_evaluations: z.array(evaluationSummarySchema), recent_reports: z.array(dashboardReportSummarySchema) }
 - evaluationWorkspaceResponseSchema: { meta: workspaceMetaSchema, presentation: workspacePresentationSchema.optional(), evaluation: evaluationResponseSchema, history_summary: z.object({ total_runs: z.number().int().nonnegative(), latest_case_history_href: z.string().min(1), default_compare_target_id: z.string().nullable(), compare_candidates: z.array(evaluationSummarySchema), }), overview: z.object({ title: z.string().min(1), subtitle: z.string().min(1), hero_cards: z.array(workspaceHeroCardSchema), brief_cards: z.array(workspaceBriefCardSchema), attention_items: z.array(workspaceAttentionItemSchema), lead_action: workspaceLeadActionSchema, key_metrics: z.array(workspaceMetricRecordSchema), roadmap: z.array(workspaceRoadmapItemSchema), impact_map: z.array(workspaceImpactItemSchema), }), links: z.object({ history_href: z.string().min(1), compare_href: z.string().nullable(), report_href: z.string().min(1), export_json_href: z.string().min(1), export_csv_href: z.string().min(1), }) }
 - caseHistoryTimelineItemSchema: { evaluation: evaluationSummarySchema, delta_summary: z.string().min(1), compare_href: z.string().nullable(), is_latest: z.boolean() }
 - caseHistoryWorkspaceResponseSchema: { meta: workspaceMetaSchema, presentation: workspacePresentationSchema.optional(), case: caseSnapshotSchema, timeline: z.array(caseHistoryTimelineItemSchema), evidence_records: z.array(evidenceRecordSchema), audit_events: z.array(auditEventSchema), current_evaluation_id: z.string().nullable(), current_evaluation_lineage: z .lazy(() => evaluationLineageSchema) .default(createEmptyEvaluationLineage()) }
@@ -980,7 +1117,7 @@ SCHEMAS (Zod):
 - reportConversationRequestSchema: { evaluation_id: z.string().trim().min(1), message: z.string().trim().min(1).max(2000), selected_section: z.string().trim().min(1).max(120).optional(), conversation_id: z.string().trim().min(1).optional() }
 - reportConversationResponseSchema: { conversation_id: z.string().min(1), answer: z.string().nullable(), citations: z.array(reportConversationCitationSchema), grounding_summary: reportConversationGroundingSchema, uncertainty_summary: z.string().min(1), recommended_next_checks: z.array(z.string().min(1)), narrative_metadata: narrativeMetadataSchema, metadata: reportConversationMetadataSchema, refusal_reason: z.string().nullable().default(null) }
 - exportCsvResponseMetadataSchema: { file_name: z.string().min(1), content_type: z.literal('text/csv'), generated_at: z.string().min(1), column_count: z.number().int().positive(), row_count: z.number().int().nonnegative(), versions: runtimeVersionSchema }
-- externalEvidenceCatalogSummarySchema: { id: z.string().min(1), title: z.string().min(1), summary: z.string().min(1), evidence_type: evidenceTypeSchema, strength_level: evidenceStrengthSchema, review_status: externalEvidenceReviewStatusSchema, source_state: externalEvidenceSourceStateSchema, source_type: externalEvidenceSourceTypeSchema, source_category: z.string().nullable(), source_url: z.string().nullable(), doi: z.string().nullable(), publisher: z.string().nullable(), published_at: z.string().nullable(), provenance_note: z.string().min(1), claim_count: z.number().int().nonnegative().default(0), reviewed_claim_count: z.number().int().nonnegative().default(0), accepted_by: z.string().nullable().default(null), acceptance_policy: z.string().nullable().default(null), accepted_at: z.string().nullable().default(null), review_required: z.boolean().default(true), ingestion_mode: z.string().min(1).default('manual'), ingestion_batch_id: z.string().nullable().default(null), extraction_status: z.string().min(1).default('pending'), normalization_status: z.string().min(1).default('pending'), evidence_quality: z.string().nullable().default(null), applicability_scope: flexibleObjectSchema.default({}), extracted_claims: z.array(z.unknown()).default([]), tags: z.array(z.string()).default([]), metadata_quality: metadataQualityProfileSchema.optional(), veracity_score: evidenceVeracityScoreSchema.optional(), created_at: z.string().min(1), updated_at: z.string().min(1) }
+- externalEvidenceCatalogSummarySchema: { id: z.string().min(1), title: z.string().min(1), summary: z.string().min(1), evidence_type: evidenceTypeSchema, strength_level: evidenceStrengthSchema, review_status: externalEvidenceReviewStatusSchema, source_state: externalEvidenceSourceStateSchema, source_type: externalEvidenceSourceTypeSchema, canonical_fact_count: z.number().int().nonnegative().optional(), decision_ready_fact_count: z.number().int().nonnegative().optional(), benchmark_record_count: z.number().int().nonnegative().optional(), decision_ready_benchmark_count: z.number().int().nonnegative().optional(), source_artifact_count: z.number().int().nonnegative().optional(), source_text_chunk_count: z.number().int().nonnegative().optional(), abstract_available: z.boolean().optional(), full_text_available: z.boolean().optional(), source_category: z.string().nullable(), source_url: z.string().nullable(), doi: z.string().nullable(), publisher: z.string().nullable(), published_at: z.string().nullable(), provenance_note: z.string().min(1), claim_count: z.number().int().nonnegative().default(0), reviewed_claim_count: z.number().int().nonnegative().default(0), accepted_by: z.string().nullable().default(null), acceptance_policy: z.string().nullable().default(null), accepted_at: z.string().nullable().default(null), review_required: z.boolean().default(true), ingestion_mode: z.string().min(1).default('manual'), ingestion_batch_id: z.string().nullable().default(null), extraction_status: z.string().min(1).default('pending'), normalization_status: z.string().min(1).default('pending'), evidence_quality: z.string().nullable().default(null), applicability_scope: flexibleObjectSchema.default({}), extracted_claims: z.array(z.unknown()).default([]), tags: z.array(z.string()).default([]), metadata_quality: metadataQualityProfileSchema.optional(), veracity_score: evidenceVeracityScoreSchema.optional(), created_at: z.string().min(1), updated_at: z.string().min(1) }
 - sourceDocumentRecordSchema: { id: z.string().min(1), source_type: externalEvidenceSourceTypeSchema, source_category: z.string().nullable(), source_url: z.string().nullable(), doi: z.string().nullable(), publisher: z.string().nullable(), journal: z.string().nullable(), published_at: z.string().nullable(), access_status: externalEvidenceAccessStatusSchema.default('unknown'), license: z.string().nullable(), pdf_url: z.string().nullable(), xml_url: z.string().nullable(), authors: z.array(flexibleObjectSchema).default([]) }
 - sourceTextChunkSchema: { chunk_id: z.string().min(1), artifact_id: z.string().min(1), source_document_id: z.string().min(1), chunk_index: z.number().int().nonnegative(), page_number: z.number().int().positive().nullable().default(null), text: z.string().min(1), source_locator: z.string().min(1), section_label: z.string().min(1).nullable().default(null), table_label: z.string().min(1).nullable().default(null), cell_locator: z.string().min(1).nullable().default(null), caption: z.string().min(1).nullable().default(null), char_start: z.number().int().nonnegative().nullable().default(null), char_end: z.number().int().nonnegative().nullable().default(null), metadata: flexibleObjectSchema.default({}), created_at: z.string().min(1).optional() }
 - sourceArtifactSchema: { artifact_id: z.string().min(1), source_document_id: z.string().min(1), local_path: z.string().nullable().default(null), file_name: z.string().min(1), file_hash: z.string().min(1), mime_type: z.string().min(1), file_size_bytes: z.number().int().nonnegative().nullable().default(null), page_count: z.number().int().positive().nullable().default(null), extraction_method: z.string().min(1), ingestion_status: z.enum(['parsed', 'failed']), title: z.string().nullable().default(null), doi: z.string().nullable().default(null), license: z.string().nullable().default(null), access_status: externalEvidenceAccessStatusSchema.default('unknown'), metadata_quality: metadataQualityProfileSchema, veracity_score: evidenceVeracityScoreSchema, failure_message: z.string().nullable().default(null), imported_at: z.string().min(1), chunks: z.array(sourceTextChunkSchema).default([]) }
@@ -993,7 +1130,7 @@ SCHEMAS (Zod):
 - evaluationClaimUsageSchema: { id: z.string().min(1), evaluation_id: z.string().min(1), claim_id: z.string().min(1), usage_type: evaluationEvidenceUsageTypeSchema, note: z.string().nullable(), runtime_versions: runtimeVersionSchema.optional(), created_at: z.string().min(1) }
 - workspaceSnapshotRecordSchema: { id: z.string().min(1), evaluation_id: z.string().nullable(), case_id: z.string().nullable(), snapshot_type: workspaceSnapshotTypeSchema, payload: z.unknown(), runtime_versions: runtimeVersionSchema.optional(), created_at: z.string().min(1) }
 - evaluationLineageSchema: { source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]), claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]), workspace_snapshots: z .array(z.lazy(() => workspaceSnapshotRecordSchema)) .default([]) }
-- externalEvidenceCatalogDetailSchema: { id: z.string().min(1), title: z.string().min(1), summary: z.string().min(1), evidence_type: evidenceTypeSchema, strength_level: evidenceStrengthSchema, review_status: externalEvidenceReviewStatusSchema, source_state: externalEvidenceSourceStateSchema, source_type: externalEvidenceSourceTypeSchema, source_category: z.string().nullable(), source_url: z.string().nullable(), doi: z.string().nullable(), publisher: z.string().nullable(), published_at: z.string().nullable(), provenance_note: z.string().min(1), claim_count: z.number().int().nonnegative().default(0), reviewed_claim_count: z.number().int().nonnegative().default(0), accepted_by: z.string().nullable().default(null), acceptance_policy: z.string().nullable().default(null), accepted_at: z.string().nullable().default(null), review_required: z.boolean().default(true), ingestion_mode: z.string().min(1).default('manual'), ingestion_batch_id: z.string().nullable().default(null), extraction_status: z.string().min(1).default('pending'), normalization_status: z.string().min(1).default('pending'), evidence_quality: z.string().nullable().default(null), applicability_scope: flexibleObjectSchema.default({}), extracted_claims: z.array(z.unknown()).default([]), tags: z.array(z.string()).default([]), metadata_quality: metadataQualityProfileSchema.optional(), veracity_score: evidenceVeracityScoreSchema.optional(), created_at: z.string().min(1), updated_at: z.string().min(1), source_document: sourceDocumentRecordSchema.optional(), claims: z.array(evidenceClaimSchema).default([]), supplier_documents: z.array(supplierDocumentSchema).default([]), source_artifacts: z.array(sourceArtifactSchema).default([]), abstract_text: z.string().nullable(), payload: z.unknown(), raw_payload: z.unknown() }
+- externalEvidenceCatalogDetailSchema: { id: z.string().min(1), title: z.string().min(1), summary: z.string().min(1), evidence_type: evidenceTypeSchema, strength_level: evidenceStrengthSchema, review_status: externalEvidenceReviewStatusSchema, source_state: externalEvidenceSourceStateSchema, source_type: externalEvidenceSourceTypeSchema, canonical_fact_count: z.number().int().nonnegative().optional(), decision_ready_fact_count: z.number().int().nonnegative().optional(), benchmark_record_count: z.number().int().nonnegative().optional(), decision_ready_benchmark_count: z.number().int().nonnegative().optional(), source_artifact_count: z.number().int().nonnegative().optional(), source_text_chunk_count: z.number().int().nonnegative().optional(), abstract_available: z.boolean().optional(), full_text_available: z.boolean().optional(), source_category: z.string().nullable(), source_url: z.string().nullable(), doi: z.string().nullable(), publisher: z.string().nullable(), published_at: z.string().nullable(), provenance_note: z.string().min(1), claim_count: z.number().int().nonnegative().default(0), reviewed_claim_count: z.number().int().nonnegative().default(0), accepted_by: z.string().nullable().default(null), acceptance_policy: z.string().nullable().default(null), accepted_at: z.string().nullable().default(null), review_required: z.boolean().default(true), ingestion_mode: z.string().min(1).default('manual'), ingestion_batch_id: z.string().nullable().default(null), extraction_status: z.string().min(1).default('pending'), normalization_status: z.string().min(1).default('pending'), evidence_quality: z.string().nullable().default(null), applicability_scope: flexibleObjectSchema.default({}), extracted_claims: z.array(z.unknown()).default([]), tags: z.array(z.string()).default([]), metadata_quality: metadataQualityProfileSchema.optional(), veracity_score: evidenceVeracityScoreSchema.optional(), created_at: z.string().min(1), updated_at: z.string().min(1), source_document: sourceDocumentRecordSchema.optional(), claims: z.array(evidenceClaimSchema).default([]), scientific_facts: z.array(externalEvidenceScientificFactSchema).optional(), benchmark_records: z .array(externalEvidenceBenchmarkRecordSchema) .optional(), source_text_status: externalEvidenceSourceTextStatusSchema.optional(), supplier_documents: z.array(supplierDocumentSchema).default([]), source_artifacts: z.array(sourceArtifactSchema).default([]), abstract_text: z.string().nullable(), payload: z.unknown(), raw_payload: z.unknown() }
 - externalEvidenceCatalogListResponseSchema: { items: z.array(externalEvidenceCatalogSummarySchema), summary: externalEvidenceCatalogListSummarySchema, warehouse_aggregate: externalEvidenceCatalogWarehouseAggregateSchema }
 - externalEvidenceReviewRequestSchema: { action: externalEvidenceReviewActionSchema, note: z.string().trim().min(1).max(500).optional() }
 - externalEvidenceBulkReviewRequestSchema: { ids: z.array(z.string().trim().min(1)).min(1).max(100), action: externalEvidenceReviewActionSchema, note: z.string().trim().min(1).max(500).optional() }
@@ -1004,9 +1141,13 @@ LOADS_FROM_YAML:
 CALLS_TO:
 - createEmptyEvaluationLineage
 - zod:z -> z .array
+- zod:z -> z .array(acceptedEvidenceReadinessRecordSchema) .optional
 - zod:z -> z .array(evidenceExplorerFacetBucketSchema) .default
+- zod:z -> z .array(externalEvidenceBenchmarkRecordSchema) .optional
+- zod:z -> z .array(z.enum(['openalex', 'crossref', 'europe_pmc'])) .default
 - zod:z -> z .array(z.lazy(() => workspaceSnapshotRecordSchema)) .default
 - zod:z -> z .enum
+- zod:z -> z .enum(['filtered', 'total', 'not_applicable']) .optional
 - zod:z -> z .enum(['present', 'absent', 'unknown']) .default
 - zod:z -> z .lazy
 - zod:z -> z .lazy(() => evaluationLineageSchema) .default
@@ -1015,10 +1156,12 @@ CALLS_TO:
 - zod:z -> z .object({ active: z.boolean(), run_id: z.string().nullable().default(null), target_total: z.number().int().nonnegative(), current_total: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), records_fetched: z.number().int().nonnegative(), records_stored: z.number().int().nonnegative(), records_failed: z.number().int().nonnegative(), duplicates_skipped: z.number().int().nonnegative(), }) .nullable() .default
 - zod:z -> z .object({ active: z.boolean(), run_id: z.string().nullable().default(null), target_total: z.number().int().nonnegative(), processed_total: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), canonical_facts: z.number().int().nonnegative(), benchmark_records: z.number().int().nonnegative(), insufficient_source: z.number().int().nonnegative(), needs_full_text: z.number().int().nonnegative(), needs_review: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), }) .nullable
 - zod:z -> z .object({ active: z.boolean(), run_id: z.string().nullable().default(null), target_total: z.number().int().nonnegative(), processed_total: z.number().int().nonnegative(), records_remaining: z.number().int().nonnegative(), completion_ratio: z.number().min(0).max(1), canonical_facts: z.number().int().nonnegative(), benchmark_records: z.number().int().nonnegative(), insufficient_source: z.number().int().nonnegative(), needs_full_text: z.number().int().nonnegative(), needs_review: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), }) .nullable() .default
+- zod:z -> z .object({ bod5_mg_o2_l: scientificModelParameterSchema.optional(), cod_mg_cod_l: scientificModelParameterSchema.optional(), tss_mg_l: scientificModelParameterSchema.optional(), alkalinity_mol_m3: scientificModelParameterSchema.optional(), total_nitrogen_mg_n_l: scientificModelParameterSchema.optional(), ammonium_mg_n_l: scientificModelParameterSchema.optional(), nitrate_mg_n_l: scientificModelParameterSchema.optional(), total_phosphorus_mg_p_l: scientificModelParameterSchema.optional(), sulfate_mg_s_l: scientificModelParameterSchema.optional(), chloride_mg_l: scientificModelParameterSchema.optional(), salinity_kg_m3: scientificModelParameterSchema.optional(), turbidity_ntu: scientificModelParameterSchema.optional(), volatile_fatty_acids_mol_m3: scientificModelParameterSchema.optional(), dissolved_oxygen_mg_l: scientificModelParameterSchema.optional(), temperature_c: scientificModelParameterSchema.optional(), ph: scientificModelParameterSchema.optional(), conductivity_ms_per_cm: scientificModelParameterSchema.optional(), sample_method: z.string().optional(), sampling_point: z.string().optional(), filtered_or_total: z .enum(['filtered', 'total', 'not_applicable']) .optional(), }) .optional
 - zod:z -> z .object({ current_suppliers: z.array(z.string()).default([]), preferred_suppliers: z.array(z.string()).default([]), excluded_suppliers: z.array(z.string()).default([]), supplier_preference_notes: z.string().optional(), }) .catchall
 - zod:z -> z .object({ evidence_id: z.string().optional(), evidence_type: evidenceTypeSchema, title: z.string().min(1), summary: z.string().min(1), applicability_scope: flexibleObjectSchema.default({}), strength_level: evidenceStrengthSchema, provenance_note: z.string().min(1), quantitative_metrics: flexibleObjectSchema.optional(), operating_conditions: flexibleObjectSchema.optional(), block_mapping: z.array(z.string()).default([]), limitations: z.array(z.string()).default([]), contradiction_notes: z.array(z.string()).default([]), supplier_name: z.string().optional(), benchmark_context: z.string().optional(), tags: z.array(z.string()).default([]), }) .catchall
 - zod:z -> z.array
 - zod:z -> z.array(agentPipelineStageSchema).default
+- zod:z -> z.array(coverageEntrySchema).default
 - zod:z -> z.array(derivedObservationSchema).default
 - zod:z -> z.array(evidenceClaimReviewSchema).default
 - zod:z -> z.array(evidenceClaimSchema).default
@@ -1026,10 +1169,15 @@ CALLS_TO:
 - zod:z -> z.array(evidenceDecisionMatchedEvidenceSchema).default
 - zod:z -> z.array(evidenceDecisionSignalSchema).default
 - zod:z -> z.array(evidenceExplorerFacetBucketSchema).default
+- zod:z -> z.array(evidenceGapSchema).default
 - zod:z -> z.array(evidenceOntologyMappingSchema).default
+- zod:z -> z.array(evidenceOutlierSchema).default
 - zod:z -> z.array(evidenceRecordSchema).default
+- zod:z -> z.array(externalEvidenceScientificFactSchema).optional
 - zod:z -> z.array(flexibleObjectSchema).default
+- zod:z -> z.array(funnelStageCountSchema).default
 - zod:z -> z.array(rawEvidenceRecordSchema).optional
+- zod:z -> z.array(readinessScoreSchema).default
 - zod:z -> z.array(simulationSeriesPointSchema).default
 - zod:z -> z.array(simulationSeriesSchema).default
 - zod:z -> z.array(sourceArtifactSchema).default
@@ -1044,6 +1192,8 @@ CALLS_TO:
 - zod:z -> z.array(z.number()).default
 - zod:z -> z.array(z.string()).default
 - zod:z -> z.array(z.string()).optional
+- zod:z -> z.array(z.string().min(1)).default
+- zod:z -> z.array(z.string().trim().min(1)).default
 - zod:z -> z.array(z.string().trim().min(1)).min
 - zod:z -> z.array(z.string().trim().min(1)).min(1).max
 - zod:z -> z.array(z.unknown()).default
@@ -1055,8 +1205,11 @@ CALLS_TO:
 - zod:z -> z.enum(['server', 'internal']).default
 - zod:z -> z.lazy
 - zod:z -> z.literal
+- zod:z -> z.literal('coupled-0d-dae-v1').default
 - zod:z -> z.null
 - zod:z -> z.number
+- zod:z -> z.number().finite
+- zod:z -> z.number().finite().optional
 - zod:z -> z.number().int
 - zod:z -> z.number().int().min
 - zod:z -> z.number().int().min(1).max
@@ -1074,7 +1227,11 @@ CALLS_TO:
 - zod:z -> z.number().int().positive().nullable().default
 - zod:z -> z.number().min
 - zod:z -> z.number().min(0).max
+- zod:z -> z.number().min(0).max(1).nullable
+- zod:z -> z.number().min(0).max(1).nullable().default
 - zod:z -> z.number().min(0).max(100).optional
+- zod:z -> z.number().nonnegative
+- zod:z -> z.number().nonnegative().optional
 - zod:z -> z.number().nullable
 - zod:z -> z.number().nullable().default
 - zod:z -> z.number().nullable().optional
@@ -1113,7 +1270,7 @@ CALLS_TO:
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
-- Zod schemas declared in this file enforce 155 runtime validation contract(s).
+- Zod schemas declared in this file enforce 187 runtime validation contract(s).
 
 FILE: packages/domain-contracts/src/validator.ts
 LINES: 233
@@ -1154,7 +1311,7 @@ INVARIANTS_ENFORCED:
 ## packages/rule-engine/src/index.ts
 
 FILE: packages/rule-engine/src/index.ts
-LINES: 1385
+LINES: 1383
 EXPORTED FUNCTIONS:
 - runCaseEvaluation : function — export function runCaseEvaluation( normalizedCase: NormalizedCaseInput, input: { derivedObservations?: DerivedObservation[]; evidenceContext?: EvidenceDecisionContext | null; } = {}, ): DecisionOutput
 EVALUATION_FLOW:
@@ -1233,63 +1390,38 @@ DEFAULTS_TRACKING:
 ## packages/electrochem-models/src/index.ts
 
 FILE: packages/electrochem-models/src/index.ts
-LINES: 924
+LINES: 210
 IMPORTS:
 - import type { ConfidenceLevel, DerivedObservation, NormalizedCaseInput, SignalSourceKind, SimulationEnrichment, SimulationSummary, } from '@metrev/domain-contracts';
+- import { mechanisticModelVersion, simulateMechanisticCase, type MechanisticRun, } from './mechanistic';
 EXPORTS:
-- INTERNAL_MODEL_VERSION : const — const INTERNAL_MODEL_VERSION = 'internal-v1'
-- INTERNAL_MODEL_PROVIDER : const — const INTERNAL_MODEL_PROVIDER = 'metrev-internal-electrochem-models'
+- INTERNAL_MODEL_VERSION : const — const INTERNAL_MODEL_VERSION = mechanisticModelVersion
+- INTERNAL_MODEL_PROVIDER : const — const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models'
+- export { simulateMechanisticCase }; : re-export — export { simulateMechanisticCase };
+- export type { MechanisticRun }; : re-export — export type { MechanisticRun };
 - ModelProvider : interface — export interface ModelProvider
 - SimulationEligibility : interface — export interface SimulationEligibility
 - isRuleInputDerivedSignalKey : function — export function isRuleInputDerivedSignalKey(key: string): boolean
 - resolveSimulationMode : function — export function resolveSimulationMode(rawMode?: string): SimulationMode
 - isSimulationEligible : function — export function isSimulationEligible( normalizedCase: NormalizedCaseInput, ): SimulationEligibility
-- defaultInternalModelProvider : const — const defaultInternalModelProvider = { evaluate({ normalizedCase }) { const eligibility = isSimulationEligible(normalizedCase); if (!eligibility.eligible) { const unavailableKeys = [ ['current_density_a_m2', 'Modeled current density'], ['power_density_w_m2', 'Modeled power density'], ['interna...
+- defaultInternalModelProvider : const — const defaultInternalModelProvider = { evaluate({ normalizedCase }) { return toEnrichment(simulateMechanisticCase(normalizedCase)); }, }
 - mapArtifactToDerivedObservations : function — export function mapArtifactToDerivedObservations( artifact: SimulationEnrichment | undefined, ): DerivedObservation[]
 - buildSimulationSummary : function — export function buildSimulationSummary( artifact: SimulationEnrichment | undefined, ): SimulationSummary | undefined
 - evaluateSimulationEnrichment : function — export function evaluateSimulationEnrichment(input: { normalizedCase: NormalizedCaseInput; mode?: string; provider?: ModelProvider; }): SimulationEnrichment
 LOCAL_DECLARATIONS:
-- supportedTechnologyFamilies : const = new Set([ 'microbial_fuel_cell', 'microbial_electrolysis_cell', 'microbial_electrochemical_technology', ])
-- ruleInputSignalKeys : const = [ 'current_density_a_m2', 'power_density_w_m2', 'internal_resistance_ohm', 'cod_removal_pct', 'nitrogen_recovery_proxy_pct', 'hydrogen_recovery_proxy_rate',...
-- ruleInputSignalKeySet : const = new Set<string>(ruleInputSignalKeys)
-- SimulationMode : type — type SimulationMode = 'disabled' | 'internal_v1';
-- clamp : function — function clamp(value: number, min: number, max: number): number
-- round : function — function round(value: number, precision = 2): number
-- getNumericMetric : function — function getNumericMetric( normalizedCase: NormalizedCaseInput, key: string, ): number | null
-- getNumber : function — function getNumber(value: unknown): number | null
-- toConfidenceLevel : function — function toConfidenceLevel(score: number): ConfidenceLevel
-- proximityScore : function — function proximityScore( value: number | null, lower: number, upper: number, ): number
-- technologyTargets : function — function technologyTargets(technologyFamily: string)
-- architectureFactor : function — function architectureFactor(architectureFamily: string): number
-- observabilityFactor : function — function observabilityFactor(dataQuality: string | undefined): number
-- evidenceFactor : function — function evidenceFactor(evidenceCount: number, supplierClaimFraction: string)
-- buildUnavailableObservation : function — function buildUnavailableObservation(input: { key: string; label: string; provenanceNote: string; missingDependencies: string[]; decisionRelevance?: 'informational' | 'rule_input'; }): DerivedObservation
-- buildModeledObservation : function — function buildModeledObservation(input: { key: string; label: string; value: number; unit: string | null; confidenceLevel: ConfidenceLevel; provenanceNote: string; assumptions: string[]; decisionRelevance?: 'informational' | 'rule_input'; missingDependencies?: string[]; }): DerivedObservation
-- emptyEnrichment : function — function emptyEnrichment(input: { status: SimulationEnrichment['status']; note: string; modelVersion?: string; missingInputs?: string[]; failureDetail?: Record<string, unknown>; }): SimulationEnrichment
-- buildOperatingWindowSeries : function — function buildOperatingWindowSeries(input: { currentTemperature: number | null; currentPh: number | null; tempRange: readonly [number, number]; phRange: readonly [number, number]; confidenceLevel: ConfidenceLevel; assumptions: string[]; })
-- buildSensitivitySeries : function — function buildSensitivitySeries(input: { centerTemperature: number; currentDensity: number; tempRange: readonly [number, number]; })
-- buildElectrochemicalCurves : function — function buildElectrochemicalCurves(input: { currentDensity: number; internalResistance: number; })
+- ruleInputSignalKeys : const = new Set([ 'current_density_a_m2', 'power_density_w_m2', 'internal_resistance_ohm', 'cod_removal_pct', 'biosensor_signal_current_a', ])
+- SimulationMode : type — type SimulationMode = 'disabled' | 'mechanistic_v1';
+- emptyEnrichment : function — function emptyEnrichment(input: { status: SimulationEnrichment['status']; note: string; failureDetail?: Record<string, unknown>; }): SimulationEnrichment
+- unavailableObservations : function — function unavailableObservations( missingInputs: string[], ): DerivedObservation[]
+- toEnrichment : function — function toEnrichment(run: MechanisticRun): SimulationEnrichment
 SCHEMAS (Zod):
 - none
 CALLS_TO:
-- architectureFactor
-- buildElectrochemicalCurves
-- buildModeledObservation
-- buildOperatingWindowSeries
-- buildSensitivitySeries
-- buildUnavailableObservation
-- clamp
+- ./mechanistic:simulateMechanisticCase -> simulateMechanisticCase
 - emptyEnrichment
-- evidenceFactor
-- getNumber
-- getNumericMetric
-- isSimulationEligible
-- observabilityFactor
-- proximityScore
 - resolveSimulationMode
-- round
-- technologyTargets
-- toConfidenceLevel
+- toEnrichment
+- unavailableObservations
 SCHEMA_PARSERS:
 - none
 ENVIRONMENT_READS:
@@ -1309,33 +1441,156 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - none
 SUPPORTED_TECHNOLOGY_FAMILIES:
-- microbial_electrochemical_technology
-- microbial_electrolysis_cell
-- microbial_fuel_cell
+- none
 DERIVED_RULE_INPUT_KEYS:
+- biosensor_signal_current_a
 - cod_removal_pct
 - current_density_a_m2
-- hydrogen_recovery_proxy_rate
 - internal_resistance_ohm
-- nitrogen_recovery_proxy_pct
-- operating_window_conductivity_ms_per_cm
-- operating_window_ph
-- operating_window_temperature_c
 - power_density_w_m2
 SIMULATION_MODES:
 - none
 EXPORTED_MODEL_SURFACE:
-- isRuleInputDerivedSignalKey: export function isRuleInputDerivedSignalKey(key: string): boolean { return ruleInputSignalKeySet.has(key); }
-- resolveSimulationMode: export function resolveSimulationMode(rawMode?: string): SimulationMode { const normalized = rawMode?.trim().toLowerCase(); return normalized === 'disabled' ? 'disabled' : 'internal_v1'; }
-- isSimulationEligible: export function isSimulationEligible( normalizedCase: NormalizedCaseInput, ): SimulationEligibility { const missingInputs: string[] = []; const notes: string[] = []; if (!supportedTechnologyFamilies.has(normalizedCase.technology_family)) { missingInputs.push('technology_family'); notes.push( 'Technology family is outside the supported internal model set.', ); } const temperature = getNumber( normalizedCase.feed_an...
+- isRuleInputDerivedSignalKey: export function isRuleInputDerivedSignalKey(key: string): boolean { return ruleInputSignalKeys.has(key); }
+- resolveSimulationMode: export function resolveSimulationMode(rawMode?: string): SimulationMode { return rawMode?.trim().toLowerCase() === 'disabled' ? 'disabled' : 'mechanistic_v1'; }
+- isSimulationEligible: export function isSimulationEligible( normalizedCase: NormalizedCaseInput, ): SimulationEligibility { const result = simulateMechanisticCase(normalizedCase); return { eligible: result.status === 'completed', missingInputs: result.missingInputs, notes: result.status === 'completed' ? [] : [result.note], }; }
 - mapArtifactToDerivedObservations: export function mapArtifactToDerivedObservations( artifact: SimulationEnrichment | undefined, ): DerivedObservation[] { return artifact?.derived_observations ?? []; }
-- buildSimulationSummary: export function buildSimulationSummary( artifact: SimulationEnrichment | undefined, ): SimulationSummary | undefined { if (!artifact) { return undefined; } return { status: artifact.status, model_version: artifact.model_version, confidence_level: artifact.confidence.level, derived_observation_count: artifact.derived_observations.length, has_series: artifact.series.length > 0, }; }
-- evaluateSimulationEnrichment: export function evaluateSimulationEnrichment(input: { normalizedCase: NormalizedCaseInput; mode?: string; provider?: ModelProvider; }): SimulationEnrichment { const mode = resolveSimulationMode(input.mode); if (mode === 'disabled') { return emptyEnrichment({ status: 'disabled', note: 'Simulation enrichment was explicitly disabled for this evaluation.', }); } const provider = input.provider ?? defaultInternalModelP...
+- buildSimulationSummary: export function buildSimulationSummary( artifact: SimulationEnrichment | undefined, ): SimulationSummary | undefined { if (!artifact) return undefined; return { status: artifact.status, model_version: artifact.model_version, confidence_level: artifact.confidence.level, derived_observation_count: artifact.derived_observations.length, has_series: artifact.series.length > 0, }; }
+- evaluateSimulationEnrichment: export function evaluateSimulationEnrichment(input: { normalizedCase: NormalizedCaseInput; mode?: string; provider?: ModelProvider; }): SimulationEnrichment { if (resolveSimulationMode(input.mode) === 'disabled') { return emptyEnrichment({ status: 'disabled', note: 'Simulation enrichment was explicitly disabled for this evaluation.', }); } try { return (input.provider ?? defaultInternalModelProvider).evaluate({ no...
 MODEL_ASSUMPTIONS_AND_FACTORS:
-- function technologyTargets(technologyFamily: string) { switch (technologyFamily) { case 'microbial_electrolysis_cell': return { temperature: [30, 35] as const, ph: [7.2, 8.4] as const, conductivity: [8, 24] as const, currentDensityBase: 95, powerDensityBase: 42, internalResistanceBase: 46, }; case 'microbial_electrochemical_technology': return { temperature: [27, 33] as const, ph: [6.8, 8.1] as const, conductivity...
-- function architectureFactor(architectureFamily: string): number { const normalized = architectureFamily.toLowerCase(); if (normalized.includes('single')) { return 0.96; } if (normalized.includes('dual') || normalized.includes('two')) { return 1.03; } if (no...
-- function observabilityFactor(dataQuality: string | undefined): number { switch ((dataQuality ?? '').toLowerCase()) { case 'high': return 1.04; case 'medium': return 1; case 'low': return 0.92; default: return 0.95; } }
-- function evidenceFactor(evidenceCount: number, supplierClaimFraction: string) { const base = clamp(0.94 + evidenceCount * 0.02, 0.94, 1.04); if (supplierClaimFraction === 'high') { return base - 0.05; } if (supplierClaimFraction === 'medium') { return base...
+- none
+FILE: packages/electrochem-models/src/mechanistic.ts
+LINES: 1713
+IMPORTS:
+- import type { BiosensorConfiguration, BiosensorConfigurationDraft, DerivedObservation, MechanisticModelInput, NormalizedCaseInput, SimulationSeries, ScientificModelParameter, } from '@metrev/domain-contracts';
+- import { biosensorConfigurationSchema, loadMechanisticModelDefinition, mechanisticModelInputSchema, } from '@metrev/domain-contracts';
+EXPORTS:
+- MechanisticRun : interface — export interface MechanisticRun
+- simulateMechanisticCase : function — export function simulateMechanisticCase( normalizedCase: NormalizedCaseInput, ): MechanisticRun
+- mechanisticModelVersion : const — const mechanisticModelVersion = MODEL_VERSION
+LOCAL_DECLARATIONS:
+- FARADAY : const = 96485.33212
+- GAS_CONSTANT : const = 8.314462618
+- OXYGEN_MOLAR_MASS_KG_MOL : const = 0.031998
+- COD_ELECTRON_EQUIVALENTS_C_KG : const = (4 * FARADAY) / 0.032
+- MODEL_VERSION : const = 'coupled-0d-dae-v1'
+- MAX_INTEGRATION_STEPS : const = 2000
+- MAX_SERIES_POINTS : const = 200
+- State : interface — interface State
+- Rates : interface — interface Rates
+- Point : interface — interface Point
+- ReactorRun : interface — interface ReactorRun
+- ReactorStep : interface — interface ReactorStep
+- modelDefinition : const = loadMechanisticModelDefinition()
+- unitByPath : const = Object.fromEntries( Object.entries(modelDefinition.input_parameters).map(([path, item]) => [ path, item.unit, ]), )
+- atPath : function — function atPath(input: MechanisticModelInput, path: string): unknown
+- parameter : function — function parameter( input: MechanisticModelInput, path: string, ): ScientificModelParameter | undefined
+- collectInputIssues : function — function collectInputIssues(input: MechanisticModelInput): string[]
+- p : function — function p(input: MechanisticModelInput, path: string): number
+- getOhmicResistance : function — function getOhmicResistance(input: MechanisticModelInput): number
+- inverseButlerVolmer : function — function inverseButlerVolmer( currentDensity: number, exchangeCurrentDensity: number, transferCoefficient: number, temperatureK: number, ): number
+- biologicalUptake : function — function biologicalUptake(input: MechanisticModelInput, state: State): number
+- ratesFor : function — function ratesFor(input: MechanisticModelInput, state: State): Rates
+- safeState : function — function safeState(state: State): State
+- derivativesWithRates : function — function derivativesWithRates( input: MechanisticModelInput, safe: State, rates: Rates, ): State
+- addScaled : function — function addScaled(state: State, derivative: State, scale: number): State
+- electricalPowerW : function — function electricalPowerW(input: MechanisticModelInput, rates: Rates): number
+- hydrogenProductionMolS : function — function hydrogenProductionMolS( input: MechanisticModelInput, rates: Rates, ): { gross: number; captured: number }
+- rk4Step : function — function rk4Step( input: MechanisticModelInput, state: State, step: number, ): ReactorStep
+- runReactor : function — function runReactor(input: MechanisticModelInput): ReactorRun
+- observation : function — function observation(input: { key: string; label: string; value: number | string; unit: string | null; note: string; confidence: 'low' | 'medium' | 'high'; }): DerivedObservation
+- biosensorIssues : function — function biosensorIssues(sensor: BiosensorConfiguration): string[]
+- biosensorCurrent : function — function biosensorCurrent(sensor: BiosensorConfiguration): number
+- sourceRefsFor : function — function sourceRefsFor(input: unknown): string[]
+- seriesFor : function — function seriesFor( input: MechanisticModelInput, points: Point[], ): SimulationSeries[]
+- failedRun : function — function failedRun(missingInputs: string[], note: string): MechanisticRun
+- simulateStandaloneBiosensor : function — function simulateStandaloneBiosensor( sensor: BiosensorConfiguration | undefined, ): MechanisticRun
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:biosensorConfigurationSchema -> biosensorConfigurationSchema.safeParse
+- @metrev/domain-contracts:loadMechanisticModelDefinition -> loadMechanisticModelDefinition
+- @metrev/domain-contracts:mechanisticModelInputSchema -> mechanisticModelInputSchema.safeParse
+- addScaled
+- atPath
+- biologicalUptake
+- biosensorCurrent
+- biosensorIssues
+- collectInputIssues
+- derivativesWithRates
+- electricalPowerW
+- failedRun
+- getOhmicResistance
+- hydrogenProductionMolS
+- inverseButlerVolmer
+- observation
+- p
+- parameter
+- ratesFor
+- rk4Step
+- runReactor
+- safeState
+- seriesFor
+- simulateStandaloneBiosensor
+- sourceRefsFor
+SCHEMA_PARSERS:
+- biosensorConfigurationSchema.safeParse
+- mechanisticModelInputSchema.safeParse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: simulateMechanisticCase -> const sensorDraft = normalizedCase.stack_blocks.sensors_and_analytics .biosensor as BiosensorConfigurationDraft | undefined;
+- Step 2: simulateMechanisticCase -> const sensorResult = sensorDraft ? biosensorConfigurationSchema.safeParse(sensorDraft) : undefined;
+- Step 3: simulateMechanisticCase -> const sensorIssues = sensorResult && !sensorResult.success ? sensorResult.error.issues.map( (issue) => `stack_blocks.sensors_and_analytics.biosensor.${issue.path.join('.')}`, ) : [];
+- Step 4: simulateMechanisticCase -> const sensor: BiosensorConfiguration | undefined = sensorResult?.success ? sensorResult.data : undefined;
+- Step 5: simulateMechanisticCase -> if (normalizedCase.technology_family === 'electrochemical_biosensor')
+- Step 6: simulateMechanisticCase -> if (normalizedCase.missing_data.includes('technology_family'))
+- Step 7: simulateMechanisticCase -> if (normalizedCase.technology_family !== 'microbial_fuel_cell' && normalizedCase.technology_family !== 'microbial_electrolysis_cell')
+- Step 8: simulateMechanisticCase -> if (normalizedCase.defaults_used.includes( 'technology_family:domain_template_default', ))
+- Step 9: simulateMechanisticCase -> if (!normalizedCase.mechanistic_model)
+- Step 10: simulateMechanisticCase -> const modelResult = mechanisticModelInputSchema.safeParse( normalizedCase.mechanistic_model, );
+- Step 11: simulateMechanisticCase -> if (!modelResult.success)
+- Step 12: simulateMechanisticCase -> const model = modelResult.data;
+- Step 13: simulateMechanisticCase -> const issues = collectInputIssues(model);
+- Step 14: simulateMechanisticCase -> if (model.system_type !== (normalizedCase.technology_family === 'microbial_fuel_cell' ? 'MFC' : 'MEC'))
+- Step 15: simulateMechanisticCase -> if (sensorDraft && !sensor)
+- Step 16: simulateMechanisticCase -> if (sensor)
+- Step 17: simulateMechanisticCase -> if (issues.length)
+- Step 18: simulateMechanisticCase -> const reactorRun = runReactor(model);
+- Step 19: simulateMechanisticCase -> const points = reactorRun.points;
+- Step 20: simulateMechanisticCase -> const initial = points[0];
+- Step 21: simulateMechanisticCase -> const final = points[points.length - 1];
+- Step 22: simulateMechanisticCase -> const anodeArea = p(model, 'geometry.anode_area_m2');
+- Step 23: simulateMechanisticCase -> const influentCod = p(model, 'operation.influent_cod_kg_m3');
+- Step 24: simulateMechanisticCase -> const codRemoval = influentCod > 0 ? Math.max( 0, Math.min(100, ((influentCod - final.state.cod) / influentCod) * 100), ) : 0;
+- Step 25: simulateMechanisticCase -> const electricalDensity = model.system_type === 'MFC' ? (final.rates.current ** 2 * p(model, 'electrochemistry.external_load_ohm')) / anodeArea : (final.rates.current * p(model, 'electrochemistry.applied_voltage_v'))...
+- Step 26: simulateMechanisticCase -> const hydrogenGrossMolPerSecond = model.system_type === 'MEC' ? (final.rates.current * p(model, 'electrochemistry.hydrogen_faraday_efficiency')) / (2 * FARADAY) : null;
+- Step 27: simulateMechanisticCase -> const hydrogenCapturedMolPerSecond = hydrogenGrossMolPerSecond === null ? null : hydrogenGrossMolPerSecond * p(model, 'electrochemistry.hydrogen_capture_fraction');
+- Step 28: simulateMechanisticCase -> const grossElectricalPowerW = model.system_type === 'MFC' ? final.rates.current ** 2 * p(model, 'electrochemistry.external_load_ohm') : final.rates.current * p(model, 'electrochemistry.applied_voltage_v');
+- Step 29: simulateMechanisticCase -> const auxiliaryPowerW = p(model, 'operation.auxiliary_power_w');
+- Step 30: simulateMechanisticCase -> const hasAssumedValues = (() => { const stack: unknown[] = [model]; while (stack.length) { const next = stack.pop(); if (!next || typeof next !== 'object') continue; if ('source_kind' in next) { const kind = (next as...
+- Step 31: simulateMechanisticCase -> const confidenceLevel: MechanisticRun['confidenceLevel'] = hasAssumedValues ? 'low' : 'medium';
+- Step 32: simulateMechanisticCase -> const confidenceScore = hasAssumedValues ? 20 : 55;
+- Step 33: simulateMechanisticCase -> const observations: DerivedObservation[] = [ observation({ key: 'current_density_a_m2', label: 'Current density', value: final.rates.current / anodeArea, unit: 'A/m2', confidence: confidenceLevel, note: 'Dynamic coupl...
+- Step 34: simulateMechanisticCase -> if (model.system_type === 'MFC')
+- Step 35: simulateMechanisticCase -> if (hydrogenGrossMolPerSecond !== null && hydrogenCapturedMolPerSecond !== null)
+- Step 36: simulateMechanisticCase -> if (sensor)
+- Step 37: simulateMechanisticCase -> const allRefs = sourceRefsFor(model);
+- Step 38: simulateMechanisticCase -> if (sensor)
+- Step 39: simulateMechanisticCase -> return { status: 'completed', missingInputs: [], note: 'Coupled dynamic lumped reactor model solved with source-referenced inputs.', inputSnapshot: { model_version: model.model_version, system_type: model.system_type,...
+INVARIANTS_ENFORCED:
+- biosensorConfigurationSchema.safeParse(sensorDraft)
+- mechanisticModelInputSchema.safeParse( normalizedCase.mechanistic_model, )
 
 ## packages/research-intelligence/src/**/*.ts
 
@@ -1528,13 +1783,14 @@ EXTRACTION_TEST_NAMES:
 - test: key
 
 FILE: packages/research-intelligence/src/extraction/deterministic-extractor.ts
-LINES: 1633
+LINES: 1952
 IMPORTS:
 - import { researchDataMetadataReadinessExtractionSchema, researchExtractionResultSchema, researchImplementationFactorsExtractionSchema, researchSystemPerformanceExtractionSchema, type ConfidenceLevel, type EvidenceClaim, type ResearchColumnDefinition, type ResearchComponentProfile, type ResearchComponentType, type ResearchEvidenceTrace, type ResearchExtractedParameter, type ResearchExtractionResult, type ResearchMetricMeasurement, type ResearchPaperMetadata, type ResearchParameterKind, type ResearchSystemPerformanceExtraction, } from '@metrev/domain-contracts';
 - import { extractMetricMeasurements } from '../normalization/metric-normalization';
 EXPORTS:
 - DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION : const — const DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION = 'research-deterministic-v1'
 - DeterministicExtractionInput : interface — export interface DeterministicExtractionInput
+- detectTechnologyClasses : function — export function detectTechnologyClasses(text: string)
 - runDeterministicResearchExtraction : function — export function runDeterministicResearchExtraction( input: DeterministicExtractionInput, ): ResearchExtractionResult
 LOCAL_DECLARATIONS:
 - isRecord : function — function isRecord(value: unknown): value is Record<string, unknown>
@@ -1551,7 +1807,6 @@ LOCAL_DECLARATIONS:
 - tracesFromClaims : function — function tracesFromClaims( input: DeterministicExtractionInput, claimTypes: EvidenceClaim['claim_type'][], ): ResearchEvidenceTrace[]
 - includesAny : function — function includesAny(text: string, tokens: string[]): boolean
 - matchedLabels : function — function matchedLabels( text: string, candidates: Array<{ label: string; tokens: string[] }>, ): string[]
-- detectTechnologyClasses : function — function detectTechnologyClasses(text: string)
 - detectFirst : function — function detectFirst(text: string, values: string[]): string | null
 - parseNumberBeforeIndex : function — function parseNumberBeforeIndex(text: string, index: number): number | null
 - detectTemperatureC : function — function detectTemperatureC(text: string): number | null
@@ -1560,7 +1815,24 @@ LOCAL_DECLARATIONS:
 - parameterTrace : function — function parameterTrace(input: { baseTraces: ResearchEvidenceTrace[]; sourceDocumentId: string; text: string; tokens: string[]; }): ResearchEvidenceTrace
 - buildTextParameter : function — function buildTextParameter(input: { baseTraces: ResearchEvidenceTrace[]; componentType: ResearchComponentType; confidence?: ConfidenceLevel; key: string; kind: ResearchParameterKind; label: string; sourceDocumentId: string; text: string; textValue: string | null; tokens: string[]; }): ResearchExtractedParameter | null
 - buildNumericParameter : function — function buildNumericParameter(input: { baseTraces: ResearchEvidenceTrace[]; componentType: ResearchComponentType; confidence?: ConfidenceLevel; key: string; kind: ResearchParameterKind; label: string; normalizedUnit: string; normalizedValue?: number; originalUnit: string; originalValue: number; sourceDocumentId: string; text: string; tokens: string[]; }): ResearchExtractedParameter
-- firstNumericMatch : function — function firstNumericMatch( text: string, patterns: RegExp[], ): { unit: string; value: number } | null
+- MAX_MEASUREMENT_CONTEXT_CHARS : const = 96
+- UnitVariant : interface — interface UnitVariant
+- NumericMeasurementQuery : interface — interface NumericMeasurementQuery
+- createUnitVariants : function — function createUnitVariants(variants: UnitVariant[]): UnitVariant[]
+- SURFACE_AREA_UNITS : const = createUnitVariants([ { matchText: 'm 2 / g', unit: 'm2/g' }, { matchText: 'm2/g', unit: 'm2/g' }, { matchText: 'm 2 g -1', unit: 'm2/g' }, { matchText: 'm2 g...
+- CATALYST_LOADING_UNITS : const = createUnitVariants([ { matchText: 'mg / cm 2', unit: 'mg/cm2' }, { matchText: 'mg/cm2', unit: 'mg/cm2' }, { matchText: 'mg/cm 2', unit: 'mg/cm2' }, { matchTe...
+- MEMBRANE_THICKNESS_UNITS : const = createUnitVariants([ { matchText: 'micrometers', unit: 'um' }, { matchText: 'micrometer', unit: 'um' }, { matchText: 'um', unit: 'um', requireBoundary: true...
+- STARTUP_TIME_UNITS : const = createUnitVariants([ { matchText: 'days', unit: 'days' }, { matchText: 'day', unit: 'day' }, { matchText: 'd', unit: 'd', requireBoundary: true }, ])
+- isWhitespace : function — function isWhitespace(value: string | undefined): boolean
+- isDigit : function — function isDigit(value: string | undefined): boolean
+- isAsciiLetterOrDigit : function — function isAsciiLetterOrDigit(value: string | undefined): boolean
+- skipWhitespace : function — function skipWhitespace(text: string, index: number): number
+- readNumberAt : function — function readNumberAt( text: string, index: number, ): { end: number; value: number } | null
+- matchesUnitAt : function — function matchesUnitAt( text: string, index: number, variant: UnitVariant, ): number | null
+- readUnitAt : function — function readUnitAt( text: string, index: number, units: UnitVariant[], ): { end: number; unit: string } | null
+- findFirstMeasurementInRange : function — function findFirstMeasurementInRange( text: string, startIndex: number, endIndex: number, units: UnitVariant[], ): { end: number; unit: string; value: number } | null
+- findLastMeasurementInRange : function — function findLastMeasurementInRange( text: string, startIndex: number, endIndex: number, units: UnitVariant[], ): { end: number; unit: string; value: number } | null
+- findNumericMeasurementNearLabels : function — function findNumericMeasurementNearLabels( text: string, query: NumericMeasurementQuery, ): { unit: string; value: number } | null
 - normalizeUnitText : function — function normalizeUnitText(unit: string): string
 - buildScientificComponentParameters : function — function buildScientificComponentParameters(input: { anodeMaterial: string | null; baseTraces: ResearchEvidenceTrace[]; cathodeMaterial: string | null; operatingConditions: Record<string, unknown>; separator: string | null; sourceDocumentId: string; text: string; }): ResearchExtractedParameter[]
 - buildComponentProfiles : function — function buildComponentProfiles(input: { anodeMaterial: string | null; cathodeMaterial: string | null; componentParameters: ResearchExtractedParameter[]; separator: string | null; traces: ResearchEvidenceTrace[]; }): ResearchComponentProfile[]
@@ -1595,21 +1867,31 @@ CALLS_TO:
 - buildTextParameter
 - claimTrace
 - collectLimitationSentences
+- createUnitVariants
 - detectFirst
 - detectTechnologyClasses
 - detectTemperatureC
 - extractOperatingConditions
 - findEvidenceSentence
-- firstNumericMatch
+- findFirstMeasurementInRange
+- findLastMeasurementInRange
+- findNumericMeasurementNearLabels
 - fullText
 - includesAny
+- isAsciiLetterOrDigit
 - isConfidenceLevel
+- isDigit
 - isNullableString
 - isRecord
+- isWhitespace
 - matchedLabels
+- matchesUnitAt
 - normalizeUnitText
 - parameterTrace
 - parseNumberBeforeIndex
+- readNumberAt
+- readUnitAt
+- skipWhitespace
 - tracesFromClaims
 - truncate
 - validateColumnAnswer
@@ -1638,7 +1920,18 @@ TANSTACK_QUERY_HOOKS:
 JSX_SURFACE_MARKERS:
 - none
 LOGIC_FLOW:
-- none
+- Step 1: runDeterministicResearchExtraction -> const built = buildAnswer(input);
+- Step 2: runDeterministicResearchExtraction -> const validationErrors = validateColumnAnswer({ answer: built.answer, column: input.column, outputSchemaKey: input.column.output_schema_key, });
+- Step 3: runDeterministicResearchExtraction -> const evidenceTrace = validationErrors.length === 0 && built.trace.length === 0 ? baseTrace(input) : built.trace;
+- Step 4: runDeterministicResearchExtraction -> const hasSubstantiveAnswer = (() => { const value = built.answer; if (value === null || value === undefined) return false; if (typeof value === 'string') { return value.trim().length > 0 && value !== 'not_reported'; }...
+- Step 5: runDeterministicResearchExtraction -> const confidenceNumeric = built.confidence === 'high' ? 0.85 : built.confidence === 'medium' ? 0.6 : 0.3;
+- Step 6: runDeterministicResearchExtraction -> let cellStatus: | 'filled_with_trace' | 'filled_without_enough_trace' | 'not_reported_by_paper' | 'extraction_failed' | 'needs_analyst_review';
+- Step 7: runDeterministicResearchExtraction -> let missingReason: | 'not_reported_by_paper' | 'extraction_failed' | 'needs_analyst_review' | null;
+- Step 8: runDeterministicResearchExtraction -> if (validationErrors.length > 0)
+- Step 9: runDeterministicResearchExtraction -> if (cellStatus !== 'extraction_failed' && confidenceNumeric < 0.4)
+- Step 10: runDeterministicResearchExtraction -> const cell = { paper_id: input.paper.paper_id, review_id: input.reviewId, column_id: input.column.column_id, output_schema_key: input.column.output_schema_key, value_display: null, normalized_value: null, unit: null,...
+- Step 11: runDeterministicResearchExtraction -> const normalizedPayloadWithCells = { ...(built.normalizedPayload as Record<string, unknown>), cells: [cell], };
+- Step 12: runDeterministicResearchExtraction -> return researchExtractionResultSchema.parse({ review_id: input.reviewId, paper_id: input.paper.paper_id, column_id: input.column.column_id, status: validationErrors.length > 0 ? 'invalid' : 'valid', answer: built.answ...
 INVARIANTS_ENFORCED:
 - researchSystemPerformanceExtractionSchema.parse({ technology_class: detectTechnologyClasses(text), reactor_architecture: { type: architecture, }, anode: { material: anodeMaterial, material_class: anodeMaterial ? 'carb...
 - researchImplementationFactorsExtractionSchema.parse({ performance_limitations: limitationSentences.filter((sentence) => includesAny(sentence, [ 'low power', 'low current', 'low efficiency', 'performance', ]), ), inter...
@@ -1655,6 +1948,7 @@ METRIC_NORMALIZATION_RULES:
 - none
 EXTRACTION_TEST_NAMES:
 - test: afterMarker
+- test: normalizedText
 - test: text
 - test: text[end - 1]
 - test: text[start - 1]
@@ -1752,11 +2046,11 @@ EXTRACTION_TEST_NAMES:
 - none
 
 FILE: packages/research-intelligence/src/extraction/templates/system-performance.template.ts
-LINES: 16
+LINES: 18
 IMPORTS:
 - none
 EXPORTS:
-- SYSTEM_PERFORMANCE_EXTRACTION_TEMPLATE : const — const SYSTEM_PERFORMANCE_EXTRACTION_TEMPLATE = ` Extract structured system performance and design parameters from the paper. Focus on microbial electrochemical systems, including MFC, MEC, MDC, BES, bioelectrochemical sensors, and hybrid wastewater-energy systems. Extract only information explicitly sta...
+- SYSTEM_PERFORMANCE_EXTRACTION_TEMPLATE : const — const SYSTEM_PERFORMANCE_EXTRACTION_TEMPLATE = ` Extract structured system performance and design parameters from the paper. Focus only on microbial fuel cells (MFC), microbial electrolysis cells (MEC), electrochemical biosensors, and their wastewater treatment/management context. Hydrogen is a secondar...
 LOCAL_DECLARATIONS:
 - none
 SCHEMAS (Zod):
@@ -1994,7 +2288,7 @@ EXTRACTION_TEST_NAMES:
 ## packages/database/prisma/schema.prisma
 
 FILE: packages/database/prisma/schema.prisma
-LINES: 1077
+LINES: 1130
 GENERATORS:
 - client: provider = "prisma-client" output = "../generated/prisma" moduleFormat = "esm" generatedFileExtension = "ts" importFileExtension = "ts"
 DATASOURCES:
@@ -2024,11 +2318,11 @@ MODELS:
 - Session: fields=[id           String   @id @default(cuid()); sessionToken String   @unique; userId       String; expires      DateTime; createdAt    DateTime @default(now()); updatedAt    DateTime @updatedAt; user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)] attributes=[]
 - VerificationToken: fields=[identifier String; token      String   @unique; expires    DateTime] attributes=[@@unique([identifier, token])]
 - CaseRecord: fields=[id                  String                    @id; technologyFamily    String; architectureFamily  String; primaryObjective    String; rawIntakeSnapshot   Json; normalizedCase      Json; defaultsUsed        String[]; missingData         String[]; assumptions         String[]; typedEvidence       Json; supplierContext     Json; createdBy           String?; createdAt           DateTime                  @default(now()); updatedAt           DateTime                  @updatedAt; evaluations         EvaluationRecord[]; evidenceRecords     EvidenceRecord[]; supplierPreferences CaseSupplierPreference[]; workspaceSnapshots  WorkspaceSnapshotRecord[]; auditEvents         AuditEvent[]] attributes=[]
-- EvaluationRecord: fields=[id                     String                      @id; caseId                 String; idempotencyKey         String?                     @unique; decisionOutput         Json; auditRecord            Json; narrative              String?; narrativeMetadata      Json; confidenceLevel        String; provenanceSummary      Json; scoringSummary         Json; defaultsUsed           String[]; missingData            String[]; assumptions            String[]; createdAt              DateTime                    @default(now()); case                   CaseRecord                  @relation(fields: [caseId], references: [id], onDelete: Cascade); simulationArtifact     SimulationArtifactRecord?; evidenceDecisionContext EvidenceDecisionContextRecord?; supplierShortlistItems SupplierShortlistItem[]; sourceUsages           EvaluationSourceUsage[]; claimUsages            EvaluationClaimUsage[]; workspaceSnapshots     WorkspaceSnapshotRecord[]; auditEvents            AuditEvent[]; reportConversations    ReportConversationSession[]] attributes=[]
+- EvaluationRecord: fields=[id                      String                         @id; caseId                  String; idempotencyKey          String?                        @unique; decisionOutput          Json; auditRecord             Json; narrative               String?; narrativeMetadata       Json; confidenceLevel         String; provenanceSummary       Json; scoringSummary          Json; defaultsUsed            String[]; missingData             String[]; assumptions             String[]; createdAt               DateTime                       @default(now()); case                    CaseRecord                     @relation(fields: [caseId], references: [id], onDelete: Cascade); simulationArtifact      SimulationArtifactRecord?; evidenceDecisionContext EvidenceDecisionContextRecord?; supplierShortlistItems  SupplierShortlistItem[]; sourceUsages            EvaluationSourceUsage[]; claimUsages             EvaluationClaimUsage[]; workspaceSnapshots      WorkspaceSnapshotRecord[]; auditEvents             AuditEvent[]; reportConversations     ReportConversationSession[]] attributes=[]
 - EvidenceDecisionContextRecord: fields=[id                      String           @id @default(cuid()); evaluationId            String           @unique; caseId                  String; contextVersion          String; builderVersion          String; systemType              String; primaryObjective        String; query                   Json; benchmarkRanges         Json; matchedEvidence         Json; materialComparisons     Json; operatingWindowSignals  Json; failureModeSignals      Json; costSignals             Json; supplierSignals         Json; regulatorySocialSignals Json; uncertaintySummary      Json; excludedEvidenceSummary Json; sourceRefs              String[]; provenanceNote          String           @db.Text; payload                 Json; createdAt               DateTime         @default(now()); updatedAt               DateTime         @updatedAt; evaluation              EvaluationRecord @relation(fields: [evaluationId], references: [id], onDelete: Cascade)] attributes=[@@index([caseId, createdAt]); @@index([systemType, primaryObjective]); @@index([builderVersion])]
 - SimulationArtifactRecord: fields=[id                  String           @id @default(cuid()); evaluationId        String           @unique; status              String; modelVersion        String; inputSnapshot       Json; derivedObservations Json; series              Json; assumptions         Json; confidence          Json; provenance          Json; failureDetail       Json?; createdAt           DateTime         @default(now()); updatedAt           DateTime         @updatedAt; evaluation          EvaluationRecord @relation(fields: [evaluationId], references: [id], onDelete: Cascade)] attributes=[@@index([status, createdAt])]
 - Supplier: fields=[id              String                   @id @default(cuid()); normalizedName  String                   @unique; displayName     String; category        String?; region          String?; metadata        Json; createdAt       DateTime                 @default(now()); updatedAt       DateTime                 @updatedAt; casePreferences CaseSupplierPreference[]; shortlistItems  SupplierShortlistItem[]; products        SupplierProduct[]; documents       SupplierDocument[]; evidenceRecords EvidenceRecord[]] attributes=[]
-- ExternalSourceRecord: fields=[id                   String                        @id @default(cuid()); sourceType           ExternalSourceType; sourceKey            String; sourceUrl            String?; title                String; sourceCategory       String?; doi                  String?; publisher            String?; journal              String?; authors              Json?; language             String?; license              String?; accessStatus         ExternalAccessStatus          @default(UNKNOWN); publishedAt          DateTime?; asOf                 DateTime?; pdfUrl               String?; xmlUrl               String?; hashDedup            String?; normalizedTitle      String?; publicationYear      Int?; firstAuthor          String?; sourceIdentifier     String?; contentHash          String?; metadataHash         String?; ingestionRunId       String?; abstractText         String?                       @db.Text; rawPayload           Json; createdAt            DateTime                      @default(now()); updatedAt            DateTime                      @updatedAt; ingestionRun         IngestionRun?                 @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull); catalogEvidenceItems ExternalEvidenceCatalogItem[]; claims               EvidenceClaim[]; supplierDocuments    SupplierDocument[]; evaluationUsages     EvaluationSourceUsage[]; researchReviewPapers ResearchReviewPaper[]; sourceArtifacts      SourceArtifactRecord[]; sourceTextChunks     SourceTextChunkRecord[]; scientificFacts      ScientificEvidenceFact[]; benchmarkRecords     EvidenceBenchmarkRecord[]; ingestionAudits      EvidenceIngestionAudit[]; duplicateMatches     EvidenceDuplicateDecision[]   @relation("DuplicateMatchedSource")] attributes=[@@unique([sourceType, sourceKey]); @@index([sourceType, publishedAt]); @@index([doi]); @@index([sourceUrl]); @@index([ingestionRunId]); @@index([hashDedup]); @@index([normalizedTitle, publicationYear, firstAuthor]); @@index([publicationYear]); @@index([contentHash]); @@index([metadataHash])]
+- ExternalSourceRecord: fields=[id                   String                        @id @default(cuid()); sourceType           ExternalSourceType; sourceKey            String; sourceUrl            String?; title                String; sourceCategory       String?; doi                  String?; publisher            String?; journal              String?; authors              Json?; language             String?; license              String?; accessStatus         ExternalAccessStatus          @default(UNKNOWN); publishedAt          DateTime?; asOf                 DateTime?; pdfUrl               String?; xmlUrl               String?; hashDedup            String?; normalizedTitle      String?; publicationYear      Int?; firstAuthor          String?; sourceIdentifier     String?; contentHash          String?; metadataHash         String?; ingestionRunId       String?; abstractText         String?                       @db.Text; rawPayload           Json; createdAt            DateTime                      @default(now()); updatedAt            DateTime                      @updatedAt; ingestionRun         IngestionRun?                 @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull); catalogEvidenceItems ExternalEvidenceCatalogItem[]; claims               EvidenceClaim[]; supplierDocuments    SupplierDocument[]; evaluationUsages     EvaluationSourceUsage[]; researchReviewPapers ResearchReviewPaper[]; sourceArtifacts      SourceArtifactRecord[]; sourceTextChunks     SourceTextChunkRecord[]; scientificFacts      ScientificEvidenceFact[]; benchmarkRecords     EvidenceBenchmarkRecord[]; ingestionAudits      EvidenceIngestionAudit[]; duplicateMatches     EvidenceDuplicateDecision[]   @relation("DuplicateMatchedSource"); acquisitionAttempts  EvidenceAcquisitionAttempt[]] attributes=[@@unique([sourceType, sourceKey]); @@index([sourceType, publishedAt]); @@index([doi]); @@index([sourceUrl]); @@index([ingestionRunId]); @@index([hashDedup]); @@index([normalizedTitle, publicationYear, firstAuthor]); @@index([publicationYear]); @@index([contentHash]); @@index([metadataHash])]
 - SourceArtifactRecord: fields=[id               String                  @id @default(cuid()); sourceRecordId   String; localPath        String?; fileName         String; fileHash         String                  @unique; mimeType         String; fileSizeBytes    Int?; pageCount        Int?; extractionMethod String; ingestionStatus  String; title            String?; doi              String?; license          String?; accessStatus     ExternalAccessStatus    @default(UNKNOWN); metadataQuality  Json; veracityScore    Json; failureMessage   String?                 @db.Text; importedAt       DateTime                @default(now()); createdAt        DateTime                @default(now()); updatedAt        DateTime                @updatedAt; sourceRecord     ExternalSourceRecord    @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); chunks           SourceTextChunkRecord[]] attributes=[@@index([sourceRecordId]); @@index([ingestionStatus, importedAt])]
 - SourceTextChunkRecord: fields=[id             String               @id @default(cuid()); artifactId     String; sourceRecordId String; chunkIndex     Int; pageNumber     Int?; text           String               @db.Text; sourceLocator  String; charStart      Int?; charEnd        Int?; metadata       Json; createdAt      DateTime             @default(now()); artifact       SourceArtifactRecord @relation(fields: [artifactId], references: [id], onDelete: Cascade); sourceRecord   ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)] attributes=[@@unique([artifactId, chunkIndex]); @@index([sourceRecordId, pageNumber])]
 - ExternalEvidenceCatalogItem: fields=[id                      String                       @id @default(cuid()); sourceRecordId          String; evidenceType            String; title                   String; summary                 String                       @db.Text; strengthLevel           String; provenanceNote          String                       @db.Text; reviewStatus            ExternalEvidenceReviewStatus @default(PENDING); sourceState             ExternalSourceState          @default(PARSED); claimCount              Int                          @default(0); applicabilityScope      Json; extractedClaims         Json; tags                    String[]; payload                 Json; acceptedBy              String?; acceptancePolicy        String?; acceptedAt              DateTime?; reviewRequired          Boolean                      @default(true); ingestionMode           String                       @default("manual"); ingestionBatchId        String?; extractionStatus        String                       @default("pending"); normalizationStatus     String                       @default("pending"); evidenceQuality         String?; duplicateDecision       Json?; decisionSupportMetadata Json?; createdAt               DateTime                     @default(now()); updatedAt               DateTime                     @updatedAt; sourceRecord            ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); claims                  EvidenceClaim[]; scientificFacts         ScientificEvidenceFact[]; benchmarkRecords        EvidenceBenchmarkRecord[]; ingestionAudits         EvidenceIngestionAudit[]; duplicateMatches        EvidenceDuplicateDecision[]  @relation("DuplicateMatchedCatalogItem")] attributes=[@@unique([sourceRecordId, evidenceType, title]); @@index([reviewStatus, evidenceType]); @@index([acceptedBy]); @@index([acceptedAt]); @@index([ingestionBatchId]); @@index([reviewRequired, reviewStatus]); @@index([extractionStatus, normalizationStatus]); @@index([evidenceQuality])]
@@ -2036,10 +2330,13 @@ MODELS:
 - EvidenceClaim: fields=[id               String                       @id @default(cuid()); sourceRecordId   String; catalogItemId    String?; claimType        EvidenceClaimType; content          String                       @db.Text; extractedValue   String?; unit             String?; confidence       Float; extractionMethod EvidenceExtractionMethod; extractorVersion String; sourceSnippet    String                       @db.Text; sourceLocator    String?; pageNumber       Int?; metadata         Json; createdAt        DateTime                     @default(now()); updatedAt        DateTime                     @updatedAt; sourceRecord     ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); catalogItem      ExternalEvidenceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull); reviews          EvidenceClaimReview[]; ontologyMappings EvidenceOntologyMapping[]; evaluationUsages EvaluationClaimUsage[]; scientificFacts  ScientificEvidenceFact[]] attributes=[@@index([sourceRecordId, claimType]); @@index([catalogItemId, claimType]); @@index([confidence, createdAt])]
 - EvidenceIngestionAudit: fields=[id             String                       @id @default(cuid()); ingestionRunId String?; sourceRecordId String?; catalogItemId  String?; eventType      String; decision       String?; actor          String                       @default("system"); reason         String?                      @db.Text; payload        Json; createdAt      DateTime                     @default(now()); ingestionRun   IngestionRun?                @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull); sourceRecord   ExternalSourceRecord?        @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull); catalogItem    ExternalEvidenceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)] attributes=[@@index([ingestionRunId, eventType]); @@index([catalogItemId, eventType]); @@index([sourceRecordId, eventType]); @@index([eventType, createdAt])]
 - EvidenceDuplicateDecision: fields=[id                    String                       @id @default(cuid()); ingestionRunId        String?; matchedSourceRecordId String?; matchedCatalogItemId  String?; dedupeKeyType         String; dedupeKey             String; decision              String; reason                String                       @db.Text; payload               Json; createdAt             DateTime                     @default(now()); ingestionRun          IngestionRun?                @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull); matchedSourceRecord   ExternalSourceRecord?        @relation("DuplicateMatchedSource", fields: [matchedSourceRecordId], references: [id], onDelete: SetNull); matchedCatalogItem    ExternalEvidenceCatalogItem? @relation("DuplicateMatchedCatalogItem", fields: [matchedCatalogItemId], references: [id], onDelete: SetNull)] attributes=[@@index([ingestionRunId]); @@index([dedupeKeyType, dedupeKey]); @@index([matchedSourceRecordId]); @@index([matchedCatalogItemId]); @@index([decision, createdAt])]
-- ScientificEvidenceFact: fields=[id                    String                      @id @default(cuid()); sourceRecordId        String; catalogItemId         String; claimId               String?; extractionRunId       String?; factLayer             String                      @default("extracted"); factType              String; fieldKey              String; canonicalKey          String?; normalizationRuleId   String?; decisionReady         Boolean                     @default(false); extractionSource      String?; missingFields         Json?; qualityFlags          String[]                    @default([]); sourceTextHash        String?; originalValue         String?                     @db.Text; originalUnit          String?; normalizedValue       Float?; normalizedText        String?                     @db.Text; normalizedUnit        String?; uncertainty           String?; confidence            Float                       @default(0); extractionStatus      String                      @default("pending"); normalizationStatus   String                      @default("pending"); systemType            String?; reactorType           String?; componentType         String?; material              String?; metricType            String?; operatingConditionKey String?; evidenceQuality       String?; payload               Json; createdAt             DateTime                    @default(now()); updatedAt             DateTime                    @updatedAt; sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade); claim                 EvidenceClaim?              @relation(fields: [claimId], references: [id], onDelete: SetNull); canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull); benchmarkRecords      EvidenceBenchmarkRecord[]] attributes=[@@index([sourceRecordId]); @@index([catalogItemId, fieldKey]); @@index([claimId]); @@index([extractionRunId]); @@index([canonicalKey]); @@index([decisionReady, metricType]); @@index([sourceTextHash]); @@index([confidence]); @@index([systemType]); @@index([reactorType]); @@index([componentType, material]); @@index([metricType]); @@index([operatingConditionKey]); @@index([evidenceQuality]); @@index([extractionStatus, normalizationStatus]); @@index([createdAt])]
-- EvidenceBenchmarkRecord: fields=[id                    String                      @id @default(cuid()); sourceRecordId        String; catalogItemId         String; factId                String?; extractionRunId       String?; canonicalKey          String?; normalizationRuleId   String?; decisionReady         Boolean                     @default(false); confidence            Float?; sourceTextHash        String?; systemType            String?; application           String?; componentType         String?; material              String?; membraneSeparator     String?; operatingConditionKey String?; metricType            String?; normalizedValue       Float?; normalizedUnit        String?; publicationYear       Int?; evidenceQuality       String?; scale                 String?; trl                   Int?; costIndicator         String?; riskIndicator         String?; payload               Json; createdAt             DateTime                    @default(now()); updatedAt             DateTime                    @updatedAt; sourceRecord          ExternalSourceRecord        @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); catalogItem           ExternalEvidenceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade); fact                  ScientificEvidenceFact?     @relation(fields: [factId], references: [id], onDelete: SetNull); canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)] attributes=[@@index([sourceRecordId]); @@index([catalogItemId]); @@index([factId]); @@index([extractionRunId]); @@index([canonicalKey, normalizedUnit]); @@index([decisionReady, metricType]); @@index([sourceTextHash]); @@index([systemType, application]); @@index([componentType, material]); @@index([membraneSeparator]); @@index([operatingConditionKey]); @@index([metricType, normalizedUnit]); @@index([publicationYear]); @@index([evidenceQuality]); @@index([scale]); @@index([trl])]
-- EvidenceCanonicalizationRun: fields=[id                         String                    @id @default(cuid()); triggerMode                String; status                     IngestionRunStatus; targetTotal                Int?; batchSize                  Int?; recordsProcessed           Int                       @default(0); recordsCanonicalExtracted  Int                       @default(0); recordsInsufficientSource  Int                       @default(0); recordsNeedsFullText       Int                       @default(0); recordsNeedsReview         Int                       @default(0); recordsFailed              Int                       @default(0); recordsSkipped             Int                       @default(0); canonicalFactsStored       Int                       @default(0); benchmarkRecordsStored     Int                       @default(0); checkpoint                 Json?; summary                    Json; failureDetail              Json?; snapshotCutoff             DateTime?; startedAt                  DateTime; completedAt                DateTime?; createdAt                  DateTime                  @default(now()); updatedAt                  DateTime                  @updatedAt; scientificFacts            ScientificEvidenceFact[]; benchmarkRecords           EvidenceBenchmarkRecord[]; benchmarkAggregates        EvidenceBenchmarkAggregate[]] attributes=[@@index([triggerMode, status, updatedAt]); @@index([status, updatedAt]); @@index([snapshotCutoff])]
+- ScientificEvidenceFact: fields=[id                    String                       @id @default(cuid()); sourceRecordId        String; catalogItemId         String; claimId               String?; extractionRunId       String?; factLayer             String                       @default("extracted"); factType              String; fieldKey              String; canonicalKey          String?; normalizationRuleId   String?; decisionReady         Boolean                      @default(false); extractionSource      String?; missingFields         Json?; qualityFlags          String[]                     @default([]); sourceTextHash        String?; originalValue         String?                      @db.Text; originalUnit          String?; normalizedValue       Float?; normalizedText        String?                      @db.Text; normalizedUnit        String?; uncertainty           String?; confidence            Float                        @default(0); extractionStatus      String                       @default("pending"); normalizationStatus   String                       @default("pending"); systemType            String?; reactorType           String?; componentType         String?; material              String?; metricType            String?; operatingConditionKey String?; evidenceQuality       String?; payload               Json; createdAt             DateTime                     @default(now()); updatedAt             DateTime                     @updatedAt; sourceRecord          ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); catalogItem           ExternalEvidenceCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade); claim                 EvidenceClaim?               @relation(fields: [claimId], references: [id], onDelete: SetNull); canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull); benchmarkRecords      EvidenceBenchmarkRecord[]] attributes=[@@index([sourceRecordId]); @@index([catalogItemId, fieldKey]); @@index([claimId]); @@index([extractionRunId]); @@index([canonicalKey]); @@index([decisionReady, metricType]); @@index([sourceTextHash]); @@index([confidence]); @@index([systemType]); @@index([reactorType]); @@index([componentType, material]); @@index([metricType]); @@index([operatingConditionKey]); @@index([evidenceQuality]); @@index([extractionStatus, normalizationStatus]); @@index([createdAt])]
+- EvidenceBenchmarkRecord: fields=[id                    String                       @id @default(cuid()); sourceRecordId        String; catalogItemId         String; factId                String?; extractionRunId       String?; canonicalKey          String?; normalizationRuleId   String?; decisionReady         Boolean                      @default(false); confidence            Float?; sourceTextHash        String?; systemType            String?; application           String?; componentType         String?; material              String?; membraneSeparator     String?; operatingConditionKey String?; metricType            String?; normalizedValue       Float?; normalizedUnit        String?; publicationYear       Int?; evidenceQuality       String?; scale                 String?; trl                   Int?; costIndicator         String?; riskIndicator         String?; payload               Json; createdAt             DateTime                     @default(now()); updatedAt             DateTime                     @updatedAt; sourceRecord          ExternalSourceRecord         @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade); catalogItem           ExternalEvidenceCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade); fact                  ScientificEvidenceFact?      @relation(fields: [factId], references: [id], onDelete: SetNull); canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)] attributes=[@@index([sourceRecordId]); @@index([catalogItemId]); @@index([factId]); @@index([extractionRunId]); @@index([canonicalKey, normalizedUnit]); @@index([decisionReady, metricType]); @@index([sourceTextHash]); @@index([systemType, application]); @@index([componentType, material]); @@index([membraneSeparator]); @@index([operatingConditionKey]); @@index([metricType, normalizedUnit]); @@index([publicationYear]); @@index([evidenceQuality]); @@index([scale]); @@index([trl])]
+- EvidenceCanonicalizationRun: fields=[id                        String                       @id @default(cuid()); triggerMode               String; status                    IngestionRunStatus; targetTotal               Int?; batchSize                 Int?; recordsProcessed          Int                          @default(0); recordsCanonicalExtracted Int                          @default(0); recordsInsufficientSource Int                          @default(0); recordsNeedsFullText      Int                          @default(0); recordsNeedsReview        Int                          @default(0); recordsFailed             Int                          @default(0); recordsSkipped            Int                          @default(0); canonicalFactsStored      Int                          @default(0); benchmarkRecordsStored    Int                          @default(0); checkpoint                Json?; summary                   Json; failureDetail             Json?; snapshotCutoff            DateTime?; startedAt                 DateTime; completedAt               DateTime?; createdAt                 DateTime                     @default(now()); updatedAt                 DateTime                     @updatedAt; scientificFacts           ScientificEvidenceFact[]; benchmarkRecords          EvidenceBenchmarkRecord[]; benchmarkAggregates       EvidenceBenchmarkAggregate[]] attributes=[@@index([triggerMode, status, updatedAt]); @@index([status, updatedAt]); @@index([snapshotCutoff])]
 - EvidenceBenchmarkAggregate: fields=[id                    String                       @id @default(cuid()); extractionRunId       String?; systemType            String?; application           String?; componentType         String?; material              String?; membraneSeparator     String?; operatingConditionKey String?; metricType            String; canonicalKey          String; normalizedUnit        String; publicationYear       Int?; evidenceQuality       String?; scale                 String?; trl                   Int?; recordCount           Int; minValue              Float?; p25Value              Float?; medianValue           Float?; p75Value              Float?; p90Value              Float?; maxValue              Float?; meanValue             Float?; confidenceCoverage    Float?; payload               Json; createdAt             DateTime                     @default(now()); updatedAt             DateTime                     @updatedAt; canonicalizationRun   EvidenceCanonicalizationRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)] attributes=[@@index([extractionRunId]); @@index([canonicalKey, normalizedUnit]); @@index([systemType, componentType, material]); @@index([metricType, normalizedUnit]); @@index([publicationYear]); @@index([evidenceQuality]); @@index([scale]); @@index([trl])]
+- EvidenceQualityAuditReport: fields=[id               String                    @id @default(cuid()); triggerMode      String; coverageMatrix   Json; gaps             Json; outliers         Json; readinessScores  Json; funnelMetrics    Json; summary          Json; createdAt        DateTime                  @default(now()); discoveryTargets EvidenceDiscoveryTarget[]] attributes=[@@index([triggerMode, createdAt])]
+- EvidenceDiscoveryTarget: fields=[id            String                      @id @default(cuid()); auditReportId String?; gapId         String; query         String                      @db.Text; providers     String[]; priority      Int; status        String                      @default("queued"); recordsFound  Int                         @default(0); recordsStaged Int                         @default(0); failureDetail Json?; createdAt     DateTime                    @default(now()); updatedAt     DateTime                    @updatedAt; completedAt   DateTime?; auditReport   EvidenceQualityAuditReport? @relation(fields: [auditReportId], references: [id], onDelete: SetNull)] attributes=[@@index([status, priority]); @@index([auditReportId]); @@index([gapId])]
+- EvidenceAcquisitionAttempt: fields=[id                String               @id @default(cuid()); sourceRecordId    String; strategy          String; status            String               @default("queued"); foundUrl          String?; foundAccessStatus String?; failureReason     String?              @db.Text; createdAt         DateTime             @default(now()); updatedAt         DateTime             @updatedAt; sourceRecord      ExternalSourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Cascade)] attributes=[@@index([sourceRecordId, strategy]); @@index([status, createdAt])]
 - EvidenceClaimReview: fields=[id          String                       @id @default(cuid()); claimId     String; status      ExternalEvidenceReviewStatus @default(PENDING); analystId   String?; analystRole String?; analystNote String?                      @db.Text; reviewedAt  DateTime?; createdAt   DateTime                     @default(now()); updatedAt   DateTime                     @updatedAt; claim       EvidenceClaim                @relation(fields: [claimId], references: [id], onDelete: Cascade)] attributes=[@@index([claimId, status]); @@index([status, reviewedAt])]
 - EvidenceOntologyMapping: fields=[id                String                @id @default(cuid()); claimId           String; ontologyPath      String; mappingConfidence Float; mappedBy          OntologyMappingSource; note              String?               @db.Text; createdAt         DateTime              @default(now()); updatedAt         DateTime              @updatedAt; claim             EvidenceClaim         @relation(fields: [claimId], references: [id], onDelete: Cascade)] attributes=[@@unique([claimId, ontologyPath]); @@index([ontologyPath])]
 - ResearchReview: fields=[id                String                     @id @default(cuid()); title             String; query             String                     @db.Text; status            ResearchReviewStatus       @default(ACTIVE); version           Int                        @default(1); createdBy         String?; createdAt         DateTime                   @default(now()); updatedAt         DateTime                   @updatedAt; papers            ResearchReviewPaper[]; columns           ResearchReviewColumn[]; extractionJobs    ResearchExtractionJob[]; extractionResults ResearchExtractionResult[]; evidencePacks     ResearchEvidencePack[]] attributes=[@@index([status, updatedAt])]
@@ -2059,7 +2356,7 @@ MODELS:
 - SupplierShortlistItem: fields=[id                 String              @id @default(cuid()); evaluationId       String; supplierId         String?; candidateLabel     String; category           String; fitNote            String; missingInformation Json; reviewStatus       SupplierSourceState; createdAt          DateTime            @default(now()); updatedAt          DateTime            @updatedAt; evaluation         EvaluationRecord    @relation(fields: [evaluationId], references: [id], onDelete: Cascade); supplier           Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)] attributes=[@@index([evaluationId, category])]
 - EvidenceRecord: fields=[id            String     @id; caseId        String; evidenceType  String; title         String; strengthLevel String; supplierName  String?; supplierId    String?; payload       Json; createdAt     DateTime   @default(now()); case          CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade); supplier      Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)] attributes=[@@index([caseId, supplierId])]
 - AuditEvent: fields=[id           String            @id; caseId       String?; evaluationId String?; eventType    String; actorRole    String; actorId      String?; payload      Json; createdAt    DateTime          @default(now()); case         CaseRecord?       @relation(fields: [caseId], references: [id], onDelete: Cascade); evaluation   EvaluationRecord? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)] attributes=[@@index([caseId, createdAt]); @@index([evaluationId, createdAt])]
-SUMMARY: 18 enum(s), 40 model(s).
+SUMMARY: 18 enum(s), 43 model(s).
 
 ## packages/database/prisma/migrations/**/*.sql
 
@@ -2612,6 +2909,33 @@ SQL_STATEMENTS:
 - 15. CREATE INDEX "EvidenceDecisionContextRecord_builderVersion_idx" ON "EvidenceDecisionContextRecord"("builderVersion");
 - 16. ALTER TABLE "EvidenceDecisionContextRecord" ADD CONSTRAINT "EvidenceDecisionContextRecord_evaluationId_fkey" FOREIGN KEY ("evaluationId") REFERENCES "EvaluationRecord"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+FILE: packages/database/prisma/migrations/20260513120000_add_evidence_intelligence_pipeline/migration.sql
+LINES: 61
+SQL_OBJECTS:
+- ALTER_TABLE:EvidenceAcquisitionAttempt
+- ALTER_TABLE:EvidenceDiscoveryTarget
+- CREATE_INDEX:EvidenceAcquisitionAttempt_sourceRecordId_strategy_idx
+- CREATE_INDEX:EvidenceAcquisitionAttempt_status_createdAt_idx
+- CREATE_INDEX:EvidenceDiscoveryTarget_auditReportId_idx
+- CREATE_INDEX:EvidenceDiscoveryTarget_gapId_idx
+- CREATE_INDEX:EvidenceDiscoveryTarget_status_priority_idx
+- CREATE_INDEX:EvidenceQualityAuditReport_triggerMode_createdAt_idx
+- CREATE_TABLE:EvidenceAcquisitionAttempt
+- CREATE_TABLE:EvidenceDiscoveryTarget
+- CREATE_TABLE:EvidenceQualityAuditReport
+SQL_STATEMENTS:
+- 1. CREATE TABLE "EvidenceQualityAuditReport" ( "id" TEXT NOT NULL, "triggerMode" TEXT NOT NULL, "coverageMatrix" JSONB NOT NULL, "gaps" JSONB NOT NULL, "outliers" JSONB NOT NULL, "readinessScores" JSONB NOT NULL, "funnelMetrics" JSONB NOT NULL, "summary" JSONB NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "EvidenceQualityAuditReport_pkey" PRIMARY KEY ("id") );
+- 2. CREATE TABLE "EvidenceDiscoveryTarget" ( "id" TEXT NOT NULL, "auditReportId" TEXT, "gapId" TEXT NOT NULL, "query" TEXT NOT NULL, "providers" TEXT[], "priority" INTEGER NOT NULL, "status" TEXT NOT NULL DEFAULT 'queued', "recordsFound" INTEGER NOT NULL DEFAULT 0, "recordsStaged" INTEGER NOT NULL DEFAULT 0, "failureDetail" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NO...
+- 3. CREATE TABLE "EvidenceAcquisitionAttempt" ( "id" TEXT NOT NULL, "sourceRecordId" TEXT NOT NULL, "strategy" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'queued', "foundUrl" TEXT, "foundAccessStatus" TEXT, "failureReason" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "EvidenceAcquisitionAttempt_pkey" PRIMARY KEY ("id") );
+- 4. CREATE INDEX "EvidenceQualityAuditReport_triggerMode_createdAt_idx" ON "EvidenceQualityAuditReport"("triggerMode", "createdAt");
+- 5. CREATE INDEX "EvidenceDiscoveryTarget_status_priority_idx" ON "EvidenceDiscoveryTarget"("status", "priority");
+- 6. CREATE INDEX "EvidenceDiscoveryTarget_auditReportId_idx" ON "EvidenceDiscoveryTarget"("auditReportId");
+- 7. CREATE INDEX "EvidenceDiscoveryTarget_gapId_idx" ON "EvidenceDiscoveryTarget"("gapId");
+- 8. CREATE INDEX "EvidenceAcquisitionAttempt_sourceRecordId_strategy_idx" ON "EvidenceAcquisitionAttempt"("sourceRecordId", "strategy");
+- 9. CREATE INDEX "EvidenceAcquisitionAttempt_status_createdAt_idx" ON "EvidenceAcquisitionAttempt"("status", "createdAt");
+- 10. ALTER TABLE "EvidenceDiscoveryTarget" ADD CONSTRAINT "EvidenceDiscoveryTarget_auditReportId_fkey" FOREIGN KEY ("auditReportId") REFERENCES "EvidenceQualityAuditReport"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+- 11. ALTER TABLE "EvidenceAcquisitionAttempt" ADD CONSTRAINT "EvidenceAcquisitionAttempt_sourceRecordId_fkey" FOREIGN KEY ("sourceRecordId") REFERENCES "ExternalSourceRecord"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 ## packages/database/src/**/*.ts
 
 FILE: packages/database/src/evaluation-reset.ts
@@ -2675,45 +2999,157 @@ INVARIANTS_ENFORCED:
 - throw new Error( 'DATABASE_URL is required to inspect or reset evaluations.', );
 - throw new Error( 'Evaluation reset is restricted to local databases addressed by localhost or 127.0.0.1.', );
 
+FILE: packages/database/src/evidence-audit-repository.ts
+LINES: 1160
+IMPORTS:
+- import { Prisma, type PrismaClient } from '../generated/prisma/client';
+- import { acceptedEvidenceReadinessCandidateSchema, acquisitionAttemptSchema, discoveryTargetSchema, evidenceFunnelGroupSchema, evidenceQualityReportSchema, funnelStageCountSchema, type AcceptedEvidenceReadinessCandidate, type AcquisitionAttempt, type DiscoveryTarget, type EvidenceFunnelGroup, type EvidenceQualityReport, type FunnelStageCount, } from '@metrev/domain-contracts';
+- import { getPrismaClient } from './prisma-client';
+EXPORTS:
+- RawCoverageRow : interface — export interface RawCoverageRow
+- OutlierCandidateRow : interface — export interface OutlierCandidateRow
+- SourceRecordForAcquisition : interface — export interface SourceRecordForAcquisition
+- DiscoveryStatusSummary : interface — export interface DiscoveryStatusSummary
+- AcquisitionStatusSummary : interface — export interface AcquisitionStatusSummary
+- EvidenceAuditRepository : interface — export interface EvidenceAuditRepository
+- MemoryEvidenceAuditRepository : class — export class MemoryEvidenceAuditRepository implements EvidenceAuditRepository
+- createEvidenceAuditRepository : function — export function createEvidenceAuditRepository( prisma: PrismaClient = getPrismaClient(), ): EvidenceAuditRepository
+LOCAL_DECLARATIONS:
+- CANONICAL_FACT_LAYER : const = 'canonical_scientific_fact_v1'
+- toInputJson : function — function toInputJson(value: unknown): Prisma.InputJsonValue
+- toIso : function — function toIso(value: Date | string): string
+- mapAuditReport : function — function mapAuditReport(record: { id: string; triggerMode: string; coverageMatrix: Prisma.JsonValue; gaps: Prisma.JsonValue; outliers: Prisma.JsonValue; readinessScores: Prisma.JsonValue; funnelMetrics: Prisma.JsonValue; summary: Prisma.JsonValue; createdAt: Date; }): EvidenceQualityReport
+- mapAcceptedEvidenceReadinessCandidate : function — function mapAcceptedEvidenceReadinessCandidate(record: { id: string; sourceRecordId: string; title: string; extractionStatus: string; normalizationStatus: string; evidenceQuality: string | null; claimCount: number; sourceRecord: { sourceType: string; publishedAt: Date | null; doi: string | null; sourceUrl: string | null; pdfUrl: string | null; xmlUrl: string | null; abstractText: string | null; _count: { sourceArtifacts: number; sourceTextChunks: number; }; }; scientificFacts: Array<{ decisionReady: boolean; }>; benchmarkRecords: Array<{ decisionReady: boolean; }>; }): AcceptedEvidenceReadinessCandidate
+- mapDiscoveryTarget : function — function mapDiscoveryTarget(record: { id: string; auditReportId: string | null; gapId: string; query: string; providers: string[]; priority: number; status: string; recordsFound: number; recordsStaged: number; failureDetail: Prisma.JsonValue | null; createdAt: Date; updatedAt: Date; completedAt: Date | null; }): DiscoveryTarget
+- mapAcquisitionAttempt : function — function mapAcquisitionAttempt(record: { id: string; sourceRecordId: string; strategy: string; status: string; foundUrl: string | null; foundAccessStatus: string | null; failureReason: string | null; createdAt: Date; updatedAt: Date; }): AcquisitionAttempt
+- conversionRate : function — function conversionRate(count: number, previous: number | null): number | null
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ./prisma-client:getPrismaClient -> getPrismaClient
+- @metrev/domain-contracts:acceptedEvidenceReadinessCandidateSchema -> acceptedEvidenceReadinessCandidateSchema.parse
+- @metrev/domain-contracts:acquisitionAttemptSchema -> acquisitionAttemptSchema.parse
+- @metrev/domain-contracts:discoveryTargetSchema -> discoveryTargetSchema.parse
+- @metrev/domain-contracts:evidenceFunnelGroupSchema -> evidenceFunnelGroupSchema.parse
+- @metrev/domain-contracts:evidenceQualityReportSchema -> evidenceQualityReportSchema.parse
+- @metrev/domain-contracts:funnelStageCountSchema -> funnelStageCountSchema.parse
+- conversionRate
+- mapAcceptedEvidenceReadinessCandidate
+- mapAuditReport
+- toInputJson
+- toIso
+SCHEMA_PARSERS:
+- acceptedEvidenceReadinessCandidateSchema.parse
+- acquisitionAttemptSchema.parse
+- discoveryTargetSchema.parse
+- evidenceFunnelGroupSchema.parse
+- evidenceQualityReportSchema.parse
+- funnelStageCountSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- $transaction
+- evidenceAcquisitionAttempt.count
+- evidenceAcquisitionAttempt.create
+- evidenceAcquisitionAttempt.findMany
+- evidenceAcquisitionAttempt.update
+- evidenceBenchmarkAggregate.count
+- evidenceBenchmarkAggregate.findFirst
+- evidenceBenchmarkRecord.count
+- evidenceBenchmarkRecord.groupBy
+- evidenceDiscoveryTarget.aggregate
+- evidenceDiscoveryTarget.count
+- evidenceDiscoveryTarget.createMany
+- evidenceDiscoveryTarget.findMany
+- evidenceDiscoveryTarget.update
+- evidenceQualityAuditReport.create
+- evidenceQualityAuditReport.findFirst
+- evidenceQualityAuditReport.findMany
+- evidenceQualityAuditReport.findUnique
+- externalEvidenceCatalogItem.count
+- externalEvidenceCatalogItem.findMany
+- externalSourceRecord.count
+- externalSourceRecord.findMany
+- externalSourceRecord.update
+- researchExtractionResult.count
+- scientificEvidenceFact.count
+- scientificEvidenceFact.findMany
+- sourceArtifactRecord.count
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: createEvidenceAuditRepository -> return { async createEvidenceQualityAuditReport(report) { const parsed = evidenceQualityReportSchema.parse(report); const created = await prisma.evidenceQualityAuditReport.create({ data: { id: parsed.report_id, trigge...
+INVARIANTS_ENFORCED:
+- evidenceQualityReportSchema.parse(report)
+- funnelStageCountSchema.parse({ stage, count: 0, conversion_rate: null })
+- evidenceFunnelGroupSchema.parse({ article: [], document: [], fact: [], benchmark: [], research_cell: [], })
+- discoveryTargetSchema.parse(target)
+- discoveryTargetSchema.parse({ ...this.targets[index], status: update.status ?? this.targets[index].status, records_found: update.records_found ?? this.targets[index].records_found, records_staged: update.records_stage...
+- acquisitionAttemptSchema.parse(attempt)
+- acquisitionAttemptSchema.parse({ ...this.attempts[index], status: update.status ?? this.attempts[index].status, found_url: update.found_url ?? this.attempts[index].found_url, found_access_status: update.found_access_s...
+- evidenceQualityReportSchema.parse({ report_id: record.id, trigger_mode: record.triggerMode, coverage_matrix: record.coverageMatrix, gaps: record.gaps, outliers: record.outliers, readiness_scores: record.readinessScore...
+- acceptedEvidenceReadinessCandidateSchema.parse({ catalog_item_id: record.id, source_record_id: record.sourceRecordId, title: record.title, source_type: record.sourceRecord.sourceType.toLowerCase(), published_at: recor...
+- discoveryTargetSchema.parse({ target_id: record.id, audit_report_id: record.auditReportId, gap_id: record.gapId, query: record.query, providers: record.providers, priority: record.priority, status: record.status, reco...
+- acquisitionAttemptSchema.parse({ attempt_id: record.id, source_record_id: record.sourceRecordId, strategy: record.strategy, status: record.status, found_url: record.foundUrl, found_access_status: record.foundAccessSta...
+- funnelStageCountSchema.parse({ stage: row.stage, count: row.count, conversion_rate: conversionRate(row.count, row.previous), })
+- funnelStageCountSchema.parse({ stage: stageName, count, conversion_rate: conversionRate(count, previous), })
+- evidenceFunnelGroupSchema.parse({ article: [ stage('discovered', articleDiscovered, null), stage('cataloged', articleCataloged, articleDiscovered), stage('accepted', articleAccepted, articleCataloged), stage('has_stab...
+
 FILE: packages/database/src/index.ts
-LINES: 3973
+LINES: 4298
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import { Prisma, PrismaClient } from '../generated/prisma/client';
-- import { caseHistoryResponseSchema, evaluationClaimUsageSchema, evaluationListResponseSchema, evaluationResponseSchema, evaluationSourceUsageSchema, evidenceClaimSchema, evidenceClaimTypeSchema, evidenceExtractionMethodSchema, evidenceStrengthSchema, evidenceTypeSchema, evidenceVeracityScoreSchema, externalEvidenceAccessStatusSchema, externalEvidenceBulkReviewResponseSchema, externalEvidenceCatalogDetailSchema, externalEvidenceCatalogListResponseSchema, metadataQualityProfileSchema, ontologyMappingSourceSchema, reportConversationTurnSchema, simulationEnrichmentSchema, sourceArtifactSchema, sourceDocumentRecordSchema, supplierDocumentSchema, supplierDocumentTypeSchema, workspaceSnapshotRecordSchema, type CaseHistoryResponse, type ConfidenceLevel, type EvaluationListResponse, type EvaluationResponse, type EvidenceClaim, type ExternalEvidenceBulkReviewResponse, type ExternalEvidenceCatalogItemDetail, type ExternalEvidenceCatalogItemSummary, type ExternalEvidenceCatalogListResponse, type ExternalEvidenceReviewAction, type ExternalEvidenceReviewStatus, type ExternalEvidenceSourceType, type NarrativeMetadata, type ReportConversationCitation, type ReportConversationGrounding, type ReportConversationTurn, type SourceArtifact, } from '@metrev/domain-contracts';
+- import { caseHistoryResponseSchema, evaluationClaimUsageSchema, evaluationListResponseSchema, evaluationResponseSchema, evaluationSourceUsageSchema, evidenceClaimSchema, evidenceClaimTypeSchema, evidenceExtractionMethodSchema, evidenceStrengthSchema, evidenceTypeSchema, evidenceVeracityScoreSchema, externalEvidenceAccessStatusSchema, externalEvidenceBenchmarkRecordSchema, externalEvidenceBulkReviewResponseSchema, externalEvidenceCatalogDetailSchema, externalEvidenceCatalogListResponseSchema, externalEvidenceScientificFactSchema, externalEvidenceSourceTextStatusSchema, metadataQualityProfileSchema, ontologyMappingSourceSchema, reportConversationTurnSchema, simulationEnrichmentSchema, sourceArtifactSchema, sourceDocumentRecordSchema, supplierDocumentSchema, supplierDocumentTypeSchema, workspaceSnapshotRecordSchema, type CaseHistoryResponse, type ConfidenceLevel, type EvaluationListResponse, type EvaluationResponse, type EvidenceClaim, type ExternalEvidenceBulkReviewResponse, type ExternalEvidenceCatalogItemDetail, type ExternalEvidenceCatalogItemSummary, type ExternalEvidenceCatalogListResponse, type ExternalEvidenceReviewAction, type ExternalEvidenceReviewStatus, type ExternalEvidenceSourceType, type NarrativeMetadata, type ReportConversationCitation, type ReportConversationGrounding, type ReportConversationTurn, type SourceArtifact, } from '@metrev/domain-contracts';
 - import { withSpan } from '@metrev/telemetry';
 - import { getPrismaClient } from './prisma-client';
 - import { deriveSupplierPersistencePlan } from './supplier-persistence';
 EXPORTS:
+- export {
+  createEvidenceAuditRepository,
+  MemoryEvidenceAuditRepository,
+  type AcquisitionStatusSummary,
+  type DiscoveryStatusSummary,
+  type EvidenceAuditRepository,
+  type OutlierCandidateRow,
+  type RawCoverageRow,
+  type SourceRecordForAcquisition,
+} from './evidence-audit-repository'; : re-export — export { createEvidenceAuditRepository, MemoryEvidenceAuditRepository, type AcquisitionStatusSummary, type DiscoveryStatusSummary, type EvidenceAuditRepository, type OutlierCandidateRow, type RawCoverageRow, type SourceRecordForAcquisition, } from './evidence-audit-repository';
 - export { disconnectPrismaClient, getPrismaClient } from './prisma-client'; : re-export — export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 - export {
-    MFC_MEC_30000_PRESET_ID,
-    planResearchBackfillPreset,
-    type PlannedResearchBackfill,
-    type PlannedResearchBackfillPreset
-} from './research-backfill-presets'; : re-export — export { MFC_MEC_30000_PRESET_ID, planResearchBackfillPreset, type PlannedResearchBackfill, type PlannedResearchBackfillPreset } from './research-backfill-presets';
+  FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID,
+  planResearchBackfillPreset,
+  type PlannedResearchBackfill,
+  type PlannedResearchBackfillPreset,
+} from './research-backfill-presets'; : re-export — export { FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID, planResearchBackfillPreset, type PlannedResearchBackfill, type PlannedResearchBackfillPreset, } from './research-backfill-presets';
 - export {
-    createResearchRepository,
-    MemoryResearchRepository,
-    PrismaResearchRepository,
-    type AddResearchReviewColumnInput,
-    type ClaimResearchExtractionJobsInput,
-    type CreateResearchEvidencePackInput,
-    type CreateResearchReviewInput,
-    type ResearchExtractionWorkItem,
-    type ResearchRepository,
-    type SaveResearchExtractionResultInput
-} from './research-repository'; : re-export — export { createResearchRepository, MemoryResearchRepository, PrismaResearchRepository, type AddResearchReviewColumnInput, type ClaimResearchExtractionJobsInput, type CreateResearchEvidencePackInput, type CreateResearchReviewInput, type ResearchExtractionWorkItem, type ResearchRepository, type SaveResearchExtractionResultInput } from './research-repository';
+  createResearchRepository,
+  MemoryResearchRepository,
+  PrismaResearchRepository,
+  type AddResearchReviewColumnInput,
+  type ClaimResearchExtractionJobsInput,
+  type CreateResearchEvidencePackInput,
+  type CreateResearchReviewInput,
+  type ResearchExtractionWorkItem,
+  type ResearchRepository,
+  type SaveResearchExtractionResultInput,
+} from './research-repository'; : re-export — export { createResearchRepository, MemoryResearchRepository, PrismaResearchRepository, type AddResearchReviewColumnInput, type ClaimResearchExtractionJobsInput, type CreateResearchEvidencePackInput, type CreateResearchReviewInput, type ResearchExtractionWorkItem, type ResearchRepository, type SaveResearchExtractionResultInput, } from './research-repository';
 - export {
-    buildEvidenceVeracityScore,
-    getSourceArtifactForSourceDocument,
-    importLocalPdfSources,
-    localSourceImportRequestToInput,
-    normalizeCliFiles,
-    resolveLocalSourceImportRequestToInput,
-    type LocalPdfImportFile,
-    type LocalPdfImportInput
-} from './source-artifacts'; : re-export — export { buildEvidenceVeracityScore, getSourceArtifactForSourceDocument, importLocalPdfSources, localSourceImportRequestToInput, normalizeCliFiles, resolveLocalSourceImportRequestToInput, type LocalPdfImportFile, type LocalPdfImportInput } from './source-artifacts';
+  buildEvidenceVeracityScore,
+  getSourceArtifactForSourceDocument,
+  importLocalPdfSources,
+  localSourceImportRequestToInput,
+  normalizeCliFiles,
+  resolveLocalSourceImportRequestToInput,
+  type LocalPdfImportFile,
+  type LocalPdfImportInput,
+} from './source-artifacts'; : re-export — export { buildEvidenceVeracityScore, getSourceArtifactForSourceDocument, importLocalPdfSources, localSourceImportRequestToInput, normalizeCliFiles, resolveLocalSourceImportRequestToInput, type LocalPdfImportFile, type LocalPdfImportInput, } from './source-artifacts';
 - EvaluationRepository : interface — export interface EvaluationRepository
 - ExternalEvidenceCatalogListInput : interface — export interface ExternalEvidenceCatalogListInput
 - EvidenceBenchmarkSliceInput : interface — export interface EvidenceBenchmarkSliceInput
@@ -2786,14 +3222,17 @@ LOCAL_DECLARATIONS:
 - createWorkspaceSnapshotRecord : function — function createWorkspaceSnapshotRecord(record: { id: string; evaluationId: string | null; caseId: string | null; snapshotType: | 'DASHBOARD' | 'EVALUATION' | 'COMPARISON' | 'HISTORY' | 'EVIDENCE_REVIEW' | 'REPORT' | 'EXPORT_JSON' | 'EXPORT_CSV'; payload: unknown; createdAt: Date; })
 - attachLineageRuntimeVersions : function — function attachLineageRuntimeVersions( evaluation: EvaluationResponse, ): EvaluationResponse
 - createReportConversationTurn : function — function createReportConversationTurn(record: { id: string; conversationId: string; actor: string; selectedSection: string | null; message: string; createdAt: Date; }): ReportConversationTurn
-- createExternalEvidenceSummary : function — function createExternalEvidenceSummary(record: { id: string; evidenceType: string; title: string; summary: string; strengthLevel: string; provenanceNote: string; reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED'; sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED'; applicabilityScope: unknown; extractedClaims: unknown; claimCount?: number; reviewedClaimCount?: number; acceptedBy?: string | null; acceptancePolicy?: string | null; acceptedAt?: Date | null; reviewRequired?: boolean; ingestionMode?: string | null; ingestionBatchId?: string | null; extractionStatus?: string | null; normalizationStatus?: string | null; evidenceQuality?: string | null; tags: string[]; payload?: unknown; createdAt: Date; updatedAt: Date; sourceRecord: { sourceType: DatabaseExternalSourceType; sourceUrl: string | null; sourceCategory: string | null; doi: string | null; publisher: string | null; publishedAt: Date | null; }; }): ExternalEvidenceCatalogItemSummary
+- createExternalEvidenceSummary : function — function createExternalEvidenceSummary(record: { id: string; evidenceType: string; title: string; summary: string; strengthLevel: string; provenanceNote: string; reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED'; sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED'; applicabilityScope: unknown; extractedClaims: unknown; claimCount?: number; reviewedClaimCount?: number; acceptedBy?: string | null; acceptancePolicy?: string | null; acceptedAt?: Date | null; reviewRequired?: boolean; ingestionMode?: string | null; ingestionBatchId?: string | null; extractionStatus?: string | null; normalizationStatus?: string | null; evidenceQuality?: string | null; tags: string[]; payload?: unknown; createdAt: Date; updatedAt: Date; sourceRecord: { sourceType: DatabaseExternalSourceType; sourceUrl: string | null; sourceCategory: string | null; doi: string | null; publisher: string | null; publishedAt: Date | null; abstractText?: string | null; pdfUrl?: string | null; xmlUrl?: string | null; sourceArtifacts?: Array<{ chunks?: Array<unknown>; }>; _count?: { sourceArtifacts: number; sourceTextChunks: number; }; }; scientificFacts?: Array<{ decisionReady: boolean; factLayer?: string; }>; benchmarkRecords?: Array<{ decisionReady: boolean; }>; }): ExternalEvidenceCatalogItemSummary
 - metadataQualityFromPayload : function — function metadataQualityFromPayload(payload: unknown)
 - veracityScoreFromPayload : function — function veracityScoreFromPayload(payload: unknown)
-- createExternalEvidenceDetail : function — function createExternalEvidenceDetail(record: { id: string; evidenceType: string; title: string; summary: string; strengthLevel: string; provenanceNote: string; reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED'; sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED'; applicabilityScope: unknown; extractedClaims: unknown; tags: string[]; payload: unknown; acceptedBy?: string | null; acceptancePolicy?: string | null; acceptedAt?: Date | null; reviewRequired?: boolean; ingestionMode?: string | null; ingestionBatchId?: string | null; extractionStatus?: string | null; normalizationStatus?: string | null; evidenceQuality?: string | null; createdAt: Date; updatedAt: Date; claims?: Array<{ id: string; sourceRecordId: string; catalogItemId: string | null; claimType: | 'METRIC' | 'MATERIAL' | 'ARCHITECTURE' | 'CONDITION' | 'LIMITATION' | 'APPLICABILITY' | 'ECONOMIC' | 'SUPPLIER_CLAIM' | 'MARKET_SIGNAL' | 'OTHER'; content: string; extractedValue: string | null; unit: string | null; confidence: number; extractionMethod: 'MANUAL' | 'LLM' | 'REGEX' | 'ML' | 'IMPORT_RULE'; extractorVersion: string; sourceSnippet: string; sourceLocator: string | null; pageNumber: number | null; metadata: unknown; createdAt: Date; updatedAt: Date; reviews?: Array<{ id: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; analystId: string | null; analystRole: string | null; analystNote: string | null; reviewedAt: Date | null; }>; ontologyMappings?: Array<{ id: string; ontologyPath: string; mappingConfidence: number; mappedBy: 'AUTO' | 'ANALYST' | 'IMPORT_RULE'; note: string | null; }>; }>; sourceRecord: { id: string; sourceType: DatabaseExternalSourceType; sourceUrl: string | null; sourceCategory: string | null; doi: string | null; publisher: string | null; journal?: string | null; publishedAt: Date | null; accessStatus?: | 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; license?: string | null; pdfUrl?: string | null; xmlUrl?: string | null; authors?: unknown; abstractText: string | null; rawPayload: unknown; supplierDocuments?: Array<{ id: string; supplierId: string; sourceRecordId: string; productId: string | null; documentType: | 'PROFILE' | 'DATASHEET' | 'SPECIFICATION' | 'CERTIFICATE' | 'MARKET_BRIEF' | 'CASE_STUDY' | 'PATENT_FILING' | 'REPORT' | 'OTHER'; note: string | null; }>; sourceArtifacts?: Array<{ accessStatus: | 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; chunks?: Array<{ artifactId: string; charEnd: number | null; charStart: number | null; chunkIndex: number; createdAt: Date; id: string; metadata: unknown; pageNumber: number | null; sourceLocator: string; sourceRecordId: string; text: string; }>; doi: string | null; extractionMethod: string; failureMessage: string | null; fileHash: string; fileName: string; fileSizeBytes: number | null; id: string; importedAt: Date; ingestionStatus: string; license: string | null; localPath: string | null; metadataQuality: unknown; mimeType: string; pageCount: number | null; sourceRecordId: string; title: string | null; veracityScore: unknown; }>; }; }): ExternalEvidenceCatalogItemDetail
+- createExternalEvidenceDetail : function — function createExternalEvidenceDetail(record: { id: string; evidenceType: string; title: string; summary: string; strengthLevel: string; provenanceNote: string; reviewStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED'; sourceState: 'RAW' | 'PARSED' | 'NORMALIZED' | 'REVIEWED'; applicabilityScope: unknown; extractedClaims: unknown; tags: string[]; payload: unknown; acceptedBy?: string | null; acceptancePolicy?: string | null; acceptedAt?: Date | null; reviewRequired?: boolean; ingestionMode?: string | null; ingestionBatchId?: string | null; extractionStatus?: string | null; normalizationStatus?: string | null; evidenceQuality?: string | null; createdAt: Date; updatedAt: Date; claims?: Array<{ id: string; sourceRecordId: string; catalogItemId: string | null; claimType: | 'METRIC' | 'MATERIAL' | 'ARCHITECTURE' | 'CONDITION' | 'LIMITATION' | 'APPLICABILITY' | 'ECONOMIC' | 'SUPPLIER_CLAIM' | 'MARKET_SIGNAL' | 'OTHER'; content: string; extractedValue: string | null; unit: string | null; confidence: number; extractionMethod: 'MANUAL' | 'LLM' | 'REGEX' | 'ML' | 'IMPORT_RULE'; extractorVersion: string; sourceSnippet: string; sourceLocator: string | null; pageNumber: number | null; metadata: unknown; createdAt: Date; updatedAt: Date; reviews?: Array<{ id: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; analystId: string | null; analystRole: string | null; analystNote: string | null; reviewedAt: Date | null; }>; ontologyMappings?: Array<{ id: string; ontologyPath: string; mappingConfidence: number; mappedBy: 'AUTO' | 'ANALYST' | 'IMPORT_RULE'; note: string | null; }>; }>; scientificFacts?: Array<{ id: string; factLayer: string; factType: string; fieldKey: string; canonicalKey: string | null; decisionReady: boolean; originalValue: string | null; originalUnit: string | null; normalizedValue: number | null; normalizedText: string | null; normalizedUnit: string | null; confidence: number; extractionStatus: string; normalizationStatus: string; systemType: string | null; componentType: string | null; material: string | null; metricType: string | null; evidenceQuality: string | null; sourceTextHash: string | null; qualityFlags: string[]; payload: unknown; createdAt: Date; updatedAt: Date; }>; benchmarkRecords?: Array<{ id: string; canonicalKey: string | null; decisionReady: boolean; confidence: number | null; systemType: string | null; application: string | null; componentType: string | null; material: string | null; membraneSeparator: string | null; operatingConditionKey: string | null; metricType: string | null; normalizedValue: number | null; normalizedUnit: string | null; publicationYear: number | null; evidenceQuality: string | null; scale: string | null; trl: number | null; costIndicator: string | null; riskIndicator: string | null; sourceTextHash: string | null; payload: unknown; createdAt: Date; updatedAt: Date; }>; sourceRecord: { id: string; sourceType: DatabaseExternalSourceType; sourceUrl: string | null; sourceCategory: string | null; doi: string | null; publisher: string | null; journal?: string | null; publishedAt: Date | null; accessStatus?: | 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; license?: string | null; pdfUrl?: string | null; xmlUrl?: string | null; authors?: unknown; abstractText: string | null; rawPayload: unknown; supplierDocuments?: Array<{ id: string; supplierId: string; sourceRecordId: string; productId: string | null; documentType: | 'PROFILE' | 'DATASHEET' | 'SPECIFICATION' | 'CERTIFICATE' | 'MARKET_BRIEF' | 'CASE_STUDY' | 'PATENT_FILING' | 'REPORT' | 'OTHER'; note: string | null; }>; sourceArtifacts?: Array<{ accessStatus: | 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; chunks?: Array<{ artifactId: string; charEnd: number | null; charStart: number | null; chunkIndex: number; createdAt: Date; id: string; metadata: unknown; pageNumber: number | null; sourceLocator: string; sourceRecordId: string; text: string; }>; doi: string | null; extractionMethod: string; failureMessage: string | null; fileHash: string; fileName: string; fileSizeBytes: number | null; id: string; importedAt: Date; ingestionStatus: string; license: string | null; localPath: string | null; metadataQuality: unknown; mimeType: string; pageCount: number | null; sourceRecordId: string; title: string | null; veracityScore: unknown; }>; _count?: { sourceArtifacts: number; sourceTextChunks: number; }; }; }): ExternalEvidenceCatalogItemDetail
 - normalizeTechnicalFilter : function — function normalizeTechnicalFilter(value: string | undefined): string | null
 - stringifyForTechnicalFilter : function — function stringifyForTechnicalFilter(value: unknown): string
 - memoryCatalogItemMatchesTechnicalFilters : function — function memoryCatalogItemMatchesTechnicalFilters( item: ExternalEvidenceCatalogItemDetail, input: ExternalEvidenceCatalogListInput, ): boolean
 - createSourceArtifactRecord : function — function createSourceArtifactRecord(record: { accessStatus: 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; chunks?: Array<{ artifactId: string; charEnd: number | null; charStart: number | null; chunkIndex: number; createdAt: Date; id: string; metadata: unknown; pageNumber: number | null; sourceLocator: string; sourceRecordId: string; text: string; }>; doi: string | null; extractionMethod: string; failureMessage: string | null; fileHash: string; fileName: string; fileSizeBytes: number | null; id: string; importedAt: Date; ingestionStatus: string; license: string | null; localPath: string | null; metadataQuality: unknown; mimeType: string; pageCount: number | null; sourceRecordId: string; title: string | null; veracityScore: unknown; }): SourceArtifact
+- createScientificEvidenceFactRecord : function — function createScientificEvidenceFactRecord(record: { id: string; factLayer: string; factType: string; fieldKey: string; canonicalKey: string | null; decisionReady: boolean; originalValue: string | null; originalUnit: string | null; normalizedValue: number | null; normalizedText: string | null; normalizedUnit: string | null; confidence: number; extractionStatus: string; normalizationStatus: string; systemType: string | null; componentType: string | null; material: string | null; metricType: string | null; evidenceQuality: string | null; sourceTextHash: string | null; qualityFlags: string[]; payload: unknown; createdAt: Date; updatedAt: Date; })
+- createEvidenceBenchmarkRecord : function — function createEvidenceBenchmarkRecord(record: { id: string; canonicalKey: string | null; decisionReady: boolean; confidence: number | null; systemType: string | null; application: string | null; componentType: string | null; material: string | null; membraneSeparator: string | null; operatingConditionKey: string | null; metricType: string | null; normalizedValue: number | null; normalizedUnit: string | null; publicationYear: number | null; evidenceQuality: string | null; scale: string | null; trl: number | null; costIndicator: string | null; riskIndicator: string | null; sourceTextHash: string | null; payload: unknown; createdAt: Date; updatedAt: Date; })
+- createExternalEvidenceSourceTextStatus : function — function createExternalEvidenceSourceTextStatus(sourceRecord: { accessStatus?: 'GOLD' | 'GREEN' | 'HYBRID' | 'BRONZE' | 'CLOSED' | 'UNKNOWN'; abstractText?: string | null; sourceUrl?: string | null; pdfUrl?: string | null; xmlUrl?: string | null; sourceArtifacts?: Array<{ chunks?: Array<unknown>; }>; _count?: { sourceArtifacts: number; sourceTextChunks: number; }; })
 - toCaseHistory : function — function toCaseHistory( evaluations: EvaluationResponse[], ): CaseHistoryResponse | null
 SCHEMAS (Zod):
 - none
@@ -2813,10 +3252,13 @@ CALLS_TO:
 - @metrev/domain-contracts:evidenceTypeSchema -> evidenceTypeSchema.safeParse
 - @metrev/domain-contracts:evidenceVeracityScoreSchema -> evidenceVeracityScoreSchema.safeParse
 - @metrev/domain-contracts:externalEvidenceAccessStatusSchema -> externalEvidenceAccessStatusSchema.parse
+- @metrev/domain-contracts:externalEvidenceBenchmarkRecordSchema -> externalEvidenceBenchmarkRecordSchema.parse
 - @metrev/domain-contracts:externalEvidenceBulkReviewResponseSchema -> externalEvidenceBulkReviewResponseSchema.parse
 - @metrev/domain-contracts:externalEvidenceCatalogDetailSchema -> externalEvidenceCatalogDetailSchema.parse
 - @metrev/domain-contracts:externalEvidenceCatalogDetailSchema -> externalEvidenceCatalogDetailSchema.safeParse
 - @metrev/domain-contracts:externalEvidenceCatalogListResponseSchema -> externalEvidenceCatalogListResponseSchema.parse
+- @metrev/domain-contracts:externalEvidenceScientificFactSchema -> externalEvidenceScientificFactSchema.parse
+- @metrev/domain-contracts:externalEvidenceSourceTextStatusSchema -> externalEvidenceSourceTextStatusSchema.parse
 - @metrev/domain-contracts:metadataQualityProfileSchema -> metadataQualityProfileSchema.safeParse
 - @metrev/domain-contracts:ontologyMappingSourceSchema -> ontologyMappingSourceSchema.parse
 - @metrev/domain-contracts:reportConversationTurnSchema -> reportConversationTurnSchema.parse
@@ -2840,12 +3282,15 @@ CALLS_TO:
 - countByValue
 - createEvaluationClaimUsage
 - createEvaluationSourceUsage
+- createEvidenceBenchmarkRecord
 - createEvidenceClaim
 - createExplorerFacetBuckets
 - createExplorerFacetBucketsFromCounts
 - createExternalEvidenceDetail
+- createExternalEvidenceSourceTextStatus
 - createExternalEvidenceSummary
 - createReportConversationTurn
+- createScientificEvidenceFactRecord
 - createSourceArtifactRecord
 - createSourceDocumentRecord
 - createSupplierDocument
@@ -2895,10 +3340,13 @@ SCHEMA_PARSERS:
 - evidenceTypeSchema.safeParse
 - evidenceVeracityScoreSchema.safeParse
 - externalEvidenceAccessStatusSchema.parse
+- externalEvidenceBenchmarkRecordSchema.parse
 - externalEvidenceBulkReviewResponseSchema.parse
 - externalEvidenceCatalogDetailSchema.parse
 - externalEvidenceCatalogDetailSchema.safeParse
 - externalEvidenceCatalogListResponseSchema.parse
+- externalEvidenceScientificFactSchema.parse
+- externalEvidenceSourceTextStatusSchema.parse
 - metadataQualityProfileSchema.safeParse
 - ontologyMappingSourceSchema.parse
 - reportConversationTurnSchema.parse
@@ -2971,6 +3419,10 @@ INVARIANTS_ENFORCED:
 - metadataQualityProfileSchema.safeParse(candidate)
 - evidenceVeracityScoreSchema.safeParse(candidate)
 - sourceArtifactSchema.parse({ artifact_id: record.id, source_document_id: record.sourceRecordId, local_path: record.localPath, file_name: record.fileName, file_hash: record.fileHash, mime_type: record.mimeType, file_si...
+- externalEvidenceScientificFactSchema.parse({ id: record.id, fact_layer: record.factLayer, fact_type: record.factType, field_key: record.fieldKey, canonical_key: record.canonicalKey, decision_ready: record.decisionRead...
+- externalEvidenceBenchmarkRecordSchema.parse({ id: record.id, canonical_key: record.canonicalKey, decision_ready: record.decisionReady, confidence: record.confidence, system_type: record.systemType, application: record...
+- externalEvidenceSourceTextStatusSchema.parse({ access_status: externalEvidenceAccessStatusSchema.parse( (sourceRecord.accessStatus ?? 'UNKNOWN').toLowerCase(), ), abstract_available: Boolean(sourceRecord.abstractText?...
+- externalEvidenceAccessStatusSchema.parse( (sourceRecord.accessStatus ?? 'UNKNOWN').toLowerCase(), )
 - caseHistoryResponseSchema.parse({ case: { case_id: latest.case_id, technology_family: latest.normalized_case.technology_family, architecture_family: latest.normalized_case.architecture_family, primary_objective: lates...
 - externalEvidenceCatalogListResponseSchema.parse({ items: pagedItems, summary: { total: allItems.length, catalog_total: allItems.length, filtered_total: filteredTotal, pending: allItems.filter((item) => item.review_sta...
 - externalEvidenceCatalogDetailSchema.safeParse( this.externalEvidenceCatalog.get(catalogItemId), )
@@ -3032,19 +3484,19 @@ INVARIANTS_ENFORCED:
 - throw new Error('DATABASE_URL is required for Prisma access.');
 
 FILE: packages/database/src/research-backfill-presets.ts
-LINES: 125
+LINES: 135
 IMPORTS:
 - import { readFileSync } from 'node:fs';
 - import { dirname, isAbsolute, resolve } from 'node:path';
 - import { fileURLToPath } from 'node:url';
 - import type { QueueResearchBackfillPreset, QueueResearchBackfillRequest, ResearchSearchProvider, } from '@metrev/domain-contracts';
 EXPORTS:
-- MFC_MEC_30000_PRESET_ID : const — const MFC_MEC_30000_PRESET_ID = 'mfc_mec_30000' as const
+- FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID : const — const FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID = 'mfc_mec_wastewater_biosensors' as const
 - PlannedResearchBackfill : interface — export interface PlannedResearchBackfill extends QueueResearchBackfillRequest
 - PlannedResearchBackfillPreset : interface — export interface PlannedResearchBackfillPreset
 - planResearchBackfillPreset : function — export function planResearchBackfillPreset(input: { configPath?: string; presetId?: QueueResearchBackfillPreset; targetRecords?: number; }): PlannedResearchBackfillPreset
 LOCAL_DECLARATIONS:
-- DEFAULT_PRESET_CONFIG_PATH : const = '../data/bigdata-mfc-mec-30000.config.json'
+- DEFAULT_PRESET_CONFIG_PATH : const = '../data/focused-mfc-mec-wastewater-biosensors.config.json'
 - DEFAULT_PROVIDER_PAGE_LIMIT : const = 1000
 - ResearchBackfillPresetConfig : interface — interface ResearchBackfillPresetConfig
 - readJsonFile : function — function readJsonFile(filePath: string)
@@ -3084,6 +3536,7 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - JSON.parse( readFileSync(absolutePath, 'utf8'), )
 - throw new Error(`Preset ${presetId} has no configured research queries.`);
+- throw new Error( `Preset targetRecords must be between ${providerQuerySlots} and 5000 for ${providerQuerySlots} provider/query slots.`, );
 
 FILE: packages/database/src/research-paper-search.ts
 LINES: 1163
@@ -3200,7 +3653,7 @@ INVARIANTS_ENFORCED:
 - searchResearchPapersResponseSchema.parse({ query: input.query, providers, items: dedupeAndSortResults( settled.flatMap((entry) => entry.items), input.limit, ), failed_providers: settled.flatMap((entry) => entry.failur...
 
 FILE: packages/database/src/research-repository.ts
-LINES: 2889
+LINES: 2882
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import { basename } from 'node:path';
@@ -3221,6 +3674,8 @@ EXPORTS:
 - CompleteResearchBackfillPageInput : interface — export interface CompleteResearchBackfillPageInput
 - FailResearchBackfillInput : interface — export interface FailResearchBackfillInput
 - ResearchRepository : interface — export interface ResearchRepository
+- detectResearchTechnologyClasses : function — export function detectResearchTechnologyClasses( text: string, ): ResearchWarehouseEligibilityItem['technology_classes']
+- assessResearchWarehouseEligibility : function — export function assessResearchWarehouseEligibility(source: { abstractText?: string | null; accessStatus?: unknown; doi?: string | null; id: string; journal?: string | null; license?: string | null; pdfUrl?: string | null; publisher?: string | null; rawPayload?: unknown; sourceType: DatabaseResearchSourceType; sourceUrl?: string | null; title: string; xmlUrl?: string | null; }): ResearchWarehouseEligibilityItem
 - MemoryResearchRepository : class — export class MemoryResearchRepository implements ResearchRepository
 - PrismaResearchRepository : class — export class PrismaResearchRepository implements ResearchRepository
 - createResearchRepository : function — export function createResearchRepository(): ResearchRepository
@@ -3243,11 +3698,9 @@ LOCAL_DECLARATIONS:
 - titleCaseLabel : function — function titleCaseLabel(value: string): string
 - countBucketsFromMap : function — function countBucketsFromMap(counts: Map<string, number>)
 - summarizeEligibilityItems : function — function summarizeEligibilityItems(items: ResearchWarehouseEligibilityItem[])
-- detectResearchTechnologyClasses : function — function detectResearchTechnologyClasses( text: string, ): ResearchWarehouseEligibilityItem['technology_classes']
 - relatedRecordCount : function — function relatedRecordCount(value: unknown): number
 - hasLocalFullTextEvidence : function — function hasLocalFullTextEvidence(source: { _count?: { sourceArtifacts?: number; sourceTextChunks?: number; } | null; sourceArtifacts?: unknown[] | null; sourceTextChunks?: unknown[] | null; })
 - hasFullTextLink : function — function hasFullTextLink(source: { _count?: { sourceArtifacts?: number; sourceTextChunks?: number; } | null; pdfUrl?: string | null; rawPayload?: unknown; sourceArtifacts?: unknown[] | null; sourceUrl?: string | null; sourceTextChunks?: unknown[] | null; xmlUrl?: string | null; })
-- assessResearchWarehouseEligibility : function — function assessResearchWarehouseEligibility(source: { abstractText?: string | null; accessStatus?: unknown; doi?: string | null; id: string; journal?: string | null; license?: string | null; pdfUrl?: string | null; publisher?: string | null; rawPayload?: unknown; sourceType: DatabaseResearchSourceType; sourceUrl?: string | null; title: string; xmlUrl?: string | null; }): ResearchWarehouseEligibilityItem
 - buildEligibilityResponse : function — function buildEligibilityResponse(input: { dryRun: boolean; includeItems: boolean; items: ResearchWarehouseEligibilityItem[]; summary?: ReturnType<typeof summarizeEligibilityItems>; totalLinkedRecords?: number; }): ResearchWarehouseEligibilityResponse
 - sourceTypeFromContract : function — function sourceTypeFromContract( value: ResearchPaperMetadata['source_type'], ): DatabaseResearchSourceType
 - assessResearchPaperMetadataEligibility : function — function assessResearchPaperMetadataEligibility( paper: ResearchPaperMetadata, ): ResearchWarehouseEligibilityItem
@@ -3394,7 +3847,20 @@ TANSTACK_QUERY_HOOKS:
 JSX_SURFACE_MARKERS:
 - none
 LOGIC_FLOW:
-- none
+- Step 1: assessResearchWarehouseEligibility -> const sourceType = sourceTypeToContract(source.sourceType);
+- Step 2: assessResearchWarehouseEligibility -> const documentType = documentTypeFromSourceType(sourceType);
+- Step 3: assessResearchWarehouseEligibility -> const accessStatus = normalizeAccessStatus(source.accessStatus);
+- Step 4: assessResearchWarehouseEligibility -> const hasLink = hasFullTextLink(source);
+- Step 5: assessResearchWarehouseEligibility -> const text = [ source.title, source.abstractText ?? '', source.journal ?? '', source.publisher ?? '', source.doi ?? '', ].join(' ');
+- Step 6: assessResearchWarehouseEligibility -> const technologyClasses = detectResearchTechnologyClasses(text);
+- Step 7: assessResearchWarehouseEligibility -> const reasons: ResearchWarehouseEligibilityItem['reasons'] = [];
+- Step 8: assessResearchWarehouseEligibility -> if (accessStatus === 'closed')
+- Step 9: assessResearchWarehouseEligibility -> if (accessStatus === 'unknown')
+- Step 10: assessResearchWarehouseEligibility -> if (accessStatus === 'unknown' && !source.license)
+- Step 11: assessResearchWarehouseEligibility -> if (!hasLink)
+- Step 12: assessResearchWarehouseEligibility -> if (technologyClasses.filter((technology) => ['MFC', 'MEC', 'electrochemical_biosensor'].includes(technology), ).length === 0)
+- Step 13: assessResearchWarehouseEligibility -> if (['supplier_document', 'market_report', 'regulatory_report'].includes( documentType, ))
+- Step 14: assessResearchWarehouseEligibility -> return { source_document_id: source.id, title: source.title, source_type: sourceType, document_type: documentType, access_status: accessStatus, source_license: source.license ?? null, has_full_text_link: hasLink, tech...
 INVARIANTS_ENFORCED:
 - researchWarehouseEligibilityResponseSchema.parse({ dry_run: input.dryRun, total_linked_records: input.totalLinkedRecords ?? input.items.length, eligible_records: summary.eligibleRecords, excluded_records: summary.excl...
 - researchPaperMetadataSchema.parse({ paper_id: input.paperId, source_document_id: input.sourceRecord.id, document_type: documentTypeFromSourceType(sourceType), title: input.sourceRecord.title, authors: Array.isArray(in...
@@ -3407,7 +3873,7 @@ INVARIANTS_ENFORCED:
 - researchReviewSummarySchema.parse({ review_id: record.id, title: record.title, query: record.query, status: reviewStatusToContract(record.status), version: record.version, paper_count: record._count.papers, column_cou...
 - researchPaperSearchFailureSchema.parse(entry)
 - researchBackfillSummarySchema.parse({ run_id: record.id, query: record.query ?? 'research backfill', status, providers: summary.providers, per_provider_limit: summary.per_provider_limit, max_pages: summary.max_pages,...
-- researchPaperMetadataSchema.parse({ paper_id: `memory-paper-${index}`, source_document_id: `memory-source-${index}`, title: index === 1 ? 'Microbial fuel cell wastewater treatment with carbon felt anodes' : 'Microbial...
+- researchPaperMetadataSchema.parse({ paper_id: `memory-paper-${index}`, source_document_id: `memory-source-${index}`, title: index === 1 ? 'TEST FIXTURE ONLY: MFC wastewater treatment with carbon felt anodes' : 'TEST F...
 - researchExtractionJobSchema.parse({ job_id: randomUUID(), review_id: reviewId, paper_id: paper.paper_id, column_id: column.column_id, status: 'queued', extractor_version: input.extractorVersion, failure_detail: null,...
 - researchReviewDetailSchema.parse({ review_id: reviewId, title: input.title ?? input.query, query: input.query, status: 'active', version: 1, paper_count: papers.length, column_count: columns.length, completed_result_c...
 - evidenceClaimSchema.parse({ id: 'memory-claim-1', source_document_id: papers[0]?.source_document_id ?? 'memory-source-1', catalog_item_id: null, claim_type: 'metric', content: 'Power density of 850 mW/m2 and COD remov...
@@ -3641,7 +4107,7 @@ INVARIANTS_ENFORCED:
 ## packages/database/scripts/**/*.{ts,d.ts}
 
 FILE: packages/database/scripts/bootstrap-bigdata.ts
-LINES: 385
+LINES: 423
 IMPORTS:
 - import { resolve } from 'node:path';
 - import { fileURLToPath } from 'node:url';
@@ -3653,15 +4119,17 @@ IMPORTS:
 - import { runOpenAlexIngestion } from './ingest-openalex-literature';
 - import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 EXPORTS:
-- runBigDataBootstrap : function — export async function runBigDataBootstrap( overrides = {}, dependencies: { collectInventory?: typeof collectIngestionInventory; configData?: Record<string, unknown>; prisma?: { ingestionRun: { findFirst: (args: Record<string, unknown>) => Promise<{ checkpoint: unknown; status: string; } | null>; }; }; runners?: Partial<Record<BootstrapSource, BootstrapRunner>>; } = {}, )
+- runBigDataBootstrap : function — export async function runBigDataBootstrap( overrides = {}, dependencies: { collectInventory?: typeof collectIngestionInventory; configData?: BootstrapConfig; prisma?: { ingestionRun: { findFirst: (args: Record<string, unknown>) => Promise<{ checkpoint: unknown; status: string; } | null>; }; }; runners?: Partial<Record<BootstrapSource, BootstrapRunner>>; } = {}, )
 LOCAL_DECLARATIONS:
 - bootstrapTriggerMode : const = 'bigdata_bootstrap'
 - runnerBySource : const = { openalex: runOpenAlexIngestion, crossref: runCrossrefIngestion, europepmc: runEuropePmcIngestion, }
 - BootstrapSource : type — type BootstrapSource = keyof typeof runnerBySource;
 - BootstrapRunner : type — type BootstrapRunner = ( overrides?: Record<string, unknown>, ) => Promise<Record<string, unknown>>;
+- BootstrapSourceConfig : interface — interface BootstrapSourceConfig
+- BootstrapConfig : interface — interface BootstrapConfig
 - BootstrapScalePlan : interface — interface BootstrapScalePlan
 - normalizeBootstrapSource : function — function normalizeBootstrapSource(value: string): BootstrapSource | null
-- buildBootstrapScalePlan : function — function buildBootstrapScalePlan(input: { config: Record<string, any>; queries: string[]; selectedSources: string[]; targetRecords: number; }): BootstrapScalePlan | null
+- buildBootstrapScalePlan : function — function buildBootstrapScalePlan(input: { config: BootstrapConfig; queries: string[]; selectedSources: string[]; targetRecords: number; }): BootstrapScalePlan | null
 - parseBootstrapCheckpoint : function — function parseBootstrapCheckpoint(checkpoint: unknown)
 - mapBootstrapSourceToDatabase : function — function mapBootstrapSourceToDatabase(source: BootstrapSource)
 - findBootstrapResumeState : function — async function findBootstrapResumeState(input: { prisma: { ingestionRun: { findFirst: (args: Record<string, unknown>) => Promise<{ checkpoint: unknown; status: string; } | null>; }; }; query: string; source: BootstrapSource; })
@@ -3702,32 +4170,35 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - Step 1: runBigDataBootstrap -> const options = { ...parseScriptOptions(), ...overrides, };
 - Step 2: runBigDataBootstrap -> const configPath = optionValue( options, 'config', '../data/bigdata-bootstrap.config.json', );
-- Step 3: runBigDataBootstrap -> const config = dependencies.configData ?? readJsonFile(configPath, import.meta.url);
+- Step 3: runBigDataBootstrap -> const config: BootstrapConfig = dependencies.configData ?? readJsonFile(configPath, import.meta.url);
 - Step 4: runBigDataBootstrap -> const dryRun = optionFlag(options, 'dryRun', false);
-- Step 5: runBigDataBootstrap -> const resume = optionFlag(options, 'resume', true);
-- Step 6: runBigDataBootstrap -> const selectedSources = optionList( options, 'sources', Object.keys(runnerBySource), ) as string[];
-- Step 7: runBigDataBootstrap -> const queryLimit = optionNumber( options, 'queryLimit', Array.isArray(config?.queries) ? config.queries.length : 0, 0, 1000, );
-- Step 8: runBigDataBootstrap -> const targetRecords = optionNumber( options, 'targetRecords', Number.NaN, 1, 500000, );
-- Step 9: runBigDataBootstrap -> const perQueryLimitOverride = optionNumber( options, 'perQueryLimit', Number.NaN, 1, 5000, );
-- Step 10: runBigDataBootstrap -> const pageSizeOverride = optionNumber( options, 'pageSize', Number.NaN, 1, 1000, );
-- Step 11: runBigDataBootstrap -> const maxPagesOverride = optionNumber( options, 'maxPages', Number.NaN, 1, 500, );
-- Step 12: runBigDataBootstrap -> const configuredRunners = { ...runnerBySource, ...dependencies.runners, } as Record<BootstrapSource, BootstrapRunner>;
-- Step 13: runBigDataBootstrap -> const ownsPrisma = !dependencies.prisma && !dryRun;
-- Step 14: runBigDataBootstrap -> const prisma = dependencies.prisma ?? (dryRun ? null : getPrismaClient());
-- Step 15: runBigDataBootstrap -> const queries = Array.isArray(config?.queries) ? config.queries.slice(0, queryLimit || config.queries.length) : [];
-- Step 16: runBigDataBootstrap -> const scalePlan = Number.isFinite(targetRecords) ? buildBootstrapScalePlan({ config, queries, selectedSources, targetRecords, }) : null;
-- Step 17: runBigDataBootstrap -> const runResults = [];
-- Step 18: runBigDataBootstrap -> for (const source of selectedSources) { const normalizedSource = source.toLowerCase() as BootstrapSource; const runner = configuredRunners[normalizedSource]; const sourceConfig = config?.sources?.[normalizedSource]; i...
-- Step 19: runBigDataBootstrap -> const manifests = Array.isArray(config?.manifests) ? config.manifests : [];
-- Step 20: runBigDataBootstrap -> for (const manifestPath of manifests) { const result = await runCuratedManifestIngestion({ manifest: manifestPath, dryRun, }); runResults.push(result); }
-- Step 21: runBigDataBootstrap -> const summary = { configPath, dryRun, executedRuns: runResults.filter((result) => !result.skipped).length, resumedRuns: runResults.filter((result) => result.resumed).length, scalePlan, skippedRuns: runResults.filter((...
-- Step 22: runBigDataBootstrap -> if (dryRun)
-- Step 23: runBigDataBootstrap -> try { if (!prisma) { console.log(JSON.stringify(summary, null, 2)); return summary; } const inventory = await ( dependencies.collectInventory ?? collectIngestionInventory )(prisma as never); const output = { ...summar...
+- Step 5: runBigDataBootstrap -> const planOnly = optionFlag(options, 'planOnly', false);
+- Step 6: runBigDataBootstrap -> const resume = optionFlag(options, 'resume', true);
+- Step 7: runBigDataBootstrap -> const selectedSources = optionList( options, 'sources', Object.keys(runnerBySource), ) as string[];
+- Step 8: runBigDataBootstrap -> const queryLimit = optionNumber( options, 'queryLimit', Array.isArray(config?.queries) ? config.queries.length : 0, 0, 1000, );
+- Step 9: runBigDataBootstrap -> const targetRecords = optionNumber(options, 'targetRecords', 500, 1, 5000);
+- Step 10: runBigDataBootstrap -> const perQueryLimitOverride = optionNumber( options, 'perQueryLimit', Number.NaN, 1, 5000, );
+- Step 11: runBigDataBootstrap -> const pageSizeOverride = optionNumber( options, 'pageSize', Number.NaN, 1, 1000, );
+- Step 12: runBigDataBootstrap -> const maxPagesOverride = optionNumber( options, 'maxPages', Number.NaN, 1, 500, );
+- Step 13: runBigDataBootstrap -> const configuredRunners = { ...runnerBySource, ...dependencies.runners, } as Record<BootstrapSource, BootstrapRunner>;
+- Step 14: runBigDataBootstrap -> const ownsPrisma = !dependencies.prisma && !dryRun && !planOnly;
+- Step 15: runBigDataBootstrap -> const prisma = dependencies.prisma ?? (dryRun || planOnly ? null : getPrismaClient());
+- Step 16: runBigDataBootstrap -> const queries = Array.isArray(config?.queries) ? config.queries.slice(0, queryLimit || config.queries.length) : [];
+- Step 17: runBigDataBootstrap -> const scalePlan = Number.isFinite(targetRecords) ? buildBootstrapScalePlan({ config, queries, selectedSources, targetRecords, }) : null;
+- Step 18: runBigDataBootstrap -> const plannedRuns = scalePlan ? scalePlan.activeSources.flatMap((source) => queries.map((query) => ({ source, query, limit: scalePlan.perQueryLimit, pageSize: scalePlan.pageSize, maxPages: scalePlan.maxPages, })), ) :...
+- Step 19: runBigDataBootstrap -> if (planOnly)
+- Step 20: runBigDataBootstrap -> const runResults = [];
+- Step 21: runBigDataBootstrap -> for (const source of selectedSources) { const normalizedSource = source.toLowerCase() as BootstrapSource; const runner = configuredRunners[normalizedSource]; const sourceConfig = config?.sources?.[normalizedSource]; i...
+- Step 22: runBigDataBootstrap -> const manifests = Array.isArray(config?.manifests) ? config.manifests : [];
+- Step 23: runBigDataBootstrap -> for (const manifestPath of manifests) { const result = await runCuratedManifestIngestion({ manifest: manifestPath, dryRun, }); runResults.push(result); }
+- Step 24: runBigDataBootstrap -> const summary = { configPath, dryRun, executedRuns: runResults.filter((result) => !result.skipped).length, resumedRuns: runResults.filter((result) => result.resumed).length, scalePlan, skippedRuns: runResults.filter((...
+- Step 25: runBigDataBootstrap -> if (dryRun)
+- Step 26: runBigDataBootstrap -> try { if (!prisma) { console.log(JSON.stringify(summary, null, 2)); return summary; } const inventory = await ( dependencies.collectInventory ?? collectIngestionInventory )(prisma as never); const output = { ...summar...
 INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/database/scripts/canonicalize-scientific-evidence.ts
-LINES: 1970
+LINES: 1997
 IMPORTS:
 - import { Buffer } from 'node:buffer';
 - import { createHash, randomUUID } from 'node:crypto';
@@ -3742,6 +4213,7 @@ IMPORTS:
 - import { optionFlag, optionNumber, optionValue, parseScriptOptions, } from './external-ingestion-shared.mjs';
 - import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 EXPORTS:
+- stripPostgresNullBytes : function — export function stripPostgresNullBytes(value: string): string
 - parseCanonicalizationCliConfig : function — export function parseCanonicalizationCliConfig( argv = process.argv.slice(2), ): CanonicalizationCliConfig
 - canPersistHydratedSourceText : function — export function canPersistHydratedSourceText(record: any): { accessStatus: ExternalEvidenceAccessStatus; allowed: boolean; reason: string | null; }
 - canonicalizeCatalogRecordWithRuntime : function — export async function canonicalizeCatalogRecordWithRuntime( record: any, input: { dryRun?: boolean; fullTextMode: CanonicalizationCliConfig['fullTextMode']; generateMeasurementCandidates?: MeasurementCandidateGenerator; generateQualitativeCandidates?: QualitativeCandidateGenerator; hydratePaperText?: ( paper: ResearchPaperMetadata, ) => Promise<HydratedResearchPaperText | null>; llmMode: CanonicalizationCliConfig['llmMode']; }, ): Promise<CanonicalizationRecordResult>
@@ -3754,12 +4226,13 @@ LOCAL_DECLARATIONS:
 - LLM_SCHEMA_VALIDATED_EXTRACTOR_VERSION : const = 'canonical-llm-schema-validated-v1'
 - PERMISSIVE_LICENSE_PATTERN : const = /(creative\s+commons|cc[-\s]?by|cc[-\s]?0|public\s+domain|open\s+data|mit|apache)/i
 - ALLOWED_LLM_MEASUREMENT_FIELDS : const = new Map<string, string>([ ['power_density', 'power_density_w_m2'], ['current_density', 'current_density_a_m2'], ['cod', 'cod_mg_l'], ['hrt', 'hydraulic_reten...
-- ALLOWED_LLM_SYSTEM_TYPES : const = new Set([ 'MFC', 'MEC', 'MET', 'MDC', 'BES', 'bioelectrochemical_system', ])
+- ALLOWED_LLM_SYSTEM_TYPES : const = new Set([ 'MFC', 'MEC', 'electrochemical_biosensor', ])
 - ALLOWED_LLM_REACTOR_TYPES : const = new Set([ 'single_chamber', 'two_chamber', 'air_cathode', 'membrane_less', 'tubular', 'upflow', 'stacked', ])
 - ALLOWED_LLM_MATERIAL_FIELD_COMPONENTS : const = new Map<string, string>([ ['anode_material', 'anode'], ['cathode_material', 'cathode'], ['membrane_separator', 'membrane_separator'], ['catalyst_material', '...
 - ALLOWED_LLM_LIMITATION_FIELDS : const = new Set([ 'reported_limitations', 'operating_constraints', 'failure_modes', 'reported_tradeoffs', ])
 - ALLOWED_LLM_THEORY_FIELDS : const = new Set([ 'electron_transfer_mechanism', 'biofilm_mechanism', 'microbial_metabolism', 'ion_transport_mechanism', 'anode_reaction_mechanism', 'cathode_reactio...
 - PrismaClientLike : type — type PrismaClientLike = ReturnType<typeof getPrismaClient>;
+- sanitizePostgresText : function — function sanitizePostgresText<T>(value: T): T
 - CanonicalizationCliConfig : interface — interface CanonicalizationCliConfig
 - CanonicalizationHydrationPersistence : interface — interface CanonicalizationHydrationPersistence
 - CanonicalizationHydrationOutcome : interface — interface CanonicalizationHydrationOutcome
@@ -3861,8 +4334,10 @@ CALLS_TO:
 - removeResolvedMissingFields
 - resolvedRequiredFieldsFromFacts
 - runCanonicalScientificEvidenceBackfill
+- sanitizePostgresText
 - serializeRunSummary
 - sourceTypeToResearchSourceType
+- stripPostgresNullBytes
 - toFactCreateInput
 - toPrismaJsonObject
 - toPrismaJsonValue
@@ -3900,29 +4375,31 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - Step 1: canonicalizeCatalogRecordWithRuntime -> const baselineMode = input.fullTextMode === 'none' ? 'none' : 'existing';
 - Step 2: canonicalizeCatalogRecordWithRuntime -> const baselineResult = canonicalizeScientificEvidenceRecord(record, { fullTextMode: baselineMode, llmMode: input.llmMode, });
-- Step 3: canonicalizeCatalogRecordWithRuntime -> if (input.fullTextMode !== 'hydrate' || baselineResult.status !== CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT)
-- Step 4: canonicalizeCatalogRecordWithRuntime -> const policy = canPersistHydratedSourceText(record);
-- Step 5: canonicalizeCatalogRecordWithRuntime -> if (!policy.allowed)
-- Step 6: canonicalizeCatalogRecordWithRuntime -> const hydrated = await (input.hydratePaperText ?? hydrateResearchPaperText)( buildResearchPaperMetadataForCanonicalization(record), ).catch(() => null);
-- Step 7: canonicalizeCatalogRecordWithRuntime -> if (!hydrated)
-- Step 8: canonicalizeCatalogRecordWithRuntime -> const persistence = buildHydratedSourcePersistence({ hydrated, record });
-- Step 9: canonicalizeCatalogRecordWithRuntime -> const augmentedRecord = { ...record, sourceRecord: { ...(record.sourceRecord ?? {}), sourceTextChunks: [ ...((record.sourceRecord?.sourceTextChunks as any[]) ?? []), ...persistence.chunks.map((chunk) => ({ chunkIndex:...
-- Step 10: canonicalizeCatalogRecordWithRuntime -> const hydratedResult = canonicalizeScientificEvidenceRecord(augmentedRecord, { fullTextMode: 'existing', llmMode: input.llmMode, });
-- Step 11: canonicalizeCatalogRecordWithRuntime -> const statusAfterHydration = hydratedResult.status === CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT ? CANONICALIZATION_STATUSES.INSUFFICIENT_SOURCE : hydratedResult.status;
-- Step 12: canonicalizeCatalogRecordWithRuntime -> const hydrationPolicy = statusAfterHydration === CANONICALIZATION_STATUSES.INSUFFICIENT_SOURCE && hydratedResult.facts.length === 0 ? 'fetched_no_signal' : 'allowed';
-- Step 13: canonicalizeCatalogRecordWithRuntime -> const hydratedCanonicalResult = { record: augmentedRecord, ...hydratedResult, status: statusAfterHydration, qualityFlags: appendUniqueValues(hydratedResult.qualityFlags, [ hydrationPolicy === 'fetched_no_signal' ? 'hy...
-- Step 14: canonicalizeCatalogRecordWithRuntime -> return applySchemaValidatedSupplement({ currentResult: hydratedCanonicalResult, generateMeasurementCandidates: input.generateMeasurementCandidates, generateQualitativeCandidates: input.generateQualitativeCandidates, l...
-- Step 15: runCanonicalScientificEvidenceBackfill -> const run = await findOrCreateCanonicalizationRun(prisma, config);
-- Step 16: runCanonicalScientificEvidenceBackfill -> const snapshotCutoff = run?.snapshotCutoff ?? new Date(Date.now() + 1000);
-- Step 17: runCanonicalScientificEvidenceBackfill -> let lastCatalogItemId = readCheckpointLastCatalogItemId(run);
-- Step 18: runCanonicalScientificEvidenceBackfill -> let totalProcessed = 0;
-- Step 19: runCanonicalScientificEvidenceBackfill -> const runId = run?.id ?? null;
-- Step 20: runCanonicalScientificEvidenceBackfill -> const overallCounters = emptyCounters();
-- Step 21: runCanonicalScientificEvidenceBackfill -> console.log( JSON.stringify({ event: 'canonicalization_started', run_id: runId, dry_run: config.dryRun, batch_size: config.batchSize, limit: config.limit, full_text_mode: config.fullTextMode, full_text_concurrency: co...
-- Step 22: runCanonicalScientificEvidenceBackfill -> while (config.limit === null || totalProcessed < config.limit) { const remaining = config.limit === null ? config.batchSize : config.limit - totalProcessed; const batch = await fetchAcceptedCatalogBatch({ prisma, batc...
-- Step 23: runCanonicalScientificEvidenceBackfill -> await updateRunProgress({ prisma, runId, counters: emptyCounters(), lastCatalogItemId, snapshotCutoff, completed: true, });
-- Step 24: runCanonicalScientificEvidenceBackfill -> console.log( JSON.stringify({ event: 'canonicalization_completed', run_id: runId, ...overallCounters, }), );
-- Step 25: runCanonicalScientificEvidenceBackfill -> return { runId, counters: overallCounters, lastCatalogItemId, };
+- Step 3: canonicalizeCatalogRecordWithRuntime -> const hasExistingSourceTextChunks = Array.isArray(record.sourceRecord?.sourceTextChunks) && record.sourceRecord.sourceTextChunks.length > 0;
+- Step 4: canonicalizeCatalogRecordWithRuntime -> const shouldAttemptHydration = input.fullTextMode === 'hydrate' && (baselineResult.status === CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT || !hasExistingSourceTextChunks);
+- Step 5: canonicalizeCatalogRecordWithRuntime -> if (!shouldAttemptHydration)
+- Step 6: canonicalizeCatalogRecordWithRuntime -> const policy = canPersistHydratedSourceText(record);
+- Step 7: canonicalizeCatalogRecordWithRuntime -> if (!policy.allowed)
+- Step 8: canonicalizeCatalogRecordWithRuntime -> const hydrated = await (input.hydratePaperText ?? hydrateResearchPaperText)( buildResearchPaperMetadataForCanonicalization(record), ).catch(() => null);
+- Step 9: canonicalizeCatalogRecordWithRuntime -> if (!hydrated)
+- Step 10: canonicalizeCatalogRecordWithRuntime -> const persistence = buildHydratedSourcePersistence({ hydrated, record });
+- Step 11: canonicalizeCatalogRecordWithRuntime -> const augmentedRecord = { ...record, sourceRecord: { ...(record.sourceRecord ?? {}), sourceTextChunks: [ ...((record.sourceRecord?.sourceTextChunks as any[]) ?? []), ...persistence.chunks.map((chunk) => ({ chunkIndex:...
+- Step 12: canonicalizeCatalogRecordWithRuntime -> const hydratedResult = canonicalizeScientificEvidenceRecord(augmentedRecord, { fullTextMode: 'existing', llmMode: input.llmMode, });
+- Step 13: canonicalizeCatalogRecordWithRuntime -> const statusAfterHydration = hydratedResult.status === CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT ? CANONICALIZATION_STATUSES.INSUFFICIENT_SOURCE : hydratedResult.status;
+- Step 14: canonicalizeCatalogRecordWithRuntime -> const hydrationPolicy = statusAfterHydration === CANONICALIZATION_STATUSES.INSUFFICIENT_SOURCE && hydratedResult.facts.length === 0 ? 'fetched_no_signal' : 'allowed';
+- Step 15: canonicalizeCatalogRecordWithRuntime -> const hydratedCanonicalResult = { record: augmentedRecord, ...hydratedResult, status: statusAfterHydration, qualityFlags: appendUniqueValues(hydratedResult.qualityFlags, [ hydrationPolicy === 'fetched_no_signal' ? 'hy...
+- Step 16: canonicalizeCatalogRecordWithRuntime -> return applySchemaValidatedSupplement({ currentResult: hydratedCanonicalResult, generateMeasurementCandidates: input.generateMeasurementCandidates, generateQualitativeCandidates: input.generateQualitativeCandidates, l...
+- Step 17: runCanonicalScientificEvidenceBackfill -> const run = await findOrCreateCanonicalizationRun(prisma, config);
+- Step 18: runCanonicalScientificEvidenceBackfill -> const snapshotCutoff = run?.snapshotCutoff ?? new Date(Date.now() + 1000);
+- Step 19: runCanonicalScientificEvidenceBackfill -> let lastCatalogItemId = readCheckpointLastCatalogItemId(run);
+- Step 20: runCanonicalScientificEvidenceBackfill -> let totalProcessed = 0;
+- Step 21: runCanonicalScientificEvidenceBackfill -> const runId = run?.id ?? null;
+- Step 22: runCanonicalScientificEvidenceBackfill -> const overallCounters = emptyCounters();
+- Step 23: runCanonicalScientificEvidenceBackfill -> console.log( JSON.stringify({ event: 'canonicalization_started', run_id: runId, dry_run: config.dryRun, batch_size: config.batchSize, limit: config.limit, full_text_mode: config.fullTextMode, full_text_concurrency: co...
+- Step 24: runCanonicalScientificEvidenceBackfill -> while (config.limit === null || totalProcessed < config.limit) { const remaining = config.limit === null ? config.batchSize : config.limit - totalProcessed; const batch = await fetchAcceptedCatalogBatch({ prisma, batc...
+- Step 25: runCanonicalScientificEvidenceBackfill -> await updateRunProgress({ prisma, runId, counters: emptyCounters(), lastCatalogItemId, snapshotCutoff, completed: true, });
+- Step 26: runCanonicalScientificEvidenceBackfill -> console.log( JSON.stringify({ event: 'canonicalization_completed', run_id: runId, ...overallCounters, }), );
+- Step 27: runCanonicalScientificEvidenceBackfill -> return { runId, counters: overallCounters, lastCatalogItemId, };
 INVARIANTS_ENFORCED:
 - researchPaperMetadataSchema.parse({ paper_id: `catalog:${record.id}`, source_document_id: sourceRecord.id ?? record.sourceRecordId, title: sourceRecord.title ?? record.title, authors: Array.isArray(sourceRecord.author...
 
@@ -3972,6 +4449,123 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - Step 1: buildEvidenceQualityReport -> const [ catalogTotal, accepted, pendingReview, rejected, sourceRecords, claims, scientificFacts, canonicalFacts, decisionReadyFacts, benchmarkRecords, benchmarkReadyRecords, benchmarkAggregates, duplicateDecisions, la...
 - Step 2: buildEvidenceQualityReport -> return { catalog_total: catalogTotal, accepted, pending_review: pendingReview, rejected, source_records: sourceRecords, claims, scientific_facts: scientificFacts, canonical_facts: canonicalFacts, decision_ready_canoni...
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/database/scripts/evidence-readiness-report.ts
+LINES: 278
+IMPORTS:
+- import { mkdir, writeFile } from 'node:fs/promises';
+- import { dirname, resolve } from 'node:path';
+- import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
+- import { loadWorkspaceEnv } from './load-workspace-env.mjs';
+- import { evaluateTechnicalCompleteness, type TechnicalCompletenessAction, type TechnicalCompletenessAssessment, type TechnicalCompletenessCandidate, } from './table-ready-completeness';
+EXPORTS:
+- buildEvidenceReadinessReport : function — export async function buildEvidenceReadinessReport(input: { limit: number })
+LOCAL_DECLARATIONS:
+- EvidenceReadinessReportItem : type — type EvidenceReadinessReportItem = { assessment: TechnicalCompletenessAssessment; catalog_item_id: string; source_record_id: string; source_type: string; title: string; };
+- EvidenceReadinessReport : type — type EvidenceReadinessReport = { generated_at: string; items: EvidenceReadinessReportItem[]; lawful_acquisition_policy: string; limit: number; summary: { action_counts: Record<TechnicalCompletenessAction, number>; accepted_records_evaluated: number; strict_table_ready_records: number; }; };
+- hasFlag : function — function hasFlag(flag: string)
+- optionValue : function — function optionValue(name: string, fallback: string)
+- optionNumber : function — function optionNumber(name: string, fallback: number)
+- emptyActionCounts : function — function emptyActionCounts(): Record<TechnicalCompletenessAction, number>
+- toCandidate : function — function toCandidate( record: Awaited<ReturnType<typeof loadAcceptedRecords>>[number], )
+- loadAcceptedRecords : function — async function loadAcceptedRecords(limit: number)
+- escapeCsvValue : function — function escapeCsvValue(value: unknown)
+- toCsv : function — function toCsv(report: EvidenceReadinessReport)
+- writeOutput : function — async function writeOutput(input: { content: string; outputPath: string | null; })
+- main : function — async function main()
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../src/prisma-client:disconnectPrismaClient -> disconnectPrismaClient
+- ../src/prisma-client:getPrismaClient -> getPrismaClient
+- ../src/prisma-client:getPrismaClient -> getPrismaClient().externalEvidenceCatalogItem.findMany
+- ./load-workspace-env.mjs:loadWorkspaceEnv -> loadWorkspaceEnv
+- ./table-ready-completeness:evaluateTechnicalCompleteness -> evaluateTechnicalCompleteness
+- buildEvidenceReadinessReport
+- emptyActionCounts
+- hasFlag
+- loadAcceptedRecords
+- main
+- node:fs/promises:mkdir -> mkdir
+- node:fs/promises:writeFile -> writeFile
+- node:path:dirname -> dirname
+- node:path:resolve -> resolve
+- optionNumber
+- optionValue
+- toCandidate
+- toCsv
+- writeOutput
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/database/scripts/expand-table-ready-corpus.ts
+LINES: 154
+IMPORTS:
+- import { disconnectPrismaClient } from '../src/prisma-client';
+- import { runCanonicalScientificEvidenceBackfill } from './canonicalize-scientific-evidence';
+- import { runScientificEvidenceIngestion } from './ingest-scientific-evidence';
+- import { loadWorkspaceEnv } from './load-workspace-env.mjs';
+- import { refreshCanonicalEvidenceBenchmarks } from './refresh-evidence-benchmarks';
+- import { buildEvidenceReadinessReport } from './evidence-readiness-report';
+EXPORTS:
+- buildTableReadyExpansionPlan : function — export function buildTableReadyExpansionPlan( input: { canonicalLimit?: number; config?: string; dryRun?: boolean; ingestionBatchSize?: number; maxProviderPages?: number; queryLimit?: number; readinessLimit?: number; targetTotal?: number; } = {}, )
+- runTableReadyExpansionCampaign : function — export async function runTableReadyExpansionCampaign(plan: ExpansionPlan)
+LOCAL_DECLARATIONS:
+- DEFAULT_CONFIG : const = '../data/table-ready-expansion.config.json'
+- ExpansionPlan : type — type ExpansionPlan = { canonical_limit: number; config: string; dry_run: boolean; ingestion_batch_size: number; lawful_acquisition_policy: string; max_provider_pages: number; query_limit: number; readiness_limit: number; stages: string[]; target_total: number; };
+- hasFlag : function — function hasFlag(flag: string)
+- optionValue : function — function optionValue(name: string, fallback: string)
+- optionNumber : function — function optionNumber(name: string, fallback: number)
+- main : function — async function main()
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../src/prisma-client:disconnectPrismaClient -> disconnectPrismaClient
+- ./canonicalize-scientific-evidence:runCanonicalScientificEvidenceBackfill -> runCanonicalScientificEvidenceBackfill
+- ./evidence-readiness-report:buildEvidenceReadinessReport -> buildEvidenceReadinessReport
+- ./ingest-scientific-evidence:runScientificEvidenceIngestion -> runScientificEvidenceIngestion
+- ./load-workspace-env.mjs:loadWorkspaceEnv -> loadWorkspaceEnv
+- ./refresh-evidence-benchmarks:refreshCanonicalEvidenceBenchmarks -> refreshCanonicalEvidenceBenchmarks
+- buildTableReadyExpansionPlan
+- hasFlag
+- main
+- optionNumber
+- optionValue
+- runTableReadyExpansionCampaign
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
 INVARIANTS_ENFORCED:
 - none
 
@@ -4479,7 +5073,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/database/scripts/prune-research-warehouse.ts
-LINES: 476
+LINES: 632
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import { buildDecisionIngestionPreview, buildResearchEvidencePack, DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION, getDefaultResearchColumns, runDeterministicResearchExtraction, } from '@metrev/research-intelligence';
@@ -4487,20 +5081,22 @@ IMPORTS:
 - import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 - import { PrismaResearchRepository } from '../src/research-repository';
 - import { loadWorkspaceEnv } from './load-workspace-env.mjs';
+- import { evaluateTechnicalCompleteness, hasTechnicalResearchTechnologyClass, type TechnicalCompletenessCandidate, } from './table-ready-completeness';
 EXPORTS:
-- none
+- shouldKeepResearchSourceForPrune : function — export function shouldKeepResearchSourceForPrune(input: { eligibilityStatus: 'eligible' | 'excluded'; sourceDocumentId: string; tableReadyOnly: boolean; tableReadySourceIds: ReadonlySet<string>; technologyClasses: string[]; }): boolean
 LOCAL_DECLARATIONS:
 - BATCH_SIZE : const = 500
 - DEFAULT_REVIEW_LIMIT : const = 100
 - SourceCandidate : type — type SourceCandidate = { id: string; publishedAt: Date | null; publisher: string | null; sourceKey: string; title: string; updatedAt: Date; };
-- EligibilityPlan : type — type EligibilityPlan = { fixtureLikeRecordsToDelete: number; keepIds: Set<string>; keepSources: SourceCandidate[]; linkedRecordsSeen: number; sourceRecordsBefore: number; };
+- EligibilityPlan : type — type EligibilityPlan = { fixtureLikeRecordsToDelete: number; keepIds: Set<string>; keepSources: SourceCandidate[]; linkedRecordsSeen: number; sourceRecordsBefore: number; tableReadySourceRecords: number; };
 - hasFlag : function — function hasFlag(flag: string): boolean
 - optionNumber : function — function optionNumber(name: string, fallback: number): number
 - isFixtureLikeSource : function — function isFixtureLikeSource(source: SourceCandidate): boolean
 - sortReviewSources : function — function sortReviewSources(sources: SourceCandidate[]): SourceCandidate[]
 - linkedSourceWhere : function — function linkedSourceWhere()
 - loadLinkedSourcePage : function — async function loadLinkedSourcePage(lastId: string | null)
-- collectEligibilityPlan : function — async function collectEligibilityPlan(): Promise<EligibilityPlan>
+- loadTableReadySourceIds : function — async function loadTableReadySourceIds(): Promise<Set<string>>
+- collectEligibilityPlan : function — async function collectEligibilityPlan(input: { tableReadyOnly: boolean; }): Promise<EligibilityPlan>
 - loadSourceIdPage : function — async function loadSourceIdPage(lastId: string | null)
 - deleteSourcesNotIn : function — async function deleteSourcesNotIn(keepIds: Set<string>)
 - sourceChunks : function — async function sourceChunks(sourceDocumentId: string)
@@ -4515,8 +5111,11 @@ CALLS_TO:
 - ../src/evaluation-reset:assertLocalEvaluationResetAllowed -> assertLocalEvaluationResetAllowed
 - ../src/prisma-client:disconnectPrismaClient -> disconnectPrismaClient
 - ../src/prisma-client:getPrismaClient -> getPrismaClient
+- ../src/prisma-client:getPrismaClient -> getPrismaClient().externalEvidenceCatalogItem.findMany
 - ../src/prisma-client:getPrismaClient -> getPrismaClient().externalSourceRecord.count
 - ./load-workspace-env.mjs:loadWorkspaceEnv -> loadWorkspaceEnv
+- ./table-ready-completeness:evaluateTechnicalCompleteness -> evaluateTechnicalCompleteness
+- ./table-ready-completeness:hasTechnicalResearchTechnologyClass -> hasTechnicalResearchTechnologyClass
 - @metrev/research-intelligence:buildDecisionIngestionPreview -> buildDecisionIngestionPreview
 - @metrev/research-intelligence:buildResearchEvidencePack -> buildResearchEvidencePack
 - @metrev/research-intelligence:getDefaultResearchColumns -> getDefaultResearchColumns
@@ -4531,10 +5130,12 @@ CALLS_TO:
 - linkedSourceWhere
 - loadLinkedSourcePage
 - loadSourceIdPage
+- loadTableReadySourceIds
 - main
 - node:crypto:randomUUID -> randomUUID
 - optionNumber
 - runReviewExtraction
+- shouldKeepResearchSourceForPrune
 - sortReviewSources
 - sourceChunks
 SCHEMA_PARSERS:
@@ -4565,9 +5166,9 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: packages/database/scripts/queue-research-backfill-target.ts
-LINES: 102
+LINES: 107
 IMPORTS:
-- import { MFC_MEC_30000_PRESET_ID, createResearchRepository, planResearchBackfillPreset, } from '../src';
+- import { FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID, createResearchRepository, planResearchBackfillPreset, } from '../src';
 - import { disconnectPrismaClient } from '../src/prisma-client';
 - import { pathToFileURL } from 'node:url';
 - import { optionFlag, optionNumber, optionValue, parseScriptOptions, } from './external-ingestion-shared.mjs';
@@ -4606,12 +5207,12 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - Step 1: runQueueResearchBackfillTarget -> const options = { ...parseScriptOptions(), ...overrides, };
 - Step 2: runQueueResearchBackfillTarget -> const configPath = optionValue(options, 'config', undefined);
-- Step 3: runQueueResearchBackfillTarget -> const preset = optionValue(options, 'preset', MFC_MEC_30000_PRESET_ID);
-- Step 4: runQueueResearchBackfillTarget -> const targetRecords = optionNumber(options, 'targetRecords', 30000);
+- Step 3: runQueueResearchBackfillTarget -> const preset = optionValue( options, 'preset', FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID, );
+- Step 4: runQueueResearchBackfillTarget -> const targetRecords = optionNumber(options, 'targetRecords', 500, 60, 5000);
 - Step 5: runQueueResearchBackfillTarget -> const dryRun = optionFlag(options, 'dryRun', false);
-- Step 6: runQueueResearchBackfillTarget -> const plan = planResearchBackfillPreset({ configPath, presetId: preset === 'mfc-mec-30000' ? MFC_MEC_30000_PRESET_ID : MFC_MEC_30000_PRESET_ID, targetRecords, });
-- Step 7: runQueueResearchBackfillTarget -> const repository = createResearchRepository();
-- Step 8: runQueueResearchBackfillTarget -> try { const existing = await repository.listResearchBackfills(); const activeQueries = new Set( existing.items .filter((item) => item.status === 'queued' || item.status === 'running') .map((item) => item.query.trim()....
+- Step 6: runQueueResearchBackfillTarget -> const plan = planResearchBackfillPreset({ configPath, presetId: preset as QueueResearchBackfillPreset, targetRecords, });
+- Step 7: runQueueResearchBackfillTarget -> const repository = dryRun ? null : createResearchRepository();
+- Step 8: runQueueResearchBackfillTarget -> try { const existing = repository ? await repository.listResearchBackfills() : { items: [] }; const activeQueries = new Set( existing.items .filter((item) => item.status === 'queued' || item.status === 'running') .map...
 INVARIANTS_ENFORCED:
 - none
 
@@ -4699,6 +5300,80 @@ JSX_SURFACE_MARKERS:
 - none
 LOGIC_FLOW:
 - none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/database/scripts/table-ready-completeness.ts
+LINES: 340
+IMPORTS:
+- none
+EXPORTS:
+- TechnicalCompletenessAction : type — export type TechnicalCompletenessAction = | 'keep' | 'reacquire_full_text' | 'rerun_extraction' | 'quarantine_for_review' | 'reject_from_intake' | 'delete_record';
+- TechnicalCompletenessFact : type — export type TechnicalCompletenessFact = { canonicalKey?: string | null; componentType?: string | null; decisionReady: boolean; factType?: string | null; fieldKey?: string | null; material?: string | null; metricType?: string | null; normalizedUnit?: string | null; normalizedValue?: number | null; reactorType?: string | null; systemType?: string | null; };
+- TechnicalCompletenessBenchmark : type — export type TechnicalCompletenessBenchmark = { application?: string | null; componentType?: string | null; decisionReady: boolean; material?: string | null; metricType?: string | null; normalizedUnit?: string | null; normalizedValue?: number | null; systemType?: string | null; };
+- TechnicalCompletenessCandidate : type — export type TechnicalCompletenessCandidate = { abstractAvailable: boolean; benchmarkRecords: TechnicalCompletenessBenchmark[]; canonicalFacts: TechnicalCompletenessFact[]; catalogItemId: string; claimCount: number; doiAvailable: boolean; evidenceQuality?: string | null; extractionStatus?: string | null; fullTextAvailable: boolean; sourceArtifactCount: number; sourceCategory?: string | null; sourceRecordId: string; sourceTextChunkCount: number; sourceType?: string | null; sourceUrlAvailable: boolean; summary?: string | null; tags?: string[]; title: string; };
+- TechnicalCompletenessAssessment : type — export type TechnicalCompletenessAssessment = { coverage: { decisionMetadata: boolean; metricsOutputs: boolean; overview: boolean; reactorMaterials: boolean; }; counts: { decisionReadyBenchmarkRecords: number; decisionReadyCanonicalFacts: number; normalizedMetricRecords: number; performanceMetricSignals: number; reactorMaterialSignals: number; }; flags: string[]; missingRequirements: string[]; recommendedAction: TechnicalCompletenessAction; score: number; strictTableReady: boolean; };
+- TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES : const — const TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES = [ 'MFC', 'MEC', 'electrochemical_biosensor', ] as const
+- hasTechnicalResearchTechnologyClass : function — export function hasTechnicalResearchTechnologyClass( technologyClasses: string[], )
+- evaluateTechnicalCompleteness : function — export function evaluateTechnicalCompleteness( candidate: TechnicalCompletenessCandidate, ): TechnicalCompletenessAssessment
+LOCAL_DECLARATIONS:
+- DOMAIN_TERMS : const = [ 'microbial fuel cell', 'microbial electrolysis', 'electrochemical biosensor', 'bioelectrochemical sensor', 'mfc', 'mec', 'biosensor', ]
+- BROAD_REVIEW_TERMS : const = [ 'bibliometric', 'circular bioeconomy', 'critical review', 'literature review', 'perspective', 'roadmap', 'review', 'scoping review', 'state of the art', 's...
+- REACTOR_MATERIAL_TERMS : const = [ 'anode', 'cathode', 'catalyst', 'electrode', 'membrane', 'reactor', 'separator', ]
+- PERFORMANCE_METRIC_TERMS : const = [ 'amperometric', 'biosensor', 'cod', 'coulombic', 'current', 'hydrogen', 'lod', 'loq', 'power', 'removal', 'signal', 'voltage', ]
+- normalizeText : function — function normalizeText(value: string | null | undefined)
+- textIncludesAny : function — function textIncludesAny(value: string, terms: readonly string[])
+- candidateHaystack : function — function candidateHaystack(candidate: TechnicalCompletenessCandidate)
+- factHaystack : function — function factHaystack(fact: TechnicalCompletenessFact)
+- benchmarkHaystack : function — function benchmarkHaystack(benchmark: TechnicalCompletenessBenchmark)
+- isNormalizedMetric : function — function isNormalizedMetric(input: { decisionReady: boolean; metricType?: string | null; normalizedUnit?: string | null; normalizedValue?: number | null; })
+- hasTechnologyClassSignal : function — function hasTechnologyClassSignal(candidate: TechnicalCompletenessCandidate)
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- benchmarkHaystack
+- candidateHaystack
+- factHaystack
+- hasTechnologyClassSignal
+- normalizeText
+- textIncludesAny
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: evaluateTechnicalCompleteness -> const haystack = candidateHaystack(candidate);
+- Step 2: evaluateTechnicalCompleteness -> const decisionReadyFacts = candidate.canonicalFacts.filter( (fact) => fact.decisionReady, );
+- Step 3: evaluateTechnicalCompleteness -> const decisionReadyBenchmarks = candidate.benchmarkRecords.filter( (benchmark) => benchmark.decisionReady, );
+- Step 4: evaluateTechnicalCompleteness -> const normalizedMetricRecords = [ ...candidate.canonicalFacts.filter(isNormalizedMetric), ...candidate.benchmarkRecords.filter(isNormalizedMetric), ];
+- Step 5: evaluateTechnicalCompleteness -> const reactorMaterialSignals = [ ...decisionReadyFacts.filter((fact) => textIncludesAny(factHaystack(fact), REACTOR_MATERIAL_TERMS), ), ...decisionReadyBenchmarks.filter((benchmark) => textIncludesAny(benchmarkHaystac...
+- Step 6: evaluateTechnicalCompleteness -> const performanceMetricSignals = normalizedMetricRecords.filter((record) => textIncludesAny( 'fieldKey' in record ? factHaystack(record) : benchmarkHaystack(record), PERFORMANCE_METRIC_TERMS, ), );
+- Step 7: evaluateTechnicalCompleteness -> const domainSpecific = textIncludesAny(haystack, DOMAIN_TERMS) || hasTechnologyClassSignal(candidate);
+- Step 8: evaluateTechnicalCompleteness -> const broadReviewLike = textIncludesAny(haystack, BROAD_REVIEW_TERMS);
+- Step 9: evaluateTechnicalCompleteness -> const broadWithoutExperimentalSignal = broadReviewLike && normalizedMetricRecords.length < 2;
+- Step 10: evaluateTechnicalCompleteness -> const sourceIdentity = candidate.doiAvailable || candidate.sourceUrlAvailable;
+- Step 11: evaluateTechnicalCompleteness -> const traceableSourceText = candidate.fullTextAvailable && candidate.sourceTextChunkCount > 0;
+- Step 12: evaluateTechnicalCompleteness -> const notLowQuality = candidate.evidenceQuality?.toLowerCase() !== 'low';
+- Step 13: evaluateTechnicalCompleteness -> const extractionComplete = ![ 'extraction_failed', 'insufficient_source', 'needs_full_text', ].includes(candidate.extractionStatus ?? '');
+- Step 14: evaluateTechnicalCompleteness -> const coverage = { overview: domainSpecific && sourceIdentity && candidate.abstractAvailable, reactorMaterials: reactorMaterialSignals.length > 0, metricsOutputs: normalizedMetricRecords.length > 0 && performanceMetri...
+- Step 15: evaluateTechnicalCompleteness -> const requirements: Array<[string, boolean]> = [ ['domain_specific_met_mfc_mec_bes', domainSpecific], ['stable_identifier', sourceIdentity], ['abstract_available', candidate.abstractAvailable], ['traceable_source_chun...
+- Step 16: evaluateTechnicalCompleteness -> const missingRequirements = requirements .filter(([, passed]) => !passed) .map(([requirement]) => requirement);
+- Step 17: evaluateTechnicalCompleteness -> const flags = [ broadReviewLike ? 'broad_review_like' : null, broadWithoutExperimentalSignal ? 'broad_without_experimental_signal' : null, normalizedMetricRecords.some( (record) => normalizeText(record.metricType) ===...
+- Step 18: evaluateTechnicalCompleteness -> const strictTableReady = missingRequirements.length === 0;
+- Step 19: evaluateTechnicalCompleteness -> const score = requirements.filter(([, passed]) => passed).length / requirements.length;
+- Step 20: evaluateTechnicalCompleteness -> let recommendedAction: TechnicalCompletenessAction;
+- Step 21: evaluateTechnicalCompleteness -> if (strictTableReady)
+- Step 22: evaluateTechnicalCompleteness -> return { coverage, counts: { decisionReadyBenchmarkRecords: decisionReadyBenchmarks.length, decisionReadyCanonicalFacts: decisionReadyFacts.length, normalizedMetricRecords: normalizedMetricRecords.length, performanceM...
 INVARIANTS_ENFORCED:
 - none
 
@@ -5179,20 +5854,1260 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - none
 
+## packages/design-system/src/**/*.{ts,tsx}
+
+FILE: packages/design-system/src/index.ts
+LINES: 19
+IMPORTS:
+- none
+EXPORTS:
+- export * from './layouts/instrument-panel'; : re-export — export * from './layouts/instrument-panel';
+- export * from './layouts/sidebar-layout'; : re-export — export * from './layouts/sidebar-layout';
+- export * from './layouts/split-panel'; : re-export — export * from './layouts/split-panel';
+- export * from './primitives/badge'; : re-export — export * from './primitives/badge';
+- export * from './primitives/data-table'; : re-export — export * from './primitives/data-table';
+- export * from './primitives/gauge'; : re-export — export * from './primitives/gauge';
+- export * from './primitives/panel'; : re-export — export * from './primitives/panel';
+- export * from './primitives/section'; : re-export — export * from './primitives/section';
+- export * from './primitives/signal-badge'; : re-export — export * from './primitives/signal-badge';
+- export * from './primitives/status-bar'; : re-export — export * from './primitives/status-bar';
+- export * from './tokens'; : re-export — export * from './tokens';
+- export * from './types'; : re-export — export * from './types';
+- export * from './visualization/coverage-heatmap'; : re-export — export * from './visualization/coverage-heatmap';
+- export * from './visualization/funnel-chart'; : re-export — export * from './visualization/funnel-chart';
+- export * from './visualization/radar-chart'; : re-export — export * from './visualization/radar-chart';
+- export * from './visualization/sparkline'; : re-export — export * from './visualization/sparkline';
+- export * from './visualization/stack-diagram'; : re-export — export * from './visualization/stack-diagram';
+- export * from './visualization/trust-chain'; : re-export — export * from './visualization/trust-chain';
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/layouts/instrument-panel.tsx
+LINES: 4
+IMPORTS:
+- none
+EXPORTS:
+- export { InstrumentPanel } from '../primitives/panel'; : re-export — export { InstrumentPanel } from '../primitives/panel';
+- export type { InstrumentPanelProps } from '../primitives/panel'; : re-export — export type { InstrumentPanelProps } from '../primitives/panel';
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/layouts/sidebar-layout.tsx
+LINES: 21
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- SidebarLayout : function — export function SidebarLayout({ sidebar, children, className, }: { sidebar: ReactNode; children: ReactNode; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/layouts/split-panel.tsx
+LINES: 25
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- SplitPanel : function — export function SplitPanel({ left, right, ratio = '45-55', className, }: { left: ReactNode; right: ReactNode; ratio?: '40-60' | '45-55' | '50-50'; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/badge.tsx
+LINES: 14
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- Badge : function — export function Badge({ children, className, }: { children: ReactNode; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/data-table.tsx
+LINES: 39
+IMPORTS:
+- import type { ReactNode } from 'react';
+EXPORTS:
+- DataTableColumn : interface — export interface DataTableColumn<T>
+- DataTable : function — export function DataTable<T>({ rows, columns, getRowKey, }: { rows: T[]; columns: Array<DataTableColumn<T>>; getRowKey: (row: T, index: number) => string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/gauge.tsx
+LINES: 36
+IMPORTS:
+- import type { ConfidenceLevel } from '../types';
+- import { cx } from '../utils';
+EXPORTS:
+- ConfidenceGaugeProps : interface — export interface ConfidenceGaugeProps
+- ConfidenceGauge : function — export function ConfidenceGauge({ value, level, label, className, }: ConfidenceGaugeProps)
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/panel.tsx
+LINES: 33
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- InstrumentPanelProps : interface — export interface InstrumentPanelProps
+- InstrumentPanel : function — export function InstrumentPanel({ title, meta, children, footer, className, }: InstrumentPanelProps)
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/section.tsx
+LINES: 24
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- ScientificSection : function — export function ScientificSection({ eyebrow, title, children, className, }: { eyebrow?: string; title: string; children: ReactNode; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/signal-badge.tsx
+LINES: 34
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- SignalLevel : type — export type SignalLevel = | 'healthy' | 'warning' | 'critical' | 'info' | 'neutral';
+- SignalBadgeProps : interface — export interface SignalBadgeProps
+- SignalBadge : function — export function SignalBadge({ level, children, className, title, }: SignalBadgeProps)
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/primitives/status-bar.tsx
+LINES: 40
+IMPORTS:
+- import type { ReactNode } from 'react';
+- import { cx } from '../utils';
+EXPORTS:
+- StatusBarItem : interface — export interface StatusBarItem
+- StatusBar : function — export function StatusBar({ items, className, }: { items: StatusBarItem[]; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/tokens.ts
+LINES: 71
+IMPORTS:
+- none
+EXPORTS:
+- colors : const — const colors = { surface: { 0: '#0A0E14', 1: '#111821', 2: '#1A2332', 3: '#243044', }, text: { primary: '#E6EDF3', secondary: '#A7B1C2', muted: '#6E7681', }, signal: { healthy: '#2EA043', warning: '#D29922', critical: '#F85149', info: '#58A6FF', neutral: '#6E7681', }, acc...
+- typography : const — const typography = { display: 'JetBrains Mono, IBM Plex Mono, ui-monospace, monospace', heading: 'IBM Plex Sans Condensed, IBM Plex Sans, ui-sans-serif, system-ui', body: 'IBM Plex Sans, ui-sans-serif, system-ui', data: 'JetBrains Mono, IBM Plex Mono, ui-monospace, monospace'...
+- spacing : const — const spacing = { xs: '4px', sm: '8px', md: '12px', base: '16px', lg: '24px', xl: '32px', '2xl': '48px', '3xl': '64px', } as const
+- confidenceSignal : const — const confidenceSignal = { high: colors.signal.healthy, medium: colors.signal.warning, low: colors.signal.critical, } as const
+- coverageSignal : const — const coverageSignal = { strong: colors.signal.healthy, sufficient: colors.signal.info, sparse: colors.signal.warning, absent: colors.signal.critical, } as const
+- readinessSignal : const — const readinessSignal = { ready: colors.signal.healthy, partial: colors.signal.warning, insufficient: colors.signal.critical, no_audit: colors.signal.neutral, } as const
+- recencySignal : const — const recencySignal = { current: colors.signal.healthy, aging: colors.signal.warning, stale: colors.signal.critical, } as const
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/types.ts
+LINES: 18
+IMPORTS:
+- none
+EXPORTS:
+- ConfidenceLevel : type — export type ConfidenceLevel = 'low' | 'medium' | 'high';
+- CoverageEntryLike : interface — export interface CoverageEntryLike
+- FunnelStageCountLike : interface — export interface FunnelStageCountLike
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/utils.ts
+LINES: 6
+IMPORTS:
+- none
+EXPORTS:
+- cx : function — export function cx( ...classes: Array<string | false | null | undefined> ): string
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/coverage-heatmap.tsx
+LINES: 73
+IMPORTS:
+- import type { CoverageEntryLike } from '../types';
+- import { cx } from '../utils';
+EXPORTS:
+- CoverageHeatmap : function — export function CoverageHeatmap({ entries, className, }: { entries: CoverageEntryLike[]; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- aria-label:Evidence coverage matrix
+LOGIC_FLOW:
+- Step 1: CoverageHeatmap -> const metrics = Array.from( new Set(entries.map((entry) => entry.metric_type)), ).sort();
+- Step 2: CoverageHeatmap -> const rowKeys = Array.from( new Set( entries.map((entry) => [ entry.system_type ?? 'any', entry.component_type ?? 'any', entry.material ?? 'any', ].join(' / '), ), ), ).sort();
+- Step 3: CoverageHeatmap -> return ( <div className={cx('metrev-coverage-heatmap', className)} role="table" aria-label="Evidence coverage matrix" > <div className="metrev-heatmap-row metrev-heatmap-head" role="row"> <span role="columnheader">con...
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/funnel-chart.tsx
+LINES: 35
+IMPORTS:
+- import type { FunnelStageCountLike } from '../types';
+- import { cx } from '../utils';
+EXPORTS:
+- FunnelChart : function — export function FunnelChart({ stages, className, }: { stages: FunnelStageCountLike[]; className?: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/radar-chart.tsx
+LINES: 59
+IMPORTS:
+- none
+EXPORTS:
+- RadarMetric : interface — export interface RadarMetric
+- RadarChart : function — export function RadarChart({ metrics, label, }: { metrics: RadarMetric[]; label: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/sparkline.tsx
+LINES: 34
+IMPORTS:
+- none
+EXPORTS:
+- Sparkline : function — export function Sparkline({ values, label, }: { values: number[]; label: string; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/stack-diagram.tsx
+LINES: 36
+IMPORTS:
+- none
+EXPORTS:
+- StackDiagram : function — export function StackDiagram({ onSelect, }: { onSelect?: (block: string) => void; })
+LOCAL_DECLARATIONS:
+- blocks : const = [ 'reactor architecture', 'anode biofilm support', 'cathode catalyst support', 'membrane or separator', 'electrical interconnect', 'balance of plant', 'senso...
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- aria-label:Bioelectrochemical stack blocks
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/design-system/src/visualization/trust-chain.tsx
+LINES: 41
+IMPORTS:
+- import { cx } from '../utils';
+EXPORTS:
+- TrustChainStage : type — export type TrustChainStage = (typeof stages)[number];
+- TrustChainIndicator : function — export function TrustChainIndicator({ stage, className, }: { stage: TrustChainStage; className?: string; })
+LOCAL_DECLARATIONS:
+- stages : const = [ 'ingested', 'accepted', 'canonicalized', 'decision_ready', 'benchmark', ] as const
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../utils:cx -> cx
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+## packages/document-intelligence/src/**/*.ts
+
+FILE: packages/document-intelligence/src/index.ts
+LINES: 176
+IMPORTS:
+- import { z } from 'zod';
+EXPORTS:
+- DOCUMENT_INTELLIGENCE_VERSION : const — const DOCUMENT_INTELLIGENCE_VERSION = 'docintel-v1' as const
+- documentBlockKindSchema : schema — const documentBlockKindSchema = z.enum([ 'paragraph', 'heading', 'list_item', 'table', 'table_caption', 'figure_caption', 'footnote', 'reference', 'unknown', ])
+- documentBlockSchema : schema — const documentBlockSchema = z.object({ block_id: z.string().min(1), kind: documentBlockKindSchema, page_number: z.number().int().positive().nullable().default(null), section_label: z.string().min(1).nullable().default(null), text: z.string().min(1), char_start: z.number().int().nonneg...
+- documentTableCellSchema : schema — const documentTableCellSchema = z.object({ row: z.number().int().nonnegative(), column: z.number().int().nonnegative(), text: z.string(), })
+- documentTableSchema : schema — const documentTableSchema = z.object({ table_id: z.string().min(1), page_number: z.number().int().positive().nullable().default(null), caption: z.string().min(1).nullable().default(null), header: z.array(z.string()).default([]), cells: z.array(documentTableCellSchema).default([]), })
+- documentIntelligenceResultSchema : schema — const documentIntelligenceResultSchema = z.object({ source_document_id: z.string().min(1), parser_version: z.literal(DOCUMENT_INTELLIGENCE_VERSION), status: z.enum(['parsed', 'parse_failed', 'unsupported_media_type']), parse_error: z.string().nullable().default(null), page_count: z.number().int()....
+- DocumentBlockKind : type — export type DocumentBlockKind = z.infer<typeof documentBlockKindSchema>;
+- DocumentBlock : type — export type DocumentBlock = z.infer<typeof documentBlockSchema>;
+- DocumentTable : type — export type DocumentTable = z.infer<typeof documentTableSchema>;
+- DocumentIntelligenceResult : type — export type DocumentIntelligenceResult = z.infer< typeof documentIntelligenceResultSchema >;
+- DocumentIntelligenceInput : interface — export interface DocumentIntelligenceInput
+- isDocumentIntelligenceEnabled : function — export function isDocumentIntelligenceEnabled( env: NodeJS.ProcessEnv = process.env, ): boolean
+- runDocumentIntelligence : function — export function runDocumentIntelligence( input: DocumentIntelligenceInput, options: { env?: NodeJS.ProcessEnv; now?: () => string } = {}, ): DocumentIntelligenceResult
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- documentBlockKindSchema: z.enum([ 'paragraph', 'heading', 'list_item', 'table', 'table_caption', 'figure_caption', 'footnote', 'reference', 'unknown', ])
+- documentBlockSchema: { block_id: z.string().min(1), kind: documentBlockKindSchema, page_number: z.number().int().positive().nullable().default(null), section_label: z.string().min(1).nullable().default(null), text: z.string().min(1), char_start: z.number().int().nonnegative().nullable().default(null), char_end: z.number().int().nonnegative().nullable().default(null) }
+- documentTableCellSchema: { row: z.number().int().nonnegative(), column: z.number().int().nonnegative(), text: z.string() }
+- documentTableSchema: { table_id: z.string().min(1), page_number: z.number().int().positive().nullable().default(null), caption: z.string().min(1).nullable().default(null), header: z.array(z.string()).default([]), cells: z.array(documentTableCellSchema).default([]) }
+- documentIntelligenceResultSchema: { source_document_id: z.string().min(1), parser_version: z.literal(DOCUMENT_INTELLIGENCE_VERSION), status: z.enum(['parsed', 'parse_failed', 'unsupported_media_type']), parse_error: z.string().nullable().default(null), page_count: z.number().int().nonnegative().default(0), blocks: z.array(documentBlockSchema).default([]), tables: z.array(documentTableSchema).default([]), generated_at: z.string().min(1) }
+CALLS_TO:
+- isDocumentIntelligenceEnabled
+- zod:z -> z.array
+- zod:z -> z.array(documentBlockSchema).default
+- zod:z -> z.array(documentTableCellSchema).default
+- zod:z -> z.array(documentTableSchema).default
+- zod:z -> z.array(z.string()).default
+- zod:z -> z.enum
+- zod:z -> z.literal
+- zod:z -> z.number
+- zod:z -> z.number().int
+- zod:z -> z.number().int().nonnegative
+- zod:z -> z.number().int().nonnegative().default
+- zod:z -> z.number().int().nonnegative().nullable
+- zod:z -> z.number().int().nonnegative().nullable().default
+- zod:z -> z.number().int().positive
+- zod:z -> z.number().int().positive().nullable
+- zod:z -> z.number().int().positive().nullable().default
+- zod:z -> z.object
+- zod:z -> z.string
+- zod:z -> z.string().min
+- zod:z -> z.string().min(1).nullable
+- zod:z -> z.string().min(1).nullable().default
+- zod:z -> z.string().nullable
+- zod:z -> z.string().nullable().default
+SCHEMA_PARSERS:
+- documentIntelligenceResultSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: runDocumentIntelligence -> const env = options.env ?? process.env;
+- Step 2: runDocumentIntelligence -> const now = options.now ?? (() => new Date().toISOString());
+- Step 3: runDocumentIntelligence -> if (!isDocumentIntelligenceEnabled(env))
+- Step 4: runDocumentIntelligence -> if (input.mediaType !== 'application/pdf' && input.mediaType !== 'text/html' && input.mediaType !== 'application/xml' && input.mediaType !== 'text/plain')
+- Step 5: runDocumentIntelligence -> const text = input.rawText?.trim() ?? '';
+- Step 6: runDocumentIntelligence -> if (!text)
+- Step 7: runDocumentIntelligence -> const paragraphs = text .split(/\n{2,}/) .map((paragraph) => paragraph.trim()) .filter((paragraph) => paragraph.length > 0);
+- Step 8: runDocumentIntelligence -> const blocks = paragraphs.map((paragraph, index) => ({ block_id: `${input.sourceDocumentId}:p${index + 1}`, kind: 'paragraph' as const, page_number: null, section_label: null, text: paragraph, char_start: null, char_e...
+- Step 9: runDocumentIntelligence -> return documentIntelligenceResultSchema.parse({ source_document_id: input.sourceDocumentId, parser_version: DOCUMENT_INTELLIGENCE_VERSION, status: 'parsed', parse_error: null, page_count: 0, blocks, tables: [], genera...
+INVARIANTS_ENFORCED:
+- Zod schemas declared in this file enforce 5 runtime validation contract(s).
+- documentIntelligenceResultSchema.parse({ source_document_id: input.sourceDocumentId, parser_version: DOCUMENT_INTELLIGENCE_VERSION, status: 'parse_failed', parse_error: 'document_intelligence_disabled', page_count: 0,...
+- documentIntelligenceResultSchema.parse({ source_document_id: input.sourceDocumentId, parser_version: DOCUMENT_INTELLIGENCE_VERSION, status: 'unsupported_media_type', parse_error: `unsupported_media_type:${input.mediaT...
+- documentIntelligenceResultSchema.parse({ source_document_id: input.sourceDocumentId, parser_version: DOCUMENT_INTELLIGENCE_VERSION, status: 'parse_failed', parse_error: 'empty_input', page_count: 0, blocks: [], tables...
+- documentIntelligenceResultSchema.parse({ source_document_id: input.sourceDocumentId, parser_version: DOCUMENT_INTELLIGENCE_VERSION, status: 'parsed', parse_error: null, page_count: 0, blocks, tables: [], generated_at:...
+
+## packages/evidence-audit/src/**/*.ts
+
+FILE: packages/evidence-audit/src/coverage-matrix.ts
+LINES: 113
+IMPORTS:
+- import { coverageEntrySchema, loadEvidenceQualityAuditPolicy, type CoverageEntry, } from '@metrev/domain-contracts';
+EXPORTS:
+- RawCoverageRow : interface — export interface RawCoverageRow
+- getCoverageThresholds : function — export function getCoverageThresholds(): CoverageThresholds
+- classifyCoverage : function — export function classifyCoverage( recordCount: number, thresholds: Pick<CoverageThresholds, 'minimum' | 'strong'>, ): CoverageEntry['coverage_level']
+- classifyRecency : function — export function classifyRecency( newestYear: number | null, currentYear: number, thresholds: Pick<CoverageThresholds, 'warningYears' | 'staleYears'>, ): CoverageEntry['recency_status']
+- buildCoverageMatrix : function — export function buildCoverageMatrix(input: { rawCounts: RawCoverageRow[]; currentYear?: number; }): CoverageEntry[]
+LOCAL_DECLARATIONS:
+- CoverageThresholds : interface — interface CoverageThresholds
+- numberFromPolicy : function — function numberFromPolicy(value: unknown, fallback: number): number
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:coverageEntrySchema -> coverageEntrySchema.parse
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
+- classifyCoverage
+- classifyRecency
+- getCoverageThresholds
+- numberFromPolicy
+SCHEMA_PARSERS:
+- coverageEntrySchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- coverageEntrySchema.parse({ system_type: row.systemType, component_type: row.componentType, material: row.material, metric_type: row.metricType, scale: row.scale ?? null, trl: row.trl ?? null, record_count: row.decisi...
+
+FILE: packages/evidence-audit/src/funnel-metrics.ts
+LINES: 35
+IMPORTS:
+- import { funnelStageCountSchema, type FunnelStageCount, } from '@metrev/domain-contracts';
+EXPORTS:
+- FunnelCountInput : interface — export interface FunnelCountInput
+- buildFunnelMetrics : function — export function buildFunnelMetrics( counts: FunnelCountInput[], ): FunnelStageCount[]
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:funnelStageCountSchema -> funnelStageCountSchema.parse
+SCHEMA_PARSERS:
+- funnelStageCountSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- funnelStageCountSchema.parse({ stage: entry.stage, count: entry.count, conversion_rate: conversionRate === null ? null : Math.max(0, Math.min(1, conversionRate)), })
+
+FILE: packages/evidence-audit/src/gap-detector.ts
+LINES: 189
+IMPORTS:
+- import { evidenceGapSchema, loadEvidenceDiscoveryPolicy, loadEvidenceQualityAuditPolicy, type CoverageEntry, type EvidenceGap, type NormalizedCaseInput, type PrimaryObjective, } from '@metrev/domain-contracts';
+EXPORTS:
+- detectGaps : function — export function detectGaps(input: { coverageMatrix: CoverageEntry[]; goldenCases?: NormalizedCaseInput[]; }): EvidenceGap[]
+LOCAL_DECLARATIONS:
+- toSystemType : function — function toSystemType( technologyFamily: NormalizedCaseInput['technology_family'], ): string
+- policyMetricsByObjective : function — function policyMetricsByObjective(): Record<string, Record<string, string[]>>
+- activeObjective : function — function activeObjective( objective: NormalizedCaseInput['primary_objective'], ): PrimaryObjective
+- termsForDimension : function — function termsForDimension( dimension: 'system_type' | 'component_type' | 'metric_type', value: string | null, ): string[]
+- buildRecommendedQuery : function — function buildRecommendedQuery(gap: { system_type: string | null; component_type: string | null; material: string | null; metric_type: string; }): string
+- gapId : function — function gapId(parts: Array<string | null>): string
+- findCoverage : function — function findCoverage(input: { coverageMatrix: CoverageEntry[]; systemType: string; metricType: string; }): CoverageEntry | undefined
+- severityForCoverage : function — function severityForCoverage( entry: CoverageEntry | undefined, ): EvidenceGap['severity']
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:evidenceGapSchema -> evidenceGapSchema.parse
+- @metrev/domain-contracts:loadEvidenceDiscoveryPolicy -> loadEvidenceDiscoveryPolicy
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
+- activeObjective
+- buildRecommendedQuery
+- findCoverage
+- gapId
+- policyMetricsByObjective
+- severityForCoverage
+- termsForDimension
+- toSystemType
+SCHEMA_PARSERS:
+- evidenceGapSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: detectGaps -> const gaps = new Map<string, EvidenceGap>();
+- Step 2: detectGaps -> const primaryMetricsByObjective = policyMetricsByObjective();
+- Step 3: detectGaps -> for (const caseInput of input.goldenCases ?? []) { const systemType = toSystemType(caseInput.technology_family); const primaryMetrics = primaryMetricsByObjective[activeObjective(caseInput.primary_objective)]?.[ system...
+- Step 4: detectGaps -> for (const entry of input.coverageMatrix) { if (entry.coverage_level !== 'sparse' && entry.recency_status !== 'stale') { continue; } const draft = { gap_id: gapId([ 'coverage', entry.system_type, entry.component_type,...
+- Step 5: detectGaps -> return Array.from(gaps.values()).sort((a, b) => a.priority - b.priority);
+INVARIANTS_ENFORCED:
+- evidenceGapSchema.parse(draft)
+
+FILE: packages/evidence-audit/src/index.ts
+LINES: 7
+IMPORTS:
+- none
+EXPORTS:
+- export * from './coverage-matrix'; : re-export — export * from './coverage-matrix';
+- export * from './funnel-metrics'; : re-export — export * from './funnel-metrics';
+- export * from './gap-detector'; : re-export — export * from './gap-detector';
+- export * from './outlier-detector'; : re-export — export * from './outlier-detector';
+- export * from './readiness-scorer'; : re-export — export * from './readiness-scorer';
+- export * from './run-audit'; : re-export — export * from './run-audit';
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/evidence-audit/src/outlier-detector.ts
+LINES: 46
+IMPORTS:
+- import { evidenceOutlierSchema, loadEvidenceQualityAuditPolicy, type EvidenceOutlier, } from '@metrev/domain-contracts';
+EXPORTS:
+- OutlierCandidateRow : interface — export interface OutlierCandidateRow
+- detectOutliers : function — export function detectOutliers(input: { candidates: OutlierCandidateRow[]; zScoreThreshold?: number; }): EvidenceOutlier[]
+LOCAL_DECLARATIONS:
+- threshold : function — function threshold(): number
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:evidenceOutlierSchema -> evidenceOutlierSchema.parse
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
+- threshold
+SCHEMA_PARSERS:
+- evidenceOutlierSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- evidenceOutlierSchema.parse({ fact_id: candidate.factId, canonical_key: candidate.canonicalKey, metric_type: candidate.metricType, normalized_value: candidate.normalizedValue, aggregate_median: candidate.aggregateMedi...
+
+FILE: packages/evidence-audit/src/readiness-scorer.ts
+LINES: 127
+IMPORTS:
+- import { loadEvidenceQualityAuditPolicy, readinessScoreSchema, type CoverageEntry, type NormalizedCaseInput, type PrimaryObjective, type ReadinessScore, } from '@metrev/domain-contracts';
+EXPORTS:
+- scoreReadiness : function — export function scoreReadiness(input: { coverageMatrix: CoverageEntry[]; goldenCases?: NormalizedCaseInput[]; }): ReadinessScore[]
+LOCAL_DECLARATIONS:
+- toSystemType : function — function toSystemType( technologyFamily: NormalizedCaseInput['technology_family'], ): string
+- objectiveMetrics : function — function objectiveMetrics( objective: PrimaryObjective, systemType: string, ): string[]
+- activeObjective : function — function activeObjective( objective: NormalizedCaseInput['primary_objective'], ): PrimaryObjective
+- matchingEntries : function — function matchingEntries(input: { coverageMatrix: CoverageEntry[]; systemType: string; metricTypes: string[]; }): CoverageEntry[]
+- isCovered : function — function isCovered(entry: CoverageEntry | undefined): boolean
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
+- @metrev/domain-contracts:readinessScoreSchema -> readinessScoreSchema.parse
+- activeObjective
+- isCovered
+- matchingEntries
+- objectiveMetrics
+- toSystemType
+SCHEMA_PARSERS:
+- readinessScoreSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: scoreReadiness -> return (input.goldenCases ?? []).map((caseInput) => { const systemType = toSystemType(caseInput.technology_family); const metricTypes = objectiveMetrics( activeObjective(caseInput.primary_objective), systemType, ); co...
+INVARIANTS_ENFORCED:
+- readinessScoreSchema.parse({ case_archetype: caseInput.case_id, technology_family: caseInput.technology_family, primary_objective: caseInput.primary_objective, readiness_level: readinessLevel, primary_metrics_coverage...
+
+FILE: packages/evidence-audit/src/run-audit.ts
+LINES: 277
+IMPORTS:
+- import { randomUUID } from 'node:crypto';
+- import { acceptedEvidenceReadinessRecordSchema, evidenceQualityReportSchema, type AcceptedEvidenceReadinessCandidate, type AcceptedEvidenceReadinessRecord, type AcceptedEvidenceReadinessSummary, type EvidenceFunnelGroup, type EvidenceQualityReport, type FunnelStageCount, type NormalizedCaseInput, } from '@metrev/domain-contracts';
+- import { buildCoverageMatrix, type RawCoverageRow } from './coverage-matrix';
+- import { detectGaps } from './gap-detector';
+- import { detectOutliers, type OutlierCandidateRow } from './outlier-detector';
+- import { scoreReadiness } from './readiness-scorer';
+EXPORTS:
+- EvidenceAuditRepositoryLike : interface — export interface EvidenceAuditRepositoryLike
+- runEvidenceQualityAudit : function — export async function runEvidenceQualityAudit(input: { repository: EvidenceAuditRepositoryLike; triggerMode: EvidenceQualityReport['trigger_mode']; goldenCases?: NormalizedCaseInput[]; currentYear?: number; }): Promise<EvidenceQualityReport>
+LOCAL_DECLARATIONS:
+- issueFlagsForAcceptedEvidence : function — function issueFlagsForAcceptedEvidence( candidate: AcceptedEvidenceReadinessCandidate, )
+- recommendedActionForAcceptedEvidence : function — function recommendedActionForAcceptedEvidence( candidate: AcceptedEvidenceReadinessCandidate, flags: string[], ): AcceptedEvidenceReadinessRecord['recommended_action']
+- rationaleForAcceptedEvidenceAction : function — function rationaleForAcceptedEvidenceAction( action: AcceptedEvidenceReadinessRecord['recommended_action'], )
+- classifyAcceptedEvidence : function — function classifyAcceptedEvidence( candidate: AcceptedEvidenceReadinessCandidate, ): AcceptedEvidenceReadinessRecord
+- summarizeAcceptedEvidence : function — function summarizeAcceptedEvidence( records: AcceptedEvidenceReadinessRecord[], ): AcceptedEvidenceReadinessSummary
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ./coverage-matrix:buildCoverageMatrix -> buildCoverageMatrix
+- ./gap-detector:detectGaps -> detectGaps
+- ./outlier-detector:detectOutliers -> detectOutliers
+- ./readiness-scorer:scoreReadiness -> scoreReadiness
+- @metrev/domain-contracts:acceptedEvidenceReadinessRecordSchema -> acceptedEvidenceReadinessRecordSchema.parse
+- @metrev/domain-contracts:evidenceQualityReportSchema -> evidenceQualityReportSchema.parse
+- issueFlagsForAcceptedEvidence
+- node:crypto:randomUUID -> randomUUID
+- rationaleForAcceptedEvidenceAction
+- recommendedActionForAcceptedEvidence
+- summarizeAcceptedEvidence
+SCHEMA_PARSERS:
+- acceptedEvidenceReadinessRecordSchema.parse
+- evidenceQualityReportSchema.parse
+ENVIRONMENT_READS:
+- METREV_AUDIT_FUNNELS_V2
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: runEvidenceQualityAudit -> const [rawCounts, outlierCandidates, funnelMetrics, acceptedCandidates] = await Promise.all([ input.repository.getBenchmarkCoverageMatrix(), input.repository.getCanonicalFactOutlierCandidates(), input.repository.getEv...
+- Step 2: runEvidenceQualityAudit -> const funnels: EvidenceFunnelGroup | undefined = process.env.METREV_AUDIT_FUNNELS_V2 === '0' ? undefined : typeof input.repository.getEvidenceFunnels === 'function' ? await input.repository.getEvidenceFunnels() : unde...
+- Step 3: runEvidenceQualityAudit -> const coverageMatrix = buildCoverageMatrix({ rawCounts, currentYear: input.currentYear, });
+- Step 4: runEvidenceQualityAudit -> const gaps = detectGaps({ coverageMatrix, goldenCases: input.goldenCases, });
+- Step 5: runEvidenceQualityAudit -> const outliers = detectOutliers({ candidates: outlierCandidates });
+- Step 6: runEvidenceQualityAudit -> const readinessScores = scoreReadiness({ coverageMatrix, goldenCases: input.goldenCases, });
+- Step 7: runEvidenceQualityAudit -> const acceptedRecordReadiness = acceptedCandidates.map( classifyAcceptedEvidence, );
+- Step 8: runEvidenceQualityAudit -> const acceptedRecordSummary = summarizeAcceptedEvidence( acceptedRecordReadiness, );
+- Step 9: runEvidenceQualityAudit -> const totalBenchmarkRecords = coverageMatrix.reduce( (sum, entry) => sum + entry.record_count, 0, );
+- Step 10: runEvidenceQualityAudit -> const coveredCells = coverageMatrix.filter( (entry) => entry.coverage_level !== 'absent', ).length;
+- Step 11: runEvidenceQualityAudit -> const report = evidenceQualityReportSchema.parse({ report_id: randomUUID(), trigger_mode: input.triggerMode, coverage_matrix: coverageMatrix, gaps, outliers, readiness_scores: readinessScores, accepted_record_readines...
+- Step 12: runEvidenceQualityAudit -> await input.repository.createEvidenceQualityAuditReport(report);
+- Step 13: runEvidenceQualityAudit -> return report;
+INVARIANTS_ENFORCED:
+- acceptedEvidenceReadinessRecordSchema.parse({ ...candidate, issue_flags: issueFlags, table_ready: recommendedAction === 'keep', recommended_action: recommendedAction, rationale: rationaleForAcceptedEvidenceAction(reco...
+- evidenceQualityReportSchema.parse({ report_id: randomUUID(), trigger_mode: input.triggerMode, coverage_matrix: coverageMatrix, gaps, outliers, readiness_scores: readinessScores, accepted_record_readiness: acceptedReco...
+
+## packages/evidence-discovery/src/**/*.ts
+
+FILE: packages/evidence-discovery/src/fulltext-resolver.ts
+LINES: 227
+IMPORTS:
+- import { randomUUID } from 'node:crypto';
+- import { acquisitionAttemptSchema, loadEvidenceDiscoveryPolicy, type AcquisitionAttempt, } from '@metrev/domain-contracts';
+EXPORTS:
+- SourceRecordForAcquisition : interface — export interface SourceRecordForAcquisition
+- AcquisitionRepositoryLike : interface — export interface AcquisitionRepositoryLike
+- ResolvedFullTextCandidate : interface — export interface ResolvedFullTextCandidate
+- FullTextResolver : type — export type FullTextResolver = ( record: SourceRecordForAcquisition, ) => Promise<ResolvedFullTextCandidate | null>;
+- defaultFullTextResolver : function — export async function defaultFullTextResolver( record: SourceRecordForAcquisition, ): Promise<ResolvedFullTextCandidate | null>
+- resolveFullText : function — export async function resolveFullText(input: { record: SourceRecordForAcquisition; repository: AcquisitionRepositoryLike; resolver?: FullTextResolver; }): Promise<AcquisitionAttempt>
+LOCAL_DECLARATIONS:
+- timeoutMs : function — function timeoutMs(): number
+- fetchJson : function — async function fetchJson( url: string, options?: { timeout?: number }, ): Promise<unknown>
+- readNestedString : function — function readNestedString(value: unknown, path: string[]): string | null
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:acquisitionAttemptSchema -> acquisitionAttemptSchema.parse
+- @metrev/domain-contracts:loadEvidenceDiscoveryPolicy -> loadEvidenceDiscoveryPolicy
+- fetchJson
+- node:crypto:randomUUID -> randomUUID
+- readNestedString
+- timeoutMs
+SCHEMA_PARSERS:
+- acquisitionAttemptSchema.parse
+ENVIRONMENT_READS:
+- METREV_UNPAYWALL_EMAIL
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- fetch(url, { signal: controller.signal })
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: defaultFullTextResolver -> if (record.xml_url)
+- Step 2: defaultFullTextResolver -> if (record.pdf_url)
+- Step 3: defaultFullTextResolver -> if (!record.doi)
+- Step 4: defaultFullTextResolver -> const encodedDoi = encodeURIComponent(record.doi);
+- Step 5: defaultFullTextResolver -> const unpaywallEmail = process.env.METREV_UNPAYWALL_EMAIL ?? 'metadata@metrev.local';
+- Step 6: defaultFullTextResolver -> const unpaywall = await fetchJson( `https://api.unpaywall.org/v2/${encodedDoi}?email=${encodeURIComponent( unpaywallEmail, )}`, );
+- Step 7: defaultFullTextResolver -> const unpaywallUrl = readNestedString(unpaywall, ['best_oa_location', 'url_for_pdf']) ?? readNestedString(unpaywall, ['best_oa_location', 'url']);
+- Step 8: defaultFullTextResolver -> if (unpaywallUrl)
+- Step 9: defaultFullTextResolver -> const semanticScholar = await fetchJson( `https://api.semanticscholar.org/graph/v1/paper/DOI:${encodedDoi}?fields=openAccessPdf`, );
+- Step 10: defaultFullTextResolver -> const semanticScholarUrl = readNestedString(semanticScholar, [ 'openAccessPdf', 'url', ]);
+- Step 11: defaultFullTextResolver -> if (semanticScholarUrl)
+- Step 12: defaultFullTextResolver -> return null;
+- Step 13: resolveFullText -> if (input.record.has_traceable_full_text)
+- Step 14: resolveFullText -> const attempt = acquisitionAttemptSchema.parse({ attempt_id: randomUUID(), source_record_id: input.record.source_record_id, strategy: input.record.xml_url ? 'direct_xml' : input.record.pdf_url ? 'direct_pdf' : 'unpayw...
+- Step 15: resolveFullText -> await input.repository.createAcquisitionAttempt(attempt);
+- Step 16: resolveFullText -> const resolver = input.resolver ?? defaultFullTextResolver;
+- Step 17: resolveFullText -> const resolved = await resolver(input.record);
+- Step 18: resolveFullText -> if (!resolved)
+- Step 19: resolveFullText -> await input.repository.markSourceRecordFullTextResolved({ sourceRecordId: input.record.source_record_id, foundUrl: resolved.url, accessStatus: resolved.accessStatus, strategy: resolved.strategy, });
+- Step 20: resolveFullText -> await input.repository.updateAcquisitionAttemptStatus(attempt.attempt_id, { status: 'success', found_url: resolved.url, found_access_status: resolved.accessStatus, });
+- Step 21: resolveFullText -> return acquisitionAttemptSchema.parse({ ...attempt, strategy: resolved.strategy, status: 'success', found_url: resolved.url, found_access_status: resolved.accessStatus, });
+INVARIANTS_ENFORCED:
+- acquisitionAttemptSchema.parse({ attempt_id: randomUUID(), source_record_id: input.record.source_record_id, strategy: 'source_artifact', status: 'skipped', found_url: null, found_access_status: null, failure_reason: '...
+- acquisitionAttemptSchema.parse({ attempt_id: randomUUID(), source_record_id: input.record.source_record_id, strategy: input.record.xml_url ? 'direct_xml' : input.record.pdf_url ? 'direct_pdf' : 'unpaywall', status: 'r...
+- acquisitionAttemptSchema.parse({ ...attempt, status: 'failed', failure_reason: 'no_open_access_full_text_found', })
+- acquisitionAttemptSchema.parse({ ...attempt, strategy: resolved.strategy, status: 'success', found_url: resolved.url, found_access_status: resolved.accessStatus, })
+
+FILE: packages/evidence-discovery/src/index.ts
+LINES: 4
+IMPORTS:
+- none
+EXPORTS:
+- export * from './fulltext-resolver'; : re-export — export * from './fulltext-resolver';
+- export * from './query-generator'; : re-export — export * from './query-generator';
+- export * from './run-discovery'; : re-export — export * from './run-discovery';
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
+FILE: packages/evidence-discovery/src/query-generator.ts
+LINES: 92
+IMPORTS:
+- import { randomUUID } from 'node:crypto';
+- import { discoveryTargetSchema, loadEvidenceDiscoveryPolicy, type DiscoveryTarget, type EvidenceGap, } from '@metrev/domain-contracts';
+EXPORTS:
+- generateDiscoveryQueries : function — export function generateDiscoveryQueries(input: { gaps: EvidenceGap[]; maxQueries?: number; auditReportId?: string | null; }): DiscoveryTarget[]
+LOCAL_DECLARATIONS:
+- getDimensionMappings : function — function getDimensionMappings(): Record<string, Record<string, string[]>>
+- getQueryLimits : function — function getQueryLimits(): { maxTerms: number; maxLength: number }
+- mappedTerms : function — function mappedTerms( mappings: Record<string, Record<string, string[]>>, dimension: string, value: string | null, ): string[]
+- queryForGap : function — function queryForGap(gap: EvidenceGap): string
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:discoveryTargetSchema -> discoveryTargetSchema.parse
+- @metrev/domain-contracts:loadEvidenceDiscoveryPolicy -> loadEvidenceDiscoveryPolicy
+- getDimensionMappings
+- getQueryLimits
+- mappedTerms
+- node:crypto:randomUUID -> randomUUID
+- queryForGap
+SCHEMA_PARSERS:
+- discoveryTargetSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- discoveryTargetSchema.parse({ target_id: randomUUID(), audit_report_id: input.auditReportId ?? null, gap_id: gap.gap_id, query: gap.recommended_query ?? queryForGap(gap), providers: ['openalex', 'crossref', 'europe_pm...
+
+FILE: packages/evidence-discovery/src/run-discovery.ts
+LINES: 175
+IMPORTS:
+- import { type DiscoveryTarget, type EvidenceQualityReport, type ResearchPaperSearchResult, type ResearchSearchProvider, } from '@metrev/domain-contracts';
+- import { resolveFullText, type AcquisitionRepositoryLike, type SourceRecordForAcquisition, } from './fulltext-resolver';
+- import { generateDiscoveryQueries } from './query-generator';
+EXPORTS:
+- DiscoveryRepositoryLike : interface — export interface DiscoveryRepositoryLike extends AcquisitionRepositoryLike
+- ResearchRepositoryLike : interface — export interface ResearchRepositoryLike
+- DiscoverySummary : interface — export interface DiscoverySummary
+- processQueuedEvidenceDiscovery : function — export async function processQueuedEvidenceDiscovery(input: { repository: DiscoveryRepositoryLike; researchRepository: ResearchRepositoryLike; maxTargets?: number; maxAcquisitionAttempts?: number; }): Promise<DiscoverySummary>
+- runEvidenceDiscovery : function — export async function runEvidenceDiscovery(input: { repository: DiscoveryRepositoryLike; researchRepository: ResearchRepositoryLike; auditReport: EvidenceQualityReport; maxQueries?: number; maxAcquisitionAttempts?: number; }): Promise<DiscoverySummary>
+LOCAL_DECLARATIONS:
+- processTargets : function — async function processTargets(input: { repository: DiscoveryRepositoryLike; researchRepository: ResearchRepositoryLike; targets: DiscoveryTarget[]; })
+- processAcquisitionCandidates : function — async function processAcquisitionCandidates(input: { repository: DiscoveryRepositoryLike; maxAcquisitionAttempts: number; }): Promise<number>
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ./fulltext-resolver:resolveFullText -> resolveFullText
+- ./query-generator:generateDiscoveryQueries -> generateDiscoveryQueries
+- processAcquisitionCandidates
+- processTargets
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+
 ## apps/api-server/src/**/*.ts
 
 FILE: apps/api-server/src/app.ts
-LINES: 93
+LINES: 108
 IMPORTS:
 - import cors from '@fastify/cors';
 - import rateLimit from '@fastify/rate-limit';
 - import sensible from '@fastify/sensible';
 - import Fastify, { type FastifyInstance } from 'fastify';
 - import type { SessionResolver } from '@metrev/auth';
-- import { createEvaluationRepository, createResearchRepository, MemoryResearchRepository, type EvaluationRepository, type ResearchRepository, } from '@metrev/database';
+- import { createEvaluationRepository, createEvidenceAuditRepository, createResearchRepository, MemoryEvidenceAuditRepository, MemoryResearchRepository, type EvaluationRepository, type EvidenceAuditRepository, type ResearchRepository, } from '@metrev/database';
 - import { authPlugin } from './plugins/auth';
 - import { registerCaseRoutes } from './routes/cases';
 - import { registerEvaluationRoutes } from './routes/evaluations';
+- import { registerEvidenceAuditRoutes } from './routes/evidence-audit';
 - import { registerExportRoutes } from './routes/exports';
 - import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 - import { registerHealthRoutes } from './routes/health';
@@ -5209,6 +7124,7 @@ CALLS_TO:
 - ./plugins/auth:authPlugin -> authPlugin
 - ./routes/health:registerHealthRoutes -> registerHealthRoutes
 - @metrev/database:createEvaluationRepository -> createEvaluationRepository
+- @metrev/database:createEvidenceAuditRepository -> createEvidenceAuditRepository
 - @metrev/database:createResearchRepository -> createResearchRepository
 - fastify:default -> Fastify
 - parseRateLimitMax
@@ -5228,13 +7144,34 @@ TANSTACK_QUERY_HOOKS:
 JSX_SURFACE_MARKERS:
 - none
 LOGIC_FLOW:
-- none
+- Step 1: buildApp -> const app = Fastify({ logger: true });
+- Step 2: buildApp -> const repository = options.repository ?? createEvaluationRepository();
+- Step 3: buildApp -> const researchRepository = options.researchRepository ?? (options.repository ? new MemoryResearchRepository() : createResearchRepository());
+- Step 4: buildApp -> const evidenceAuditRepository = options.evidenceAuditRepository ?? (options.repository ? new MemoryEvidenceAuditRepository() : createEvidenceAuditRepository());
+- Step 5: buildApp -> app.decorate('evaluationRepository', repository);
+- Step 6: buildApp -> app.decorate('evidenceAuditRepository', evidenceAuditRepository);
+- Step 7: buildApp -> app.decorate('researchRepository', researchRepository);
+- Step 8: buildApp -> await app.register(cors, { origin: true, credentials: true, });
+- Step 9: buildApp -> await app.register(sensible);
+- Step 10: buildApp -> await authPlugin(app, { sessionResolver: options.sessionResolver, });
+- Step 11: buildApp -> if (options.rateLimit !== false)
+- Step 12: buildApp -> await registerHealthRoutes(app);
+- Step 13: buildApp -> await app.register(registerCaseRoutes, { prefix: '/api/cases' });
+- Step 14: buildApp -> await app.register(registerEvaluationRoutes, { prefix: '/api/evaluations' });
+- Step 15: buildApp -> await app.register(registerExternalEvidenceRoutes, { prefix: '/api/external-evidence', });
+- Step 16: buildApp -> await app.register(registerEvidenceAuditRoutes, { prefix: '/api/evidence-intelligence', });
+- Step 17: buildApp -> await app.register(registerResearchRoutes, { prefix: '/api/research' });
+- Step 18: buildApp -> await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });
+- Step 19: buildApp -> await app.register(registerExportRoutes, { prefix: '/api/exports' });
+- Step 20: buildApp -> app.addHook('onClose', async () => { await repository.disconnect(); await app.researchRepository.disconnect(); });
+- Step 21: buildApp -> return app;
 INVARIANTS_ENFORCED:
 - none
 FASTIFY_PLUGIN_REGISTRATIONS:
 - registerCaseRoutes -> /api/cases
 - registerEvaluationRoutes -> /api/evaluations
 - registerExternalEvidenceRoutes -> /api/external-evidence
+- registerEvidenceAuditRoutes -> /api/evidence-intelligence
 - registerResearchRoutes -> /api/research
 - registerWorkspaceRoutes -> /api/workspace
 - registerExportRoutes -> /api/exports
@@ -5321,13 +7258,13 @@ FASTIFY_ENDPOINTS:
 - none
 
 FILE: apps/api-server/src/presenters/workspace-presenters.ts
-LINES: 2279
+LINES: 2372
 IMPORTS:
-- import type { CaseHistoryResponse, CaseHistoryWorkspaceResponse, ConfidenceLevel, DashboardWorkspaceResponse, EvaluationComparisonResponse, EvaluationListResponse, EvaluationResponse, EvaluationSummary, EvaluationWorkspaceResponse, EvidenceExplorerAssistantResponse, EvidenceExplorerWorkspaceResponse, EvidenceRecord, EvidenceReviewWorkspaceResponse, ExportCsvResponseMetadata, ExternalEvidenceCatalogListResponse, NarrativeMetadata, PrintableEvaluationReportResponse, RawCaseInput, RuntimeVersion, SignalSourceKind, SimulationEnrichment, TraceabilitySummary, WorkspaceAttentionItem, WorkspaceBriefCard, WorkspaceCopy, WorkspaceHeroCard, WorkspaceImpactItem, WorkspaceLeadAction, WorkspaceMetricRecord, WorkspacePresentation, WorkspaceRoadmapItem, WorkspaceTone, } from '@metrev/domain-contracts';
+- import type { CaseHistoryResponse, CaseHistoryWorkspaceResponse, ConfidenceLevel, DashboardWorkspaceResponse, EvaluationComparisonResponse, EvaluationListResponse, EvaluationResponse, EvaluationSummary, EvaluationWorkspaceResponse, EvidenceExplorerAssistantResponse, EvidenceExplorerWorkspaceResponse, EvidenceIntelligenceSummary, EvidenceRecord, EvidenceReviewWorkspaceResponse, ExportCsvResponseMetadata, ExternalEvidenceCatalogListResponse, NarrativeMetadata, PrintableEvaluationReportResponse, RawCaseInput, RuntimeVersion, SignalSourceKind, SimulationEnrichment, TraceabilitySummary, WorkspaceAttentionItem, WorkspaceBriefCard, WorkspaceCopy, WorkspaceHeroCard, WorkspaceImpactItem, WorkspaceLeadAction, WorkspaceMetricRecord, WorkspacePresentation, WorkspaceRoadmapItem, WorkspaceTone, } from '@metrev/domain-contracts';
 - import { caseHistoryWorkspaceResponseSchema, dashboardWorkspaceResponseSchema, evaluationComparisonResponseSchema, evaluationWorkspaceResponseSchema, evidenceExplorerAssistantResponseSchema, evidenceExplorerWorkspaceResponseSchema, evidenceReviewWorkspaceResponseSchema, exportCsvResponseMetadataSchema, loadContractCompatibilityDefinition, loadContractDefaultsPolicy, loadContractDiagnosticsDefinition, loadContractImprovementsDefinition, loadContractOutputDefinition, loadContractScoringModel, loadContractSensitivityPolicy, loadContractStackOntology, printableEvaluationReportResponseSchema, } from '@metrev/domain-contracts';
 EXPORTS:
 - buildRuntimeVersions : function — export function buildRuntimeVersions(input: { promptVersion: string; modelVersion?: string | null; }): RuntimeVersion
-- buildDashboardWorkspace : function — export function buildDashboardWorkspace(input: { evaluationList: EvaluationListResponse; latestEvaluation?: EvaluationResponse | null; versions: RuntimeVersion; }): DashboardWorkspaceResponse
+- buildDashboardWorkspace : function — export function buildDashboardWorkspace(input: { evaluationList: EvaluationListResponse; evidenceIntelligence?: EvidenceIntelligenceSummary; latestEvaluation?: EvaluationResponse | null; versions: RuntimeVersion; }): DashboardWorkspaceResponse
 - buildEvaluationWorkspace : function — export function buildEvaluationWorkspace(input: { evaluation: EvaluationResponse; history?: CaseHistoryResponse | null; versions: RuntimeVersion; }): EvaluationWorkspaceResponse
 - buildCaseHistoryWorkspace : function — export function buildCaseHistoryWorkspace(input: { history: CaseHistoryResponse; versions: RuntimeVersion; currentEvaluationId?: string | null; currentEvaluation?: EvaluationResponse | null; }): CaseHistoryWorkspaceResponse
 - buildEvaluationComparison : function — export function buildEvaluationComparison(input: { current: EvaluationResponse; baseline: EvaluationResponse; versions: RuntimeVersion; }): EvaluationComparisonResponse
@@ -5347,7 +7284,7 @@ LOCAL_DECLARATIONS:
 - SHORT_TAB_LABEL_LIMIT : const = 32
 - SHORT_BADGE_LABEL_LIMIT : const = 48
 - SHORT_ACTION_LABEL_LIMIT : const = 48
-- coreMetricDefinitions : const = [ { key: 'current_density_a_m2', label: 'Current density', unit: 'A/m2', }, { key: 'power_density_w_m2', label: 'Power density', unit: 'W/m2', }, { key: 'int...
+- coreMetricDefinitions : const = [ { key: 'current_density_a_m2', label: 'Current density', unit: 'A/m2', }, { key: 'power_density_w_m2', label: 'Power density', unit: 'W/m2', }, { key: 'gro...
 - cachedCanonicalVersions : const
 - uniqueStrings : function — function uniqueStrings(values: Array<string | null | undefined>): string[]
 - collapseVersions : function — function collapseVersions(values: Array<string | undefined>): string
@@ -5546,7 +7483,7 @@ FASTIFY_ENDPOINTS:
 - none
 
 FILE: apps/api-server/src/routes/cases.ts
-LINES: 122
+LINES: 123
 IMPORTS:
 - import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 - import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
@@ -5638,6 +7575,80 @@ ROUTE_PREFIX: /api/evaluations
 FASTIFY_ENDPOINTS:
 - GET /api/evaluations | roles=requireRole:VIEWER | schemas=confidenceLevelSchema.safeParse | spans=evaluation.list | reply_codes=400
 - GET /api/evaluations/:id | roles=requireRole:VIEWER | schemas=none | spans=evaluation.get | reply_codes=404
+
+FILE: apps/api-server/src/routes/evidence-audit.ts
+LINES: 382
+IMPORTS:
+- import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+- import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
+- import { acquisitionStatusResponseSchema, discoveryStatusResponseSchema, evidenceQualityAuditRequestSchema, evidenceQualityAuditResponseSchema, type NormalizedCaseInput, } from '@metrev/domain-contracts';
+- import { runEvidenceQualityAudit } from '@metrev/evidence-audit';
+- import { runEvidenceDiscovery } from '@metrev/evidence-discovery';
+- import { withSpan } from '@metrev/telemetry';
+EXPORTS:
+- registerEvidenceAuditRoutes : function — export async function registerEvidenceAuditRoutes( app: FastifyInstance, ): Promise<void>
+LOCAL_DECLARATIONS:
+- rateLimitedRouteOptions : const = { config: { rateLimit: {}, }, }
+- parsePositiveInteger : function — function parsePositiveInteger( value: string | undefined, fallback: number, ): number | null
+- replyForAuthorizationError : function — function replyForAuthorizationError( request: FastifyRequest, reply: FastifyReply, error: AuthorizationError, requiredRole: Role, )
+- collectGoldenCases : function — async function collectGoldenCases( app: FastifyInstance, ): Promise<NormalizedCaseInput[]>
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/auth:requireRole -> requireRole
+- @metrev/domain-contracts:acquisitionStatusResponseSchema -> acquisitionStatusResponseSchema.parse
+- @metrev/domain-contracts:discoveryStatusResponseSchema -> discoveryStatusResponseSchema.parse
+- @metrev/domain-contracts:evidenceQualityAuditRequestSchema -> evidenceQualityAuditRequestSchema.safeParse
+- @metrev/domain-contracts:evidenceQualityAuditResponseSchema -> evidenceQualityAuditResponseSchema.parse
+- @metrev/evidence-audit:runEvidenceQualityAudit -> runEvidenceQualityAudit
+- @metrev/evidence-discovery:runEvidenceDiscovery -> runEvidenceDiscovery
+- @metrev/telemetry:withSpan -> withSpan
+- collectGoldenCases
+- parsePositiveInteger
+- replyForAuthorizationError
+SCHEMA_PARSERS:
+- acquisitionStatusResponseSchema.parse
+- discoveryStatusResponseSchema.parse
+- evidenceQualityAuditRequestSchema.safeParse
+- evidenceQualityAuditResponseSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- requireRole:ADMIN
+- requireRole:ANALYST
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- Step 1: registerEvidenceAuditRoutes -> app.get( '/quality-report', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizationEr...
+- Step 2: registerEvidenceAuditRoutes -> app.get( '/quality-reports', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizationE...
+- Step 3: registerEvidenceAuditRoutes -> app.get( '/quality-report/:reportId', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAutho...
+- Step 4: registerEvidenceAuditRoutes -> app.post( '/quality-report', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ADMIN'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizationErr...
+- Step 5: registerEvidenceAuditRoutes -> app.post( '/discovery/run', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ADMIN'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizationErro...
+- Step 6: registerEvidenceAuditRoutes -> app.get( '/discovery/status', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorization...
+- Step 7: registerEvidenceAuditRoutes -> app.get( '/discovery/targets', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizatio...
+- Step 8: registerEvidenceAuditRoutes -> app.get( '/acquisition/status', rateLimitedRouteOptions, async (request, reply) => { try { requireRole(request.actor, 'ANALYST'); } catch (error) { if (error instanceof AuthorizationError) { return replyForAuthorizati...
+INVARIANTS_ENFORCED:
+- throw error;
+- evidenceQualityAuditResponseSchema.parse({ report })
+- evidenceQualityAuditRequestSchema.safeParse( request.body ?? {}, )
+- discoveryStatusResponseSchema.parse(status)
+- acquisitionStatusResponseSchema.parse(status)
+ROUTE_PREFIX: /api/evidence-intelligence
+FASTIFY_ENDPOINTS:
+- GET /api/evidence-intelligence/quality-report | roles=requireRole:ANALYST | schemas=evidenceQualityAuditResponseSchema.parse | spans=none | reply_codes=404
+- GET /api/evidence-intelligence/quality-reports | roles=requireRole:ANALYST | schemas=none | spans=none | reply_codes=400
+- GET /api/evidence-intelligence/quality-report/:reportId | roles=requireRole:ANALYST | schemas=evidenceQualityAuditResponseSchema.parse | spans=none | reply_codes=400, 404
+- POST /api/evidence-intelligence/quality-report | roles=requireRole:ADMIN | schemas=evidenceQualityAuditRequestSchema.safeParse, evidenceQualityAuditResponseSchema.parse | spans=evidence_intelligence.quality_audit | reply_codes=400
+- POST /api/evidence-intelligence/discovery/run | roles=requireRole:ADMIN | schemas=none | spans=evidence_intelligence.discovery | reply_codes=202, 400, 404
+- GET /api/evidence-intelligence/discovery/status | roles=requireRole:ANALYST | schemas=discoveryStatusResponseSchema.parse | spans=none | reply_codes=400
+- GET /api/evidence-intelligence/discovery/targets | roles=requireRole:ANALYST | schemas=none | spans=none | reply_codes=400
+- GET /api/evidence-intelligence/acquisition/status | roles=requireRole:ANALYST | schemas=acquisitionStatusResponseSchema.parse | spans=none | reply_codes=400
 
 FILE: apps/api-server/src/routes/exports.ts
 LINES: 250
@@ -5832,13 +7843,13 @@ FASTIFY_ENDPOINTS:
 - GET /health | roles=none | schemas=none | spans=none | reply_codes=default
 
 FILE: apps/api-server/src/routes/research.ts
-LINES: 901
+LINES: 848
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 - import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
-- import { MFC_MEC_30000_PRESET_ID, planResearchBackfillPreset, } from '@metrev/database';
-- import { addResearchColumnRequestSchema, createResearchEvidencePackRequestSchema, createResearchReviewRequestSchema, localSourceImportRequestSchema, queueResearchBackfillPresetRequestSchema, queueResearchBackfillPresetResponseSchema, queueResearchBackfillRequestSchema, researchWarehouseEligibilityRequestSchema, researchWarehouseProgressResponseSchema, runResearchExtractionsRequestSchema, runResearchExtractionsResponseSchema, searchResearchPapersRequestSchema, stageResearchPapersRequestSchema, } from '@metrev/domain-contracts';
+- import { addResearchColumnRequestSchema, createResearchEvidencePackRequestSchema, createResearchReviewRequestSchema, localSourceImportRequestSchema, researchWarehouseEligibilityRequestSchema, researchWarehouseProgressResponseSchema, queueResearchBackfillPresetRequestSchema, queueResearchBackfillPresetResponseSchema, runResearchExtractionsRequestSchema, runResearchExtractionsResponseSchema, searchResearchPapersRequestSchema, stageResearchPapersRequestSchema, } from '@metrev/domain-contracts';
+- import { planResearchBackfillPreset } from '@metrev/database';
 - import { DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION, buildDecisionIngestionPreview, buildResearchEvidencePack, executeResearchExtraction, getDefaultResearchColumns, hydrateResearchPaperText, type HydratedResearchPaperText, } from '@metrev/research-intelligence';
 - import { withSpan } from '@metrev/telemetry';
 - import { buildRuntimeVersions } from '../presenters/workspace-presenters';
@@ -5851,7 +7862,6 @@ LOCAL_DECLARATIONS:
 - replyForAuthorizationError : function — function replyForAuthorizationError( request: FastifyRequest, reply: FastifyReply, error: AuthorizationError, requiredRole: Role, )
 - requireAnalyst : function — function requireAnalyst( request: FastifyRequest, reply: FastifyReply, ): { userId: string; role: string } | undefined
 - countBucketValue : function — function countBucketValue( buckets: Array<{ count: number; value: string }>, value: string, )
-- normalizeQueuedQuery : function — function normalizeQueuedQuery(value: string)
 - reconcileDefaultColumns : function — async function reconcileDefaultColumns( app: FastifyInstance, review: Awaited< ReturnType<FastifyInstance['researchRepository']['getResearchReview']> >, )
 - buildResearchWarehouseProgress : function — function buildResearchWarehouseProgress(input: { backfills: Awaited< ReturnType<FastifyInstance['researchRepository']['listResearchBackfills']> >['items']; warehouse: Awaited< ReturnType< FastifyInstance['evaluationRepository']['listExternalEvidenceCatalog'] > >; })
 SCHEMAS (Zod):
@@ -5866,7 +7876,6 @@ CALLS_TO:
 - @metrev/domain-contracts:localSourceImportRequestSchema -> localSourceImportRequestSchema.safeParse
 - @metrev/domain-contracts:queueResearchBackfillPresetRequestSchema -> queueResearchBackfillPresetRequestSchema.safeParse
 - @metrev/domain-contracts:queueResearchBackfillPresetResponseSchema -> queueResearchBackfillPresetResponseSchema.parse
-- @metrev/domain-contracts:queueResearchBackfillRequestSchema -> queueResearchBackfillRequestSchema.safeParse
 - @metrev/domain-contracts:researchWarehouseEligibilityRequestSchema -> researchWarehouseEligibilityRequestSchema.safeParse
 - @metrev/domain-contracts:researchWarehouseProgressResponseSchema -> researchWarehouseProgressResponseSchema.parse
 - @metrev/domain-contracts:runResearchExtractionsRequestSchema -> runResearchExtractionsRequestSchema.safeParse
@@ -5885,7 +7894,6 @@ CALLS_TO:
 - collapseExtractorVersions
 - countBucketValue
 - node:crypto:randomUUID -> randomUUID
-- normalizeQueuedQuery
 - reconcileDefaultColumns
 - replyForAuthorizationError
 - requireAnalyst
@@ -5896,7 +7904,6 @@ SCHEMA_PARSERS:
 - localSourceImportRequestSchema.safeParse
 - queueResearchBackfillPresetRequestSchema.safeParse
 - queueResearchBackfillPresetResponseSchema.parse
-- queueResearchBackfillRequestSchema.safeParse
 - researchWarehouseEligibilityRequestSchema.safeParse
 - researchWarehouseProgressResponseSchema.parse
 - runResearchExtractionsRequestSchema.safeParse
@@ -5925,7 +7932,7 @@ LOGIC_FLOW:
 - Step 7: registerResearchRoutes -> app.get( '/warehouse-progress', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const [backfills, warehouse] = await Promise.all([ withS...
 - Step 8: registerResearchRoutes -> app.get( '/warehouse-eligibility', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const query = request.query as Record<string, unknown...
 - Step 9: registerResearchRoutes -> app.post( '/warehouse-eligibility/sweep', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const parsed = researchWarehouseEligibilityReq...
-- Step 10: registerResearchRoutes -> app.post('/backfills', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const parsed = queueResearchBackfillRequestSchema.safeParse(reque...
+- Step 10: registerResearchRoutes -> app.post('/backfills', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } return reply.code(410).send({ error: 'research_backfill_removed',...
 - Step 11: registerResearchRoutes -> app.post( '/backfills/presets', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const parsed = queueResearchBackfillPresetRequestSchema....
 - Step 12: registerResearchRoutes -> app.post('/reviews', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const parsed = createResearchReviewRequestSchema.safeParse(request....
 - Step 13: registerResearchRoutes -> app.get( '/reviews/:reviewId', rateLimitedRouteOptions, async (request, reply) => { const actor = requireAnalyst(request, reply); if (!actor) { return reply; } const { reviewId } = request.params as { reviewId: string...
@@ -5941,9 +7948,8 @@ INVARIANTS_ENFORCED:
 - localSourceImportRequestSchema.safeParse(request.body)
 - researchWarehouseEligibilityRequestSchema.safeParse({ ...query, dry_run: true, include_items: query.include_items !== 'false', limit: typeof query.limit === 'string' ? Number(query.limit) : query.limit, })
 - researchWarehouseEligibilityRequestSchema.safeParse( request.body ?? {}, )
-- queueResearchBackfillRequestSchema.safeParse(request.body)
-- queueResearchBackfillPresetRequestSchema.safeParse( request.body ?? {}, )
-- queueResearchBackfillPresetResponseSchema.parse({ preset_id: parsed.data.preset_id, target_records: plan.targetRecords, queued_runs: queuedRuns, skipped_queries: skippedQueries, backfills: backfills.items, })
+- queueResearchBackfillPresetRequestSchema.safeParse( request.body, )
+- queueResearchBackfillPresetResponseSchema.parse({ preset_id: plan.presetId, target_records: plan.targetRecords, estimated_max_records: plan.estimatedMaxRecords, query_count: plan.queryCount, queued_runs: backfills.len...
 - createResearchReviewRequestSchema.safeParse(request.body)
 - addResearchColumnRequestSchema.safeParse(request.body)
 - runResearchExtractionsRequestSchema.safeParse( request.body ?? {}, )
@@ -5960,8 +7966,8 @@ FASTIFY_ENDPOINTS:
 - GET /api/research/warehouse-progress | roles=none | schemas=none | spans=research.backfills.list, research.warehouse.summary | reply_codes=default
 - GET /api/research/warehouse-eligibility | roles=none | schemas=researchWarehouseEligibilityRequestSchema.safeParse | spans=research.warehouse.eligibility | reply_codes=400
 - POST /api/research/warehouse-eligibility/sweep | roles=none | schemas=researchWarehouseEligibilityRequestSchema.safeParse | spans=research.warehouse.eligibility_sweep | reply_codes=400
-- POST /api/research/backfills | roles=none | schemas=queueResearchBackfillRequestSchema.safeParse | spans=research.backfills.enqueue, research.backfills.list | reply_codes=201, 400
-- POST /api/research/backfills/presets | roles=none | schemas=queueResearchBackfillPresetRequestSchema.safeParse, queueResearchBackfillPresetResponseSchema.parse | spans=research.backfills.list, research.backfills.enqueue, research.backfills.list | reply_codes=201, 400
+- POST /api/research/backfills | roles=none | schemas=none | spans=none | reply_codes=410
+- POST /api/research/backfills/presets | roles=none | schemas=queueResearchBackfillPresetRequestSchema.safeParse, queueResearchBackfillPresetResponseSchema.parse | spans=none | reply_codes=202, 400
 - POST /api/research/reviews | roles=none | schemas=createResearchReviewRequestSchema.safeParse | spans=research.reviews.create | reply_codes=201, 400
 - GET /api/research/reviews/:reviewId | roles=none | schemas=none | spans=research.reviews.get, research.reviews.reconcile_defaults | reply_codes=404
 - POST /api/research/reviews/:reviewId/columns | roles=none | schemas=addResearchColumnRequestSchema.safeParse | spans=research.reviews.add_column | reply_codes=400, 404
@@ -5970,11 +7976,11 @@ FASTIFY_ENDPOINTS:
 - GET /api/research/evidence-packs/:packId/decision-input | roles=none | schemas=none | spans=none | reply_codes=404
 
 FILE: apps/api-server/src/routes/workspace.ts
-LINES: 639
+LINES: 701
 IMPORTS:
 - import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 - import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
-- import { reportConversationRequestSchema } from '@metrev/domain-contracts';
+- import { reportConversationRequestSchema, type EvidenceIntelligenceSummary, } from '@metrev/domain-contracts';
 - import { generateEvidenceAssistantBrief } from '@metrev/llm-adapter';
 - import { withSpan } from '@metrev/telemetry';
 - import { buildCaseHistoryWorkspace, buildDashboardWorkspace, buildEvaluationComparison, buildEvaluationWorkspace, buildEvidenceExplorerAssistantResponse, buildEvidenceExplorerWorkspace, buildEvidenceReviewWorkspace, buildPrintableEvaluationReport, buildRuntimeVersions, } from '../presenters/workspace-presenters';
@@ -5988,6 +7994,7 @@ LOCAL_DECLARATIONS:
 - requireViewer : function — function requireViewer( request: FastifyRequest, reply: FastifyReply, ): { userId: string; role: string } | undefined
 - requireAnalyst : function — function requireAnalyst( request: FastifyRequest, reply: FastifyReply, ): { userId: string; role: string } | undefined
 - buildVersionsFromEvaluation : function — function buildVersionsFromEvaluation(input?: { narrativePromptVersion?: string | null; modelVersion?: string | null; })
+- buildEvidenceIntelligenceSummary : function — async function buildEvidenceIntelligenceSummary( app: FastifyInstance, ): Promise<EvidenceIntelligenceSummary | undefined>
 SCHEMAS (Zod):
 - none
 CALLS_TO:
@@ -6006,6 +8013,7 @@ CALLS_TO:
 - @metrev/domain-contracts:reportConversationRequestSchema -> reportConversationRequestSchema.safeParse
 - @metrev/llm-adapter:generateEvidenceAssistantBrief -> generateEvidenceAssistantBrief
 - @metrev/telemetry:withSpan -> withSpan
+- buildEvidenceIntelligenceSummary
 - buildVersionsFromEvaluation
 - replyForAuthorizationError
 - requireAnalyst
@@ -6040,7 +8048,7 @@ INVARIANTS_ENFORCED:
 - reportConversationRequestSchema.safeParse(request.body)
 ROUTE_PREFIX: /api/workspace
 FASTIFY_ENDPOINTS:
-- GET /api/workspace/dashboard | roles=none | schemas=none | spans=workspace.dashboard, workspace.dashboard.latest_evaluation | reply_codes=default
+- GET /api/workspace/dashboard | roles=none | schemas=none | spans=workspace.dashboard, workspace.dashboard.latest_evaluation, workspace.dashboard.evidence_intelligence | reply_codes=default
 - GET /api/workspace/evaluations/:evaluationId | roles=none | schemas=none | spans=workspace.evaluation.get | reply_codes=404
 - GET /api/workspace/cases/:caseId/history | roles=none | schemas=none | spans=workspace.case_history.get | reply_codes=404
 - GET /api/workspace/evaluations/:evaluationId/compare/:baselineEvaluationId | roles=none | schemas=none | spans=workspace.evaluation.compare | reply_codes=400, 404
@@ -6051,14 +8059,14 @@ FASTIFY_ENDPOINTS:
 - POST /api/workspace/evaluations/:evaluationId/report/conversation | roles=none | schemas=reportConversationRequestSchema.safeParse | spans=workspace.report_conversation.evaluation.get, workspace.report_conversation.respond | reply_codes=400, 404
 
 FILE: apps/api-server/src/services/case-evaluation.ts
-LINES: 396
+LINES: 472
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import type { FastifyBaseLogger } from 'fastify';
 - import { createAuditRecord } from '@metrev/audit';
 - import type { SessionActor } from '@metrev/auth';
-- import type { EvaluationRepository } from '@metrev/database';
-- import { evaluationResponseSchema, normalizeCaseInput, validateDecisionOutputContract, type DecisionOutputValidationIssue, type EvaluationResponse, type ExternalEvidenceCatalogItemDetail, type RawCaseInput, type RawEvidenceRecord, } from '@metrev/domain-contracts';
+- import type { EvaluationRepository, EvidenceAuditRepository, } from '@metrev/database';
+- import { evaluationResponseSchema, normalizeCaseInput, validateDecisionOutputContract, type DecisionOutputValidationIssue, type EvaluationResponse, type ExternalEvidenceCatalogItemDetail, type NormalizedCaseInput, type RawCaseInput, type RawEvidenceRecord, } from '@metrev/domain-contracts';
 - import { evaluateSimulationEnrichment } from '@metrev/electrochem-models';
 - import { generateNarrative } from '@metrev/llm-adapter';
 - import { runCaseEvaluation } from '@metrev/rule-engine';
@@ -6074,6 +8082,7 @@ LOCAL_DECLARATIONS:
 - catalogEvidenceIdPrefix : const = 'catalog:'
 - reviewedCatalogEvidenceNote : const = 'Reviewed and accepted into the external evidence catalog before intake selection.'
 - dedupeStrings : function — function dedupeStrings(values: string[]): string[]
+- applyEvidenceReadinessAdjustment : function — async function applyEvidenceReadinessAdjustment(input: { normalizedCase: NormalizedCaseInput; evidenceAuditRepository?: EvidenceAuditRepository; logger: RuntimeLogger; }): Promise<NormalizedCaseInput>
 - resolveCatalogSourceDocumentId : function — function resolveCatalogSourceDocumentId( item: ExternalEvidenceCatalogItemDetail, ): string | undefined
 - hasAcceptedClaimReview : function — function hasAcceptedClaimReview( claim: ExternalEvidenceCatalogItemDetail['claims'][number], ): boolean
 - collectReviewedClaimIds : function — function collectReviewedClaimIds( item: ExternalEvidenceCatalogItemDetail, ): string[]
@@ -6094,6 +8103,7 @@ CALLS_TO:
 - @metrev/llm-adapter:generateNarrative -> generateNarrative
 - @metrev/rule-engine:runCaseEvaluation -> runCaseEvaluation
 - @metrev/telemetry:withSpan -> withSpan
+- applyEvidenceReadinessAdjustment
 - collectReviewedClaimIds
 - collectReviewedClaimLocatorRefs
 - collectSourceArtifactIds
@@ -6121,7 +8131,7 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - Step 1: createPersistedCaseEvaluation -> const idempotencyKey = input.idempotencyKey?.trim();
 - Step 2: createPersistedCaseEvaluation -> if (idempotencyKey)
-- Step 3: createPersistedCaseEvaluation -> const evaluation = await withSpan( 'case.evaluate', async () => { const sanitizedRawInput = await sanitizeCatalogEvidenceSelections( input.rawInput, input.evaluationRepository, ); const normalizedCase = normalizeCaseI...
+- Step 3: createPersistedCaseEvaluation -> const evaluation = await withSpan( 'case.evaluate', async () => { const sanitizedRawInput = await sanitizeCatalogEvidenceSelections( input.rawInput, input.evaluationRepository, ); const normalizedCase = await applyEvi...
 - Step 4: createPersistedCaseEvaluation -> return withSpan( 'case.evaluation.persist', () => input.evaluationRepository.saveEvaluation(evaluation), { case_id: evaluation.case_id, evaluation_id: evaluation.evaluation_id, }, );
 INVARIANTS_ENFORCED:
 - throw new InvalidCatalogEvidenceSelectionError( record.evidence_id, 'Catalog evidence selections must include a catalog item id.', );
@@ -6133,15 +8143,16 @@ FASTIFY_ENDPOINTS:
 - none
 
 FILE: apps/api-server/src/services/evidence-decision-context-builder.ts
-LINES: 300
+LINES: 314
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import type { EvidenceBenchmarkSlice } from '@metrev/database';
-- import { evidenceDecisionContextSchema, type DerivedObservation, type EvidenceDecisionContext, type NormalizedCaseInput, } from '@metrev/domain-contracts';
+- import { evidenceDecisionContextSchema, loadEvidenceQualityAuditPolicy, type DerivedObservation, type EvidenceDecisionContext, type NormalizedCaseInput, type PrimaryObjective, primaryObjectiveSchema, } from '@metrev/domain-contracts';
 EXPORTS:
 - EvidenceDecisionContextBuilder : class — export class EvidenceDecisionContextBuilder
 LOCAL_DECLARATIONS:
 - dedupeStrings : function — function dedupeStrings(values: string[]): string[]
+- activePrimaryObjective : function — function activePrimaryObjective(value: string): PrimaryObjective
 - normalizeToken : function — function normalizeToken(value: string | null | undefined): string | null
 - hasDecisionReadyQuality : function — function hasDecisionReadyQuality(value: string | null | undefined): boolean
 - hasRequiredText : function — function hasRequiredText(value: string | null | undefined): boolean
@@ -6153,6 +8164,9 @@ SCHEMAS (Zod):
 - none
 CALLS_TO:
 - @metrev/domain-contracts:evidenceDecisionContextSchema -> evidenceDecisionContextSchema.shape.system_type.parse
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
+- @metrev/domain-contracts:primaryObjectiveSchema -> primaryObjectiveSchema.safeParse
+- activePrimaryObjective
 - dedupeStrings
 - evidenceAdmissionFailures
 - hasDecisionReadyQuality
@@ -6161,7 +8175,7 @@ CALLS_TO:
 - node:crypto:randomUUID -> randomUUID
 - normalizeToken
 SCHEMA_PARSERS:
-- none
+- primaryObjectiveSchema.safeParse
 ENVIRONMENT_READS:
 - none
 PRISMA_OPERATIONS:
@@ -6177,6 +8191,7 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
+- primaryObjectiveSchema.safeParse(value)
 - evidenceDecisionContextSchema.shape.system_type.parse( input.systemType, )
 ROUTE_PREFIX: /
 FASTIFY_ENDPOINTS:
@@ -6317,9 +8332,9 @@ WORKER_QUEUE_AND_HEALTH_FLOW:
 - none
 
 FILE: apps/research-worker/src/index.ts
-LINES: 113
+LINES: 131
 IMPORTS:
-- import { assertRuntimeDatabaseReady, createResearchRepository, type ResearchRepository, } from '@metrev/database';
+- import { assertRuntimeDatabaseReady, createEvidenceAuditRepository, createResearchRepository, type EvidenceAuditRepository, type ResearchRepository, } from '@metrev/database';
 - import { initializeTelemetry } from '@metrev/telemetry/node';
 - import { createWorkerHealthMonitor, startWorkerHealthServer, type StartedWorkerHealthServer, } from './health';
 - import { runResearchWorkerCycle, summarizeWorkerCycle } from './worker';
@@ -6338,6 +8353,7 @@ CALLS_TO:
 - ./worker:runResearchWorkerCycle -> runResearchWorkerCycle
 - ./worker:summarizeWorkerCycle -> summarizeWorkerCycle
 - @metrev/database:assertRuntimeDatabaseReady -> assertRuntimeDatabaseReady
+- @metrev/database:createEvidenceAuditRepository -> createEvidenceAuditRepository
 - @metrev/database:createResearchRepository -> createResearchRepository
 - @metrev/telemetry/node:initializeTelemetry -> initializeTelemetry
 - delay
@@ -6348,6 +8364,9 @@ SCHEMA_PARSERS:
 - none
 ENVIRONMENT_READS:
 - METREV_RESEARCH_WORKER_BACKFILL_LIMIT
+- METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT
+- METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN
+- METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT
 - METREV_RESEARCH_WORKER_EXTRACTION_LIMIT
 - METREV_RESEARCH_WORKER_HEALTH_HOST
 - METREV_RESEARCH_WORKER_HEALTH_PORT
@@ -6369,43 +8388,51 @@ INVARIANTS_ENFORCED:
 - none
 WORKER_ENVIRONMENT:
 - METREV_RESEARCH_WORKER_BACKFILL_LIMIT
+- METREV_RESEARCH_WORKER_EVIDENCE_ACQUISITION_LIMIT
+- METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_AUTO_RUN
+- METREV_RESEARCH_WORKER_EVIDENCE_DISCOVERY_LIMIT
 - METREV_RESEARCH_WORKER_EXTRACTION_LIMIT
 - METREV_RESEARCH_WORKER_HEALTH_HOST
 - METREV_RESEARCH_WORKER_HEALTH_PORT
 - METREV_RESEARCH_WORKER_ONCE
 - METREV_RESEARCH_WORKER_POLL_MS
 WORKER_QUEUE_AND_HEALTH_FLOW:
-- try { await initializeTelemetry('metrev-research-worker'); await assertRuntimeDatabaseReady(); repository = createResearchRepository(); if (healthPort > 0) { healthServer = await startWorkerHealthServer({ host: healthHost, monitor: healthMonitor, port: healthPort, }); } healthMonitor.markReady(); while (keepRunning)...
+- try { await initializeTelemetry('metrev-research-worker'); await assertRuntimeDatabaseReady(); repository = createResearchRepository(); evidenceAuditRepository = createEvidenceAuditRepository(); if (healthPort > 0) { healthServer = await startWorkerHealthServer({ host: healthHost, monitor: healthMonitor, port: healt...
 - if (healthPort > 0) { healthServer = await startWorkerHealthServer({ host: healthHost, monitor: healthMonitor, port: healthPort, }); }
-- while (keepRunning) { healthMonitor.markCycleStart(); const result = await runResearchWorkerCycle({ repository, extractionLimit, backfillLimit, }); healthMonitor.markCycleComplete(result); console.log(`[research-worker] ${summarizeWorkerCycle(result)}`); if (once) { keepRunning = false; continue; } if ( result.backf...
+- while (keepRunning) { healthMonitor.markCycleStart(); const result = await runResearchWorkerCycle({ repository, extractionLimit, backfillLimit, evidenceAcquisitionLimit, evidenceDiscoveryAutoRun, evidenceAuditRepository, evidenceDiscoveryLimit, }); healthMonitor.markCycleComplete(result); console.log(`[research-work...
 - if (once) { keepRunning = false; continue; }
 - if ( result.backfillsProcessed === 0 && result.extractionJobsProcessed === 0 ) { await delay(pollMs); }
 - if (healthServer) { await healthServer.close(); }
 - if (repository) { await repository.disconnect(); }
 
 FILE: apps/research-worker/src/worker.ts
-LINES: 182
+LINES: 252
 IMPORTS:
+- import { type EvidenceAuditRepository, type ResearchRepository, } from '@metrev/database';
 - import { researchExtractionResultSchema } from '@metrev/domain-contracts';
-- import { type ResearchRepository } from '@metrev/database';
+- import { processQueuedEvidenceDiscovery, runEvidenceDiscovery, } from '@metrev/evidence-discovery';
 - import { RESEARCH_RUNTIME_EXTRACTOR_VERSION, executeResearchExtraction, hydrateResearchPaperText, type HydratedResearchPaperText, } from '@metrev/research-intelligence';
 EXPORTS:
 - ResearchWorkerCycleResult : interface — export interface ResearchWorkerCycleResult
-- runResearchWorkerCycle : function — export async function runResearchWorkerCycle(input: { backfillLimit?: number; extractionLimit?: number; repository: ResearchRepository; }): Promise<ResearchWorkerCycleResult>
+- runResearchWorkerCycle : function — export async function runResearchWorkerCycle(input: { backfillLimit?: number; evidenceAcquisitionLimit?: number; evidenceAuditRepository?: EvidenceAuditRepository; evidenceDiscoveryAutoRun?: boolean; evidenceDiscoveryLimit?: number; extractionLimit?: number; repository: ResearchRepository; }): Promise<ResearchWorkerCycleResult>
 - summarizeWorkerCycle : function — export function summarizeWorkerCycle( result: ResearchWorkerCycleResult, ): string
 LOCAL_DECLARATIONS:
 - createPaperTextCache : function — function createPaperTextCache()
 - processBackfills : function — async function processBackfills( repository: ResearchRepository, limit: number, ): Promise<number>
 - saveFailureResult : function — async function saveFailureResult(input: { errorMessage: string; jobId: string; repository: ResearchRepository; workItem: Awaited< ReturnType<ResearchRepository['claimQueuedResearchExtractionJobs']> >[number]; })
 - processExtractions : function — async function processExtractions( repository: ResearchRepository, limit: number, ): Promise<{ failures: number; processed: number }>
+- processEvidenceDiscovery : function — async function processEvidenceDiscovery(input: { autoRunWithoutTargets: boolean; evidenceAuditRepository: EvidenceAuditRepository; maxAcquisitionAttempts: number; maxTargets: number; researchRepository: ResearchRepository; })
 SCHEMAS (Zod):
 - none
 CALLS_TO:
 - @metrev/domain-contracts:researchExtractionResultSchema -> researchExtractionResultSchema.parse
+- @metrev/evidence-discovery:processQueuedEvidenceDiscovery -> processQueuedEvidenceDiscovery
+- @metrev/evidence-discovery:runEvidenceDiscovery -> runEvidenceDiscovery
 - @metrev/research-intelligence:executeResearchExtraction -> executeResearchExtraction
 - @metrev/research-intelligence:hydrateResearchPaperText -> hydrateResearchPaperText
 - createPaperTextCache
 - processBackfills
+- processEvidenceDiscovery
 - processExtractions
 - saveFailureResult
 SCHEMA_PARSERS:
@@ -6431,7 +8458,8 @@ WORKER_ENVIRONMENT:
 WORKER_QUEUE_AND_HEALTH_FLOW:
 - backfillsProcessed = await processBackfills( input.repository, input.backfillLimit ?? 1, )
 - extractions = await processExtractions( input.repository, input.extractionLimit ?? 25, )
-- return { backfillsProcessed, extractionFailures: extractions.failures, extractionJobsProcessed: extractions.processed, };
+- evidenceDiscovery = input.evidenceAuditRepository ? await processEvidenceDiscovery({ autoRunWithoutTargets: input.evidenceDiscoveryAutoRun ?? false, evidenceAuditRepository: input.evidenceAuditRepository, maxAcquisitionAttempts: input.evidenceAcquisitionLimit ?? 25, maxTargets: input.evidenceDiscoveryLimit ?? 5, res...
+- return { backfillsProcessed, evidenceAcquisitionAttempts: evidenceDiscovery.acquisition_attempts, evidenceDiscoveryRecordsStaged: evidenceDiscovery.records_staged, evidenceDiscoveryTargetsCreated: evidenceDiscovery.targets_created, evidenceDiscoveryTargetsProcessed: evidenceDiscovery.targets_completed, extractionFai...
 
 ## apps/web-ui/src/**/*.{ts,tsx}
 
@@ -6512,6 +8540,49 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: /admin/intelligence/evidence/explorer
+UI_AUTH_GATES:
+- requireRoleSession:ANALYST
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/admin/intelligence/evidence/quality/page.tsx
+LINES: 25
+IMPORTS:
+- import * as React from 'react';
+- import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
+- import { EvidenceQualityWorkspace } from '@/components/evidence-quality/evidence-quality-workspace';
+- import { requireRoleSession } from '@/lib/require-session';
+EXPORTS:
+- AdminEvidenceQualityPage : function — export default async function AdminEvidenceQualityPage()
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/require-session:requireRoleSession -> requireRoleSession
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- requireRoleSession:ANALYST
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /admin/intelligence/evidence/quality
 UI_AUTH_GATES:
 - requireRoleSession:ANALYST
 API_CLIENT_FUNCTIONS:
@@ -6692,6 +8763,48 @@ CLIENT_QUERY_STATE:
 - none
 VISIBLE_SURFACE_MARKERS:
 - none
+
+FILE: apps/web-ui/src/app/admin/page.tsx
+LINES: 59
+IMPORTS:
+- import Link from 'next/link';
+- import { AnalystRoleRequiredPanel } from '@/components/analyst-role-required-panel';
+- import { requireRoleSession } from '@/lib/require-session';
+EXPORTS:
+- AdminWorkspacePage : function — export default async function AdminWorkspacePage()
+LOCAL_DECLARATIONS:
+- adminLinks : const = [ { href: '/admin/intelligence/evidence/explorer', label: 'Evidence Explorer', }, { href: '/admin/intelligence/evidence/quality', label: 'Evidence Quality',...
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/require-session:requireRoleSession -> requireRoleSession
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- requireRoleSession:ADMIN
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- heading:Intelligence controls
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /admin
+UI_AUTH_GATES:
+- requireRoleSession:ADMIN
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- heading:Intelligence controls
 
 FILE: apps/web-ui/src/app/api/auth/[...nextauth]/route.ts
 LINES: 4
@@ -6899,6 +9012,88 @@ CLIENT_QUERY_STATE:
 VISIBLE_SURFACE_MARKERS:
 - none
 
+FILE: apps/web-ui/src/app/evaluate/[id]/page.tsx
+LINES: 18
+IMPORTS:
+- import { EvaluationResultView } from '@/components/evaluation/evaluation-result-view';
+- import { requireAuthenticatedSession } from '@/lib/require-session';
+EXPORTS:
+- EvaluateResultPage : function — export default async function EvaluateResultPage({ params, }: { params: Promise<{ id: string }>; })
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/require-session:requireAuthenticatedSession -> requireAuthenticatedSession
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /evaluate/[id]
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/evaluate/page.tsx
+LINES: 13
+IMPORTS:
+- import { CaseForm } from '@/components/case-form';
+- import { requireAuthenticatedSession } from '@/lib/require-session';
+EXPORTS:
+- EvaluatePage : function — export default async function EvaluatePage()
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/require-session:requireAuthenticatedSession -> requireAuthenticatedSession
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /evaluate
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
 FILE: apps/web-ui/src/app/evaluations/[id]/compare/[baselineId]/page.tsx
 LINES: 21
 IMPORTS:
@@ -7054,6 +9249,173 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: /evaluations
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/evidence/page.tsx
+LINES: 22
+IMPORTS:
+- import { redirect } from 'next/navigation';
+- import { buildLegacyRouteRedirectTarget, type LegacyRouteSearchParams, } from '@/lib/legacy-route-redirect';
+EXPORTS:
+- EvidenceWorkspacePage : function — export default async function EvidenceWorkspacePage({ searchParams, }: EvidenceWorkspacePageProps)
+LOCAL_DECLARATIONS:
+- EvidenceWorkspacePageProps : type — type EvidenceWorkspacePageProps = { searchParams: Promise<LegacyRouteSearchParams>; };
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/legacy-route-redirect:buildLegacyRouteRedirectTarget -> buildLegacyRouteRedirectTarget
+- next/navigation:redirect -> redirect
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /evidence
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/evidence/quality/page.tsx
+LINES: 22
+IMPORTS:
+- import { redirect } from 'next/navigation';
+- import { buildLegacyRouteRedirectTarget, type LegacyRouteSearchParams, } from '@/lib/legacy-route-redirect';
+EXPORTS:
+- EvidenceQualityPage : function — export default async function EvidenceQualityPage({ searchParams, }: EvidenceQualityPageProps)
+LOCAL_DECLARATIONS:
+- EvidenceQualityPageProps : type — type EvidenceQualityPageProps = { searchParams: Promise<LegacyRouteSearchParams>; };
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/legacy-route-redirect:buildLegacyRouteRedirectTarget -> buildLegacyRouteRedirectTarget
+- next/navigation:redirect -> redirect
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /evidence/quality
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/evidence/review/page.tsx
+LINES: 22
+IMPORTS:
+- import { redirect } from 'next/navigation';
+- import { buildLegacyRouteRedirectTarget, type LegacyRouteSearchParams, } from '@/lib/legacy-route-redirect';
+EXPORTS:
+- EvidenceReviewPage : function — export default async function EvidenceReviewPage({ searchParams, }: EvidenceReviewPageProps)
+LOCAL_DECLARATIONS:
+- EvidenceReviewPageProps : type — type EvidenceReviewPageProps = { searchParams: Promise<LegacyRouteSearchParams>; };
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/legacy-route-redirect:buildLegacyRouteRedirectTarget -> buildLegacyRouteRedirectTarget
+- next/navigation:redirect -> redirect
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /evidence/review
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/app/home/page.tsx
+LINES: 13
+IMPORTS:
+- import { DashboardWorkspace } from '@/components/dashboard/dashboard-workspace';
+- import { requireAuthenticatedSession } from '@/lib/require-session';
+EXPORTS:
+- HomeWorkspacePage : function — export default async function HomeWorkspacePage()
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/require-session:requireAuthenticatedSession -> requireAuthenticatedSession
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /home
 UI_AUTH_GATES:
 - none
 API_CLIENT_FUNCTIONS:
@@ -7256,11 +9618,11 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/app/providers.tsx
-LINES: 25
+LINES: 27
 IMPORTS:
 - import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 - import { NuqsAdapter } from 'nuqs/adapters/next/app';
-- import { useState } from 'react';
+- import * as React from 'react';
 EXPORTS:
 - Providers : function — export function Providers({ children }: { children: React.ReactNode })
 LOCAL_DECLARATIONS:
@@ -7268,7 +9630,7 @@ LOCAL_DECLARATIONS:
 SCHEMAS (Zod):
 - none
 CALLS_TO:
-- react:useState -> useState
+- react:* -> React.useState
 SCHEMA_PARSERS:
 - none
 ENVIRONMENT_READS:
@@ -7338,6 +9700,48 @@ CLIENT_QUERY_STATE:
 VISIBLE_SURFACE_MARKERS:
 - none
 
+FILE: apps/web-ui/src/app/research/page.tsx
+LINES: 22
+IMPORTS:
+- import { redirect } from 'next/navigation';
+- import { buildLegacyRouteRedirectTarget, type LegacyRouteSearchParams, } from '@/lib/legacy-route-redirect';
+EXPORTS:
+- ResearchWorkspacePage : function — export default async function ResearchWorkspacePage({ searchParams, }: ResearchWorkspacePageProps)
+LOCAL_DECLARATIONS:
+- ResearchWorkspacePageProps : type — type ResearchWorkspacePageProps = { searchParams: Promise<LegacyRouteSearchParams>; };
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/legacy-route-redirect:buildLegacyRouteRedirectTarget -> buildLegacyRouteRedirectTarget
+- next/navigation:redirect -> redirect
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: /research
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
 FILE: apps/web-ui/src/auth.ts
 LINES: 48
 IMPORTS:
@@ -7389,7 +9793,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/accepted-evidence-selector.tsx
-LINES: 250
+LINES: 249
 IMPORTS:
 - import { useQuery } from '@tanstack/react-query';
 - import Link from 'next/link';
@@ -7603,7 +10007,7 @@ VISIBLE_SURFACE_MARKERS:
 - aria-label:Sign out
 
 FILE: apps/web-ui/src/components/case-form.tsx
-LINES: 1056
+LINES: 1066
 IMPORTS:
 - import { useRouter, useSearchParams } from 'next/navigation';
 - import * as React from 'react';
@@ -7622,7 +10026,7 @@ IMPORTS:
 - import { fetchResearchEvidencePackDecisionInput } from '@/lib/api';
 - import { clearPendingSubmission, clearSubmissionError, loadDraftInput, loadSubmissionError, saveDraftInput, savePendingSubmission, } from '@/lib/case-draft';
 - import { caseFormSteps, caseFormStepValues, getCaseFormStepIndex, useCaseFormStep, type CaseFormStep, } from '@/lib/case-form-query-state';
-- import { buildCaseInputFromFormValues, caseIntakePresets, defaultCaseIntakeFormValues, findCaseIntakePreset, getCaseIntakeParameterMode, hydrateCaseIntakeFormValues, type CaseIntakeFormValues, type CaseIntakeParameterFieldId, type CaseIntakeParameterMode, } from '@/lib/case-intake';
+- import { buildCaseInputFromFormValues, caseIntakePresets, defaultCaseIntakeFormValues, findCaseIntakePreset, getCaseIntakeParameterMode, hydrateCaseIntakeFormValues, validateAdvancedInputJson, type CaseIntakeFormValues, type CaseIntakeParameterFieldId, type CaseIntakeParameterMode, } from '@/lib/case-intake';
 - import { formatToken } from '@/lib/formatting';
 EXPORTS:
 - CaseForm : function — export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role })
@@ -7654,6 +10058,7 @@ CALLS_TO:
 - @/lib/case-intake:findCaseIntakePreset -> findCaseIntakePreset
 - @/lib/case-intake:getCaseIntakeParameterMode -> getCaseIntakeParameterMode
 - @/lib/case-intake:hydrateCaseIntakeFormValues -> hydrateCaseIntakeFormValues
+- @/lib/case-intake:validateAdvancedInputJson -> validateAdvancedInputJson
 - @/lib/formatting:formatToken -> formatToken
 - countCommaSeparated
 - formatAutosaveTimestamp
@@ -7710,37 +10115,38 @@ LOGIC_FLOW:
 - Step 28: CaseForm -> function parameterNeedsExplicitValue( field: CaseIntakeParameterFieldId, value: string | undefined, ): boolean { return ( getCaseIntakeParameterMode(formValues, field) === 'client' && !value?.trim() ); }
 - Step 29: CaseForm -> const numericFieldErrors = { conductivity: getCaseIntakeParameterMode(formValues, 'conductivity') === 'client' ? getNumberFieldError( formValues.conductivity, numberFieldLabels.conductivity, ) : null, hydraulicRetenti...
 - Step 30: CaseForm -> const hasNumericErrors = Object.values(numericFieldErrors).some(Boolean);
-- Step 31: CaseForm -> const contextIssues = [ ...stepIssue( !formValues.currentTrl.trim(), 'Current TRL is required before continuing.', ), ...stepIssue( !formValues.decisionHorizon.trim(), 'Decision horizon is required before continuing.'...
-- Step 32: CaseForm -> const reactorIssues = [ ...stepIssue( !formValues.architectureFamily.trim() && !(formValues.reactorArchitectureType ?? '').trim(), 'Reactor architecture is required before continuing.', ), ];
-- Step 33: CaseForm -> const operationIssues = [ ...stepIssue( countCommaSeparated(formValues.painPoints) === 0, 'Add at least one current pain point before continuing.', ), ...stepIssue( parameterNeedsExplicitValue('influentType', formValu...
-- Step 34: CaseForm -> const reviewIssues = [...contextIssues, ...reactorIssues, ...operationIssues];
-- Step 35: CaseForm -> const stepIssues: Record<CaseFormStep, string[]> = { 'context-objective': contextIssues, 'reactor-architecture': reactorIssues, 'anode-biofilm': [], 'cathode-catalyst': [], 'electrical-interconnect': [], 'membrane-sep...
-- Step 36: CaseForm -> const inputStepValues = caseFormStepValues.filter( (step): step is Exclude<CaseFormStep, 'review-submit'> => step !== 'review-submit', );
-- Step 37: CaseForm -> const currentStepIndex = Math.max(getCaseFormStepIndex(currentStep), 0);
-- Step 38: CaseForm -> const completedSteps = caseFormStepValues.filter( (step, index) => index < currentStepIndex && stepIssues[step].length === 0, );
-- Step 39: CaseForm -> const currentStepMeta = caseFormSteps.find((step) => step.value === currentStep) ?? caseFormSteps[0];
-- Step 40: CaseForm -> const autosaveLabel = formatAutosaveTimestamp(lastSavedAt);
-- Step 41: CaseForm -> const summaryItems = [ { detail: formValues.architectureFamily || formValues.reactorArchitectureType || 'Architecture still open.', key: 'scenario', label: 'Scenario', tone: 'accent' as const, value: `${formatToken(fo...
-- Step 42: CaseForm -> const contextValidationErrors = { currentTrl: showStepValidation['context-objective'] && !formValues.currentTrl.trim() ? 'Current TRL is required.' : undefined, decisionHorizon: showStepValidation['context-objective']...
-- Step 43: CaseForm -> const operationValidationErrors = { influentType: showStepValidation['operating-envelope'] && parameterNeedsExplicitValue('influentType', formValues.influentType) ? 'Influent type is required.' : undefined, painPoints...
-- Step 44: CaseForm -> const stackSummary = [ { key: 'reactor', label: 'Reactor', value: formValues.architectureFamily.trim() ? formValues.architectureFamily : resolveParameterSnapshot( 'reactorArchitectureType', formValues.reactorArchitect...
-- Step 45: CaseForm -> const cockpitWarnings = [ ...stepIssue( !formValues.architectureFamily.trim() && parameterNeedsExplicitValue( 'reactorArchitectureType', formValues.reactorArchitectureType, ), 'Reactor architecture is still unspecifie...
-- Step 46: CaseForm -> const openInputIssueCount = inputStepValues.filter( (step) => stepIssues[step].length > 0, ).length;
-- Step 47: CaseForm -> const readinessWarnings = [ ...new Set([ ...inputStepValues.flatMap((step) => stepIssues[step]), ...cockpitWarnings, ]), ].slice(0, 4);
-- Step 48: CaseForm -> const readinessTone = openInputIssueCount > 0 ? 'warning' : 'success';
-- Step 49: CaseForm -> const readinessLabel = openInputIssueCount > 0 ? `${openInputIssueCount} required blocker(s)` : 'Ready for final review';
-- Step 50: CaseForm -> function updateField<Field extends keyof CaseIntakeFormValues>( field: Field, value: CaseIntakeFormValues[Field], ) { setStepError(null); setFormValues((current) => ({ ...current, [field]: value, })); }
-- Step 51: CaseForm -> function handleStringFieldChange( field: keyof CaseIntakeFormValues, value: string, ) { updateField( field as keyof CaseIntakeFormValues, value as CaseIntakeFormValues[keyof CaseIntakeFormValues], ); }
-- Step 52: CaseForm -> function handleParameterModeChange( field: CaseIntakeParameterFieldId, mode: CaseIntakeParameterMode, ) { setStepError(null); setFormValues((current) => ({ ...current, parameterModes: { ...(current.parameterModes ?? {...
-- Step 53: CaseForm -> function applyPreset(presetId: string) { const preset = findCaseIntakePreset(presetId); if (!preset) { return; } setFormValues( hydrateCaseIntakeFormValues(preset.formValues, preset.payload), ); setActivePresetId(pres...
-- Step 54: CaseForm -> function resetForm() { setFormValues(defaultCaseIntakeFormValues); setActivePresetId(null); setSelectedCatalogEvidence([]); setCurrentStep('context-objective'); setDraftWasRestored(false); setSubmissionError(null); se...
-- Step 55: CaseForm -> function ensureStepIsValid(step: CaseFormStep): boolean { const issues = stepIssues[step]; if (issues.length === 0) { return true; } setShowStepValidation((current) => ({ ...current, [step]: true, })); setStepError(is...
-- Step 56: CaseForm -> function handleStepperStepChange(nextStep: CaseFormStep) { setStepError(null); setCurrentStep(nextStep); }
-- Step 57: CaseForm -> function handlePreviousStep() { const previousStep = caseFormStepValues[currentStepIndex - 1]; if (!previousStep) { return; } setStepError(null); setCurrentStep(previousStep); }
-- Step 58: CaseForm -> function handleNextStep() { if (!ensureStepIsValid(currentStep)) { return; } const nextStep = caseFormStepValues[currentStepIndex + 1]; if (!nextStep) { return; } setStepError(null); setCurrentStep(nextStep); }
-- Step 59: CaseForm -> function handleSubmit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); for (const step of caseFormStepValues) { if (!ensureStepIsValid(step)) { setCurrentStep(step); setSubmissionError(stepIssues[ste...
-- Step 60: CaseForm -> function renderCurrentStep() { switch (currentStep) { case 'context-objective': return ( <CaseFormContextStep currentTrlError={contextValidationErrors.currentTrl} decisionHorizonError={contextValidationErrors.decision...
-- Step 61: CaseForm -> return ( <form className="workspace-page" onSubmit={handleSubmit}> <WorkspacePageHeader badge="Stack configurator" chips={[ autosaveLabel, `${currentStepIndex + 1} of ${caseFormStepValues.length} steps`, ]} descriptio...
+- Step 31: CaseForm -> const advancedInputErrors = validateAdvancedInputJson(formValues);
+- Step 32: CaseForm -> const contextIssues = [ ...stepIssue( !formValues.currentTrl.trim(), 'Current TRL is required before continuing.', ), ...stepIssue( !formValues.decisionHorizon.trim(), 'Decision horizon is required before continuing.'...
+- Step 33: CaseForm -> const reactorIssues = [ ...stepIssue( !formValues.architectureFamily.trim() && !(formValues.reactorArchitectureType ?? '').trim(), 'Reactor architecture is required before continuing.', ), ];
+- Step 34: CaseForm -> const operationIssues = [ ...stepIssue( countCommaSeparated(formValues.painPoints) === 0, 'Add at least one current pain point before continuing.', ), ...stepIssue( parameterNeedsExplicitValue('influentType', formValu...
+- Step 35: CaseForm -> const reviewIssues = [ ...contextIssues, ...reactorIssues, ...operationIssues, ...Object.values(advancedInputErrors).map( (message) => `Fix the scientific JSON input: ${message}`, ), ];
+- Step 36: CaseForm -> const stepIssues: Record<CaseFormStep, string[]> = { 'context-objective': contextIssues, 'reactor-architecture': reactorIssues, 'anode-biofilm': [], 'cathode-catalyst': [], 'electrical-interconnect': [], 'membrane-sep...
+- Step 37: CaseForm -> const inputStepValues = caseFormStepValues.filter( (step): step is Exclude<CaseFormStep, 'review-submit'> => step !== 'review-submit', );
+- Step 38: CaseForm -> const currentStepIndex = Math.max(getCaseFormStepIndex(currentStep), 0);
+- Step 39: CaseForm -> const completedSteps = caseFormStepValues.filter( (step, index) => index < currentStepIndex && stepIssues[step].length === 0, );
+- Step 40: CaseForm -> const currentStepMeta = caseFormSteps.find((step) => step.value === currentStep) ?? caseFormSteps[0];
+- Step 41: CaseForm -> const autosaveLabel = formatAutosaveTimestamp(lastSavedAt);
+- Step 42: CaseForm -> const summaryItems = [ { detail: formValues.architectureFamily || formValues.reactorArchitectureType || 'Architecture still open.', key: 'scenario', label: 'Scenario', tone: 'accent' as const, value: `${formatToken(fo...
+- Step 43: CaseForm -> const contextValidationErrors = { currentTrl: showStepValidation['context-objective'] && !formValues.currentTrl.trim() ? 'Current TRL is required.' : undefined, decisionHorizon: showStepValidation['context-objective']...
+- Step 44: CaseForm -> const operationValidationErrors = { influentType: showStepValidation['operating-envelope'] && parameterNeedsExplicitValue('influentType', formValues.influentType) ? 'Influent type is required.' : undefined, painPoints...
+- Step 45: CaseForm -> const stackSummary = [ { key: 'reactor', label: 'Reactor', value: formValues.architectureFamily.trim() ? formValues.architectureFamily : resolveParameterSnapshot( 'reactorArchitectureType', formValues.reactorArchitect...
+- Step 46: CaseForm -> const cockpitWarnings = [ ...stepIssue( !formValues.architectureFamily.trim() && parameterNeedsExplicitValue( 'reactorArchitectureType', formValues.reactorArchitectureType, ), 'Reactor architecture is still unspecifie...
+- Step 47: CaseForm -> const openInputIssueCount = inputStepValues.filter( (step) => stepIssues[step].length > 0, ).length;
+- Step 48: CaseForm -> const readinessWarnings = [ ...new Set([ ...inputStepValues.flatMap((step) => stepIssues[step]), ...cockpitWarnings, ]), ].slice(0, 4);
+- Step 49: CaseForm -> const readinessTone = openInputIssueCount > 0 ? 'warning' : 'success';
+- Step 50: CaseForm -> const readinessLabel = openInputIssueCount > 0 ? `${openInputIssueCount} required blocker(s)` : 'Ready for final review';
+- Step 51: CaseForm -> function updateField<Field extends keyof CaseIntakeFormValues>( field: Field, value: CaseIntakeFormValues[Field], ) { setStepError(null); setFormValues((current) => ({ ...current, [field]: value, })); }
+- Step 52: CaseForm -> function handleStringFieldChange( field: keyof CaseIntakeFormValues, value: string, ) { updateField( field as keyof CaseIntakeFormValues, value as CaseIntakeFormValues[keyof CaseIntakeFormValues], ); }
+- Step 53: CaseForm -> function handleParameterModeChange( field: CaseIntakeParameterFieldId, mode: CaseIntakeParameterMode, ) { setStepError(null); setFormValues((current) => ({ ...current, parameterModes: { ...(current.parameterModes ?? {...
+- Step 54: CaseForm -> function applyPreset(presetId: string) { const preset = findCaseIntakePreset(presetId); if (!preset) { return; } setFormValues( hydrateCaseIntakeFormValues(preset.formValues, preset.payload), ); setActivePresetId(pres...
+- Step 55: CaseForm -> function resetForm() { setFormValues(defaultCaseIntakeFormValues); setActivePresetId(null); setSelectedCatalogEvidence([]); setCurrentStep('context-objective'); setDraftWasRestored(false); setSubmissionError(null); se...
+- Step 56: CaseForm -> function ensureStepIsValid(step: CaseFormStep): boolean { const issues = stepIssues[step]; if (issues.length === 0) { return true; } setShowStepValidation((current) => ({ ...current, [step]: true, })); setStepError(is...
+- Step 57: CaseForm -> function handleStepperStepChange(nextStep: CaseFormStep) { setStepError(null); setCurrentStep(nextStep); }
+- Step 58: CaseForm -> function handlePreviousStep() { const previousStep = caseFormStepValues[currentStepIndex - 1]; if (!previousStep) { return; } setStepError(null); setCurrentStep(previousStep); }
+- Step 59: CaseForm -> function handleNextStep() { if (!ensureStepIsValid(currentStep)) { return; } const nextStep = caseFormStepValues[currentStepIndex + 1]; if (!nextStep) { return; } setStepError(null); setCurrentStep(nextStep); }
+- Step 60: CaseForm -> function handleSubmit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); for (const step of caseFormStepValues) { if (!ensureStepIsValid(step)) { setCurrentStep(step); setSubmissionError(stepIssues[ste...
+- Step 61: CaseForm -> function renderCurrentStep() { switch (currentStep) { case 'context-objective': return ( <CaseFormContextStep currentTrlError={contextValidationErrors.currentTrl} decisionHorizonError={contextValidationErrors.decision...
+- Step 62: CaseForm -> return ( <form className="workspace-page" onSubmit={handleSubmit}> <WorkspacePageHeader badge="Stack configurator" chips={[ autosaveLabel, `${currentStepIndex + 1} of ${caseFormStepValues.length} steps`, ]} descriptio...
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: not-a-page-route
@@ -7756,7 +10162,7 @@ VISIBLE_SURFACE_MARKERS:
 - heading:Readiness signals
 
 FILE: apps/web-ui/src/components/case-form/case-form-context-step.tsx
-LINES: 123
+LINES: 115
 IMPORTS:
 - import * as React from 'react';
 - import type { CaseIntakeFormValues } from '@/lib/case-intake';
@@ -7769,7 +10175,7 @@ EXPORTS:
 - CaseFormContextStep : function — export function CaseFormContextStep({ currentTrlError, decisionHorizonError, deploymentContextError, formValues, onFieldChange, }: CaseFormContextStepProps)
 LOCAL_DECLARATIONS:
 - technologyFamilyOptions : const = [ { label: 'Microbial fuel cell', value: 'microbial_fuel_cell' }, { label: 'Microbial electrolysis cell', value: 'microbial_electrolysis_cell', }, { label: '...
-- primaryObjectiveOptions : const = [ { label: 'Wastewater treatment', value: 'wastewater_treatment' }, { label: 'Hydrogen recovery', value: 'hydrogen_recovery' }, { label: 'Nitrogen recovery',...
+- primaryObjectiveOptions : const = [ { label: 'Wastewater treatment', value: 'wastewater_treatment' }, { label: 'Biosensing', value: 'biosensing' }, ] as const
 - currentTrlSuggestions : const = ['lab', 'bench', 'pilot', 'field']
 SCHEMAS (Zod):
 - none
@@ -7949,17 +10355,17 @@ VISIBLE_SURFACE_MARKERS:
 - heading:Validated presets
 
 FILE: apps/web-ui/src/components/case-form/case-form-review-submit-step.tsx
-LINES: 242
+LINES: 301
 IMPORTS:
 - import * as React from 'react';
 - import type { ExternalEvidenceCatalogItemSummary, ResearchDecisionIngestionPreview, } from '@metrev/domain-contracts';
-- import type { CaseIntakeFormValues, CaseIntakePreset } from '@/lib/case-intake';
+- import type { AdvancedInputJsonField, CaseIntakeFormValues, CaseIntakePreset, } from '@/lib/case-intake';
 - import { Textarea } from '@/components/ui/textarea';
 - import { WorkspaceDataCard } from '@/components/workspace-chrome';
 - import { formatToken } from '@/lib/formatting';
 EXPORTS:
 - CaseFormReviewSubmitStepProps : interface — export interface CaseFormReviewSubmitStepProps
-- CaseFormReviewSubmitStep : function — export function CaseFormReviewSubmitStep({ activePreset, evidenceCount, formValues, onFieldChange, preferredSupplierCount, researchDecisionInput, researchPackError, researchPackId, researchPackLoading, selectedCatalogEvidence, stackSummary, warningMessages, }: CaseFormReviewSubmitStepProps)
+- CaseFormReviewSubmitStep : function — export function CaseFormReviewSubmitStep({ advancedInputErrors, activePreset, evidenceCount, formValues, onFieldChange, preferredSupplierCount, researchDecisionInput, researchPackError, researchPackId, researchPackLoading, selectedCatalogEvidence, stackSummary, warningMessages, }: CaseFormReviewSubmitStepProps)
 LOCAL_DECLARATIONS:
 - splitCommaSeparated : function — function splitCommaSeparated(value: string): string[]
 - renderSummaryChips : function — function renderSummaryChips(values: string[], emptyMessage: string)
@@ -7994,6 +10400,7 @@ JSX_SURFACE_MARKERS:
 - heading:Research pack attachment
 - heading:Review the deterministic handoff
 - heading:Stack summary
+- heading:Wastewater, reactor, and biosensor parameters
 LOGIC_FLOW:
 - Step 1: CaseFormReviewSubmitStep -> const painPoints = splitCommaSeparated(formValues.painPoints);
 - Step 2: CaseFormReviewSubmitStep -> const preferredSuppliers = splitCommaSeparated(formValues.preferredSuppliers);
@@ -8022,6 +10429,7 @@ VISIBLE_SURFACE_MARKERS:
 - heading:Research pack attachment
 - heading:Review the deterministic handoff
 - heading:Stack summary
+- heading:Wastewater, reactor, and biosensor parameters
 
 FILE: apps/web-ui/src/components/case-form/case-form-stack-detail-step.tsx
 LINES: 508
@@ -9559,7 +11967,7 @@ LOGIC_FLOW:
 - Step 17: EvaluationsListView -> const list = query.data;
 - Step 18: EvaluationsListView -> if (!list)
 - Step 19: EvaluationsListView -> return ( <EvaluationsWorkspaceView confidenceFilter={confidenceFilter} items={list.items} onConfidenceFilterChange={handleConfidenceFilterChange} onNextPage={handleNextPage} onPageSizeChange={handlePageSizeChange} onP...
-- Step 20: EvaluationsWorkspaceView -> const headerActions = ( <> <Link className="button secondary" href="/dashboard"> Dashboard </Link> <Link className="button" href="/cases/new"> Configure stack </Link> </> );
+- Step 20: EvaluationsWorkspaceView -> const headerActions = ( <> <Link className="button secondary" href="/home"> Home </Link> <Link className="button" href="/cases/new"> Configure stack </Link> </> );
 - Step 21: EvaluationsWorkspaceView -> const summaryCards = [ { detail: 'Rows currently visible on the returned page for the active filter state.', label: 'Visible rows', tone: 'accent' as const, value: summary.returned, }, { detail: 'Records matching the...
 - Step 22: EvaluationsWorkspaceView -> if (summary.total === 0)
 - Step 23: EvaluationsWorkspaceView -> return ( <div className="workspace-page"> <WorkspacePageHeader actions={headerActions} badge="Evaluations" chips={[`${summary.filtered_total} filtered`, `${summary.total} total`]} description="All saved evaluations re...
@@ -9808,7 +12216,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/evidence-explorer/evidence-explorer-toolbar.tsx
-LINES: 273
+LINES: 272
 IMPORTS:
 - import * as React from 'react';
 - import type { ExternalEvidenceSourceTypeFilter } from '@/lib/api';
@@ -9826,7 +12234,7 @@ LOCAL_DECLARATIONS:
 - explorerFilters : const = [ { id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' }, { id: 'accepted', label: 'Accepted' }, { id: 'rejected', label: 'Rejected' }, ] as const...
 - sourceFilters : const = [ { label: 'All sources', value: 'all' }, { label: 'OpenAlex', value: 'openalex' }, { label: 'Crossref', value: 'crossref' }, { label: 'Europe PMC', value: '...
 - pageSizeOptions : const = [ { label: '25 rows', value: '25' }, { label: '50 rows', value: '50' }, { label: '100 rows', value: '100' }, ]
-- systemTypeOptions : const = [ { label: 'All system types', value: 'all' }, { label: 'MFC', value: 'MFC' }, { label: 'MEC', value: 'MEC' }, { label: 'MET', value: 'MET' }, { label: 'BES'...
+- systemTypeOptions : const = [ { label: 'All system types', value: 'all' }, { label: 'MFC', value: 'MFC' }, { label: 'MEC', value: 'MEC' }, { label: 'Electrochemical biosensor', value: '...
 - componentTypeOptions : const = [ { label: 'All components', value: 'all' }, { label: 'Anode', value: 'anode' }, { label: 'Cathode', value: 'cathode' }, { label: 'Membrane/separator', value...
 - metricTypeOptions : const = [ { label: 'All metrics', value: 'all' }, { label: 'Current density', value: 'current_density' }, { label: 'Power density', value: 'power_density' }, { label...
 SCHEMAS (Zod):
@@ -9903,6 +12311,77 @@ CLIENT_QUERY_STATE:
 - none
 VISIBLE_SURFACE_MARKERS:
 - none
+
+FILE: apps/web-ui/src/components/evidence-quality/evidence-quality-workspace.tsx
+LINES: 358
+IMPORTS:
+- import { CoverageHeatmap, FunnelChart, InstrumentPanel as Panel, SignalBadge, StatusBar, } from '@metrev/design-system';
+- import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+- import * as React from 'react';
+- import { Button } from '@/components/ui/button';
+- import { fetchAcquisitionStatus, fetchDiscoveryStatus, fetchEvidenceQualityReport, runEvidenceDiscovery, triggerEvidenceQualityAudit, } from '@/lib/api';
+- import { formatToken } from '@/lib/formatting';
+EXPORTS:
+- EvidenceQualityWorkspace : function — export function EvidenceQualityWorkspace()
+LOCAL_DECLARATIONS:
+- qualityTone : function — function qualityTone(level: string): 'healthy' | 'warning' | 'critical'
+- actionTone : function — function actionTone(action: string): 'healthy' | 'warning' | 'critical'
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @/lib/api:runEvidenceDiscovery -> runEvidenceDiscovery
+- @/lib/api:triggerEvidenceQualityAudit -> triggerEvidenceQualityAudit
+- @/lib/formatting:formatToken -> formatToken
+- @tanstack/react-query:useMutation -> useMutation
+- @tanstack/react-query:useQuery -> useQuery
+- @tanstack/react-query:useQueryClient -> useQueryClient
+- actionTone
+- qualityTone
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- useMutation
+- useQuery
+- useQueryClient
+JSX_SURFACE_MARKERS:
+- heading:Quality audit
+LOGIC_FLOW:
+- Step 1: EvidenceQualityWorkspace -> const queryClient = useQueryClient();
+- Step 2: EvidenceQualityWorkspace -> const reportQuery = useQuery({ queryKey: ['evidence-quality-report'], queryFn: fetchEvidenceQualityReport, retry: false, });
+- Step 3: EvidenceQualityWorkspace -> const discoveryStatusQuery = useQuery({ queryKey: ['evidence-discovery-status'], queryFn: fetchDiscoveryStatus, });
+- Step 4: EvidenceQualityWorkspace -> const acquisitionStatusQuery = useQuery({ queryKey: ['evidence-acquisition-status'], queryFn: fetchAcquisitionStatus, });
+- Step 5: EvidenceQualityWorkspace -> const auditMutation = useMutation({ mutationFn: () => triggerEvidenceQualityAudit(), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['evidence-quality-report'], }); void queryClient.invalidateQuerie...
+- Step 6: EvidenceQualityWorkspace -> const discoveryMutation = useMutation({ mutationFn: () => runEvidenceDiscovery(), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['evidence-discovery-status'], }); void queryClient.invalidateQueries...
+- Step 7: EvidenceQualityWorkspace -> const report = reportQuery.data?.report ?? null;
+- Step 8: EvidenceQualityWorkspace -> const discoveryStatus = discoveryStatusQuery.data;
+- Step 9: EvidenceQualityWorkspace -> const acquisitionStatus = acquisitionStatusQuery.data;
+- Step 10: EvidenceQualityWorkspace -> const readinessLevel = report?.readiness_scores.some( (score) => score.readiness_level === 'insufficient', ) ? 'insufficient' : report?.readiness_scores.some( (score) => score.readiness_level === 'partial', ) ? 'parti...
+- Step 11: EvidenceQualityWorkspace -> const criticalGaps = report?.gaps.filter((gap) => gap.severity === 'critical') ?? [];
+- Step 12: EvidenceQualityWorkspace -> const topGaps = report?.gaps.slice(0, 8) ?? [];
+- Step 13: EvidenceQualityWorkspace -> const topOutliers = report?.outliers.slice(0, 6) ?? [];
+- Step 14: EvidenceQualityWorkspace -> const acceptedRecordReadiness = report?.accepted_record_readiness ?? [];
+- Step 15: EvidenceQualityWorkspace -> return ( <section className="evidence-quality-workspace"> <div className="workspace-hero workspace-hero--instrument"> <div> <span className="workspace-kicker">Evidence intelligence</span> <h1>Quality audit</h1> <p> Co...
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: not-a-page-route
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- useMutation
+- useQuery
+- useQueryClient
+VISIBLE_SURFACE_MARKERS:
+- heading:Quality audit
 
 FILE: apps/web-ui/src/components/evidence-review/evidence-review-bulk-action-dialog.tsx
 LINES: 85
@@ -10001,7 +12480,7 @@ VISIBLE_SURFACE_MARKERS:
 - heading:Succeeded IDs
 
 FILE: apps/web-ui/src/components/evidence-review/evidence-review-table.tsx
-LINES: 194
+LINES: 220
 IMPORTS:
 - import Link from 'next/link';
 - import * as React from 'react';
@@ -10040,7 +12519,7 @@ JSX_SURFACE_MARKERS:
 - none
 LOGIC_FLOW:
 - Step 1: EvidenceReviewTable -> if (items.length === 0)
-- Step 2: EvidenceReviewTable -> return ( <div className="evidence-review-table-shell"> {items.map((item) => { const isSelected = selectedIds.includes(item.id); const isSpotlight = highlightIds.includes(item.id); return ( <article aria-selected={isSe...
+- Step 2: EvidenceReviewTable -> return ( <div className="evidence-review-table-shell"> {items.map((item) => { const isSelected = selectedIds.includes(item.id); const isSpotlight = highlightIds.includes(item.id); const extractedClaimCount = Math.max(...
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: not-a-page-route
@@ -10147,7 +12626,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/external-evidence-detail.tsx
-LINES: 634
+LINES: 836
 IMPORTS:
 - import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 - import Link from 'next/link';
@@ -10170,6 +12649,9 @@ EXPORTS:
 - ExternalEvidenceDetailView : function — export function ExternalEvidenceDetailView({ activeTab, canReview, defaultTab = 'overview', item, mutationError, mutationPending, onReviewAction, onReviewNoteChange, onTabChange, reviewNote, }: { activeTab?: ExternalEvidenceDetailTab; canReview: boolean; defaultTab?: ExternalEvidenceDetailTab; item: ExternalEvidenceCatalogItemDetail; mutationError: string | null; mutationPending: boolean; onReviewAction: (action: ExternalEvidenceReviewAction) => void; onReviewNoteChange: (nextValue: string) => void; onTabChange?: (nextTab: ExternalEvidenceDetailTab) => void; reviewNote: string; })
 LOCAL_DECLARATIONS:
 - toStructuredClaimRows : function — function toStructuredClaimRows( item: ExternalEvidenceCatalogItemDetail, ): unknown[]
+- formatStructuredValue : function — function formatStructuredValue( value: number | string | null | undefined, unit?: string | null, )
+- toScientificFactRows : function — function toScientificFactRows( item: ExternalEvidenceCatalogItemDetail, ): unknown[]
+- toBenchmarkRows : function — function toBenchmarkRows(item: ExternalEvidenceCatalogItemDetail): unknown[]
 - buildReviewPayload : function — function buildReviewPayload( action: ExternalEvidenceReviewAction, note: string, )
 - reviewStatusTone : function — function reviewStatusTone( value: ExternalEvidenceCatalogItemDetail['review_status'], )
 SCHEMAS (Zod):
@@ -10184,8 +12666,11 @@ CALLS_TO:
 - @tanstack/react-query:useQuery -> useQuery
 - @tanstack/react-query:useQueryClient -> useQueryClient
 - buildReviewPayload
+- formatStructuredValue
 - react:* -> React.useState
 - reviewStatusTone
+- toBenchmarkRows
+- toScientificFactRows
 - toStructuredClaimRows
 SCHEMA_PARSERS:
 - none
@@ -10203,8 +12688,11 @@ TANSTACK_QUERY_HOOKS:
 - useQueryClient
 JSX_SURFACE_MARKERS:
 - heading:Abstract
+- heading:Benchmark rows
+- heading:Canonical scientific facts
 - heading:Metadata quality and veracity
 - heading:Provenance note
+- heading:Source-text coverage
 LOGIC_FLOW:
 - Step 1: ExternalEvidenceDetail -> const queryClient = useQueryClient();
 - Step 2: ExternalEvidenceDetail -> const [activeTab, setActiveTab] = useExternalEvidenceDetailTab();
@@ -10219,11 +12707,17 @@ LOGIC_FLOW:
 - Step 11: ExternalEvidenceDetailView -> const metadataFields = [ { detail: 'Declared evidence class', label: 'Evidence type', value: formatToken(item.evidence_type), }, { detail: 'Review processing state', label: 'Source state', value: formatToken(item.sour...
 - Step 12: ExternalEvidenceDetailView -> const applicabilityEntryCount = Object.keys( item.applicability_scope ?? {}, ).length;
 - Step 13: ExternalEvidenceDetailView -> const structuredClaims = toStructuredClaimRows(item);
-- Step 14: ExternalEvidenceDetailView -> const sourceDocument = item.source_document;
-- Step 15: ExternalEvidenceDetailView -> const resolvedActiveTab = activeTab ?? defaultTab;
-- Step 16: ExternalEvidenceDetailView -> const tabs = [ { label: 'Overview', value: 'overview' }, { badge: structuredClaims.length, label: 'Claims', value: 'claims' }, { badge: sourceDocument ? 1 + item.supplier_documents.length + item.source_artifacts.lengt...
-- Step 17: ExternalEvidenceDetailView -> const summaryItems = [ { detail: `${formatToken(item.source_state)} source state`, key: 'review-status', label: 'Review status', tone: reviewStatusTone(item.review_status), value: formatToken(item.review_status), }, {...
-- Step 18: ExternalEvidenceDetailView -> return ( <div className="workspace-page"> <WorkspacePageHeader actions={ <> <Button asChild size="sm" variant="outline"> <Link href="/admin/intelligence/evidence/explorer"> Open explorer </Link> </Button> <Button asCh...
+- Step 14: ExternalEvidenceDetailView -> const scientificFactRows = toScientificFactRows(item);
+- Step 15: ExternalEvidenceDetailView -> const benchmarkRows = toBenchmarkRows(item);
+- Step 16: ExternalEvidenceDetailView -> const extractedRowCount = structuredClaims.length + scientificFactRows.length + benchmarkRows.length;
+- Step 17: ExternalEvidenceDetailView -> const sourceDocument = item.source_document;
+- Step 18: ExternalEvidenceDetailView -> const sourceTextStatus = item.source_text_status;
+- Step 19: ExternalEvidenceDetailView -> const sourceArtifactCount = sourceTextStatus?.source_artifact_count ?? item.source_artifact_count ?? item.source_artifacts.length;
+- Step 20: ExternalEvidenceDetailView -> const sourceTextChunkCount = sourceTextStatus?.source_text_chunk_count ?? item.source_text_chunk_count ?? 0;
+- Step 21: ExternalEvidenceDetailView -> const resolvedActiveTab = activeTab ?? defaultTab;
+- Step 22: ExternalEvidenceDetailView -> const tabs = [ { label: 'Overview', value: 'overview' }, { badge: extractedRowCount, label: 'Claims', value: 'claims' }, { badge: sourceDocument ? 1 + item.supplier_documents.length + item.source_artifacts.length : it...
+- Step 23: ExternalEvidenceDetailView -> const summaryItems = [ { detail: `${formatToken(item.source_state)} source state`, key: 'review-status', label: 'Review status', tone: reviewStatusTone(item.review_status), value: formatToken(item.review_status), }, {...
+- Step 24: ExternalEvidenceDetailView -> return ( <div className="workspace-page"> <WorkspacePageHeader actions={ <> <Button asChild size="sm" variant="outline"> <Link href="/admin/intelligence/evidence/explorer"> Open explorer </Link> </Button> <Button asCh...
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: not-a-page-route
@@ -10237,8 +12731,11 @@ CLIENT_QUERY_STATE:
 - useQueryClient
 VISIBLE_SURFACE_MARKERS:
 - heading:Abstract
+- heading:Benchmark rows
+- heading:Canonical scientific facts
 - heading:Metadata quality and veracity
 - heading:Provenance note
+- heading:Source-text coverage
 
 FILE: apps/web-ui/src/components/external-evidence-explorer.tsx
 LINES: 800
@@ -10576,8 +13073,9 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/primary-nav.tsx
-LINES: 215
+LINES: 246
 IMPORTS:
+- import * as React from 'react';
 - import Link from 'next/link';
 - import { usePathname } from 'next/navigation';
 - import { Tooltip } from '@/components/ui/tooltip';
@@ -10767,7 +13265,7 @@ TANSTACK_QUERY_HOOKS:
 JSX_SURFACE_MARKERS:
 - data-testid:public-overview-hub
 - heading:Linear Public Infographic
-- heading:METREV BIOELETROCHEMICAL DECISION SUPPORT
+- heading:METREV MFC/MEC + BIOSENSOR DECISION SUPPORT
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
@@ -10782,10 +13280,10 @@ CLIENT_QUERY_STATE:
 VISIBLE_SURFACE_MARKERS:
 - data-testid:public-overview-hub
 - heading:Linear Public Infographic
-- heading:METREV BIOELETROCHEMICAL DECISION SUPPORT
+- heading:METREV MFC/MEC + BIOSENSOR DECISION SUPPORT
 
 FILE: apps/web-ui/src/components/public-topic-content.ts
-LINES: 1132
+LINES: 1137
 IMPORTS:
 - none
 EXPORTS:
@@ -10802,7 +13300,7 @@ EXPORTS:
 - PublicTopicHighlight : interface — export interface PublicTopicHighlight
 - PublicTopicConfig : interface — export interface PublicTopicConfig
 - getPublicTopicHref : function — export function getPublicTopicHref(slug: PublicTopicSlug): string
-- PUBLIC_TOPIC_PAGES : const — const PUBLIC_TOPIC_PAGES = [ { slug: 'problem', navLabel: 'Problem', accentTone: 'teal', routeMarker: 'Pressure map', cardTitle: 'Map the real BES pressure before choosing a stack.', cardSummary: 'Keep influent chemistry, conductivity, pH, temperature, solids exposure, hydraulic regi...
+- PUBLIC_TOPIC_PAGES : const — const PUBLIC_TOPIC_PAGES = [ { slug: 'problem', navLabel: 'Problem', accentTone: 'teal', routeMarker: 'Pressure map', cardTitle: 'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.', cardSummary: 'Keep influent chemistry, conductivity, pH, temperature, solid...
 - PUBLIC_TOPIC_PAGE_BY_SLUG : const — const PUBLIC_TOPIC_PAGE_BY_SLUG = Object.fromEntries( PUBLIC_TOPIC_PAGES.map((topic) => [topic.slug, topic]), ) as Record<PublicTopicSlug, PublicTopicConfig>
 - PUBLIC_TOPIC_SLUGS : const — const PUBLIC_TOPIC_SLUGS = PUBLIC_TOPIC_PAGES.map((topic) => topic.slug)
 - getPublicTopicConfig : function — export function getPublicTopicConfig(topic: string): PublicTopicConfig | null
@@ -11112,7 +13610,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/research/research-review-detail.tsx
-LINES: 1805
+LINES: 1938
 IMPORTS:
 - import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 - import Link from 'next/link';
@@ -11146,8 +13644,12 @@ LOCAL_DECLARATIONS:
 - sanitizeVisibleText : function — function sanitizeVisibleText(value: unknown)
 - truncateVisibleText : function — function truncateVisibleText(value: string, maxLength: number)
 - normalizeChipItems : function — function normalizeChipItems(items: string[])
-- renderChipList : function — function renderChipList( items: string[], emptyLabel = 'Not reported', options?: { limit?: number; }, )
+- renderChipList : function — function renderChipList( items: string[], emptyLabel = 'Unavailable', options?: { limit?: number; }, )
 - QuietState : function — function QuietState({ label }: { label: string })
+- ResearchCellProvenanceChip : function — function ResearchCellProvenanceChip({ result, }: { result?: ResearchExtractionResult; })
+- paperHasLinkedFullText : function — function paperHasLinkedFullText(paper: ResearchPaperMetadata)
+- paperHasReadableSourceText : function — function paperHasReadableSourceText(paper: ResearchPaperMetadata)
+- emptyResearchCellLabel : function — function emptyResearchCellLabel(input: { column: ResearchColumnDefinition; paper: ResearchPaperMetadata; result?: ResearchExtractionResult; })
 - metricLabel : function — function metricLabel(metric: unknown): string | null
 - summarizeOperatingConditions : function — function summarizeOperatingConditions(answer: Record<string, unknown>)
 - summarizeComponentParameters : function — function summarizeComponentParameters( answer: Record<string, unknown>, kinds?: string[], )
@@ -11159,9 +13661,10 @@ LOCAL_DECLARATIONS:
 - renderPaperCell : function — function renderPaperCell( paper: ResearchPaperMetadata, options?: { compact?: boolean; }, )
 - resultMap : function — function resultMap(review: ResearchReviewDetail)
 - summarizeStructuredResult : function — function summarizeStructuredResult(answer: Record<string, unknown>)
-- renderResultFallback : function — function renderResultFallback( answer: Record<string, unknown>, compact: boolean, )
+- renderResultFallback : function — function renderResultFallback( answer: Record<string, unknown>, compact: boolean, emptyLabel: string, )
 - resultTraceCount : function — function resultTraceCount(result: ResearchExtractionResult | undefined)
-- renderCell : function — function renderCell( column: ResearchColumnDefinition, result: ResearchExtractionResult | undefined, options?: { compact?: boolean; }, )
+- renderCell : function — function renderCell( column: ResearchColumnDefinition, result: ResearchExtractionResult | undefined, paper: ResearchPaperMetadata, options?: { compact?: boolean; }, )
+- renderCellBody : function — function renderCellBody( column: ResearchColumnDefinition, result: ResearchExtractionResult | undefined, paper: ResearchPaperMetadata, options?: { compact?: boolean; }, )
 - formatPreviewValue : function — function formatPreviewValue(value: unknown)
 - metricCandidateEntries : function — function metricCandidateEntries( decisionInput: ResearchDecisionIngestionPreview, )
 - visibleColumns : function — function visibleColumns(review: ResearchReviewDetail)
@@ -11189,6 +13692,7 @@ CALLS_TO:
 - asRecord
 - collectStringList
 - decodeHtmlEntities
+- emptyResearchCellLabel
 - formatNumber
 - formatPreviewValue
 - formatResearchFieldLabel
@@ -11198,6 +13702,8 @@ CALLS_TO:
 - metricLabel
 - normalizeChipItems
 - paperCompletionSummary
+- paperHasLinkedFullText
+- paperHasReadableSourceText
 - paperMetaChips
 - paperStatusFilterValue
 - react:* -> React.useEffect
@@ -11206,6 +13712,7 @@ CALLS_TO:
 - readNumber
 - readString
 - renderCell
+- renderCellBody
 - renderChipList
 - renderPaperCell
 - renderResultFallback
@@ -11274,21 +13781,21 @@ VISIBLE_SURFACE_MARKERS:
 - aria-label:Research review column groups
 
 FILE: apps/web-ui/src/components/research/research-review-list.tsx
-LINES: 852
+LINES: 581
 IMPORTS:
 - import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 - import Link from 'next/link';
 - import { useRouter } from 'next/navigation';
 - import * as React from 'react';
-- import type { ResearchBackfillSummary, ResearchPaperMetadata, ResearchPaperSearchFailure, ResearchPaperSearchResult, ResearchReviewSummary, ResearchWarehouseProgressResponse, SourceArtifact, } from '@metrev/domain-contracts';
+- import type { ResearchPaperMetadata, ResearchPaperSearchFailure, ResearchPaperSearchResult, ResearchReviewSummary, SourceArtifact, } from '@metrev/domain-contracts';
 - import { TabsContent } from '@/components/ui/tabs';
 - import { WorkspaceDataCard, WorkspaceEmptyState, WorkspacePageHeader, WorkspaceSection, WorkspaceSkeleton, } from '@/components/workspace-chrome';
 - import { SummaryRail } from '@/components/workspace/summary-rail';
 - import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
-- import { createResearchReview, fetchResearchBackfills, fetchResearchReviews, fetchResearchWarehouseProgress, importLocalSources, queueResearchBackfill, queueResearchBackfillPreset, searchResearchPapers, stageResearchPapers, } from '@/lib/api';
+- import { createResearchReview, fetchResearchReviews, importLocalSources, searchResearchPapers, stageResearchPapers, } from '@/lib/api';
 - import { formatTimestamp, formatToken } from '@/lib/formatting';
 EXPORTS:
-- ResearchReviewListView : function — export function ResearchReviewListView({ activeTab = 'create', backfillError, backfillMaxPages, backfillPending, backfills, presetBackfillPending, presetBackfillError, createError, createDisabled, createPending, importError, importPending, importedPapers, limit, localPdfArtifacts, localPdfImportError, localPdfImportPending, localPdfPaths, onBackfillMaxPagesChange, onCreate, onImportSelected, onImportLocalPdfs, onLimitChange, onLocalPdfPathsChange, onQueueBackfill, onQueuePresetBackfill, onRunSearch, onSearchQueryChange, onTabChange, onToggleSearchResult, onTitleChange, searchFailures, searchPending, searchResults, selectedSearchResultKeys, reviews, searchQuery, title, warehouseProgress, }: { activeTab?: ResearchReviewListTab; backfillError?: Error | null; backfillMaxPages: number; backfillPending: boolean; backfills: ResearchBackfillSummary[]; presetBackfillPending: boolean; presetBackfillError?: Error | null; createError?: Error | null; createDisabled?: boolean; createPending: boolean; importError?: Error | null; importPending: boolean; importedPapers: ResearchPaperMetadata[]; limit: number; localPdfArtifacts: SourceArtifact[]; localPdfImportError?: Error | null; localPdfImportPending: boolean; localPdfPaths: string; onBackfillMaxPagesChange: (pages: number) => void; onCreate: () => void; onImportSelected: () => void; onImportLocalPdfs: () => void; onLimitChange: (limit: number) => void; onLocalPdfPathsChange: (paths: string) => void; onQueueBackfill: () => void; onQueuePresetBackfill: () => void; onRunSearch: () => void; onSearchQueryChange: (query: string) => void; onTabChange?: (nextTab: ResearchReviewListTab) => void; onToggleSearchResult: (resultKey: string) => void; onTitleChange: (title: string) => void; searchFailures: ResearchPaperSearchFailure[]; searchPending: boolean; searchResults: ResearchPaperSearchResult[]; selectedSearchResultKeys: string[]; reviews: ResearchReviewSummary[]; searchQuery: string; title: string; warehouseProgress?: ResearchWarehouseProgressResponse | null; })
+- ResearchReviewListView : function — export function ResearchReviewListView({ activeTab = 'create', createError, createDisabled, createPending, importError, importPending, importedPapers, limit, localPdfArtifacts, localPdfImportError, localPdfImportPending, localPdfPaths, onCreate, onImportSelected, onImportLocalPdfs, onLimitChange, onLocalPdfPathsChange, onRunSearch, onSearchQueryChange, onTabChange, onToggleSearchResult, onTitleChange, searchFailures, searchPending, searchResults, selectedSearchResultKeys, reviews, searchQuery, title, }: { activeTab?: ResearchReviewListTab; createError?: Error | null; createDisabled?: boolean; createPending: boolean; importError?: Error | null; importPending: boolean; importedPapers: ResearchPaperMetadata[]; limit: number; localPdfArtifacts: SourceArtifact[]; localPdfImportError?: Error | null; localPdfImportPending: boolean; localPdfPaths: string; onCreate: () => void; onImportSelected: () => void; onImportLocalPdfs: () => void; onLimitChange: (limit: number) => void; onLocalPdfPathsChange: (paths: string) => void; onRunSearch: () => void; onSearchQueryChange: (query: string) => void; onTabChange?: (nextTab: ResearchReviewListTab) => void; onToggleSearchResult: (resultKey: string) => void; onTitleChange: (title: string) => void; searchFailures: ResearchPaperSearchFailure[]; searchPending: boolean; searchResults: ResearchPaperSearchResult[]; selectedSearchResultKeys: string[]; reviews: ResearchReviewSummary[]; searchQuery: string; title: string; })
 - ResearchReviewListWorkspace : function — export function ResearchReviewListWorkspace()
 LOCAL_DECLARATIONS:
 - ResearchReviewListTab : type — type ResearchReviewListTab = 'create' | 'reviews';
@@ -11298,8 +13805,6 @@ SCHEMAS (Zod):
 CALLS_TO:
 - @/lib/api:createResearchReview -> createResearchReview
 - @/lib/api:importLocalSources -> importLocalSources
-- @/lib/api:queueResearchBackfill -> queueResearchBackfill
-- @/lib/api:queueResearchBackfillPreset -> queueResearchBackfillPreset
 - @/lib/api:searchResearchPapers -> searchResearchPapers
 - @/lib/api:stageResearchPapers -> stageResearchPapers
 - @/lib/formatting:formatTimestamp -> formatTimestamp
@@ -11327,38 +13832,30 @@ TANSTACK_QUERY_HOOKS:
 JSX_SURFACE_MARKERS:
 - heading:External paper search
 - heading:Local PDF import
-- heading:MFC/MEC warehouse expansion
-- heading:Warehouse backfill
 LOGIC_FLOW:
 - Step 1: ResearchReviewListView -> const summaryItems = [ { detail: 'Structured review tables currently stored in this workspace.', key: 'reviews', label: 'Review tables', tone: 'accent' as const, value: reviews.length, }, { detail: 'Papers attached ac...
 - Step 2: ResearchReviewListView -> return ( <div className="workspace-page"> <WorkspacePageHeader badge="Research tables" chips={[`${reviews.length} reviews`]} description="Create structured literature review tables from the local evidence warehouse an...
 - Step 3: ResearchReviewListWorkspace -> const router = useRouter();
 - Step 4: ResearchReviewListWorkspace -> const queryClient = useQueryClient();
 - Step 5: ResearchReviewListWorkspace -> const [activeTab, setActiveTab] = React.useState<ResearchReviewListTab>('create');
-- Step 6: ResearchReviewListWorkspace -> const [backfillMaxPages, setBackfillMaxPages] = React.useState(3);
-- Step 7: ResearchReviewListWorkspace -> const [title, setTitle] = React.useState('');
-- Step 8: ResearchReviewListWorkspace -> const [searchQuery, setSearchQuery] = React.useState( 'microbial fuel cell wastewater carbon felt', );
-- Step 9: ResearchReviewListWorkspace -> const [limit, setLimit] = React.useState(25);
-- Step 10: ResearchReviewListWorkspace -> const [searchResults, setSearchResults] = React.useState< ResearchPaperSearchResult[] >([]);
-- Step 11: ResearchReviewListWorkspace -> const [searchFailures, setSearchFailures] = React.useState< ResearchPaperSearchFailure[] >([]);
-- Step 12: ResearchReviewListWorkspace -> const [selectedSearchResultKeys, setSelectedSearchResultKeys] = React.useState<string[]>([]);
-- Step 13: ResearchReviewListWorkspace -> const [importedPapers, setImportedPapers] = React.useState< ResearchPaperMetadata[] >([]);
-- Step 14: ResearchReviewListWorkspace -> const [localPdfPaths, setLocalPdfPaths] = React.useState('');
-- Step 15: ResearchReviewListWorkspace -> const [localPdfArtifacts, setLocalPdfArtifacts] = React.useState< SourceArtifact[] >([]);
-- Step 16: ResearchReviewListWorkspace -> const query = useQuery({ queryKey: ['research-reviews'], queryFn: fetchResearchReviews, });
-- Step 17: ResearchReviewListWorkspace -> const backfillsQuery = useQuery({ queryKey: ['research-backfills'], queryFn: fetchResearchBackfills, });
-- Step 18: ResearchReviewListWorkspace -> const warehouseProgressQuery = useQuery({ queryKey: ['research-warehouse-progress'], queryFn: fetchResearchWarehouseProgress, });
-- Step 19: ResearchReviewListWorkspace -> const searchMutation = useMutation({ mutationFn: () => searchResearchPapers({ query: searchQuery, limit: Math.min(limit, 15), page: 1, }), onSuccess: (response) => { setSearchResults(response.items); setSearchFailures...
-- Step 20: ResearchReviewListWorkspace -> const importMutation = useMutation({ mutationFn: () => stageResearchPapers({ query: searchQuery, items: searchResults.filter((result) => selectedSearchResultKeys.includes(searchResultKey(result)), ), }), onSuccess: (r...
-- Step 21: ResearchReviewListWorkspace -> const localPdfImportMutation = useMutation({ mutationFn: () => importLocalSources({ files: localPdfPaths .split(/[\n,|]/) .map((entry) => entry.trim()) .filter(Boolean), access_status: 'unknown', review_status: 'pendi...
-- Step 22: ResearchReviewListWorkspace -> const createMutation = useMutation({ mutationFn: () => createResearchReview({ title: title.trim() || undefined, query: searchQuery, limit, source_document_ids: importedPapers.length > 0 ? importedPapers.map((paper) =>...
-- Step 23: ResearchReviewListWorkspace -> const backfillMutation = useMutation({ mutationFn: () => queueResearchBackfill({ query: searchQuery, per_provider_limit: Math.min(limit, 1000), max_pages: backfillMaxPages, target_records: Math.max(Math.min(limit, 100...
-- Step 24: ResearchReviewListWorkspace -> const presetBackfillMutation = useMutation({ mutationFn: () => queueResearchBackfillPreset({ preset_id: 'mfc_mec_30000', target_records: 30000, }), onSuccess: async () => { await Promise.all([ queryClient.invalidateQu...
-- Step 25: ResearchReviewListWorkspace -> if (query.isLoading)
-- Step 26: ResearchReviewListWorkspace -> if (query.error)
-- Step 27: ResearchReviewListWorkspace -> const reviews = query.data?.items ?? [];
-- Step 28: ResearchReviewListWorkspace -> const backfills = backfillsQuery.data?.items ?? [];
-- Step 29: ResearchReviewListWorkspace -> return ( <ResearchReviewListView activeTab={activeTab} backfillError={ backfillsQuery.error instanceof Error ? backfillsQuery.error : backfillMutation.error instanceof Error ? backfillMutation.error : null } backfillM...
+- Step 6: ResearchReviewListWorkspace -> const [title, setTitle] = React.useState('');
+- Step 7: ResearchReviewListWorkspace -> const [searchQuery, setSearchQuery] = React.useState( 'microbial fuel cell wastewater carbon felt', );
+- Step 8: ResearchReviewListWorkspace -> const [limit, setLimit] = React.useState(25);
+- Step 9: ResearchReviewListWorkspace -> const [searchResults, setSearchResults] = React.useState< ResearchPaperSearchResult[] >([]);
+- Step 10: ResearchReviewListWorkspace -> const [searchFailures, setSearchFailures] = React.useState< ResearchPaperSearchFailure[] >([]);
+- Step 11: ResearchReviewListWorkspace -> const [selectedSearchResultKeys, setSelectedSearchResultKeys] = React.useState<string[]>([]);
+- Step 12: ResearchReviewListWorkspace -> const [importedPapers, setImportedPapers] = React.useState< ResearchPaperMetadata[] >([]);
+- Step 13: ResearchReviewListWorkspace -> const [localPdfPaths, setLocalPdfPaths] = React.useState('');
+- Step 14: ResearchReviewListWorkspace -> const [localPdfArtifacts, setLocalPdfArtifacts] = React.useState< SourceArtifact[] >([]);
+- Step 15: ResearchReviewListWorkspace -> const query = useQuery({ queryKey: ['research-reviews'], queryFn: fetchResearchReviews, });
+- Step 16: ResearchReviewListWorkspace -> const searchMutation = useMutation({ mutationFn: () => searchResearchPapers({ query: searchQuery, limit: Math.min(limit, 15), page: 1, }), onSuccess: (response) => { setSearchResults(response.items); setSearchFailures...
+- Step 17: ResearchReviewListWorkspace -> const importMutation = useMutation({ mutationFn: () => stageResearchPapers({ query: searchQuery, items: searchResults.filter((result) => selectedSearchResultKeys.includes(searchResultKey(result)), ), }), onSuccess: (r...
+- Step 18: ResearchReviewListWorkspace -> const localPdfImportMutation = useMutation({ mutationFn: () => importLocalSources({ files: localPdfPaths .split(/[\n,|]/) .map((entry) => entry.trim()) .filter(Boolean), access_status: 'unknown', review_status: 'pendi...
+- Step 19: ResearchReviewListWorkspace -> const createMutation = useMutation({ mutationFn: () => createResearchReview({ title: title.trim() || undefined, query: searchQuery, limit, source_document_ids: importedPapers.length > 0 ? importedPapers.map((paper) =>...
+- Step 20: ResearchReviewListWorkspace -> if (query.isLoading)
+- Step 21: ResearchReviewListWorkspace -> if (query.error)
+- Step 22: ResearchReviewListWorkspace -> const reviews = query.data?.items ?? [];
+- Step 23: ResearchReviewListWorkspace -> return ( <ResearchReviewListView activeTab={activeTab} createError={createMutation.error} createDisabled={ createMutation.isPending || searchQuery.trim().length < 3 || (selectedSearchResultKeys.length > 0 && importedP...
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: not-a-page-route
@@ -11373,8 +13870,6 @@ CLIENT_QUERY_STATE:
 VISIBLE_SURFACE_MARKERS:
 - heading:External paper search
 - heading:Local PDF import
-- heading:MFC/MEC warehouse expansion
-- heading:Warehouse backfill
 
 FILE: apps/web-ui/src/components/ui/badge.tsx
 LINES: 62
@@ -11703,7 +14198,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/components/ui/dense-table.tsx
-LINES: 89
+LINES: 90
 IMPORTS:
 - import * as React from 'react';
 EXPORTS:
@@ -12621,10 +15116,10 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/lib/api.ts
-LINES: 1006
+LINES: 1026
 IMPORTS:
-- import type { AddResearchColumnRequest, CaseHistoryWorkspaceResponse, CreateResearchEvidencePackRequest, CreateResearchReviewRequest, DashboardWorkspaceResponse, EvaluationComparisonResponse, EvaluationListResponse, EvaluationResponse, EvaluationWorkspaceResponse, EvidenceExplorerAssistantResponse, EvidenceExplorerWorkspaceResponse, EvidenceReviewWorkspaceResponse, ExportCsvResponseMetadata, ExternalEvidenceBulkReviewRequest, ExternalEvidenceBulkReviewResponse, ExternalEvidenceCatalogItemDetail, ExternalEvidenceCatalogListResponse, ExternalEvidenceReviewRequest, ExternalEvidenceReviewStatus, LocalSourceImportRequest, LocalSourceImportResponse, PrintableEvaluationReportResponse, QueueResearchBackfillPresetRequest, QueueResearchBackfillPresetResponse, QueueResearchBackfillRequest, RawCaseInput, ReportConversationRequest, ReportConversationResponse, ResearchBackfillListResponse, ResearchDecisionIngestionPreview, ResearchEvidencePack, ResearchReviewDetail, ResearchReviewListResponse, ResearchWarehouseEligibilityRequest, ResearchWarehouseEligibilityResponse, ResearchWarehouseProgressResponse, RunResearchExtractionsRequest, RunResearchExtractionsResponse, SearchResearchPapersRequest, SearchResearchPapersResponse, SourceArtifact, StageResearchPapersRequest, StageResearchPapersResponse, } from '@metrev/domain-contracts/browser';
-- import { addResearchColumnRequestSchema, caseHistoryWorkspaceResponseSchema, createResearchEvidencePackRequestSchema, createResearchReviewRequestSchema, dashboardWorkspaceResponseSchema, evaluationComparisonResponseSchema, evaluationListResponseSchema, evaluationResponseSchema, evaluationWorkspaceResponseSchema, evidenceExplorerAssistantResponseSchema, evidenceExplorerWorkspaceResponseSchema, evidenceReviewWorkspaceResponseSchema, externalEvidenceBulkReviewRequestSchema, externalEvidenceBulkReviewResponseSchema, externalEvidenceCatalogDetailSchema, externalEvidenceCatalogListResponseSchema, externalEvidenceReviewRequestSchema, localSourceImportRequestSchema, localSourceImportResponseSchema, printableEvaluationReportResponseSchema, queueResearchBackfillPresetRequestSchema, queueResearchBackfillPresetResponseSchema, queueResearchBackfillRequestSchema, rawCaseInputSchema, reportConversationRequestSchema, reportConversationResponseSchema, researchBackfillListResponseSchema, researchDecisionIngestionPreviewSchema, researchEvidencePackSchema, researchReviewDetailSchema, researchReviewListResponseSchema, researchWarehouseEligibilityRequestSchema, researchWarehouseEligibilityResponseSchema, researchWarehouseProgressResponseSchema, runResearchExtractionsRequestSchema, runResearchExtractionsResponseSchema, searchResearchPapersRequestSchema, searchResearchPapersResponseSchema, sourceArtifactSchema, stageResearchPapersRequestSchema, stageResearchPapersResponseSchema, } from '@metrev/domain-contracts/browser';
+- import type { AcquisitionStatusResponse, AddResearchColumnRequest, CaseHistoryWorkspaceResponse, CreateResearchEvidencePackRequest, CreateResearchReviewRequest, DashboardWorkspaceResponse, DiscoveryStatusResponse, EvaluationComparisonResponse, EvaluationListResponse, EvaluationResponse, EvaluationWorkspaceResponse, EvidenceExplorerAssistantResponse, EvidenceExplorerWorkspaceResponse, EvidenceQualityAuditRequest, EvidenceQualityAuditResponse, EvidenceReviewWorkspaceResponse, ExportCsvResponseMetadata, ExternalEvidenceBulkReviewRequest, ExternalEvidenceBulkReviewResponse, ExternalEvidenceCatalogItemDetail, ExternalEvidenceCatalogListResponse, ExternalEvidenceReviewRequest, ExternalEvidenceReviewStatus, LocalSourceImportRequest, LocalSourceImportResponse, PrintableEvaluationReportResponse, RawCaseInput, ReportConversationRequest, ReportConversationResponse, ResearchDecisionIngestionPreview, ResearchEvidencePack, ResearchReviewDetail, ResearchReviewListResponse, ResearchWarehouseEligibilityRequest, ResearchWarehouseEligibilityResponse, RunResearchExtractionsRequest, RunResearchExtractionsResponse, SearchResearchPapersRequest, SearchResearchPapersResponse, SourceArtifact, StageResearchPapersRequest, StageResearchPapersResponse, } from '@metrev/domain-contracts/browser';
+- import { acquisitionStatusResponseSchema, addResearchColumnRequestSchema, caseHistoryWorkspaceResponseSchema, createResearchEvidencePackRequestSchema, createResearchReviewRequestSchema, dashboardWorkspaceResponseSchema, discoveryStatusResponseSchema, evaluationComparisonResponseSchema, evaluationListResponseSchema, evaluationResponseSchema, evaluationWorkspaceResponseSchema, evidenceExplorerAssistantResponseSchema, evidenceExplorerWorkspaceResponseSchema, evidenceQualityAuditRequestSchema, evidenceQualityAuditResponseSchema, evidenceReviewWorkspaceResponseSchema, externalEvidenceBulkReviewRequestSchema, externalEvidenceBulkReviewResponseSchema, externalEvidenceCatalogDetailSchema, externalEvidenceCatalogListResponseSchema, externalEvidenceReviewRequestSchema, localSourceImportRequestSchema, localSourceImportResponseSchema, printableEvaluationReportResponseSchema, rawCaseInputSchema, reportConversationRequestSchema, reportConversationResponseSchema, researchDecisionIngestionPreviewSchema, researchEvidencePackSchema, researchReviewDetailSchema, researchReviewListResponseSchema, researchWarehouseEligibilityRequestSchema, researchWarehouseEligibilityResponseSchema, runResearchExtractionsRequestSchema, runResearchExtractionsResponseSchema, searchResearchPapersRequestSchema, searchResearchPapersResponseSchema, sourceArtifactSchema, stageResearchPapersRequestSchema, stageResearchPapersResponseSchema, } from '@metrev/domain-contracts/browser';
 EXPORTS:
 - ExternalEvidenceSourceTypeFilter : type — export type ExternalEvidenceSourceTypeFilter = | 'openalex' | 'crossref' | 'europe_pmc' | 'supplier_profile' | 'market_snapshot' | 'curated_manifest' | 'manual';
 - ExternalEvidenceTechnicalFilters : interface — export interface ExternalEvidenceTechnicalFilters
@@ -12635,6 +15130,11 @@ EXPORTS:
 - evaluateCase : function — export async function evaluateCase( payload: RawCaseInput, options?: { idempotencyKey?: string; }, ): Promise<EvaluationResponse>
 - fetchEvaluation : function — export async function fetchEvaluation(id: string): Promise<EvaluationResponse>
 - fetchDashboardWorkspace : function — export async function fetchDashboardWorkspace(): Promise<DashboardWorkspaceResponse>
+- fetchEvidenceQualityReport : function — export async function fetchEvidenceQualityReport(): Promise<EvidenceQualityAuditResponse>
+- triggerEvidenceQualityAudit : function — export async function triggerEvidenceQualityAudit( payload: EvidenceQualityAuditRequest = { trigger_mode: 'manual', include_golden_cases: true, }, ): Promise<EvidenceQualityAuditResponse>
+- runEvidenceDiscovery : function — export async function runEvidenceDiscovery(): Promise<unknown>
+- fetchDiscoveryStatus : function — export async function fetchDiscoveryStatus(): Promise<DiscoveryStatusResponse>
+- fetchAcquisitionStatus : function — export async function fetchAcquisitionStatus(): Promise<AcquisitionStatusResponse>
 - fetchEvaluationWorkspace : function — export async function fetchEvaluationWorkspace( id: string, ): Promise<EvaluationWorkspaceResponse>
 - fetchEvaluationList : function — export async function fetchEvaluationList(input?: { confidence?: EvaluationListConfidenceFilter; query?: string; sortKey?: EvaluationListSortKey; sortDirection?: EvaluationListSortDirection; page?: number; pageSize?: number; }): Promise<EvaluationListResponse>
 - fetchCaseHistoryWorkspace : function — export async function fetchCaseHistoryWorkspace( caseId: string, ): Promise<CaseHistoryWorkspaceResponse>
@@ -12657,12 +15157,8 @@ EXPORTS:
 - importLocalSources : function — export async function importLocalSources( payload: LocalSourceImportRequest, ): Promise<LocalSourceImportResponse>
 - fetchSourceArtifact : function — export async function fetchSourceArtifact( sourceDocumentId: string, ): Promise<SourceArtifact>
 - createResearchReview : function — export async function createResearchReview( payload: CreateResearchReviewRequest, ): Promise<ResearchReviewDetail>
-- fetchResearchBackfills : function — export async function fetchResearchBackfills(): Promise<ResearchBackfillListResponse>
-- queueResearchBackfill : function — export async function queueResearchBackfill( payload: QueueResearchBackfillRequest, ): Promise<ResearchBackfillListResponse>
-- fetchResearchWarehouseProgress : function — export async function fetchResearchWarehouseProgress(): Promise<ResearchWarehouseProgressResponse>
 - fetchResearchWarehouseEligibility : function — export async function fetchResearchWarehouseEligibility( payload: Partial<ResearchWarehouseEligibilityRequest> = {}, ): Promise<ResearchWarehouseEligibilityResponse>
 - runResearchWarehouseEligibilitySweep : function — export async function runResearchWarehouseEligibilitySweep( payload: ResearchWarehouseEligibilityRequest, ): Promise<ResearchWarehouseEligibilityResponse>
-- queueResearchBackfillPreset : function — export async function queueResearchBackfillPreset( payload: QueueResearchBackfillPresetRequest, ): Promise<QueueResearchBackfillPresetResponse>
 - fetchResearchReview : function — export async function fetchResearchReview( reviewId: string, ): Promise<ResearchReviewDetail>
 - addResearchColumn : function — export async function addResearchColumn( reviewId: string, payload: AddResearchColumnRequest, ): Promise<ResearchReviewDetail>
 - runResearchExtractions : function — export async function runResearchExtractions( reviewId: string, payload: RunResearchExtractionsRequest = { limit: 50 }, ): Promise<RunResearchExtractionsResponse>
@@ -12694,8 +15190,6 @@ FETCH_CALLS:
 - fetch(`${apiBaseUrl}/api/cases/evaluate`, {
 - fetch(`${apiBaseUrl}/api/evaluations/${id}`, {
 - fetch(`${apiBaseUrl}/api/external-evidence/${id}`, {
-- fetch(`${apiBaseUrl}/api/research/backfills/presets`, {
-- fetch(`${apiBaseUrl}/api/research/backfills`, {
 - fetch(`${apiBaseUrl}/api/research/reviews`, {
 - fetch(`${apiBaseUrl}/api/research/search/import`, {
 - fetch(`${apiBaseUrl}/api/research/search`, {
@@ -12719,14 +15213,11 @@ API_CLIENT_FUNCTIONS:
 - evaluateCase -> fetch(`${apiBaseUrl}/api/cases/evaluate`, {
 - fetchEvaluation -> fetch(`${apiBaseUrl}/api/evaluations/${id}`, {
 - fetchDashboardWorkspace -> fetch(`${apiBaseUrl}/api/workspace/dashboard`, {
-- fetchEvaluationWorkspace -> fetch(`${apiBaseUrl}/api/external-evidence/${id}`, {
+- fetchEvidenceQualityReport -> fetch(`${apiBaseUrl}/api/external-evidence/${id}`, {
 - reviewExternalEvidenceCatalogItem -> fetch(`${apiBaseUrl}/api/research/reviews`, {
 - searchResearchPapers -> fetch(`${apiBaseUrl}/api/research/search`, {
 - stageResearchPapers -> fetch(`${apiBaseUrl}/api/research/search/import`, {
 - importLocalSources -> fetch(`${apiBaseUrl}/api/research/reviews`, {
-- fetchResearchBackfills -> fetch(`${apiBaseUrl}/api/research/backfills`, {
-- queueResearchBackfill -> fetch(`${apiBaseUrl}/api/research/backfills`, {
-- fetchResearchWarehouseProgress -> fetch(`${apiBaseUrl}/api/research/backfills/presets`, {
 CLIENT_QUERY_STATE:
 - none
 VISIBLE_SURFACE_MARKERS:
@@ -12790,7 +15281,7 @@ EXPORTS:
 - buildLoginRedirect : function — export function buildLoginRedirect(callbackPath: string): string
 - sessionHasRequiredRole : function — export function sessionHasRequiredRole( role: Role | undefined, requiredRole: Role, ): boolean
 LOCAL_DECLARATIONS:
-- defaultCallbackPath : const = '/dashboard'
+- defaultCallbackPath : const = '/home'
 SCHEMAS (Zod):
 - none
 CALLS_TO:
@@ -12969,7 +15460,7 @@ VISIBLE_SURFACE_MARKERS:
 - none
 
 FILE: apps/web-ui/src/lib/case-intake.ts
-LINES: 2888
+LINES: 2098
 IMPORTS:
 - import type { ExternalEvidenceCatalogItemSummary, RawCaseInput, ResearchDecisionIngestionPreview, } from '@metrev/domain-contracts';
 EXPORTS:
@@ -12979,17 +15470,19 @@ EXPORTS:
 - CaseIntakeFormValues : interface — export interface CaseIntakeFormValues
 - CaseIntakePreset : interface — export interface CaseIntakePreset
 - defaultCaseIntakeFormValues : const — const defaultCaseIntakeFormValues = { caseId: '', technologyFamily: 'microbial_fuel_cell', architectureFamily: '', reactorArchitectureType: '', reactorSolidsTolerance: '', reactorServiceabilityLevel: '', primaryObjective: 'wastewater_treatment', deploymentContext: '', decisionHorizon: '', cur...
+- AdvancedInputJsonField : type — export type AdvancedInputJsonField = | 'mechanisticModelJson' | 'biosensorConfigurationJson' | 'wastewaterQualityJson';
+- validateAdvancedInputJson : function — export function validateAdvancedInputJson( values: Pick<CaseIntakeFormValues, AdvancedInputJsonField>, ): Partial<Record<AdvancedInputJsonField, string>>
 - caseIntakeParameterConfigs : const — const caseIntakeParameterConfigs = { reactorArchitectureType: { confidenceImpact: 'medium', field: 'reactorArchitectureType', getPayloadValue: (input) => readStringValue( input.stack_blocks?.reactor_architecture?.architecture_type, ), clearPayloadValue: (input) => { const reactorArchitecture...
 - getCaseIntakeParameterMode : function — export function getCaseIntakeParameterMode( values: CaseIntakeFormValues, field: CaseIntakeParameterFieldId, ): CaseIntakeParameterMode
 - normalizeCaseIntakeFormValues : function — export function normalizeCaseIntakeFormValues( values?: Partial<CaseIntakeFormValues>, ): CaseIntakeFormValues
 - hydrateCaseIntakeFormValues : function — export function hydrateCaseIntakeFormValues( values?: Partial<CaseIntakeFormValues>, presetPayload?: RawCaseInput, ): CaseIntakeFormValues
 - buildCaseInputFromFormValues : function — export function buildCaseInputFromFormValues( values: CaseIntakeFormValues, preset?: CaseIntakePreset, selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[] = [], researchDecisionInput?: ResearchDecisionIngestionPreview | null, ): RawCaseInput
-- wastewaterGoldenCasePreset : const — const wastewaterGoldenCasePreset = { id: 'wastewater-treatment-stabilization-case', label: 'Autofill industrial wastewater stabilization case', description: 'Loads an industrial wastewater stabilization scenario with structured stack details, measured metrics, supplier context, and typed evi...
-- nitrogenRecoveryGoldenCasePreset : const — const nitrogenRecoveryGoldenCasePreset = { id: 'nitrogen-recovery-hardening-case', label: 'Autofill nitrogen recovery hardening case', description: 'Loads a digester-sidestream nitrogen-recovery scenario with separator durability, gas handling, and product-quality uncertainties so analysts can ins...
-- hydrogenRecoveryGoldenCasePreset : const — const hydrogenRecoveryGoldenCasePreset = { id: 'hydrogen-recovery-brewery-case', label: 'Autofill brewery hydrogen recovery case', description: 'Loads a brewery-sidestream hydrogen-recovery scenario with cathode transport, gas-side observability, and purity-validation uncertainty so the determinis...
-- sensingGoldenCasePreset : const — const sensingGoldenCasePreset = { id: 'remote-effluent-sensing-node-case', label: 'Autofill remote sensing node case', description: 'Loads a remote effluent sensing scenario with drift, calibration, and early-field biology concerns so the deterministic path covers the sensing objective en...
-- biogasSynergyGoldenCasePreset : const — const biogasSynergyGoldenCasePreset = { id: 'biogas-synergy-polishing-case', label: 'Autofill biogas synergy polishing case', description: 'Loads a hybrid digester-polishing scenario with acclimation lag, methane-slip closure, and integration-risk uncertainty so the deterministic path covers th...
-- caseIntakePresets : const — const caseIntakePresets = [ wastewaterGoldenCasePreset, nitrogenRecoveryGoldenCasePreset, hydrogenRecoveryGoldenCasePreset, sensingGoldenCasePreset, biogasSynergyGoldenCasePreset, ]
+- focusedWastewaterMfcPreset : const — const focusedWastewaterMfcPreset = focusedIntakeTemplate({ id: 'mfc-wastewater-model-inputs', label: 'MFC wastewater model inputs', description: 'Starts an MFC wastewater-treatment case without fabricated measurements; supply wastewater samples, cell parameters, kinetics, and electrical boun...
+- focusedWastewaterMecPreset : const — const focusedWastewaterMecPreset = focusedIntakeTemplate({ id: 'mec-wastewater-model-inputs', label: 'MEC wastewater model inputs', description: 'Starts an MEC wastewater-treatment case; hydrogen is modeled as a secondary process output and requires separate Faradaic-yield and capture inputs...
+- standaloneWastewaterBiosensorPreset : const — const standaloneWastewaterBiosensorPreset = focusedIntakeTemplate({ id: 'standalone-wastewater-biosensor', label: 'Standalone wastewater biosensor', description: 'Starts a separately powered electrochemical biosensor case for a stated wastewater analyte and matrix.', caseId: 'BIOSENSOR-STANDALONE', t...
+- mfcIntegratedWastewaterBiosensorPreset : const — const mfcIntegratedWastewaterBiosensorPreset = focusedIntakeTemplate({ id: 'mfc-integrated-wastewater-biosensor', label: 'MFC-integrated wastewater biosensor', description: 'Starts an MFC wastewater-treatment case with an amperometric sensor powered from available MFC output.', caseId: 'MFC-WW-BIOSENSOR...
+- mecIntegratedWastewaterBiosensorPreset : const — const mecIntegratedWastewaterBiosensorPreset = focusedIntakeTemplate({ id: 'mec-integrated-wastewater-biosensor', label: 'MEC-integrated wastewater biosensor', description: 'Starts an MEC wastewater-treatment case with sensor demand accounted for on the externally powered MEC bus.', caseId: 'MEC-WW-BIOS...
+- caseIntakePresets : const — const caseIntakePresets = [ focusedWastewaterMfcPreset, focusedWastewaterMecPreset, standaloneWastewaterBiosensorPreset, mfcIntegratedWastewaterBiosensorPreset, mecIntegratedWastewaterBiosensorPreset, ]
 - findCaseIntakePreset : function — export function findCaseIntakePreset( presetId: string | null | undefined, ): CaseIntakePreset | undefined
 LOCAL_DECLARATIONS:
 - EvidenceRecordInput : type — type EvidenceRecordInput = NonNullable< RawCaseInput['evidence_records'] >[number];
@@ -12999,6 +15492,9 @@ LOCAL_DECLARATIONS:
 - reviewedCatalogEvidenceNote : const = 'Reviewed and accepted into the external evidence catalog before intake selection.'
 - parseOptionalNumber : function — function parseOptionalNumber(value: string): number | undefined
 - splitCommaSeparated : function — function splitCommaSeparated(value: string): string[]
+- readJsonObject : function — function readJsonObject(text: string): Record<string, unknown> | undefined
+- compactOptionalObjects : function — function compactOptionalObjects(value: unknown): unknown
+- mapWastewaterQualityToMechanisticInput : function — function mapWastewaterQualityToMechanisticInput( input: RawCaseInput, quality: Record<string, unknown>, technologyFamily: string, ): void
 - dedupeStrings : function — function dedupeStrings(values: string[]): string[]
 - trimToUndefined : function — function trimToUndefined(value: string | undefined): string | undefined
 - readStringValue : function — function readStringValue(value: unknown): string
@@ -13008,32 +15504,22 @@ LOCAL_DECLARATIONS:
 - isBlankParameterValue : function — function isBlankParameterValue( value: string | number | boolean | null | undefined, ): boolean
 - applyParameterStateToPayload : function — function applyParameterStateToPayload( input: RawCaseInput, values: CaseIntakeFormValues, ): void
 - buildEvidenceRecords : function — function buildEvidenceRecords( values: CaseIntakeFormValues, preset?: CaseIntakePreset, selectedCatalogEvidence: ExternalEvidenceCatalogItemSummary[] = [], researchDecisionInput?: ResearchDecisionIngestionPreview | null, ): RawCaseInput['evidence_records']
-- wastewaterGoldenCaseSourcePath : const = 'bioelectrochem_agent_kit/domain/cases/golden/case-001-high-strength-industrial-wastewater.yml'
-- nitrogenRecoveryGoldenCaseSourcePath : const = 'bioelectrochem_agent_kit/domain/cases/golden/case-002-digester-sidestream-nitrogen-recovery.yml'
-- hydrogenRecoveryGoldenCaseSourcePath : const = 'bioelectrochem_agent_kit/domain/cases/golden/case-003-brewery-sidestream-hydrogen-recovery.yml'
-- sensingGoldenCaseSourcePath : const = 'bioelectrochem_agent_kit/domain/cases/golden/case-004-remote-effluent-sensing-node.yml'
-- biogasSynergyGoldenCaseSourcePath : const = 'bioelectrochem_agent_kit/domain/cases/golden/case-005-digester-polishing-biogas-synergy.yml'
-- wastewaterEvidenceTitle : const = 'Industrial wastewater stabilization baseline 2026-Q2'
-- wastewaterEvidenceSummary : const = 'Stabilization baseline showed immature startup, cathode flooding risk, elevated internal resistance, and low observability during sidestream treatment.'
-- nitrogenRecoveryEvidenceTitle : const = 'Digester sidestream nitrogen recovery hardening review'
-- nitrogenRecoveryEvidenceSummary : const = 'Nitrogen recovery review shows separator fouling risk, unresolved gas handling details, and membrane durability validation needs before scale-up decisions.'
-- hydrogenRecoveryEvidenceTitle : const = 'Brewery sidestream hydrogen recovery pilot review'
-- hydrogenRecoveryEvidenceSummary : const = 'Hydrogen recovery review highlights cathode transport bottlenecks, low gas-side observability, and missing purity validation under the intended applied-volt...
-- sensingEvidenceTitle : const = 'Remote effluent sensing node calibration review'
-- sensingEvidenceSummary : const = 'Field sensing review highlights signal drift, sparse calibration evidence, and early biofilm maturity that weaken remote alert defensibility.'
-- biogasSynergyEvidenceTitle : const = 'Digester polishing biogas synergy integration review'
-- biogasSynergyEvidenceSummary : const = 'Hybrid polishing review highlights acclimation lag, missing methane-slip closure, and uncertain upset recovery behavior before integration decisions.'
+- focusedIntakeTemplate : function — function focusedIntakeTemplate(input: { architecture: string; biosensor?: { deployment_mode: 'standalone' | 'mfc_integrated' | 'mec_integrated'; power_source: 'external' | 'mfc_harvested' | 'mec_power_bus'; }; caseId: string; description: string; focusAreas: string[]; id: string; label: string; objective: 'wastewater_treatment' | 'biosensing'; technology: string; }): CaseIntakePreset
 SCHEMAS (Zod):
 - none
 CALLS_TO:
 - applyParameterStateToPayload
 - buildEvidenceRecords
+- compactOptionalObjects
 - dedupeStrings
+- focusedIntakeTemplate
 - formatParameterAuditValue
 - getCaseIntakeParameterMode
 - isBlankParameterValue
+- mapWastewaterQualityToMechanisticInput
 - normalizeCaseIntakeFormValues
 - parseOptionalNumber
+- readJsonObject
 - readStringArray
 - readStringValue
 - resolveOptionalFormText
@@ -13070,9 +15556,15 @@ LOGIC_FLOW:
 - Step 14: buildCaseInputFromFormValues -> const presetStackBlocks = presetPayload?.stack_blocks;
 - Step 15: buildCaseInputFromFormValues -> const rawInput: RawCaseInput = { ...presetPayload, case_id: values.caseId.trim() || undefined, technology_family: values.technologyFamily, architecture_family: values.architectureFamily.trim() || undefined, primary_ob...
 - Step 16: buildCaseInputFromFormValues -> applyParameterStateToPayload(rawInput, values);
-- Step 17: buildCaseInputFromFormValues -> return rawInput;
+- Step 17: buildCaseInputFromFormValues -> const wastewaterQuality = readJsonObject(values.wastewaterQualityJson);
+- Step 18: buildCaseInputFromFormValues -> if (wastewaterQuality)
+- Step 19: buildCaseInputFromFormValues -> const modelDraft = readJsonObject(values.mechanisticModelJson);
+- Step 20: buildCaseInputFromFormValues -> if (modelDraft)
+- Step 21: buildCaseInputFromFormValues -> const biosensorDraft = readJsonObject(values.biosensorConfigurationJson);
+- Step 22: buildCaseInputFromFormValues -> if (biosensorDraft)
+- Step 23: buildCaseInputFromFormValues -> return compactOptionalObjects(rawInput) as RawCaseInput;
 INVARIANTS_ENFORCED:
-- none
+- JSON.parse(text)
 NEXT_ROUTE: not-a-page-route
 UI_AUTH_GATES:
 - none
@@ -13567,15 +16059,56 @@ CLIENT_QUERY_STATE:
 VISIBLE_SURFACE_MARKERS:
 - none
 
-FILE: apps/web-ui/src/lib/navigation.ts
-LINES: 288
+FILE: apps/web-ui/src/lib/legacy-route-redirect.ts
+LINES: 36
 IMPORTS:
 - none
 EXPORTS:
-- NavIcon : type — export type NavIcon = | 'dashboard' | 'input-deck' | 'reports' | 'evidence-explorer' | 'evidence-review' | 'research-tables' | 'evaluations';
+- LegacyRouteSearchParams : type — export type LegacyRouteSearchParams = Record< string, string | string[] | undefined >;
+- buildLegacyRouteRedirectTarget : function — export async function buildLegacyRouteRedirectTarget( pathname: string, searchParams?: Promise<LegacyRouteSearchParams>, )
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- none
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+NEXT_ROUTE: not-a-page-route
+UI_AUTH_GATES:
+- none
+API_CLIENT_FUNCTIONS:
+- none
+CLIENT_QUERY_STATE:
+- none
+VISIBLE_SURFACE_MARKERS:
+- none
+
+FILE: apps/web-ui/src/lib/navigation.ts
+LINES: 317
+IMPORTS:
+- none
+EXPORTS:
+- NavIcon : type — export type NavIcon = | 'dashboard' | 'input-deck' | 'reports' | 'evidence-explorer' | 'evidence-review' | 'evidence-quality' | 'research-tables' | 'admin' | 'evaluations';
 - NavItem : interface — export interface NavItem
 - BreadcrumbItem : interface — export interface BreadcrumbItem
-- NAV_ITEMS : const — const NAV_ITEMS = [ { href: '/dashboard', icon: 'dashboard', id: 'dashboard', label: 'Dashboard', section: 'primary', }, { href: '/cases/new', icon: 'input-deck', id: 'input-deck', label: 'Configure Stack', section: 'primary', }, { href: '/evaluations', icon: 'evaluations',...
+- NAV_ITEMS : const — const NAV_ITEMS = [ { href: '/home', icon: 'dashboard', id: 'home', label: 'Home', matchPrefixes: ['/dashboard'], section: 'primary', }, { href: '/evaluate', icon: 'input-deck', id: 'evaluate', label: 'Evaluate', matchPrefixes: ['/cases/new', '/evaluations'], section: 'prima...
 - canUseNavItem : function — export function canUseNavItem( item: NavItem, role: string | null | undefined, ): boolean
 - getNavItemsForRole : function — export function getNavItemsForRole(role: string | null | undefined)
 - buildBreadcrumbs : function — export function buildBreadcrumbs( pathname: string, params: Record<string, string>, ): BreadcrumbItem[]
@@ -13606,22 +16139,24 @@ LOGIC_FLOW:
 - Step 1: buildBreadcrumbs -> const normalizedPathname = normalizePathname(pathname);
 - Step 2: buildBreadcrumbs -> const evaluationId = readParam(params, 'id', 'evaluationId');
 - Step 3: buildBreadcrumbs -> const caseId = readParam(params, 'caseId', 'id');
-- Step 4: buildBreadcrumbs -> if (normalizedPathname === '/dashboard')
-- Step 5: buildBreadcrumbs -> if (normalizedPathname === '/cases/new')
+- Step 4: buildBreadcrumbs -> if (normalizedPathname === '/dashboard' || normalizedPathname === '/home')
+- Step 5: buildBreadcrumbs -> if (normalizedPathname === '/cases/new' || normalizedPathname === '/evaluate')
 - Step 6: buildBreadcrumbs -> if (normalizedPathname === '/cases/new/submitting')
 - Step 7: buildBreadcrumbs -> if (normalizedPathname === '/evaluations')
 - Step 8: buildBreadcrumbs -> if (normalizedPathname === '/reports')
-- Step 9: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/evidence/explorer')
-- Step 10: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/evidence/review')
-- Step 11: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/research/reviews')
-- Step 12: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/research/reviews/'))
-- Step 13: buildBreadcrumbs -> if (normalizedPathname.startsWith('/cases/') && normalizedPathname.endsWith('/history'))
-- Step 14: buildBreadcrumbs -> if (normalizedPathname.startsWith('/evaluations/') && normalizedPathname.endsWith('/report'))
-- Step 15: buildBreadcrumbs -> if (normalizedPathname.includes('/compare/'))
-- Step 16: buildBreadcrumbs -> if (normalizedPathname.startsWith('/evaluations/'))
-- Step 17: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/evidence/explorer/'))
-- Step 18: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/evidence/review/'))
-- Step 19: buildBreadcrumbs -> return [{ href: '/dashboard', label: 'Dashboard' }];
+- Step 9: buildBreadcrumbs -> if (normalizedPathname === '/evidence' || normalizedPathname === '/evidence/quality' || normalizedPathname === '/evidence/review' || normalizedPathname === '/research' || normalizedPathname === '/admin/intelligence/ev...
+- Step 10: buildBreadcrumbs -> if (normalizedPathname === '/admin')
+- Step 11: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/evidence/explorer')
+- Step 12: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/evidence/review')
+- Step 13: buildBreadcrumbs -> if (normalizedPathname === '/admin/intelligence/research/reviews')
+- Step 14: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/research/reviews/'))
+- Step 15: buildBreadcrumbs -> if (normalizedPathname.startsWith('/cases/') && normalizedPathname.endsWith('/history'))
+- Step 16: buildBreadcrumbs -> if (normalizedPathname.startsWith('/evaluations/') && normalizedPathname.endsWith('/report'))
+- Step 17: buildBreadcrumbs -> if (normalizedPathname.includes('/compare/'))
+- Step 18: buildBreadcrumbs -> if (normalizedPathname.startsWith('/evaluations/'))
+- Step 19: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/evidence/explorer/'))
+- Step 20: buildBreadcrumbs -> if (normalizedPathname.startsWith('/admin/intelligence/evidence/review/'))
+- Step 21: buildBreadcrumbs -> return [{ href: '/home', label: 'Home' }];
 INVARIANTS_ENFORCED:
 - none
 NEXT_ROUTE: not-a-page-route
@@ -13863,7 +16398,7 @@ VISIBLE_SURFACE_MARKERS:
 FILE: apps/web-ui/next-env.d.ts
 LINES: 7
 IMPORTS:
-- none
+- import "./.next/types/routes.d.ts";
 EXPORTS:
 - none
 LOCAL_DECLARATIONS:
@@ -13963,7 +16498,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: vitest.config.ts
-LINES: 96
+LINES: 111
 IMPORTS:
 - import { fileURLToPath, URL } from 'node:url';
 - import { defineConfig } from 'vitest/config';
@@ -13996,7 +16531,7 @@ INVARIANTS_ENFORCED:
 - none
 
 FILE: vitest.postgres.config.ts
-LINES: 49
+LINES: 55
 IMPORTS:
 - import { fileURLToPath, URL } from 'node:url';
 - import { defineConfig } from 'vitest/config';
@@ -14031,73 +16566,91 @@ INVARIANTS_ENFORCED:
 ## tests/**/*.{ts,tsx}
 
 TEST_SOURCE_COVERAGE_COMPARISON:
-- scoped_source_files_compared=230
-- direct_or_package_import_covered=86
-- direct_or_package_import_covered_percent=37.39
+- scoped_source_files_compared=280
+- direct_or_package_import_covered=107
+- direct_or_package_import_covered_percent=38.21
 DIRECT_OR_INDIRECT_TEST_EDGES:
-- tests/e2e/support/seed-local-runtime.ts -> @metrev/database (8 file group)
+- tests/e2e/support/seed-local-runtime.ts -> @metrev/database (9 file group)
 - tests/e2e/support/seed-local-runtime.ts -> @metrev/domain-contracts (10 file group)
 - tests/e2e/support/seed-local-runtime.ts -> @metrev/research-intelligence (10 file group)
 - tests/fixtures/workspace-view-fixtures.ts -> @metrev/auth (5 file group)
-- tests/fixtures/workspace-view-fixtures.ts -> @metrev/database (8 file group)
+- tests/fixtures/workspace-view-fixtures.ts -> @metrev/database (9 file group)
 - tests/fixtures/workspace-view-fixtures.ts -> @metrev/domain-contracts (10 file group)
 - tests/fixtures/workspace-view-fixtures.ts -> apps/api-server/src/presenters/workspace-presenters.ts
 - tests/fixtures/workspace-view-fixtures.ts -> apps/api-server/src/services/case-evaluation.ts
 - tests/postgres/persistence.test.ts -> @metrev/auth (5 file group)
-- tests/postgres/persistence.test.ts -> @metrev/database (8 file group)
+- tests/postgres/persistence.test.ts -> @metrev/database (9 file group)
 - tests/postgres/persistence.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/postgres/persistence.test.ts -> apps/api-server/src/app.ts
 - tests/runtime/api.test.ts -> @metrev/auth (5 file group)
-- tests/runtime/api.test.ts -> @metrev/database (8 file group)
+- tests/runtime/api.test.ts -> @metrev/database (9 file group)
 - tests/runtime/api.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/api.test.ts -> apps/api-server/src/app.ts
 - tests/runtime/auth-session.test.ts -> @metrev/auth (5 file group)
 - tests/runtime/bootstrap-bigdata.test.ts -> packages/database/scripts/bootstrap-bigdata.ts
+- tests/runtime/bootstrap-bigdata.test.ts -> packages/database/scripts/queue-research-backfill-target.ts
 - tests/runtime/bootstrap-bigdata.test.ts -> packages/database/src/research-backfill-presets.ts
 - tests/runtime/canonicalize-scientific-evidence-runtime.test.ts -> packages/database/scripts/canonicalize-scientific-evidence.ts
 - tests/runtime/case-evaluation-service.test.ts -> @metrev/auth (5 file group)
-- tests/runtime/case-evaluation-service.test.ts -> @metrev/database (8 file group)
+- tests/runtime/case-evaluation-service.test.ts -> @metrev/database (9 file group)
 - tests/runtime/case-evaluation-service.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/case-evaluation-service.test.ts -> apps/api-server/src/services/case-evaluation.ts
 - tests/runtime/case-intake-preset.test.ts -> @metrev/domain-contracts (10 file group)
-- tests/runtime/case-intake-preset.test.ts -> @metrev/rule-engine (1 file group)
 - tests/runtime/case-intake-preset.test.ts -> apps/web-ui/src/lib/case-intake.ts
-- tests/runtime/database-runtime-config.test.ts -> @metrev/database (8 file group)
+- tests/runtime/database-runtime-config.test.ts -> @metrev/database (9 file group)
 - tests/runtime/database-supplier-persistence.test.ts -> @metrev/audit (1 file group)
 - tests/runtime/database-supplier-persistence.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/database-supplier-persistence.test.ts -> @metrev/rule-engine (1 file group)
 - tests/runtime/database-supplier-persistence.test.ts -> packages/database/src/supplier-persistence.ts
+- tests/runtime/document-intelligence.test.ts -> @metrev/document-intelligence (1 file group)
 - tests/runtime/domain-contracts.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/evaluation-reset.test.ts -> packages/database/src/evaluation-reset.ts
-- tests/runtime/evidence-decision-context-builder.test.ts -> @metrev/database (8 file group)
+- tests/runtime/evidence-audit-funnels.test.ts -> @metrev/domain-contracts (10 file group)
+- tests/runtime/evidence-audit-funnels.test.ts -> @metrev/evidence-audit (7 file group)
+- tests/runtime/evidence-audit.test.ts -> @metrev/domain-contracts (10 file group)
+- tests/runtime/evidence-audit.test.ts -> @metrev/evidence-audit (7 file group)
+- tests/runtime/evidence-decision-context-builder.test.ts -> @metrev/database (9 file group)
 - tests/runtime/evidence-decision-context-builder.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/evidence-decision-context-builder.test.ts -> apps/api-server/src/services/evidence-decision-context-builder.ts
+- tests/runtime/evidence-intelligence-api.test.ts -> @metrev/auth (5 file group)
+- tests/runtime/evidence-intelligence-api.test.ts -> @metrev/database (9 file group)
+- tests/runtime/evidence-intelligence-api.test.ts -> @metrev/domain-contracts (10 file group)
+- tests/runtime/evidence-intelligence-api.test.ts -> apps/api-server/src/app.ts
 - tests/runtime/external-ingestion-shared.test.ts -> packages/database/scripts/ingest-curated-manifest.ts
 - tests/runtime/external-ingestion-shared.test.ts -> packages/database/scripts/ingest-scientific-evidence.ts
 - tests/runtime/llm-adapter.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/llm-adapter.test.ts -> packages/llm-adapter/src/index.ts
+- tests/runtime/mechanistic-electrochem-model.test.ts -> @metrev/domain-contracts (10 file group)
+- tests/runtime/mechanistic-electrochem-model.test.ts -> @metrev/electrochem-models (2 file group)
 - tests/runtime/output-validator.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/output-validator.test.ts -> @metrev/rule-engine (1 file group)
 - tests/runtime/refresh-evidence-benchmarks.test.ts -> packages/database/scripts/refresh-evidence-benchmarks.ts
 - tests/runtime/research-api.test.ts -> @metrev/auth (5 file group)
-- tests/runtime/research-api.test.ts -> @metrev/database (8 file group)
+- tests/runtime/research-api.test.ts -> @metrev/database (9 file group)
 - tests/runtime/research-api.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/runtime/research-api.test.ts -> apps/api-server/src/app.ts
+- tests/runtime/research-cell-coverage.test.ts -> @metrev/domain-contracts (10 file group)
+- tests/runtime/research-cell-coverage.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/runtime/research-intelligence.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/research-intelligence.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/runtime/research-paper-search.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/research-paper-search.test.ts -> packages/database/src/research-paper-search.ts
+- tests/runtime/research-prune-script.test.ts -> packages/database/scripts/expand-table-ready-corpus.ts
+- tests/runtime/research-prune-script.test.ts -> packages/database/scripts/prune-research-warehouse.ts
+- tests/runtime/research-prune-script.test.ts -> packages/database/scripts/table-ready-completeness.ts
 - tests/runtime/research-runtime-extractor.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/research-runtime-extractor.test.ts -> @metrev/research-intelligence (10 file group)
+- tests/runtime/research-scope-boundary.test.ts -> packages/database/src/research-repository.ts
+- tests/runtime/research-scope-boundary.test.ts -> packages/research-intelligence/src/extraction/deterministic-extractor.ts
 - tests/runtime/research-source-content.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/research-source-content.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/runtime/research-worker-health.test.ts -> apps/research-worker/src/health.ts
-- tests/runtime/research-worker.test.ts -> @metrev/database (8 file group)
+- tests/runtime/research-worker.test.ts -> @metrev/database (9 file group)
 - tests/runtime/research-worker.test.ts -> @metrev/research-intelligence (10 file group)
 - tests/runtime/research-worker.test.ts -> apps/research-worker/src/worker.ts
 - tests/runtime/rule-engine.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/rule-engine.test.ts -> @metrev/rule-engine (1 file group)
-- tests/runtime/source-artifacts.test.ts -> @metrev/database (8 file group)
+- tests/runtime/source-artifacts.test.ts -> @metrev/database (9 file group)
 - tests/runtime/source-artifacts.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/runtime/source-artifacts.test.ts -> packages/database/src/source-artifacts.ts
 - tests/runtime/telemetry.test.ts -> @metrev/telemetry (2 file group)
@@ -14105,10 +16658,15 @@ DIRECT_OR_INDIRECT_TEST_EDGES:
 - tests/runtime/web-auth-routing.test.ts -> apps/web-ui/src/lib/auth-routing.ts
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page.tsx
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/evidence/explorer/page.tsx
+- tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/evidence/quality/page.tsx
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/evidence/review/[id]/page.tsx
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/evidence/review/page.tsx
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/research/reviews/[id]/page.tsx
 - tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/admin/intelligence/research/reviews/page.tsx
+- tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/evidence/page.tsx
+- tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/evidence/quality/page.tsx
+- tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/evidence/review/page.tsx
+- tests/web-ui/advanced-route-pages.test.tsx -> apps/web-ui/src/app/research/page.tsx
 - tests/web-ui/api-client.test.ts -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/api-client.test.ts -> apps/web-ui/src/lib/api.ts
 - tests/web-ui/auth-config.test.ts -> apps/web-ui/src/lib/auth-config.ts
@@ -14119,14 +16677,14 @@ DIRECT_OR_INDIRECT_TEST_EDGES:
 - tests/web-ui/dashboard-workspace.test.tsx -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/dashboard-workspace.test.tsx -> apps/web-ui/src/components/dashboard-workspace.tsx
 - tests/web-ui/evaluation-cockpit.test.tsx -> @metrev/auth (5 file group)
-- tests/web-ui/evaluation-cockpit.test.tsx -> @metrev/database (8 file group)
+- tests/web-ui/evaluation-cockpit.test.tsx -> @metrev/database (9 file group)
 - tests/web-ui/evaluation-cockpit.test.tsx -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/evaluation-cockpit.test.tsx -> apps/api-server/src/presenters/workspace-presenters.ts
 - tests/web-ui/evaluation-cockpit.test.tsx -> apps/api-server/src/services/case-evaluation.ts
 - tests/web-ui/evaluation-cockpit.test.tsx -> apps/web-ui/src/components/evaluation-result-view.tsx
 - tests/web-ui/evaluation-comparison-view.test.tsx -> apps/web-ui/src/components/evaluation-comparison-view.tsx
 - tests/web-ui/evaluation-workbench.test.tsx -> @metrev/auth (5 file group)
-- tests/web-ui/evaluation-workbench.test.tsx -> @metrev/database (8 file group)
+- tests/web-ui/evaluation-workbench.test.tsx -> @metrev/database (9 file group)
 - tests/web-ui/evaluation-workbench.test.tsx -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/evaluation-workbench.test.tsx -> apps/api-server/src/presenters/workspace-presenters.ts
 - tests/web-ui/evaluation-workbench.test.tsx -> apps/api-server/src/services/case-evaluation.ts
@@ -14138,6 +16696,8 @@ DIRECT_OR_INDIRECT_TEST_EDGES:
 - tests/web-ui/evaluations-list-view.test.tsx -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/evaluations-list-view.test.tsx -> apps/web-ui/src/components/evaluations/evaluations-list-view.tsx
 - tests/web-ui/evaluations-list-view.test.tsx -> apps/web-ui/src/components/evaluations/evaluations-table.tsx
+- tests/web-ui/evidence-quality-workspace.test.tsx -> @metrev/domain-contracts (10 file group)
+- tests/web-ui/evidence-quality-workspace.test.tsx -> apps/web-ui/src/components/evidence-quality/evidence-quality-workspace.tsx
 - tests/web-ui/evidence-review-actions.test.tsx -> apps/web-ui/src/lib/evidence-review-actions.ts
 - tests/web-ui/external-evidence-detail.test.tsx -> @metrev/domain-contracts (10 file group)
 - tests/web-ui/external-evidence-detail.test.tsx -> apps/web-ui/src/components/external-evidence-detail.tsx
@@ -14161,6 +16721,7 @@ UNTESTED_SCOPED_SOURCE_FILES:
 - apps/api-server/src/plugins/auth.ts
 - apps/api-server/src/routes/cases.ts
 - apps/api-server/src/routes/evaluations.ts
+- apps/api-server/src/routes/evidence-audit.ts
 - apps/api-server/src/routes/exports.ts
 - apps/api-server/src/routes/external-evidence-query.ts
 - apps/api-server/src/routes/external-evidence.ts
@@ -14170,13 +16731,17 @@ UNTESTED_SCOPED_SOURCE_FILES:
 - apps/api-server/src/services/report-conversation.ts
 - apps/research-worker/src/index.ts
 - apps/web-ui/next-env.d.ts
+- apps/web-ui/src/app/admin/page.tsx
 - apps/web-ui/src/app/api/auth/[...nextauth]/route.ts
 - apps/web-ui/src/app/cases/[caseId]/history/page.tsx
 - apps/web-ui/src/app/dashboard/page.tsx
+- apps/web-ui/src/app/evaluate/[id]/page.tsx
+- apps/web-ui/src/app/evaluate/page.tsx
 - apps/web-ui/src/app/evaluations/[id]/compare/[baselineId]/page.tsx
 - apps/web-ui/src/app/evaluations/[id]/page.tsx
 - apps/web-ui/src/app/evaluations/[id]/report/page.tsx
 - apps/web-ui/src/app/evaluations/page.tsx
+- apps/web-ui/src/app/home/page.tsx
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/app/learn/[topic]/page.tsx
 - apps/web-ui/src/app/login/page.tsx
@@ -14269,6 +16834,7 @@ UNTESTED_SCOPED_SOURCE_FILES:
 - apps/web-ui/src/lib/evidence-review-view-query-state.ts
 - apps/web-ui/src/lib/external-evidence-detail-view-query-state.ts
 - apps/web-ui/src/lib/formatting.ts
+- apps/web-ui/src/lib/legacy-route-redirect.ts
 - apps/web-ui/src/lib/parameter-state-audit.ts
 - apps/web-ui/src/lib/printable-report-view-query-state.ts
 - apps/web-ui/src/lib/workspace-tab-query-state.ts
@@ -14286,17 +16852,40 @@ UNTESTED_SCOPED_SOURCE_FILES:
 - packages/database/prisma/migrations/20260503120000_production_scale_evidence/migration.sql
 - packages/database/prisma/migrations/20260504120000_canonical_evidence_decision_layer/migration.sql
 - packages/database/prisma/migrations/20260505120000_evidence_decision_context/migration.sql
+- packages/database/prisma/migrations/20260513120000_add_evidence_intelligence_pipeline/migration.sql
 - packages/database/prisma/schema.prisma
 - packages/database/scripts/evidence-quality-report.ts
+- packages/database/scripts/evidence-readiness-report.ts
 - packages/database/scripts/ingest-crossref-literature.ts
 - packages/database/scripts/ingest-europe-pmc-literature.ts
 - packages/database/scripts/ingest-local-pdf.ts
 - packages/database/scripts/ingest-openalex-literature.ts
 - packages/database/scripts/mjs-modules.d.ts
-- packages/database/scripts/prune-research-warehouse.ts
-- packages/database/scripts/queue-research-backfill-target.ts
 - packages/database/scripts/reset-evaluations.ts
-- packages/electrochem-models/src/index.ts
+- packages/design-system/src/index.ts
+- packages/design-system/src/layouts/instrument-panel.tsx
+- packages/design-system/src/layouts/sidebar-layout.tsx
+- packages/design-system/src/layouts/split-panel.tsx
+- packages/design-system/src/primitives/badge.tsx
+- packages/design-system/src/primitives/data-table.tsx
+- packages/design-system/src/primitives/gauge.tsx
+- packages/design-system/src/primitives/panel.tsx
+- packages/design-system/src/primitives/section.tsx
+- packages/design-system/src/primitives/signal-badge.tsx
+- packages/design-system/src/primitives/status-bar.tsx
+- packages/design-system/src/tokens.ts
+- packages/design-system/src/types.ts
+- packages/design-system/src/utils.ts
+- packages/design-system/src/visualization/coverage-heatmap.tsx
+- packages/design-system/src/visualization/funnel-chart.tsx
+- packages/design-system/src/visualization/radar-chart.tsx
+- packages/design-system/src/visualization/sparkline.tsx
+- packages/design-system/src/visualization/stack-diagram.tsx
+- packages/design-system/src/visualization/trust-chain.tsx
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/evidence-discovery/src/index.ts
+- packages/evidence-discovery/src/query-generator.ts
+- packages/evidence-discovery/src/run-discovery.ts
 - packages/utils/src/index.ts
 - playwright.config.ts
 - vitest.config.ts
@@ -14359,6 +16948,70 @@ TEST_CASES:
 - none
 KEY_ASSERTIONS:
 - none
+
+FILE: tests/e2e/layout-audit.spec.ts
+LINES: 275
+IMPORTS:
+- import { execFileSync } from 'node:child_process';
+- import { mkdirSync, writeFileSync } from 'node:fs';
+- import { dirname, resolve } from 'node:path';
+- import { expect, test } from '@playwright/test';
+- import { analystEmail, analystPassword } from './support/local-runtime';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- auditViewports : const = [ { height: 800, label: '1280x800', width: 1280 }, { height: 900, label: '1440x900', width: 1440 }, { height: 900, label: '1600x900', width: 1600 }, { height...
+- auditRoutes : const = [ '/dashboard', '/cases/new', '/evaluations', '/reports', '/admin', '/admin/intelligence/evidence/explorer', '/admin/intelligence/evidence/review', '/admin/i...
+- ALLOWED_DOCUMENT_OVERFLOW_PX : const = 6
+- auditOutputDir : const = resolve(process.cwd(), 'test-results', 'layout-audit')
+- ViewportMetrics : type — type ViewportMetrics = { documentOverflow: number; hasWorkspacePage: boolean; illegalOverflowElements: Array<{ classList: string; overflowPx: number; tag: string; }>; mainRight: number; viewportWidth: number; };
+- AuditEntry : type — type AuditEntry = { metrics: ViewportMetrics; passed: boolean; reasons: string[]; route: string; screenshotPath: string; viewport: (typeof auditViewports)[number]['label']; };
+- playwrightDatabaseEnv : function — function playwrightDatabaseEnv(): NodeJS.ProcessEnv
+- signInAsAnalyst : function — async function signInAsAnalyst(page: import('@playwright/test').Page)
+- slugifyRoute : function — function slugifyRoute(route: string): string
+- ensureDir : function — function ensureDir(filePath: string)
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @playwright/test:expect -> expect
+- @playwright/test:expect -> expect( failures, `Layout audit failures: ${JSON.stringify(failures, null, 2)}`, ).toEqual
+- @playwright/test:expect -> expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible
+- @playwright/test:test -> test
+- @playwright/test:test -> test.beforeAll
+- @playwright/test:test -> test.describe
+- @playwright/test:test -> test.slow
+- ensureDir
+- node:child_process:execFileSync -> execFileSync
+- node:fs:mkdirSync -> mkdirSync
+- node:fs:writeFileSync -> writeFileSync
+- node:path:dirname -> dirname
+- node:path:resolve -> resolve
+- playwrightDatabaseEnv
+- signInAsAnalyst
+- slugifyRoute
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- PLAYWRIGHT_DATABASE_URL
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+TEST_CASES:
+- describe: Spec 037 / Phase 2: layout audit
+- test: all critical routes fit 100% zoom across desktop viewports
+KEY_ASSERTIONS:
+- expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
 
 FILE: tests/e2e/local-first-workspace.spec.ts
 LINES: 400
@@ -14446,7 +17099,7 @@ KEY_ASSERTIONS:
 - expect(page).toHaveURL(/\/cases\/new$/);
 - expect(page).toHaveURL(/\/cases\/new(?:\?step=context-objective)?$/);
 - expect(page).toHaveURL(/\/compare\//);
-- expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+- expect(page).toHaveURL(/\/home(?:\?.*)?$/);
 - expect(page.getByLabel('Case identifier')).toHaveValue(caseId);
 - expect(page.getByLabel('Current TRL')).toHaveValue('pilot');
 - expect(page.getByLabel('Decision horizon')).toHaveValue('12 months');
@@ -14517,7 +17170,7 @@ KEY_ASSERTIONS:
 - expect(response.ok()).toBe(true);
 
 FILE: tests/e2e/public-routes.spec.ts
-LINES: 260
+LINES: 259
 IMPORTS:
 - import { devices, expect, test } from '@playwright/test';
 EXPORTS:
@@ -14670,7 +17323,7 @@ TEST_CASES:
 - test: `renders the full ${fixture.paperCount}-paper seeded review in the papers tab`
 KEY_ASSERTIONS:
 - expect(page).toHaveURL(
-- expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+- expect(page).toHaveURL(/\/home(?:\?.*)?$/);
 - expect(page.getByText('Paper details')).toBeVisible();
 - expect(reviewResponse).toEqual({
 
@@ -14721,7 +17374,7 @@ KEY_ASSERTIONS:
 - none
 
 FILE: tests/e2e/support/seed-local-runtime.ts
-LINES: 340
+LINES: 350
 IMPORTS:
 - import { pathToFileURL } from 'node:url';
 - import { disconnectPrismaClient, getPrismaClient } from '@metrev/database';
@@ -14888,7 +17541,7 @@ KEY_ASSERTIONS:
 - none
 
 FILE: tests/fixtures/workspace-view-fixtures.ts
-LINES: 330
+LINES: 346
 IMPORTS:
 - import rawFixture from './raw-case-input.json';
 - import type { SessionActor } from '@metrev/auth';
@@ -14945,13 +17598,13 @@ KEY_ASSERTIONS:
 - none
 
 FILE: tests/postgres/persistence.test.ts
-LINES: 1667
+LINES: 1760
 IMPORTS:
 - import { randomUUID } from 'node:crypto';
 - import fixture from '../fixtures/raw-case-input.json';
 - import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 - import { defaultSessionCookieName, type SessionActor, type SessionResolver, } from '@metrev/auth';
-- import { PrismaResearchRepository, disconnectPrismaClient, getPrismaClient, } from '@metrev/database';
+- import { PrismaResearchRepository, createEvidenceAuditRepository, disconnectPrismaClient, getPrismaClient, } from '@metrev/database';
 - import { DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION, buildDecisionIngestionPreview, buildResearchEvidencePack, getDefaultResearchColumns, runDeterministicResearchExtraction, } from '@metrev/research-intelligence';
 - import { buildApp } from '../../apps/api-server/src/app';
 - import { normalizeOpenAlexWork, persistNormalizedEntries, } from '../../packages/database/scripts/external-ingestion-shared.mjs';
@@ -14966,6 +17619,7 @@ LOCAL_DECLARATIONS:
 - initialIngestionRunId : const = 'postgres-ingestion-run-1'
 - reingestionRunId : const = 'postgres-ingestion-run-2'
 - legacyCatalogSourceKey : const = 'postgres-suite-curated-legacy-source'
+- acquisitionSourceKey : const = 'postgres-suite-acquisition-source'
 - researchSourceKey : const = 'postgres-suite-research-source'
 - researchQuery : const = 'postgres suite research fixture'
 - unmatchedResearchQuery : const = 'zzqvnomatchfixturetoken'
@@ -14976,6 +17630,7 @@ CALLS_TO:
 - ../../apps/api-server/src/app:buildApp -> buildApp
 - ../../packages/database/scripts/external-ingestion-shared.mjs:normalizeOpenAlexWork -> normalizeOpenAlexWork
 - ../../packages/database/scripts/external-ingestion-shared.mjs:persistNormalizedEntries -> persistNormalizedEntries
+- @metrev/database:createEvidenceAuditRepository -> createEvidenceAuditRepository
 - @metrev/database:disconnectPrismaClient -> disconnectPrismaClient
 - @metrev/database:getPrismaClient -> getPrismaClient
 - @metrev/research-intelligence:buildDecisionIngestionPreview -> buildDecisionIngestionPreview
@@ -14995,6 +17650,8 @@ CALLS_TO:
 - vitest:expect -> expect( evaluation?.workspaceSnapshots.find( (snapshot) => snapshot.snapshotType === 'EVALUATION', )?.payload, ).toEqual
 - vitest:expect -> expect( evaluation?.workspaceSnapshots.map((snapshot) => snapshot.snapshotType), ).toEqual
 - vitest:expect -> expect( linkedEvidence.find( (entry) => entry.supplier?.displayName === 'Preferred Supplier', ), ).toBeTruthy
+- vitest:expect -> expect(afterAttempt.map((record) => record.source_record_id)).not.toContain
+- vitest:expect -> expect(beforeAttempt.map((record) => record.source_record_id)).toContain
 - vitest:expect -> expect(catalogStatusBySource.get(excludedSourceRecord.id)).toEqual
 - vitest:expect -> expect(catalogStatusBySource.get(sourceRecord.id)).toEqual
 - vitest:expect -> expect(conversationResponse.statusCode).toBe
@@ -15107,6 +17764,7 @@ TEST_CASES:
 - describe: postgres-backed persistence flow
 - it: deduplicates staged research imports by DOI before provider-specific keys in Prisma storage
 - it: detaches reviewed stale claims instead of deleting them during re-ingestion
+- it: does not requeue full-text acquisition after a source already has an attempt
 - it: normalizes legacy external evidence types in workspace responses
 - it: persists accepted catalog source lineage, claim lineage, and immutable snapshots
 - it: persists create, retrieve, list, history, and supplier relations through Prisma
@@ -15115,6 +17773,8 @@ TEST_CASES:
 - it: preserves analyst review posture and stable claim ids across re-ingestion
 - it: treats URL-less local source artifacts as linked eligible records and allows query-backed reviews to use them
 KEY_ASSERTIONS:
+- expect(afterAttempt.map((record) => record.source_record_id)).not.toContain(
+- expect(beforeAttempt.map((record) => record.source_record_id)).toContain(
 - expect(catalogStatusBySource.get(excludedSourceRecord.id)).toEqual(
 - expect(catalogStatusBySource.get(sourceRecord.id)).toEqual(
 - expect(conversationResponse.statusCode).toBe(200);
@@ -15176,7 +17836,7 @@ KEY_ASSERTIONS:
 - expect(unmatchedReview.papers).toHaveLength(0);
 
 FILE: tests/runtime/api.test.ts
-LINES: 1732
+LINES: 1947
 IMPORTS:
 - import fixture from '../fixtures/raw-case-input.json';
 - import { afterEach, describe, expect, it } from 'vitest';
@@ -15483,10 +18143,11 @@ KEY_ASSERTIONS:
 - expect(actor?.sessionToken).toContain('.');
 
 FILE: tests/runtime/bootstrap-bigdata.test.ts
-LINES: 195
+LINES: 258
 IMPORTS:
 - import { describe, expect, it, vi } from 'vitest';
 - import { runBigDataBootstrap } from '../../packages/database/scripts/bootstrap-bigdata';
+- import { runQueueResearchBackfillTarget } from '../../packages/database/scripts/queue-research-backfill-target';
 - import { planResearchBackfillPreset } from '../../packages/database/src/research-backfill-presets';
 EXPORTS:
 - none
@@ -15496,21 +18157,29 @@ SCHEMAS (Zod):
 - none
 CALLS_TO:
 - ../../packages/database/scripts/bootstrap-bigdata:runBigDataBootstrap -> runBigDataBootstrap
+- ../../packages/database/scripts/queue-research-backfill-target:runQueueResearchBackfillTarget -> runQueueResearchBackfillTarget
 - ../../packages/database/src/research-backfill-presets:planResearchBackfillPreset -> planResearchBackfillPreset
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect(collectInventory).not.toHaveBeenCalled
 - vitest:expect -> expect(collectInventory).toHaveBeenCalledTimes
 - vitest:expect -> expect(crossrefRunner).toHaveBeenCalledTimes
 - vitest:expect -> expect(crossrefRunner).toHaveBeenCalledWith
+- vitest:expect -> expect(findFirst).not.toHaveBeenCalled
 - vitest:expect -> expect(openalexRunner).toHaveBeenCalledTimes
 - vitest:expect -> expect(openalexRunner).toHaveBeenCalledWith
 - vitest:expect -> expect(result).toMatchObject
+- vitest:expect -> expect(result.estimatedMaxRecords).toBeLessThanOrEqual
 - vitest:expect -> expect(result.plannedBackfills[0]).toMatchObject
+- vitest:expect -> expect(result.plannedRuns).toHaveLength
 - vitest:expect -> expect(result.presetId).toBe
-- vitest:expect -> expect(result.queryCount).toBeGreaterThanOrEqual
+- vitest:expect -> expect(result.queryCount).toBe
 - vitest:expect -> expect(result.targetRecords).toBe
+- vitest:expect -> expect(runner).not.toHaveBeenCalled
 - vitest:expect -> expect(runner).toHaveBeenCalledWith
+- vitest:expect -> expect.arrayContaining
 - vitest:expect -> expect.objectContaining
+- vitest:expect -> expect.stringContaining
 - vitest:it -> it
 - vitest:vi -> vi.fn
 - vitest:vi -> vi.fn().mockResolvedValue
@@ -15535,19 +18204,26 @@ INVARIANTS_ENFORCED:
 TEST_CASES:
 - describe: bigdata bootstrap
 - it: derives warehouse-scale overrides from a target record count
-- it: plans the 30000 MFC/MEC preset as query-scoped queued backfills
+- it: dry-runs the focused queue without initializing Prisma or enqueuing work
+- it: plans a bounded MFC/MEC, wastewater, and biosensor literature preset
+- it: plans the focused provider bootstrap without contacting providers or opening a database
 - it: resumes source/query runs from the latest bootstrap checkpoint
 KEY_ASSERTIONS:
+- expect(collectInventory).not.toHaveBeenCalled();
 - expect(collectInventory).toHaveBeenCalledTimes(1);
 - expect(crossrefRunner).toHaveBeenCalledTimes(2);
 - expect(crossrefRunner).toHaveBeenCalledWith(
+- expect(findFirst).not.toHaveBeenCalled();
 - expect(openalexRunner).toHaveBeenCalledTimes(2);
 - expect(openalexRunner).toHaveBeenCalledWith(
 - expect(result).toMatchObject({
+- expect(result.estimatedMaxRecords).toBeLessThanOrEqual(500);
 - expect(result.plannedBackfills[0]).toMatchObject({
-- expect(result.presetId).toBe('mfc_mec_30000');
-- expect(result.queryCount).toBeGreaterThanOrEqual(20);
-- expect(result.targetRecords).toBe(30000);
+- expect(result.plannedRuns).toHaveLength(4);
+- expect(result.presetId).toBe('mfc_mec_wastewater_biosensors');
+- expect(result.queryCount).toBe(20);
+- expect(result.targetRecords).toBe(500);
+- expect(runner).not.toHaveBeenCalled();
 - expect(runner).toHaveBeenCalledWith(
 
 FILE: tests/runtime/canonical-scientific-evidence.test.ts
@@ -15614,11 +18290,11 @@ KEY_ASSERTIONS:
 - expect(result.status).toBe(CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT);
 
 FILE: tests/runtime/canonicalize-scientific-evidence-runtime.test.ts
-LINES: 388
+LINES: 496
 IMPORTS:
 - import { describe, expect, it, vi } from 'vitest';
 - import { CANONICALIZATION_STATUSES } from '../../packages/database/scripts/canonical-scientific-evidence.mjs';
-- import { canPersistHydratedSourceText, canonicalizeCatalogRecordWithRuntime, } from '../../packages/database/scripts/canonicalize-scientific-evidence';
+- import { canPersistHydratedSourceText, canonicalizeCatalogRecordWithRuntime, stripPostgresNullBytes, } from '../../packages/database/scripts/canonicalize-scientific-evidence';
 EXPORTS:
 - none
 LOCAL_DECLARATIONS:
@@ -15629,23 +18305,31 @@ SCHEMAS (Zod):
 CALLS_TO:
 - ../../packages/database/scripts/canonicalize-scientific-evidence:canPersistHydratedSourceText -> canPersistHydratedSourceText
 - ../../packages/database/scripts/canonicalize-scientific-evidence:canonicalizeCatalogRecordWithRuntime -> canonicalizeCatalogRecordWithRuntime
+- ../../packages/database/scripts/canonicalize-scientific-evidence:stripPostgresNullBytes -> stripPostgresNullBytes
 - buildCatalogRecord
 - buildSourceRecord
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect(JSON.stringify(persistedChunk?.metadata)).not.toContain
 - vitest:expect -> expect(canPersistHydratedSourceText(blockedRecord)).toEqual
 - vitest:expect -> expect(hydratePaperText).not.toHaveBeenCalled
+- vitest:expect -> expect(hydratePaperText).toHaveBeenCalledTimes
+- vitest:expect -> expect(persistedChunk?.sourceLocator).not.toContain
+- vitest:expect -> expect(persistedChunk?.text).not.toContain
+- vitest:expect -> expect(persistedChunk?.text).toContain
 - vitest:expect -> expect(result.facts).not.toEqual
 - vitest:expect -> expect(result.facts).toEqual
 - vitest:expect -> expect(result.facts).toHaveLength
 - vitest:expect -> expect(result.hydration.fetched).toBe
 - vitest:expect -> expect(result.hydration.persistence).not.toBeNull
 - vitest:expect -> expect(result.hydration.persistence?.chunks).toEqual
+- vitest:expect -> expect(result.hydration.persistence?.chunks.length).toBeGreaterThan
 - vitest:expect -> expect(result.hydration.policy).toBe
 - vitest:expect -> expect(result.missingFields).not.toContain
 - vitest:expect -> expect(result.qualityFlags).not.toContain
 - vitest:expect -> expect(result.qualityFlags).toContain
 - vitest:expect -> expect(result.status).toBe
+- vitest:expect -> expect(stripPostgresNullBytes('power\u0000 density')).toBe
 - vitest:expect -> expect.arrayContaining
 - vitest:expect -> expect.objectContaining
 - vitest:it -> it
@@ -15673,19 +18357,27 @@ TEST_CASES:
 - it: allows persisted hydrate text to promote a needs_full_text record into canonical extracted facts
 - it: blocks hydrate persistence when access policy is not permissive
 - it: downgrades hydrated full text with no technical signal to insufficient source
+- it: hydrates lawful full text when metadata already extracts facts but chunks are absent
 - it: keeps schema-validated facts out of decision-ready use when the locator is missing
 - it: rejects schema-validated qualitative candidates without an exact source span
+- it: strips hydrated NUL bytes before source-text persistence
 - it: uses schema-validated measurement candidates to supplement deterministic extraction
 - it: uses schema-validated qualitative candidates for materials, architecture, limitations, and theory
 KEY_ASSERTIONS:
+- expect(JSON.stringify(persistedChunk?.metadata)).not.toContain('\u0000');
 - expect(canPersistHydratedSourceText(blockedRecord)).toEqual(
 - expect(hydratePaperText).not.toHaveBeenCalled();
+- expect(hydratePaperText).toHaveBeenCalledTimes(1);
+- expect(persistedChunk?.sourceLocator).not.toContain('\u0000');
+- expect(persistedChunk?.text).not.toContain('\u0000');
+- expect(persistedChunk?.text).toContain('power density of 900 mW/m2');
 - expect(result.facts).not.toEqual(
 - expect(result.facts).toEqual(
 - expect(result.facts).toHaveLength(0);
 - expect(result.hydration.fetched).toBe(true);
 - expect(result.hydration.persistence).not.toBeNull();
 - expect(result.hydration.persistence?.chunks).toEqual(
+- expect(result.hydration.persistence?.chunks.length).toBeGreaterThan(0);
 - expect(result.hydration.policy).toBe('blocked');
 - expect(result.hydration.policy).toBe('fetched_no_signal');
 - expect(result.missingFields).not.toContain('anode_material');
@@ -15695,9 +18387,10 @@ KEY_ASSERTIONS:
 - expect(result.status).toBe(CANONICALIZATION_STATUSES.CANONICAL_EXTRACTED);
 - expect(result.status).toBe(CANONICALIZATION_STATUSES.INSUFFICIENT_SOURCE);
 - expect(result.status).toBe(CANONICALIZATION_STATUSES.NEEDS_FULL_TEXT);
+- expect(stripPostgresNullBytes('power\u0000 density')).toBe('power density');
 
 FILE: tests/runtime/case-evaluation-service.test.ts
-LINES: 157
+LINES: 158
 IMPORTS:
 - import fixture from '../fixtures/raw-case-input.json';
 - import type { FastifyBaseLogger } from 'fastify';
@@ -15761,7 +18454,7 @@ LOGIC_FLOW:
 INVARIANTS_ENFORCED:
 - rawCaseInputSchema.parse(fixture)
 - evaluationResponseSchema.parse(evaluation)
-- rawCaseInputSchema.parse({ ...fixture, feed_and_operation: { influent_type: fixture.feed_and_operation.influent_type, }, })
+- rawCaseInputSchema.parse({ ...fixture, mechanistic_model: undefined, feed_and_operation: { influent_type: fixture.feed_and_operation.influent_type, }, })
 TEST_CASES:
 - describe: case evaluation service
 - it: creates and persists an evaluation without route-specific coupling
@@ -15790,42 +18483,35 @@ KEY_ASSERTIONS:
 - expect(persisted?.simulation_enrichment?.status).toBe('completed');
 
 FILE: tests/runtime/case-intake-preset.test.ts
-LINES: 395
+LINES: 435
 IMPORTS:
-- import { existsSync } from 'node:fs';
-- import { resolve } from 'node:path';
 - import { describe, expect, it } from 'vitest';
-- import { decisionOutputSchema, type ExternalEvidenceCatalogItemSummary, normalizeCaseInput, rawCaseInputSchema, } from '@metrev/domain-contracts';
-- import { runCaseEvaluation } from '@metrev/rule-engine';
-- import { biogasSynergyGoldenCasePreset, buildCaseInputFromFormValues, caseIntakePresets, hydrogenRecoveryGoldenCasePreset, nitrogenRecoveryGoldenCasePreset, sensingGoldenCasePreset, wastewaterGoldenCasePreset, } from '../../apps/web-ui/src/lib/case-intake';
+- import { type ExternalEvidenceCatalogItemSummary, normalizeCaseInput, rawCaseInputSchema, } from '@metrev/domain-contracts';
+- import { buildCaseInputFromFormValues, caseIntakePresets, focusedWastewaterMfcPreset, focusedWastewaterMecPreset, standaloneWastewaterBiosensorPreset, mfcIntegratedWastewaterBiosensorPreset, mecIntegratedWastewaterBiosensorPreset, validateAdvancedInputJson, } from '../../apps/web-ui/src/lib/case-intake';
 EXPORTS:
 - none
 LOCAL_DECLARATIONS:
-- goldenCasePresets : const = [ wastewaterGoldenCasePreset, nitrogenRecoveryGoldenCasePreset, hydrogenRecoveryGoldenCasePreset, sensingGoldenCasePreset, biogasSynergyGoldenCasePreset, ]
-- sourceDomainCasePath : function — function sourceDomainCasePath(preset: (typeof goldenCasePresets)[number])
+- focusedPresets : const = [ focusedWastewaterMfcPreset, focusedWastewaterMecPreset, standaloneWastewaterBiosensorPreset, mfcIntegratedWastewaterBiosensorPreset, mecIntegratedWastewate...
 SCHEMAS (Zod):
 - none
 CALLS_TO:
 - ../../apps/web-ui/src/lib/case-intake:buildCaseInputFromFormValues -> buildCaseInputFromFormValues
+- ../../apps/web-ui/src/lib/case-intake:caseIntakePresets -> caseIntakePresets.every
 - ../../apps/web-ui/src/lib/case-intake:caseIntakePresets -> caseIntakePresets.map
-- @metrev/domain-contracts:decisionOutputSchema -> decisionOutputSchema.parse
+- ../../apps/web-ui/src/lib/case-intake:validateAdvancedInputJson -> validateAdvancedInputJson
 - @metrev/domain-contracts:normalizeCaseInput -> normalizeCaseInput
 - @metrev/domain-contracts:rawCaseInputSchema -> rawCaseInputSchema.parse
-- @metrev/rule-engine:runCaseEvaluation -> runCaseEvaluation
-- node:fs:existsSync -> existsSync
-- node:path:resolve -> resolve
-- sourceDomainCasePath
 - vitest:describe -> describe
 - vitest:expect -> expect
-- vitest:expect -> expect( decisionOutput.confidence_and_uncertainty_summary.provenance_notes.join( ' ', ), ).toContain
-- vitest:expect -> expect( payload.stack_blocks?.cathode_catalyst_support ?.mass_transport_limitation_risk, ).toBe
+- vitest:expect -> expect( caseIntakePresets.every( (preset) => preset.expectedRecommendationIds.length === 0, ), ).toBe
+- vitest:expect -> expect( payload.feed_and_operation?.water_quality?.cod_mg_cod_l, ).toMatchObject
+- vitest:expect -> expect( payload.mechanistic_model?.operation?.electrolyte_conductivity_s_m, ).toMatchObject
+- vitest:expect -> expect( payload.mechanistic_model?.operation?.influent_cod_kg_m3, ).toMatchObject
 - vitest:expect -> expect( payload.stack_blocks?.electrical_interconnect_and_sealing ?.sealing_strategy, ).toBeUndefined
+- vitest:expect -> expect( validateAdvancedInputJson({ mechanisticModelJson: '{"system_type":', biosensorConfigurationJson: '', wastewaterQualityJson: '[]', }), ).toEqual
+- vitest:expect -> expect(() => normalizeCaseInput(payload)).not.toThrow
 - vitest:expect -> expect(() => rawCaseInputSchema.parse(payload)).not.toThrow
 - vitest:expect -> expect(caseIntakePresets.map((preset) => preset.id)).toEqual
-- vitest:expect -> expect(decisionOutput.assumptions_and_defaults_audit.missing_data).toEqual
-- vitest:expect -> expect(decisionOutput.impact_map.length).toBeGreaterThanOrEqual
-- vitest:expect -> expect(decisionOutput.phased_roadmap.length).toBeGreaterThan
-- vitest:expect -> expect(existsSync(resolve(process.cwd(), sourcePath!))).toBe
 - vitest:expect -> expect(payload.assumptions).toEqual
 - vitest:expect -> expect(payload.defaults_used).toEqual
 - vitest:expect -> expect(payload.evidence_records).toBeUndefined
@@ -15838,23 +18524,23 @@ CALLS_TO:
 - vitest:expect -> expect(payload.evidence_records?.map((entry) => entry.title)).toEqual
 - vitest:expect -> expect(payload.feed_and_operation?.operating_regime).toBeUndefined
 - vitest:expect -> expect(payload.feed_and_operation?.temperature_c).toBeUndefined
+- vitest:expect -> expect(payload.mechanistic_model).toBeUndefined
+- vitest:expect -> expect(payload.mechanistic_model?.operation?.influent_ph).toMatchObject
+- vitest:expect -> expect(payload.mechanistic_model?.operation?.temperature_k).toMatchObject
 - vitest:expect -> expect(payload.missing_data).toEqual
+- vitest:expect -> expect(payload.missing_data?.length).toBeGreaterThan
 - vitest:expect -> expect(payload.parameter_state).toEqual
-- vitest:expect -> expect(payload.primary_objective).toBe
-- vitest:expect -> expect(payload.stack_blocks?.membrane_or_separator?.fouling_risk).toBe
+- vitest:expect -> expect(payload.stack_blocks?.cathode_catalyst_support).toBeUndefined
 - vitest:expect -> expect(payload.stack_blocks?.reactor_architecture?.membrane_presence).toBe
 - vitest:expect -> expect(payload.supplier_context?.preferred_suppliers).toEqual
 - vitest:expect -> expect(payload.technology_context?.current_pain_points).toEqual
 - vitest:expect -> expect(preset.sourceReference).toContain
-- vitest:expect -> expect(recommendationIds).toEqual
-- vitest:expect -> expect(sourcePath).toBeTruthy
 - vitest:expect -> expect.arrayContaining
 - vitest:expect -> expect.objectContaining
 - vitest:it -> it
 - vitest:it -> it.each
-- vitest:it -> it.each(goldenCasePresets)
+- vitest:it -> it.each(focusedPresets)
 SCHEMA_PARSERS:
-- decisionOutputSchema.parse
 - rawCaseInputSchema.parse
 ENVIRONMENT_READS:
 - none
@@ -15872,23 +18558,19 @@ LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
 - rawCaseInputSchema.parse(payload)
-- decisionOutputSchema.parse( runCaseEvaluation(normalized), )
 TEST_CASES:
 - describe: case intake preset catalog
 - it: appends research-pack evidence, assumptions, and missing-data flags into the outgoing intake payload
-- it: keeps each runtime preset tied to a canonical domain source path
-- it: keeps the nitrogen-recovery preset explicit about its missing-data boundary
+- it: converts source-backed influent COD into the mechanistic SI input and retains the original unit
 - it: lets visible inputs clear preset-backed evidence and list fields before submission
 - it: maps explicit parameter controls into raw intake state and audit-visible defaults or exclusions
 - it: merges accepted catalog evidence into the outgoing typed-evidence bundle without replacing visible intake evidence
-- it: registers the five validated presets for the intake UI
+- it: registers only the five focused MFC/MEC/wastewater/biosensor templates
+- it: rejects malformed advanced JSON before the review-submit step
 KEY_ASSERTIONS:
+- expect(() => normalizeCaseInput(payload)).not.toThrow();
 - expect(() => rawCaseInputSchema.parse(payload)).not.toThrow();
 - expect(caseIntakePresets.map((preset) => preset.id)).toEqual(
-- expect(decisionOutput.assumptions_and_defaults_audit.missing_data).toEqual(
-- expect(decisionOutput.impact_map.length).toBeGreaterThanOrEqual(3);
-- expect(decisionOutput.phased_roadmap.length).toBeGreaterThan(0);
-- expect(existsSync(resolve(process.cwd(), sourcePath!))).toBe(true);
 - expect(payload.assumptions).toEqual(
 - expect(payload.defaults_used).toEqual(
 - expect(payload.evidence_records).toBeUndefined();
@@ -15902,16 +18584,17 @@ KEY_ASSERTIONS:
 - expect(payload.evidence_records?.map((entry) => entry.title)).toEqual(
 - expect(payload.feed_and_operation?.operating_regime).toBeUndefined();
 - expect(payload.feed_and_operation?.temperature_c).toBeUndefined();
+- expect(payload.mechanistic_model).toBeUndefined();
+- expect(payload.mechanistic_model?.operation?.influent_ph).toMatchObject({
+- expect(payload.mechanistic_model?.operation?.temperature_k).toMatchObject({
 - expect(payload.missing_data).toEqual(
+- expect(payload.missing_data?.length).toBeGreaterThan(0);
 - expect(payload.parameter_state).toEqual(
-- expect(payload.primary_objective).toBe('nitrogen_recovery');
-- expect(payload.stack_blocks?.membrane_or_separator?.fouling_risk).toBe(
+- expect(payload.stack_blocks?.cathode_catalyst_support).toBeUndefined();
 - expect(payload.stack_blocks?.reactor_architecture?.membrane_presence).toBe(
 - expect(payload.supplier_context?.preferred_suppliers).toEqual([]);
 - expect(payload.technology_context?.current_pain_points).toEqual([]);
-- expect(preset.sourceReference).toContain(sourcePath!);
-- expect(recommendationIds).toEqual(
-- expect(sourcePath).toBeTruthy();
+- expect(preset.sourceReference).toContain('no measured');
 
 FILE: tests/runtime/database-runtime-config.test.ts
 LINES: 80
@@ -16032,12 +18715,81 @@ KEY_ASSERTIONS:
 - expect(plan.shortlistItems).toEqual(
 - expect(plan.suppliers).toEqual(
 
+FILE: tests/runtime/document-intelligence.test.ts
+LINES: 76
+IMPORTS:
+- import { describe, expect, it } from 'vitest';
+- import { DOCUMENT_INTELLIGENCE_VERSION, documentIntelligenceResultSchema, isDocumentIntelligenceEnabled, runDocumentIntelligence, } from '@metrev/document-intelligence';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/document-intelligence:documentIntelligenceResultSchema -> documentIntelligenceResultSchema.safeParse
+- @metrev/document-intelligence:isDocumentIntelligenceEnabled -> isDocumentIntelligenceEnabled
+- @metrev/document-intelligence:runDocumentIntelligence -> runDocumentIntelligence
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect( isDocumentIntelligenceEnabled({ METREV_DOCINTEL_ENABLED: '1' }), ).toBe
+- vitest:expect -> expect( isDocumentIntelligenceEnabled({ METREV_DOCINTEL_ENABLED: 'true' }), ).toBe
+- vitest:expect -> expect(DOCUMENT_INTELLIGENCE_VERSION).toBe
+- vitest:expect -> expect(isDocumentIntelligenceEnabled({})).toBe
+- vitest:expect -> expect(reparsed.success).toBe
+- vitest:expect -> expect(result.blocks).toHaveLength
+- vitest:expect -> expect(result.blocks[0].block_id).toBe
+- vitest:expect -> expect(result.blocks[0].kind).toBe
+- vitest:expect -> expect(result.blocks[0].text).toBe
+- vitest:expect -> expect(result.generated_at).toBe
+- vitest:expect -> expect(result.parse_error).toBe
+- vitest:expect -> expect(result.status).toBe
+- vitest:it -> it
+SCHEMA_PARSERS:
+- documentIntelligenceResultSchema.safeParse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- documentIntelligenceResultSchema.safeParse(result)
+TEST_CASES:
+- describe: document-intelligence scaffold (spec 037 Phase 5)
+- it: exposes a stable version constant matching the contract
+- it: is disabled by default unless METREV_DOCINTEL_ENABLED is set
+- it: returns parse_failed with disabled reason when flag is off
+- it: round-trips through documentIntelligenceResultSchema
+- it: splits raw text into paragraph blocks when enabled
+KEY_ASSERTIONS:
+- expect(DOCUMENT_INTELLIGENCE_VERSION).toBe('docintel-v1');
+- expect(isDocumentIntelligenceEnabled({})).toBe(false);
+- expect(reparsed.success).toBe(true);
+- expect(result.blocks).toHaveLength(0);
+- expect(result.blocks).toHaveLength(3);
+- expect(result.blocks[0].block_id).toBe('doc-2:p1');
+- expect(result.blocks[0].kind).toBe('paragraph');
+- expect(result.blocks[0].text).toBe('First paragraph.');
+- expect(result.generated_at).toBe(fixedNow);
+- expect(result.parse_error).toBe('document_intelligence_disabled');
+- expect(result.status).toBe('parse_failed');
+- expect(result.status).toBe('parsed');
+
 FILE: tests/runtime/domain-contracts.test.ts
-LINES: 228
+LINES: 298
 IMPORTS:
 - import fixture from '../fixtures/raw-case-input.json';
 - import { describe, expect, it } from 'vitest';
-- import { canonicalOutputSections, createRawInputFromDomainTemplate, loadContractInputDefinition, loadContractOutputDefinition, normalizeCaseInput, normalizedCaseInputSchema, rawCaseInputSchema, runtimeAuthorityDecision, runtimeFutureFacingReferenceFiles, runtimeLoadedCanonicalFiles, runtimeReferenceOnlyFiles, runtimeValidationReferenceFiles, } from '@metrev/domain-contracts';
+- import { activeTechnologyFamilyValues, canonicalOutputSections, createRawInputFromDomainTemplate, loadContractInputDefinition, loadContractOutputDefinition, loadEvidenceDiscoveryPolicy, loadEvidenceQualityAuditPolicy, normalizeCaseInput, normalizedCaseInputSchema, primaryObjectiveReadSchema, primaryObjectiveSchema, rawCaseInputSchema, runtimeAuthorityDecision, runtimeFutureFacingReferenceFiles, runtimeLoadedCanonicalFiles, runtimeReferenceOnlyFiles, runtimeValidationReferenceFiles, } from '@metrev/domain-contracts';
 EXPORTS:
 - none
 LOCAL_DECLARATIONS:
@@ -16048,27 +18800,41 @@ CALLS_TO:
 - @metrev/domain-contracts:createRawInputFromDomainTemplate -> createRawInputFromDomainTemplate
 - @metrev/domain-contracts:loadContractInputDefinition -> loadContractInputDefinition
 - @metrev/domain-contracts:loadContractOutputDefinition -> loadContractOutputDefinition
+- @metrev/domain-contracts:loadEvidenceDiscoveryPolicy -> loadEvidenceDiscoveryPolicy
+- @metrev/domain-contracts:loadEvidenceQualityAuditPolicy -> loadEvidenceQualityAuditPolicy
 - @metrev/domain-contracts:normalizeCaseInput -> normalizeCaseInput
 - @metrev/domain-contracts:normalizedCaseInputSchema -> normalizedCaseInputSchema.parse
 - @metrev/domain-contracts:normalizedCaseInputSchema -> normalizedCaseInputSchema.safeParse
+- @metrev/domain-contracts:primaryObjectiveReadSchema -> primaryObjectiveReadSchema.safeParse
+- @metrev/domain-contracts:primaryObjectiveSchema -> primaryObjectiveSchema.safeParse
 - @metrev/domain-contracts:rawCaseInputSchema -> rawCaseInputSchema.parse
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect( Object.keys(auditPolicy.primary_metrics_by_objective).sort(), ).toEqual
 - vitest:expect -> expect( normalized.cross_cutting_layers.evidence_and_provenance.evidence_profile, ).toBe
 - vitest:expect -> expect( normalized.cross_cutting_layers.evidence_and_provenance.typed_evidence, ).toHaveLength
 - vitest:expect -> expect( normalized.cross_cutting_layers.evidence_and_provenance.typed_evidence[0], ).toEqual
+- vitest:expect -> expect( primaryObjectiveReadSchema.safeParse('hydrogen_recovery').success, ).toBe
+- vitest:expect -> expect([...activeTechnologyFamilyValues]).toEqual
+- vitest:expect -> expect(auditPolicy.funnel_stages).toEqual
 - vitest:expect -> expect(canonicalOutputSections).toHaveLength
 - vitest:expect -> expect(contractInput.normalized_case_input.required_fields).toEqual
 - vitest:expect -> expect(contractOutput.normalized_decision_output.required_sections).toEqual
+- vitest:expect -> expect(discoveryPolicy.acquisition_policy.preferred_access_order).toEqual
 - vitest:expect -> expect(normalized.case_id).toBe
 - vitest:expect -> expect(normalized.cross_cutting_layers).toBeDefined
 - vitest:expect -> expect(normalized.cross_cutting_layers.risk_and_maturity.trl).toBe
+- vitest:expect -> expect(normalized.defaults_used).toContain
 - vitest:expect -> expect(normalized.defaults_used).toEqual
+- vitest:expect -> expect(normalized.missing_data).toContain
 - vitest:expect -> expect(normalized.missing_data).toEqual
+- vitest:expect -> expect(normalized.primary_objective).toBe
 - vitest:expect -> expect(normalized.stack_blocks.reactor_architecture).toBeDefined
 - vitest:expect -> expect(normalized.technology_family).toBe
 - vitest:expect -> expect(normalizedCaseInputSchema.parse(normalized)).toEqual
 - vitest:expect -> expect(normalizedCaseInputSchema.safeParse(normalized).success).toBe
+- vitest:expect -> expect(primaryObjectiveSchema.options).toEqual
+- vitest:expect -> expect(primaryObjectiveSchema.safeParse('hydrogen_recovery').success).toBe
 - vitest:expect -> expect(runtimeAuthorityDecision.executed_rule_authority).toBe
 - vitest:expect -> expect(runtimeFutureFacingReferenceFiles).toEqual
 - vitest:expect -> expect(runtimeLoadedCanonicalFiles).toEqual
@@ -16080,6 +18846,8 @@ CALLS_TO:
 SCHEMA_PARSERS:
 - normalizedCaseInputSchema.parse
 - normalizedCaseInputSchema.safeParse
+- primaryObjectiveReadSchema.safeParse
+- primaryObjectiveSchema.safeParse
 - rawCaseInputSchema.parse
 ENVIRONMENT_READS:
 - none
@@ -16096,15 +18864,21 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
+- primaryObjectiveSchema.safeParse('hydrogen_recovery')
+- primaryObjectiveReadSchema.safeParse('hydrogen_recovery')
 - rawCaseInputSchema.parse(fixture)
 - normalizedCaseInputSchema.parse(normalized)
 - rawCaseInputSchema.parse({ case_id: 'CASE-EVIDENCE-001', technology_family: 'hybrid_or_other_met', architecture_family: 'modular_stack', primary_objective: 'other', technology_context: { current_trl: 'pilot', }, evide...
 - rawCaseInputSchema.parse({ ...fixture, case_id: 'CASE-EVIDENCE-TRACE-001', evidence_records: [ { evidence_id: 'catalog:trace-penalty-001', evidence_type: 'literature_evidence', title: 'Pending PDF-derived benchmark',...
 - rawCaseInputSchema.parse({ case_id: 'CASE-INVALID-001', technology_family: 'typo_value', architecture_family: 'single_chamber', primary_objective: 'not_a_real_objective', technology_context: { current_trl: 'not_a_real...
+- rawCaseInputSchema.parse({ case_id: 'CASE-MISSING-FAMILY-001', architecture_family: 'single_chamber', primary_objective: 'wastewater_treatment', })
 - normalizedCaseInputSchema.safeParse(normalized)
 TEST_CASES:
 - describe: domain-contract runtime alignment
+- it: keeps active taxonomy narrow and isolates historic read compatibility
+- it: keeps an absent family unclassified instead of reusing the MFC template default
 - it: keeps canonical output sections aligned with the hardened output contract
+- it: keeps evidence-intelligence policies aligned with canonical objectives
 - it: keeps the executed authority split explicit and reviewable
 - it: loads contract required field metadata from the canonical contract boundary
 - it: maps legacy aliases and typed evidence into canonical normalized fields
@@ -16113,19 +18887,28 @@ TEST_CASES:
 - it: normalizes the runtime fixture into the contract-aligned shape
 - it: records invalid core classifications as explicit fallback usage
 KEY_ASSERTIONS:
+- expect([...activeTechnologyFamilyValues]).toEqual([
+- expect(auditPolicy.funnel_stages).toEqual(
 - expect(canonicalOutputSections).toHaveLength(
 - expect(contractInput.normalized_case_input.required_fields).toEqual(
 - expect(contractOutput.normalized_decision_output.required_sections).toEqual(
+- expect(discoveryPolicy.acquisition_policy.preferred_access_order).toEqual(
 - expect(normalized.case_id).toBe('CASE-001');
 - expect(normalized.cross_cutting_layers).toBeDefined();
 - expect(normalized.cross_cutting_layers.risk_and_maturity.trl).toBe(5);
+- expect(normalized.defaults_used).toContain(
 - expect(normalized.defaults_used).toEqual(
+- expect(normalized.missing_data).toContain('technology_family');
 - expect(normalized.missing_data).toEqual(
+- expect(normalized.primary_objective).toBe('wastewater_treatment');
 - expect(normalized.stack_blocks.reactor_architecture).toBeDefined();
 - expect(normalized.technology_family).toBe(
 - expect(normalized.technology_family).toBe('microbial_fuel_cell');
+- expect(normalized.technology_family).toBe('unclassified');
 - expect(normalizedCaseInputSchema.parse(normalized)).toEqual(normalized);
 - expect(normalizedCaseInputSchema.safeParse(normalized).success).toBe(true);
+- expect(primaryObjectiveSchema.options).toEqual([
+- expect(primaryObjectiveSchema.safeParse('hydrogen_recovery').success).toBe(
 - expect(runtimeAuthorityDecision.executed_rule_authority).toBe(
 - expect(runtimeFutureFacingReferenceFiles).toEqual(
 - expect(runtimeLoadedCanonicalFiles).toEqual(
@@ -16202,8 +18985,151 @@ KEY_ASSERTIONS:
 - expect(executed.remainingEvaluationCount).toBe(0);
 - expect(summary).toEqual({
 
+FILE: tests/runtime/evidence-audit-funnels.test.ts
+LINES: 220
+IMPORTS:
+- import { describe, expect, it } from 'vitest';
+- import { evidenceFunnelGroupSchema, evidenceQualityReportSchema, funnelStageCountSchema, type AcceptedEvidenceReadinessCandidate, type EvidenceFunnelGroup, type EvidenceQualityReport, type FunnelStageCount, } from '@metrev/domain-contracts';
+- import { runEvidenceQualityAudit, type EvidenceAuditRepositoryLike, } from '@metrev/evidence-audit';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- stage : function — function stage(name: string, count: number): FunnelStageCount
+- fiveFunnels : function — function fiveFunnels(): EvidenceFunnelGroup
+- FunnelsFakeRepository : class — class FunnelsFakeRepository implements EvidenceAuditRepositoryLike
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:evidenceFunnelGroupSchema -> evidenceFunnelGroupSchema.parse
+- @metrev/domain-contracts:evidenceQualityReportSchema -> evidenceQualityReportSchema.safeParse
+- @metrev/domain-contracts:funnelStageCountSchema -> funnelStageCountSchema.parse
+- @metrev/evidence-audit:runEvidenceQualityAudit -> runEvidenceQualityAudit
+- fiveFunnels
+- stage
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect(minimal.success).toBe
+- vitest:expect -> expect(parsed).toEqual
+- vitest:expect -> expect(report.funnel_metrics.length).toBe
+- vitest:expect -> expect(report.funnels).toBeDefined
+- vitest:expect -> expect(report.funnels).toBeUndefined
+- vitest:expect -> expect(report.funnels?.article.length).toBeGreaterThan
+- vitest:expect -> expect(report.funnels?.research_cell.length).toBeGreaterThan
+- vitest:it -> it
+SCHEMA_PARSERS:
+- evidenceFunnelGroupSchema.parse
+- evidenceQualityReportSchema.safeParse
+- funnelStageCountSchema.parse
+ENVIRONMENT_READS:
+- METREV_AUDIT_FUNNELS_V2
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- funnelStageCountSchema.parse({ stage: name, count, conversion_rate: null, })
+- evidenceFunnelGroupSchema.parse({ article: [ stage('discovered', 100), stage('cataloged', 90), stage('accepted', 80), stage('has_stable_identifier', 75), stage('has_abstract', 78), stage('has_full_text_artifact', 60),...
+- throw new Error('not configured');
+- evidenceFunnelGroupSchema.parse({ article: [], document: [], fact: [], benchmark: [], research_cell: [], })
+- evidenceQualityReportSchema.safeParse({ report_id: '00000000-0000-0000-0000-000000000001', trigger_mode: 'manual', coverage_matrix: [], gaps: [], outliers: [], readiness_scores: [], accepted_record_readiness: [], acce...
+TEST_CASES:
+- describe: evidence quality audit — 5-funnel split (spec 037)
+- it: accepts an EvidenceFunnelGroup with all five funnels
+- it: emits `funnels` when the repository implements getEvidenceFunnels
+- it: keeps `funnels` optional on the report schema (additive change)
+- it: omits `funnels` when METREV_AUDIT_FUNNELS_V2=0
+- it: omits `funnels` when repository does not implement the new method
+KEY_ASSERTIONS:
+- expect(minimal.success).toBe(true);
+- expect(parsed).toEqual({
+- expect(report.funnel_metrics.length).toBe(5);
+- expect(report.funnels).toBeDefined();
+- expect(report.funnels).toBeUndefined();
+- expect(report.funnels?.article.length).toBeGreaterThan(0);
+- expect(report.funnels?.research_cell.length).toBeGreaterThan(0);
+
+FILE: tests/runtime/evidence-audit.test.ts
+LINES: 192
+IMPORTS:
+- import fixture from '../fixtures/raw-case-input.json';
+- import { describe, expect, it } from 'vitest';
+- import { normalizeCaseInput, rawCaseInputSchema, type AcceptedEvidenceReadinessCandidate, type EvidenceQualityReport, type FunnelStageCount, } from '@metrev/domain-contracts';
+- import { detectGaps, runEvidenceQualityAudit, type EvidenceAuditRepositoryLike, } from '@metrev/evidence-audit';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- FakeAuditRepository : class — class FakeAuditRepository implements EvidenceAuditRepositoryLike
+- coveredRow : function — function coveredRow(metricType: string, material: string)
+- acceptedCandidate : function — function acceptedCandidate( overrides: Partial<AcceptedEvidenceReadinessCandidate> = {}, ): AcceptedEvidenceReadinessCandidate
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:normalizeCaseInput -> normalizeCaseInput
+- @metrev/domain-contracts:rawCaseInputSchema -> rawCaseInputSchema.parse
+- @metrev/evidence-audit:detectGaps -> detectGaps
+- @metrev/evidence-audit:runEvidenceQualityAudit -> runEvidenceQualityAudit
+- acceptedCandidate
+- coveredRow
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect(gaps.map((gap) => gap.metric_type)).not.toContain
+- vitest:expect -> expect(gaps.map((gap) => gap.metric_type)).toContain
+- vitest:expect -> expect(report.accepted_record_readiness?.[0]?.recommended_action).toBe
+- vitest:expect -> expect(report.accepted_record_summary?.reacquire_full_text_count).toBe
+- vitest:expect -> expect(report.accepted_record_summary?.table_ready_records).toBe
+- vitest:expect -> expect(report.outliers[0]?.action).toBe
+- vitest:expect -> expect(report.readiness_scores[0]?.critical_gaps).toContain
+- vitest:expect -> expect(report.readiness_scores[0]?.readiness_level).toBe
+- vitest:expect -> expect(report.summary.coverage_ratio).toBe
+- vitest:expect -> expect(repository.reports[0]?.report_id).toBe
+- vitest:it -> it
+SCHEMA_PARSERS:
+- rawCaseInputSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- rawCaseInputSchema.parse(fixture)
+TEST_CASES:
+- describe: evidence quality audit
+- it: maps a legacy objective to active wastewater gap metrics
+- it: marks a golden case insufficient when primary metric coverage is absent
+- it: scores a covered golden case as ready and stores the report
+KEY_ASSERTIONS:
+- expect(gaps.map((gap) => gap.metric_type)).not.toContain(
+- expect(gaps.map((gap) => gap.metric_type)).toContain(
+- expect(report.accepted_record_readiness?.[0]?.recommended_action).toBe(
+- expect(report.accepted_record_summary?.reacquire_full_text_count).toBe(1);
+- expect(report.accepted_record_summary?.table_ready_records).toBe(1);
+- expect(report.outliers[0]?.action).toBe('flag_for_review');
+- expect(report.readiness_scores[0]?.critical_gaps).toContain(
+- expect(report.readiness_scores[0]?.readiness_level).toBe('insufficient');
+- expect(report.readiness_scores[0]?.readiness_level).toBe('ready');
+- expect(report.summary.coverage_ratio).toBe(0);
+- expect(report.summary.coverage_ratio).toBe(1);
+- expect(repository.reports[0]?.report_id).toBe(report.report_id);
+
 FILE: tests/runtime/evidence-decision-context-builder.test.ts
-LINES: 211
+LINES: 232
 IMPORTS:
 - import fixture from '../fixtures/raw-case-input.json';
 - import { describe, expect, it } from 'vitest';
@@ -16228,6 +19154,8 @@ CALLS_TO:
 - vitest:expect -> expect(context.excluded_evidence_summary[0]).toEqual
 - vitest:expect -> expect(context.matched_evidence).toEqual
 - vitest:expect -> expect(context.matched_evidence).toHaveLength
+- vitest:expect -> expect(context.primary_objective).toBe
+- vitest:expect -> expect(context.query.application).toBe
 - vitest:expect -> expect(context.source_refs).toEqual
 - vitest:expect -> expect(context.system_type).toBe
 - vitest:expect -> expect(context.uncertainty_summary.excluded_evidence_reasons).toContain
@@ -16257,14 +19185,17 @@ INVARIANTS_ENFORCED:
 - rawCaseInputSchema.parse({ ...fixture, ...input, })
 TEST_CASES:
 - describe: EvidenceDecisionContextBuilder
-- it: derives MEC evidence filters for hydrogen recovery cases
 - it: excludes unknown-access evidence when no license policy is available
 - it: keeps only accepted, reviewed, traceable benchmark evidence in an MFC context
+- it: keeps wastewater treatment primary and hydrogen evidence secondary for MEC cases
+- it: maps legacy objectives to active decision-context applications
 KEY_ASSERTIONS:
 - expect(context.benchmark_ranges).toHaveLength(1);
 - expect(context.excluded_evidence_summary[0]).toEqual(
 - expect(context.matched_evidence).toEqual([
 - expect(context.matched_evidence).toHaveLength(0);
+- expect(context.primary_objective).toBe('wastewater_treatment');
+- expect(context.query.application).toBe('wastewater_treatment');
 - expect(context.source_refs).toEqual(['catalog:accepted-traceable-001']);
 - expect(context.system_type).toBe('MFC');
 - expect(context.uncertainty_summary.excluded_evidence_reasons).toContain(
@@ -16272,8 +19203,72 @@ KEY_ASSERTIONS:
 - expect(filters.metricTypes).toEqual([
 - expect(filters.systemType).toBe('MEC');
 
+FILE: tests/runtime/evidence-intelligence-api.test.ts
+LINES: 142
+IMPORTS:
+- import { afterEach, describe, expect, it } from 'vitest';
+- import { defaultSessionCookieName, getSessionTokenFromCookie, type SessionActor, type SessionResolver, } from '@metrev/auth';
+- import { MemoryEvaluationRepository, MemoryEvidenceAuditRepository, } from '@metrev/database';
+- import { evidenceQualityAuditResponseSchema, evidenceQualityReportSchema, } from '@metrev/domain-contracts';
+- import { buildApp } from '../../apps/api-server/src/app';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- sessions : const = { 'admin-session': { userId: 'user-admin-001', email: 'admin@metrev.local', role: 'ADMIN', sessionId: 'session-admin-001', sessionToken: 'admin-session', },...
+- testSessionResolver : const = async ({ cookieHeader }) => { const sessionToken = getSessionTokenFromCookie(cookieHeader); return sessionToken ? (sessions[sessionToken] ?? null) : null; }
+- sessionCookie : function — function sessionCookie(sessionToken: string): string
+- reportFixture : function — function reportFixture()
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../../apps/api-server/src/app:buildApp -> buildApp
+- @metrev/auth:getSessionTokenFromCookie -> getSessionTokenFromCookie
+- @metrev/domain-contracts:evidenceQualityAuditResponseSchema -> evidenceQualityAuditResponseSchema.parse
+- @metrev/domain-contracts:evidenceQualityReportSchema -> evidenceQualityReportSchema.parse
+- reportFixture
+- sessionCookie
+- vitest:afterEach -> afterEach
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect( evidenceQualityAuditResponseSchema.parse(created.json()).report, ).toMatchObject
+- vitest:expect -> expect(created.statusCode).toBe
+- vitest:expect -> expect(payload.report.report_id).toBe
+- vitest:expect -> expect(rejected.statusCode).toBe
+- vitest:expect -> expect(response.statusCode).toBe
+- vitest:it -> it
+SCHEMA_PARSERS:
+- evidenceQualityAuditResponseSchema.parse
+- evidenceQualityReportSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- evidenceQualityReportSchema.parse({ report_id: 'report-api-001', trigger_mode: 'manual', coverage_matrix: [], gaps: [], outliers: [], readiness_scores: [], funnel_metrics: [], summary: { total_benchmark_records: 0, de...
+- evidenceQualityAuditResponseSchema.parse(response.json())
+- evidenceQualityAuditResponseSchema.parse(created.json())
+TEST_CASES:
+- describe: evidence intelligence API
+- it: rejects viewers and allows admins to trigger a fresh audit
+- it: returns the latest evidence quality report to analysts
+KEY_ASSERTIONS:
+- expect(created.statusCode).toBe(201);
+- expect(payload.report.report_id).toBe('report-api-001');
+- expect(rejected.statusCode).toBe(403);
+- expect(response.statusCode).toBe(200);
+
 FILE: tests/runtime/external-ingestion-shared.test.ts
-LINES: 540
+LINES: 536
 IMPORTS:
 - import { describe, expect, it, vi } from 'vitest';
 - import { deduplicateEntries, extractClaimCandidates, getEvidenceIngestionConfig, normalizeCuratedManifestRecord, normalizeEuropePmcWork, optionFlag, optionNumber, optionValue, parseScriptOptions, } from '../../packages/database/scripts/external-ingestion-shared.mjs';
@@ -16310,8 +19305,7 @@ CALLS_TO:
 - vitest:expect -> expect( entry?.claims.some((claim) => claim.claimType === 'LIMITATION'), ).toBe
 - vitest:expect -> expect( expandOpenAlexAbstract({ electrochemical: [0], nitrogen: [1], recovery: [2], }), ).toBe
 - vitest:expect -> expect( findOrCreateBulkRun({ autoAccept: true, batchSize: 1000, prisma: prisma as never, resume: true, resumeRunId: 'bulk-run-completed', targetTotal: 500000, }), ).rejects.toThrow
-- vitest:expect -> expect( manifest.records.some( (record) => record.sourceCategory === 'analyst_brief', ), ).toBe
-- vitest:expect -> expect( manifest.records.some( (record) => record.sourceCategory === 'market_snapshot', ), ).toBe
+- vitest:expect -> expect( getEvidenceIngestionConfig({ 'target-total': '500000' }).targetTotal, ).toBe
 - vitest:expect -> expect( shouldTreatProviderHttpFailureAsExhaustedCursor({ cursor: '*', source: 'crossref', status: 404, }), ).toBe
 - vitest:expect -> expect( shouldTreatProviderHttpFailureAsExhaustedCursor({ cursor: 'DnF1ZXJ5VGhlbkZldGNoJAAAAAEJ_Gmf', source: 'crossref', status: 404, }), ).toBe
 - vitest:expect -> expect( shouldTreatProviderHttpFailureAsExhaustedCursor({ cursor: 'cursor', source: 'openalex', status: 404, }), ).toBe
@@ -16331,8 +19325,8 @@ CALLS_TO:
 - vitest:expect -> expect(entry?.supplierDocuments[0]).toMatchObject
 - vitest:expect -> expect(finalState).toMatchObject
 - vitest:expect -> expect(finalState.warning).toContain
-- vitest:expect -> expect(manifest.records).toHaveLength
-- vitest:expect -> expect(manifest.records[0]).toMatchObject
+- vitest:expect -> expect(manifest.manifest).toMatchObject
+- vitest:expect -> expect(manifest.records).toEqual
 - vitest:expect -> expect(manifest.shardCount).toBe
 - vitest:expect -> expect(normalized?.catalogItem).toMatchObject
 - vitest:expect -> expect(normalized?.catalogItem.provenanceNote).toContain
@@ -16378,21 +19372,21 @@ INVARIANTS_ENFORCED:
 TEST_CASES:
 - describe: external ingestion normalization
 - describe: external ingestion shared helpers
+- it: bounds evidence ingestion to the focused corpus range
 - it: classifies stale Crossref cursor misses without hiding first-page failures
 - it: deduplicates entries by normalized DOI before falling back to source keys
 - it: deduplicates entries by normalized title, year, and first author when DOI is absent
 - it: extracts heuristic claims from abstract sentences
 - it: keeps a bulk run resumable when the operator page limit pauses before target
 - it: keeps malformed or low-provenance records in the exception queue even when auto accept is enabled
-- it: loads sharded curated manifests through the committed snapshot index
+- it: keeps the active curated manifest empty until claims have reviewed sources
 - it: maps curated manifest defaults onto contract-safe evidence types
 - it: normalizes Crossref works and strips abstract markup
 - it: normalizes Europe PMC results with claims and access status
 - it: normalizes OpenAlex works into pending literature catalog entries
 - it: normalizes curated manifest supplier records with product linkage
 - it: parses CLI options with values and flags
-- it: plans the production-scale evidence ingestion command without mutating data in dry-run mode
-- it: reads the production-scale evidence ingestion defaults from CLI-style options
+- it: plans a bounded evidence-ingestion operation without mutating data in dry-run mode
 - it: reconstructs OpenAlex abstracts from the inverted index
 - it: records provider failures on the active bulk run instead of creating a duplicate failed run
 - it: rejects explicit resume for a completed bulk ingestion run
@@ -16417,9 +19411,9 @@ KEY_ASSERTIONS:
 - expect(entry?.supplierDocuments[0]).toMatchObject({
 - expect(finalState).toMatchObject({
 - expect(finalState.warning).toContain('Resume the same run id to continue.');
-- expect(manifest.records).toHaveLength(12);
-- expect(manifest.records[0]).toMatchObject({
-- expect(manifest.shardCount).toBe(3);
+- expect(manifest.manifest).toMatchObject({
+- expect(manifest.records).toEqual([]);
+- expect(manifest.shardCount).toBe(0);
 - expect(normalized?.catalogItem).toMatchObject({
 - expect(normalized?.catalogItem.provenanceNote).toContain(
 - expect(normalized?.catalogItem.reviewRequired).toBe(true);
@@ -16562,6 +19556,177 @@ KEY_ASSERTIONS:
 - expect(result.refusalReason).toBeNull();
 - expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 45000);
 - expect(userPayload.evidence_decision_context).toEqual(
+
+FILE: tests/runtime/mechanistic-electrochem-model.test.ts
+LINES: 534
+IMPORTS:
+- import fixture from '../fixtures/raw-case-input.json';
+- import { describe, expect, it } from 'vitest';
+- import { normalizeCaseInput, rawCaseInputSchema, type RawCaseInput, } from '@metrev/domain-contracts';
+- import { evaluateSimulationEnrichment, simulateMechanisticCase, } from '@metrev/electrochem-models';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- evaluate : function — function evaluate(raw: RawCaseInput)
+- valueFor : function — function valueFor( result: ReturnType<typeof evaluate>, key: string, ): number | string | null
+- integrateSeries : function — function integrateSeries( points: Array<{ x: number; y: number }>, rate: (value: number) => number = (value) => value, ): number
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:normalizeCaseInput -> normalizeCaseInput
+- @metrev/domain-contracts:rawCaseInputSchema -> rawCaseInputSchema.parse
+- @metrev/electrochem-models:evaluateSimulationEnrichment -> evaluateSimulationEnrichment
+- @metrev/electrochem-models:simulateMechanisticCase -> simulateMechanisticCase
+- evaluate
+- integrateSeries
+- valueFor
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect( Math.abs(cellInputEnergy - endpointIntegratedMecEnergy) / cellInputEnergy, ).toBeLessThan
+- vitest:expect -> expect( Math.abs(grossEnergy - endpointIntegratedMfcEnergy) / grossEnergy, ).toBeLessThan
+- vitest:expect -> expect( Math.abs(grossHydrogen - endpointIntegratedHydrogen) / grossHydrogen, ).toBeLessThan
+- vitest:expect -> expect( codSeries?.points.every( (point) => point.y === model.operation.influent_cod_kg_m3.value, ), ).toBe
+- vitest:expect -> expect( result.derived_observations.find( (entry) => entry.key === 'mec_electrical_input_density_w_m2', )?.provenance_note, ).toContain
+- vitest:expect -> expect( result.observations.find((entry) => entry.key === 'cod_removal_pct') ?.value, ).toBe
+- vitest:expect -> expect( result.observations.find((entry) => entry.key === 'current_density_a_m2') ?.value, ).toBe
+- vitest:expect -> expect( result.series .find( (entry) => entry.y_axis.key === 'gross_electrical_output_energy_j', ) ?.points.at(-1)?.y, ).toBeCloseTo
+- vitest:expect -> expect( result.series .find( (entry) => entry.y_axis.key === 'hydrogen_captured_production_mol', ) ?.points.at(-1)?.y, ).toBeCloseTo
+- vitest:expect -> expect( result.series .find( (entry) => entry.y_axis.key === 'mec_cell_electrical_input_energy_j', ) ?.points.at(-1)?.y, ).toBeCloseTo
+- vitest:expect -> expect( series!.points.every( (point) => Number.isFinite(point.y) && point.y >= 0 && (key.startsWith('ph_') ? point.y <= 14 : true), ), ).toBe
+- vitest:expect -> expect( valueFor(result, 'biosensor_signal_current_a') as number, ).toBeCloseTo
+- vitest:expect -> expect( valueFor(result, 'hydrogen_captured_production_mol_s') as number, ).toBeCloseTo
+- vitest:expect -> expect( valueFor(result, 'hydrogen_captured_production_mol_s') as number, ).toBeGreaterThan
+- vitest:expect -> expect( valueFor(result, 'hydrogen_gross_production_mol_s') as number, ).toBeCloseTo
+- vitest:expect -> expect( valueFor(result, 'mec_cell_electrical_input_w') as number, ).toBeCloseTo
+- vitest:expect -> expect( valueFor(result, 'mec_total_electrical_demand_w') as number, ).toBeCloseTo
+- vitest:expect -> expect(() => rawCaseInputSchema.parse(missingSource)).toThrow
+- vitest:expect -> expect(anodePh as number).toBeGreaterThanOrEqual
+- vitest:expect -> expect(anodePh as number).toBeLessThanOrEqual
+- vitest:expect -> expect(auxiliaryEnergy).toBeCloseTo
+- vitest:expect -> expect(capturedHydrogen).toBeCloseTo
+- vitest:expect -> expect(cellInputEnergy).toBeGreaterThan
+- vitest:expect -> expect(codRemoval as number).toBeGreaterThanOrEqual
+- vitest:expect -> expect(codRemoval as number).toBeLessThanOrEqual
+- vitest:expect -> expect(currentDensity as number).toBeGreaterThan
+- vitest:expect -> expect(decayResult.failure_detail?.missing_inputs).toContain
+- vitest:expect -> expect(decayResult.status).toBe
+- vitest:expect -> expect(enoughResult.status).toBe
+- vitest:expect -> expect(finalCellVoltage).toBeCloseTo
+- vitest:expect -> expect(grossEnergy).toBeGreaterThan
+- vitest:expect -> expect(grossHydrogen).toBeGreaterThan
+- vitest:expect -> expect(inadequateResult.failure_detail?.missing_inputs).toContain
+- vitest:expect -> expect(inadequateResult.status).toBe
+- vitest:expect -> expect(result.failure_detail?.missing_inputs).toContain
+- vitest:expect -> expect(result.failure_detail?.missing_inputs).toEqual
+- vitest:expect -> expect(result.input_snapshot?.model_inputs).toBeDefined
+- vitest:expect -> expect(result.provenance.source_refs).toContain
+- vitest:expect -> expect(result.series).toHaveLength
+- vitest:expect -> expect(result.series.length).toBeGreaterThanOrEqual
+- vitest:expect -> expect(result.status).toBe
+- vitest:expect -> expect(sensorPower as number).toBeGreaterThan
+- vitest:expect -> expect(series).toBeDefined
+- vitest:expect -> expect(totalDemandEnergy).toBeCloseTo
+- vitest:expect -> expect(typeof codRemoval).toBe
+- vitest:expect -> expect(typeof currentDensity).toBe
+- vitest:expect -> expect(unitResult.failure_detail?.missing_inputs).toContain
+- vitest:expect -> expect(unitResult.status).toBe
+- vitest:expect -> expect(valueFor(enoughResult, 'biosensor_net_power_w')).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'biosensor_detection_status')).toBe
+- vitest:expect -> expect(valueFor(result, 'biosensor_net_power_w') as number).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'biosensor_net_power_w') as number).toBeGreaterThan
+- vitest:expect -> expect(valueFor(result, 'biosensor_net_power_w')).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'biosensor_signal_current_a')).toBeNull
+- vitest:expect -> expect(valueFor(result, 'cod_removal_pct')).toBeNull
+- vitest:expect -> expect(valueFor(result, 'gross_power_w') as number).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'net_electrical_energy_j') as number).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'net_power_w') as number).toBeCloseTo
+- vitest:expect -> expect(valueFor(result, 'power_density_w_m2')).toBeNull
+- vitest:expect -> expect(zeroFlowResult.failure_detail?.missing_inputs).toContain
+- vitest:expect -> expect(zeroFlowResult.status).toBe
+- vitest:expect -> expect.arrayContaining
+- vitest:expect -> expect.stringContaining
+- vitest:it -> it
+SCHEMA_PARSERS:
+- rawCaseInputSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- rawCaseInputSchema.parse(raw)
+- rawCaseInputSchema.parse(missingSource)
+TEST_CASES:
+- describe: coupled electrochemical mechanistic model
+- it: blocks standalone sensor output when the stated external supply is inadequate
+- it: checks an integrated external sensor supply independently of reactor auxiliaries
+- it: conserves the influent COD state when no electroactive biomass is present
+- it: does not choose a mechanistic model from the domain-template family default
+- it: does not run an MFC or MEC model for a legacy or unclassified family
+- it: refuses to fabricate MFC/MEC outputs when source-backed parameters are absent
+- it: rejects biosensor analytical percentages outside their defined range
+- it: rejects model parameters with incompatible units or no source reference
+- it: rejects zero flow for the continuous-flow reactor and physically impossible decay inputs
+- it: requires separator transport properties whenever a membrane is present
+- it: returns a structured insufficient-data result for incremental model drafts
+- it: runs a standalone biosensor with a calibration and quantitative detection limits
+- it: solves a source-referenced MFC case and an MFC-integrated biosensor
+- it: solves the MEC voltage boundary and derives hydrogen from Faraday balance
+KEY_ASSERTIONS:
+- expect(() => rawCaseInputSchema.parse(missingSource)).toThrow();
+- expect(anodePh as number).toBeGreaterThanOrEqual(0);
+- expect(anodePh as number).toBeLessThanOrEqual(14);
+- expect(auxiliaryEnergy).toBeCloseTo(auxiliaryPower * duration, 12);
+- expect(capturedHydrogen).toBeCloseTo(grossHydrogen * 0.8, 12);
+- expect(cellInputEnergy).toBeGreaterThan(0);
+- expect(codRemoval as number).toBeGreaterThanOrEqual(0);
+- expect(codRemoval as number).toBeLessThanOrEqual(100);
+- expect(currentDensity as number).toBeGreaterThan(0);
+- expect(decayResult.failure_detail?.missing_inputs).toContain(
+- expect(decayResult.status).toBe('insufficient_data');
+- expect(enoughResult.status).toBe('completed');
+- expect(finalCellVoltage).toBeCloseTo(currentA * 100, 10);
+- expect(grossEnergy).toBeGreaterThan(0);
+- expect(grossHydrogen).toBeGreaterThan(0);
+- expect(inadequateResult.failure_detail?.missing_inputs).toContain(
+- expect(inadequateResult.status).toBe('insufficient_data');
+- expect(result.failure_detail?.missing_inputs).toContain(
+- expect(result.failure_detail?.missing_inputs).toEqual(
+- expect(result.input_snapshot?.model_inputs).toBeDefined();
+- expect(result.provenance.source_refs).toContain(
+- expect(result.series).toHaveLength(0);
+- expect(result.series.length).toBeGreaterThanOrEqual(5);
+- expect(result.status).toBe('completed');
+- expect(result.status).toBe('insufficient_data');
+- expect(sensorPower as number).toBeGreaterThan(0);
+- expect(series).toBeDefined();
+- expect(totalDemandEnergy).toBeCloseTo(
+- expect(typeof codRemoval).toBe('number');
+- expect(typeof currentDensity).toBe('number');
+- expect(unitResult.failure_detail?.missing_inputs).toContain(
+- expect(unitResult.status).toBe('insufficient_data');
+- expect(valueFor(enoughResult, 'biosensor_net_power_w')).toBeCloseTo(
+- expect(valueFor(result, 'biosensor_detection_status')).toBe('quantifiable');
+- expect(valueFor(result, 'biosensor_net_power_w') as number).toBeCloseTo(
+- expect(valueFor(result, 'biosensor_net_power_w') as number).toBeGreaterThan(
+- expect(valueFor(result, 'biosensor_net_power_w')).toBeCloseTo(0.01, 6);
+- expect(valueFor(result, 'biosensor_signal_current_a')).toBeNull();
+- expect(valueFor(result, 'cod_removal_pct')).toBeNull();
+- expect(valueFor(result, 'gross_power_w') as number).toBeCloseTo(
+- expect(valueFor(result, 'net_electrical_energy_j') as number).toBeCloseTo(
+- expect(valueFor(result, 'net_power_w') as number).toBeCloseTo(
+- expect(valueFor(result, 'power_density_w_m2')).toBeNull();
+- expect(zeroFlowResult.failure_detail?.missing_inputs).toContain(
+- expect(zeroFlowResult.status).toBe('insufficient_data');
 
 FILE: tests/runtime/metrev-data-metadata-cleanup.test.ts
 LINES: 108
@@ -16752,7 +19917,7 @@ KEY_ASSERTIONS:
 - expect(statement).toContain('source."accessStatus" <>');
 
 FILE: tests/runtime/research-api.test.ts
-LINES: 833
+LINES: 830
 IMPORTS:
 - import { afterEach, describe, expect, it } from 'vitest';
 - import { defaultSessionCookieName, getSessionTokenFromCookie, type SessionActor, type SessionResolver, } from '@metrev/auth';
@@ -16819,7 +19984,6 @@ CALLS_TO:
 - vitest:expect -> expect(pack.evidence_items.length).toBeGreaterThan
 - vitest:expect -> expect(packResponse.statusCode).toBe
 - vitest:expect -> expect(presetResponse.json()).toMatchObject
-- vitest:expect -> expect(presetResponse.json().queued_runs).toBeGreaterThan
 - vitest:expect -> expect(presetResponse.statusCode).toBe
 - vitest:expect -> expect(progressResponse.json()).toMatchObject
 - vitest:expect -> expect(progressResponse.statusCode).toBe
@@ -16837,7 +20001,6 @@ CALLS_TO:
 - vitest:expect -> expect(sweepResponse.json()).toMatchObject
 - vitest:expect -> expect(sweepResponse.statusCode).toBe
 - vitest:expect -> expect(updatedProgressResponse.json()).toMatchObject
-- vitest:expect -> expect(updatedProgressResponse.json().queued_backfills).toBeGreaterThan
 - vitest:expect -> expect(updatedProgressResponse.statusCode).toBe
 - vitest:expect -> expect(viewerDetailResponse.statusCode).toBe
 - vitest:expect -> expect(viewerListResponse.statusCode).toBe
@@ -16869,8 +20032,8 @@ TEST_CASES:
 - it: creates a review, runs deterministic extraction, and exposes decision input
 - it: deduplicates staged search imports by DOI before provider-specific keys
 - it: imports analyst-gated local PDF artifacts with metadata quality and veracity
-- it: queues preset backfills and exposes warehouse progress
 - it: reconciles missing default research columns when loading a legacy review detail
+- it: rejects warehouse backfill queue creation and keeps progress read-only
 - it: sweeps warehouse eligibility and excludes ineligible sources from reviews
 KEY_ASSERTIONS:
 - expect(addColumnResponse.json()).toMatchObject({
@@ -16886,7 +20049,7 @@ KEY_ASSERTIONS:
 - expect(createResponse.statusCode).toBe(201);
 - expect(created).toMatchObject({
 - expect(created.column_count).toBe(legacyColumns.length);
-- expect(created.paper_count).toBe(2);
+- expect(created.paper_count).toBe(1);
 - expect(created.papers).toEqual(
 - expect(created.papers[0]).toMatchObject({
 - expect(decisionInputResponse.statusCode).toBe(403);
@@ -16914,12 +20077,11 @@ KEY_ASSERTIONS:
 - expect(pack.evidence_items.length).toBeGreaterThan(0);
 - expect(packResponse.statusCode).toBe(201);
 - expect(presetResponse.json()).toMatchObject({
-- expect(presetResponse.json().queued_runs).toBeGreaterThan(10);
-- expect(presetResponse.statusCode).toBe(201);
+- expect(presetResponse.statusCode).toBe(202);
 - expect(progressResponse.json()).toMatchObject({
 - expect(progressResponse.statusCode).toBe(200);
 - expect(queueResponse.json()).toMatchObject({
-- expect(queueResponse.statusCode).toBe(201);
+- expect(queueResponse.statusCode).toBe(410);
 - expect(sampledEligibilityResponse.json()).toMatchObject({
 - expect(sampledEligibilityResponse.json().items).toHaveLength(1);
 - expect(sampledEligibilityResponse.statusCode).toBe(200);
@@ -16932,10 +20094,86 @@ KEY_ASSERTIONS:
 - expect(sweepResponse.json()).toMatchObject({
 - expect(sweepResponse.statusCode).toBe(200);
 - expect(updatedProgressResponse.json()).toMatchObject({
-- expect(updatedProgressResponse.json().queued_backfills).toBeGreaterThan(
 - expect(updatedProgressResponse.statusCode).toBe(200);
 - expect(viewerDetailResponse.statusCode).toBe(403);
 - expect(viewerListResponse.statusCode).toBe(403);
+
+FILE: tests/runtime/research-cell-coverage.test.ts
+LINES: 105
+IMPORTS:
+- import mfcPaperFixture from '../fixtures/research/mfc-paper.json';
+- import { describe, expect, it } from 'vitest';
+- import { researchCellSchema, researchPaperMetadataSchema, } from '@metrev/domain-contracts';
+- import { findDefaultResearchColumn, runDeterministicResearchExtraction, } from '@metrev/research-intelligence';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- @metrev/domain-contracts:researchCellSchema -> researchCellSchema.safeParse
+- @metrev/domain-contracts:researchPaperMetadataSchema -> researchPaperMetadataSchema.parse
+- @metrev/research-intelligence:findDefaultResearchColumn -> findDefaultResearchColumn
+- @metrev/research-intelligence:runDeterministicResearchExtraction -> runDeterministicResearchExtraction
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect((cell.evidence_trace as unknown[]).length).toBeGreaterThan
+- vitest:expect -> expect(Array.isArray(cell.evidence_trace)).toBe
+- vitest:expect -> expect(Array.isArray(cells)).toBe
+- vitest:expect -> expect(cell.column_id).toBe
+- vitest:expect -> expect(cell.extractor_version).toBe
+- vitest:expect -> expect(cell.missing_reason).toBeNull
+- vitest:expect -> expect(cell.status).toBe
+- vitest:expect -> expect(cells).toHaveLength
+- vitest:expect -> expect(parsed.success).toBe
+- vitest:expect -> expect(reparsed.success).toBe
+- vitest:it -> it
+SCHEMA_PARSERS:
+- researchCellSchema.safeParse
+- researchPaperMetadataSchema.parse
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- researchCellSchema.safeParse({ ...base, status: 'filled_with_trace', missing_reason: null, evidence_trace: [ { source: 'abstract', text_span: 'observed result', }, ], })
+- researchCellSchema.safeParse({ ...base, status: 'filled_with_trace', missing_reason: null, evidence_trace: [], })
+- researchCellSchema.safeParse({ ...base, status: 'not_reported_by_paper', missing_reason: null, evidence_trace: [], })
+- researchCellSchema.safeParse({ ...base, status: 'extraction_failed', missing_reason: 'extraction_failed', evidence_trace: [], })
+- researchPaperMetadataSchema.parse(mfcPaperFixture)
+- throw new Error('performance_metrics default column not registered');
+- researchCellSchema.safeParse(cell)
+TEST_CASES:
+- describe: deterministic extractor emits honest cells[] (spec 037 Phase 4)
+- describe: researchCellSchema invariants (spec 037 Phase 4)
+- it: accepts a filled_with_trace cell when at least one trace is present
+- it: accepts a non-filled cell when a missing_reason is provided
+- it: emits a cell with status filled_with_trace when the extractor produces evidence
+- it: rejects a filled_with_trace cell without any evidence_trace entries
+- it: rejects a non-filled cell with a null missing_reason
+KEY_ASSERTIONS:
+- expect((cell.evidence_trace as unknown[]).length).toBeGreaterThan(0);
+- expect(Array.isArray(cell.evidence_trace)).toBe(true);
+- expect(Array.isArray(cells)).toBe(true);
+- expect(cell.column_id).toBe('performance_metrics');
+- expect(cell.extractor_version).toBe('research-deterministic-v1');
+- expect(cell.missing_reason).toBeNull();
+- expect(cell.status).toBe('filled_with_trace');
+- expect(cells).toHaveLength(1);
+- expect(parsed.success).toBe(false);
+- expect(parsed.success).toBe(true);
+- expect(reparsed.success).toBe(true);
 
 FILE: tests/runtime/research-intelligence.test.ts
 LINES: 632
@@ -17172,8 +20410,91 @@ KEY_ASSERTIONS:
 - expect(transaction.externalSourceRecord.create).toHaveBeenCalledTimes(2);
 - expect(transaction.externalSourceRecord.findMany).toHaveBeenCalledTimes(3);
 
+FILE: tests/runtime/research-prune-script.test.ts
+LINES: 221
+IMPORTS:
+- import { describe, expect, it } from 'vitest';
+- import { buildTableReadyExpansionPlan } from '../../packages/database/scripts/expand-table-ready-corpus';
+- import { shouldKeepResearchSourceForPrune } from '../../packages/database/scripts/prune-research-warehouse';
+- import { evaluateTechnicalCompleteness } from '../../packages/database/scripts/table-ready-completeness';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- completeTechnicalCandidate : function — function completeTechnicalCandidate()
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../../packages/database/scripts/expand-table-ready-corpus:buildTableReadyExpansionPlan -> buildTableReadyExpansionPlan
+- ../../packages/database/scripts/prune-research-warehouse:shouldKeepResearchSourceForPrune -> shouldKeepResearchSourceForPrune
+- ../../packages/database/scripts/table-ready-completeness:evaluateTechnicalCompleteness -> evaluateTechnicalCompleteness
+- completeTechnicalCandidate
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect( shouldKeepResearchSourceForPrune({ eligibilityStatus: 'eligible', sourceDocumentId: 'source-001', tableReadyOnly: false, tableReadySourceIds: new Set(), technologyClasses: ['MFC'], }), ).toBe
+- vitest:expect -> expect( shouldKeepResearchSourceForPrune({ eligibilityStatus: 'eligible', sourceDocumentId: 'source-not-ready', tableReadyOnly: true, tableReadySourceIds, technologyClasses: ['MFC'], }), ).toBe
+- vitest:expect -> expect( shouldKeepResearchSourceForPrune({ eligibilityStatus: 'eligible', sourceDocumentId: 'source-ready', tableReadyOnly: false, tableReadySourceIds: new Set(['source-ready']), technologyClasses: ['algae'], }), ).toBe
+- vitest:expect -> expect( shouldKeepResearchSourceForPrune({ eligibilityStatus: 'eligible', sourceDocumentId: 'source-ready', tableReadyOnly: true, tableReadySourceIds, technologyClasses: [], }), ).toBe
+- vitest:expect -> expect( shouldKeepResearchSourceForPrune({ eligibilityStatus: 'excluded', sourceDocumentId: 'source-ready', tableReadyOnly: false, tableReadySourceIds: new Set(['source-ready']), technologyClasses: ['MFC'], }), ).toBe
+- vitest:expect -> expect(assessment.coverage).toEqual
+- vitest:expect -> expect(assessment.flags).toContain
+- vitest:expect -> expect(assessment.missingRequirements).toContain
+- vitest:expect -> expect(assessment.missingRequirements).toEqual
+- vitest:expect -> expect(assessment.recommendedAction).toBe
+- vitest:expect -> expect(assessment.strictTableReady).toBe
+- vitest:expect -> expect(plan.config).toBe
+- vitest:expect -> expect(plan.dry_run).toBe
+- vitest:expect -> expect(plan.lawful_acquisition_policy).toContain
+- vitest:expect -> expect(plan.stages).toContain
+- vitest:it -> it
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+TEST_CASES:
+- describe: lawful table-ready expansion plan
+- describe: research hard-prune source selection
+- describe: strict table-ready technical completeness
+- it: defaults to a dry-run campaign with the strict readiness reporting stage
+- it: does not count unclassified metrics as strict normalized metric coverage
+- it: excludes ineligible and out-of-scope sources
+- it: keeps eligible MFC/MEC/MET sources in broad warehouse mode
+- it: keeps experimental technical papers with identity, chunks, facts, benchmarks, and group coverage
+- it: rejects broad review-like records without experimental signals
+- it: requests lawful reacquisition when source chunks are missing
+- it: requires strict table readiness when table-ready mode is enabled
+KEY_ASSERTIONS:
+- expect(assessment.coverage).toEqual({
+- expect(assessment.flags).toContain('broad_without_experimental_signal');
+- expect(assessment.flags).toContain('unclassified_metric_present');
+- expect(assessment.missingRequirements).toContain(
+- expect(assessment.missingRequirements).toContain('traceable_source_chunks');
+- expect(assessment.missingRequirements).toEqual([]);
+- expect(assessment.recommendedAction).toBe('keep');
+- expect(assessment.recommendedAction).toBe('reacquire_full_text');
+- expect(assessment.recommendedAction).toBe('reject_from_intake');
+- expect(assessment.strictTableReady).toBe(false);
+- expect(assessment.strictTableReady).toBe(true);
+- expect(plan.config).toBe('../data/table-ready-expansion.config.json');
+- expect(plan.dry_run).toBe(true);
+- expect(plan.lawful_acquisition_policy).toContain(
+- expect(plan.stages).toContain('emit strict article-level readiness report');
+
 FILE: tests/runtime/research-runtime-extractor.test.ts
-LINES: 337
+LINES: 390
 IMPORTS:
 - import { afterEach, describe, expect, it, vi } from 'vitest';
 - import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
@@ -17238,10 +20559,12 @@ INVARIANTS_ENFORCED:
 - throw new Error('design_parameters default column not registered');
 - researchPaperMetadataSchema.parse(incompletePaperFixture)
 - throw new Error('performance_metrics default column not registered');
+- researchPaperMetadataSchema.parse({ ...incompletePaperFixture, abstract_text: 'A microbial fuel cell used carbon felt anodes with 1200 m2/g surface area, a Nafion membrane with 180 um membrane thickness, 0.5 mg/cm2 ca...
 - throw new Error('research_gaps default column not registered');
 - throw new Error('data_metadata_readiness default column not registered');
 TEST_CASES:
 - describe: research runtime extractor
+- it: extracts component measurements when values appear before labels
 - it: falls back to deterministic extraction for llm_extracted research columns when openai mode is requested
 - it: keeps deterministic low-information answers traceable with abstract evidence
 - it: uses hydrated full text to improve data and metadata readiness extraction when abstracts are incomplete
@@ -17258,6 +20581,58 @@ KEY_ASSERTIONS:
 - expect(result.missing_fields).not.toEqual(
 - expect(result.normalized_payload).toEqual(
 - expect(result.status).toBe('valid');
+
+FILE: tests/runtime/research-scope-boundary.test.ts
+LINES: 52
+IMPORTS:
+- import { describe, expect, it } from 'vitest';
+- import { assessResearchWarehouseEligibility, detectResearchTechnologyClasses, } from '../../packages/database/src/research-repository';
+- import { detectTechnologyClasses } from '../../packages/research-intelligence/src/extraction/deterministic-extractor';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- none
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../../packages/database/src/research-repository:assessResearchWarehouseEligibility -> assessResearchWarehouseEligibility
+- ../../packages/database/src/research-repository:detectResearchTechnologyClasses -> detectResearchTechnologyClasses
+- ../../packages/research-intelligence/src/extraction/deterministic-extractor:detectTechnologyClasses -> detectTechnologyClasses
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect( detectResearchTechnologyClasses( 'MEC wastewater treatment with captured hydrogen as a secondary output', ), ).toEqual
+- vitest:expect -> expect( detectTechnologyClasses( 'Standalone electrochemical biosensor for wastewater monitoring', ), ).toEqual
+- vitest:expect -> expect(detectResearchTechnologyClasses(outOfScopeText)).toEqual
+- vitest:expect -> expect(detectTechnologyClasses(outOfScopeText)).toEqual
+- vitest:expect -> expect(eligibility).toMatchObject
+- vitest:it -> it
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+TEST_CASES:
+- describe: active research scope boundary
+- it: does not classify legacy technologies as active evidence
+- it: keeps out-of-scope literature off the active evidence surface
+- it: recognizes active MEC and biosensor evidence while retaining secondary hydrogen
+KEY_ASSERTIONS:
+- expect(detectResearchTechnologyClasses(outOfScopeText)).toEqual([]);
+- expect(detectTechnologyClasses(outOfScopeText)).toEqual(['not_reported']);
+- expect(eligibility).toMatchObject({
 
 FILE: tests/runtime/research-source-content.test.ts
 LINES: 84
@@ -17367,10 +20742,10 @@ KEY_ASSERTIONS:
 - expect(response.status).toBe(503);
 
 FILE: tests/runtime/research-worker.test.ts
-LINES: 69
+LINES: 106
 IMPORTS:
-- import { describe, expect, it } from 'vitest';
-- import { MemoryResearchRepository } from '@metrev/database';
+- import { describe, expect, it, vi } from 'vitest';
+- import { type EvidenceAuditRepository, MemoryResearchRepository, } from '@metrev/database';
 - import { DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION, getDefaultResearchColumns, } from '@metrev/research-intelligence';
 - import { runResearchWorkerCycle } from '../../apps/research-worker/src/worker';
 EXPORTS:
@@ -17384,7 +20759,11 @@ CALLS_TO:
 - @metrev/research-intelligence:getDefaultResearchColumns -> getDefaultResearchColumns
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect( evidenceAuditRepository.createDiscoveryTargets, ).not.toHaveBeenCalled
 - vitest:expect -> expect(afterFirstCycle.items[0]).toEqual
+- vitest:expect -> expect(cycle.evidenceDiscoveryRecordsStaged).toBe
+- vitest:expect -> expect(cycle.evidenceDiscoveryTargetsCreated).toBe
+- vitest:expect -> expect(evidenceAuditRepository.listDiscoveryTargets).toHaveBeenCalled
 - vitest:expect -> expect(finalBackfills.items[0]).toEqual
 - vitest:expect -> expect(firstCycle.backfillsProcessed).toBe
 - vitest:expect -> expect(firstCycle.extractionJobsProcessed).toBeGreaterThan
@@ -17393,6 +20772,7 @@ CALLS_TO:
 - vitest:expect -> expect.any
 - vitest:expect -> expect.objectContaining
 - vitest:it -> it
+- vitest:vi -> vi.fn
 SCHEMA_PARSERS:
 - none
 ENVIRONMENT_READS:
@@ -17410,12 +20790,17 @@ JSX_SURFACE_MARKERS:
 LOGIC_FLOW:
 - none
 INVARIANTS_ENFORCED:
-- none
+- throw new Error('unexpected auto discovery target creation');
+- throw new Error('unexpected acquisition attempt creation');
 TEST_CASES:
 - describe: research worker
+- it: does not auto-create evidence discovery targets unless explicitly enabled
 - it: drains queued backfills and queued extraction jobs through the shared runtime path
 KEY_ASSERTIONS:
 - expect(afterFirstCycle.items[0]).toEqual(
+- expect(cycle.evidenceDiscoveryRecordsStaged).toBe(0);
+- expect(cycle.evidenceDiscoveryTargetsCreated).toBe(0);
+- expect(evidenceAuditRepository.listDiscoveryTargets).toHaveBeenCalled();
 - expect(finalBackfills.items[0]).toEqual(
 - expect(firstCycle.backfillsProcessed).toBe(1);
 - expect(firstCycle.extractionJobsProcessed).toBeGreaterThan(0);
@@ -17556,7 +20941,7 @@ KEY_ASSERTIONS:
 - expect(score.level).toBe('medium');
 
 FILE: tests/runtime/telemetry.test.ts
-LINES: 87
+LINES: 103
 IMPORTS:
 - import { createServer } from 'node:http';
 - import { afterEach, describe, expect, it } from 'vitest';
@@ -17568,6 +20953,8 @@ LOCAL_DECLARATIONS:
 - originalTelemetryEnabled : const = process.env.METREV_OTEL_ENABLED
 - originalOtlpEndpoint : const = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 - originalOtlpTracesEndpoint : const = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+- originalTraceSampler : const = process.env.OTEL_TRACES_SAMPLER
+- originalTraceSamplerArg : const = process.env.OTEL_TRACES_SAMPLER_ARG
 SCHEMAS (Zod):
 - none
 CALLS_TO:
@@ -17586,6 +20973,8 @@ ENVIRONMENT_READS:
 - METREV_OTEL_ENABLED
 - OTEL_EXPORTER_OTLP_ENDPOINT
 - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+- OTEL_TRACES_SAMPLER
+- OTEL_TRACES_SAMPLER_ARG
 PRISMA_OPERATIONS:
 - none
 ROLE_GATES:
@@ -17606,7 +20995,7 @@ KEY_ASSERTIONS:
 - expect(requests).toContain('/v1/traces');
 
 FILE: tests/runtime/web-auth-routing.test.ts
-LINES: 37
+LINES: 35
 IMPORTS:
 - import { describe, expect, it } from 'vitest';
 - import { buildLoginRedirect, normalizeCallbackPath, sessionHasRequiredRole, } from '../../apps/web-ui/src/lib/auth-routing';
@@ -17653,22 +21042,22 @@ INVARIANTS_ENFORCED:
 TEST_CASES:
 - describe: web auth routing helpers
 - it: builds the login redirect with a preserved callback path
-- it: falls back to the dashboard for empty, unsafe, or login callback paths
+- it: falls back to home for empty, unsafe, or login callback paths
 - it: keeps valid relative callback paths
 - it: reuses the shared RBAC ordering for UI route checks
 KEY_ASSERTIONS:
 - expect(buildLoginRedirect('/cases/new')).toBe(
-- expect(normalizeCallbackPath('')).toBe('/dashboard');
-- expect(normalizeCallbackPath('//example.com/evil')).toBe('/dashboard');
+- expect(normalizeCallbackPath('')).toBe('/home');
+- expect(normalizeCallbackPath('//example.com/evil')).toBe('/home');
 - expect(normalizeCallbackPath('/evaluations/abc?tab=history')).toBe(
-- expect(normalizeCallbackPath('/login')).toBe('/dashboard');
-- expect(normalizeCallbackPath('https://example.com/evil')).toBe(
+- expect(normalizeCallbackPath('/login')).toBe('/home');
+- expect(normalizeCallbackPath('https://example.com/evil')).toBe('/home');
 - expect(sessionHasRequiredRole('ADMIN', 'ANALYST')).toBe(true);
 - expect(sessionHasRequiredRole('ANALYST', 'ANALYST')).toBe(true);
 - expect(sessionHasRequiredRole('VIEWER', 'ANALYST')).toBe(false);
 
 FILE: tests/runtime/workflow-assets.test.ts
-LINES: 279
+LINES: 289
 IMPORTS:
 - import { existsSync, readFileSync, readdirSync } from 'node:fs';
 - import { resolve } from 'node:path';
@@ -17720,6 +21109,7 @@ CALLS_TO:
 - vitest:expect -> expect(packageJson.scripts?.['test:e2e:install']).toBe
 - vitest:expect -> expect(packageJson.scripts?.['test:e2e:smoke']).toBe
 - vitest:expect -> expect(packageJson.scripts?.['test:workflow-assets']).toBe
+- vitest:expect -> expect(packageJson.scripts?.['validate:db']).toBe
 - vitest:expect -> expect(packageJson.scripts?.['validate:local:smoke']).toBe
 - vitest:expect -> expect(runtimeToolingSetup).toContain
 - vitest:expect -> expect(smokeSpec).toContain
@@ -17761,6 +21151,8 @@ KEY_ASSERTIONS:
 - expect(ciWorkflow).toContain(
 - expect(ciWorkflow).toContain("METREV_SKIP_LOCAL_SMOKE: '1'");
 - expect(ciWorkflow).toContain('Check workflow formatting');
+- expect(ciWorkflow).toContain('METREV_CI_AUTH_SECRET');
+- expect(ciWorkflow).toContain('METREV_UNPAYWALL_EMAIL');
 - expect(ciWorkflow).toContain('Run fast validation matrix');
 - expect(ciWorkflow).toContain('Run local acceptance matrix');
 - expect(ciWorkflow).toContain('Run local-view smoke validation');
@@ -17773,9 +21165,11 @@ KEY_ASSERTIONS:
 - expect(ciWorkflow).toContain('pnpm run format:workflow-assets');
 - expect(ciWorkflow).toContain('pnpm run lint:workflow-semantics');
 - expect(ciWorkflow).toContain('pnpm run validate:advanced');
+- expect(ciWorkflow).toContain('pnpm run validate:db');
 - expect(ciWorkflow).toContain('pnpm run validate:fast');
 - expect(ciWorkflow).toContain('pnpm run validate:local');
 - expect(ciWorkflow).toContain('pnpm run validate:local:smoke');
+- expect(ciWorkflow).toContain('validate-postgres');
 - expect(codeqlWorkflow).toContain('github/codeql-action/analyze@v3');
 - expect(codeqlWorkflow).toContain('github/codeql-action/init@v3');
 - expect(codeqlWorkflow).toContain('javascript-typescript');
@@ -17802,6 +21196,7 @@ KEY_ASSERTIONS:
 - expect(packageJson.scripts?.['test:e2e:install']).toBe(
 - expect(packageJson.scripts?.['test:e2e:smoke']).toBe(
 - expect(packageJson.scripts?.['test:workflow-assets']).toBe(
+- expect(packageJson.scripts?.['validate:db']).toBe(
 - expect(packageJson.scripts?.['validate:local:smoke']).toBe(
 - expect(runtimeToolingSetup).toContain('actionlint');
 - expect(runtimeToolingSetup).toContain('pnpm run lint:workflow-semantics');
@@ -17885,17 +21280,22 @@ KEY_ASSERTIONS:
 - expect(useQuery).toHaveBeenCalledWith(
 
 FILE: tests/web-ui/advanced-route-pages.test.tsx
-LINES: 86
+LINES: 145
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
 - import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 - import ExternalEvidenceExplorerDetailPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page';
 - import ExternalEvidenceExplorerPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/page';
+- import AdminEvidenceQualityPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/quality/page';
 - import ExternalEvidenceReviewDetailPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/review/[id]/page';
 - import ExternalEvidenceReviewPage from '../../apps/web-ui/src/app/admin/intelligence/evidence/review/page';
 - import ResearchReviewDetailPage from '../../apps/web-ui/src/app/admin/intelligence/research/reviews/[id]/page';
 - import ResearchReviewsPage from '../../apps/web-ui/src/app/admin/intelligence/research/reviews/page';
+- import EvidenceWorkspacePage from '../../apps/web-ui/src/app/evidence/page';
+- import EvidenceQualityPage from '../../apps/web-ui/src/app/evidence/quality/page';
+- import EvidenceReviewPage from '../../apps/web-ui/src/app/evidence/review/page';
+- import ResearchWorkspacePage from '../../apps/web-ui/src/app/research/page';
 EXPORTS:
 - none
 LOCAL_DECLARATIONS:
@@ -17906,14 +21306,26 @@ CALLS_TO:
 - ../../apps/web-ui/node_modules/react-dom/server.node.js:renderToStaticMarkup -> renderToStaticMarkup
 - ../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/[id]/page:default -> ExternalEvidenceExplorerDetailPage
 - ../../apps/web-ui/src/app/admin/intelligence/evidence/explorer/page:default -> ExternalEvidenceExplorerPage
+- ../../apps/web-ui/src/app/admin/intelligence/evidence/quality/page:default -> AdminEvidenceQualityPage
 - ../../apps/web-ui/src/app/admin/intelligence/evidence/review/[id]/page:default -> ExternalEvidenceReviewDetailPage
 - ../../apps/web-ui/src/app/admin/intelligence/evidence/review/page:default -> ExternalEvidenceReviewPage
 - ../../apps/web-ui/src/app/admin/intelligence/research/reviews/[id]/page:default -> ResearchReviewDetailPage
 - ../../apps/web-ui/src/app/admin/intelligence/research/reviews/page:default -> ResearchReviewsPage
+- ../../apps/web-ui/src/app/evidence/page:default -> EvidenceWorkspacePage
+- ../../apps/web-ui/src/app/evidence/quality/page:default -> EvidenceQualityPage
+- ../../apps/web-ui/src/app/evidence/review/page:default -> EvidenceReviewPage
+- ../../apps/web-ui/src/app/research/page:default -> ResearchWorkspacePage
 - react:default -> React.createElement
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect( EvidenceQualityPage({ searchParams: Promise.resolve({}) }), ).rejects.toMatchObject
+- vitest:expect -> expect( EvidenceReviewPage({ searchParams: Promise.resolve({ status: 'accepted' }), }), ).rejects.toMatchObject
+- vitest:expect -> expect( EvidenceReviewPage({ searchParams: Promise.resolve({}) }), ).rejects.toMatchObject
+- vitest:expect -> expect( EvidenceWorkspacePage({ searchParams: Promise.resolve({}) }), ).rejects.toMatchObject
+- vitest:expect -> expect( ResearchWorkspacePage({ searchParams: Promise.resolve({ status: 'completed', paper: 'fixture', }), }), ).rejects.toMatchObject
+- vitest:expect -> expect( ResearchWorkspacePage({ searchParams: Promise.resolve({}) }), ).rejects.toMatchObject
 - vitest:expect -> expect(html).toContain
+- vitest:expect -> expect.stringContaining
 - vitest:it -> it
 - vitest:vi -> vi.fn
 - vitest:vi -> vi.hoisted
@@ -17938,19 +21350,22 @@ INVARIANTS_ENFORCED:
 - none
 TEST_CASES:
 - describe: advanced route pages
+- it: preserves legacy route query filters when redirecting to admin intelligence pages
+- it: redirects legacy evidence and research routes to admin intelligence pages
 - it: shows the analyst-required state for viewer sessions on advanced/internal pages
 KEY_ASSERTIONS:
 - expect(html).toContain('Analyst role required');
-- expect(html).toContain('Back to dashboard');
+- expect(html).toContain('Back to home');
 - expect(html).toContain('viewer@metrev.local');
 
 FILE: tests/web-ui/api-client.test.ts
-LINES: 723
+LINES: 915
 IMPORTS:
 - import rawFixture from '../fixtures/raw-case-input.json';
 - import { afterEach, describe, expect, it, vi } from 'vitest';
 - import { rawCaseInputSchema } from '@metrev/domain-contracts';
-- import { addResearchColumn, createResearchEvidencePack, createResearchReview, evaluateCase, fetchEvaluationCsvExport, fetchEvaluationList, fetchEvidenceExplorerAssistant, fetchEvidenceExplorerCsvExport, fetchEvidenceExplorerWorkspace, fetchExternalEvidenceCatalog, fetchResearchEvidencePackDecisionInput, fetchResearchReview, fetchResearchReviews, runResearchExtractions, } from '../../apps/web-ui/src/lib/api';
+- import type { AcquisitionStatusResponse, DiscoveryStatusResponse, EvidenceQualityAuditResponse, } from '@metrev/domain-contracts/browser';
+- import { addResearchColumn, createResearchEvidencePack, createResearchReview, evaluateCase, fetchAcquisitionStatus, fetchEvaluationCsvExport, fetchEvaluationList, fetchDiscoveryStatus, fetchEvidenceExplorerAssistant, fetchEvidenceExplorerCsvExport, fetchEvidenceExplorerWorkspace, fetchEvidenceQualityReport, fetchExternalEvidenceCatalog, fetchResearchEvidencePackDecisionInput, fetchResearchReview, fetchResearchReviews, runEvidenceDiscovery, runResearchExtractions, triggerEvidenceQualityAudit, } from '../../apps/web-ui/src/lib/api';
 - import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 EXPORTS:
 - none
@@ -17958,6 +21373,9 @@ LOCAL_DECLARATIONS:
 - fetchMock : const = vi.fn<typeof fetch>()
 - workspaceFixturesPromise : const
 - getWorkspaceFixtures : function — function getWorkspaceFixtures()
+- evidenceQualityResponse : const = { report: { report_id: 'quality-report-client-001', trigger_mode: 'manual', coverage_matrix: [ { system_type: 'MFC', component_type: 'anode', material: 'carb...
+- discoveryStatusResponse : const = { active_targets: 1, queued_targets: 2, completed_targets: 3, failed_targets: 0, total_records_staged: 5, targets: [], } satisfies DiscoveryStatusResponse
+- acquisitionStatusResponse : const = { queued_attempts: 4, running_attempts: 1, successful_attempts: 8, failed_attempts: 0, skipped_attempts: 0, attempts: [], } satisfies AcquisitionStatusResponse
 SCHEMAS (Zod):
 - none
 CALLS_TO:
@@ -17965,27 +21383,36 @@ CALLS_TO:
 - ../../apps/web-ui/src/lib/api:createResearchEvidencePack -> createResearchEvidencePack
 - ../../apps/web-ui/src/lib/api:createResearchReview -> createResearchReview
 - ../../apps/web-ui/src/lib/api:evaluateCase -> evaluateCase
+- ../../apps/web-ui/src/lib/api:fetchAcquisitionStatus -> fetchAcquisitionStatus
+- ../../apps/web-ui/src/lib/api:fetchDiscoveryStatus -> fetchDiscoveryStatus
 - ../../apps/web-ui/src/lib/api:fetchEvaluationCsvExport -> fetchEvaluationCsvExport
 - ../../apps/web-ui/src/lib/api:fetchEvaluationList -> fetchEvaluationList
 - ../../apps/web-ui/src/lib/api:fetchEvidenceExplorerAssistant -> fetchEvidenceExplorerAssistant
 - ../../apps/web-ui/src/lib/api:fetchEvidenceExplorerCsvExport -> fetchEvidenceExplorerCsvExport
 - ../../apps/web-ui/src/lib/api:fetchEvidenceExplorerWorkspace -> fetchEvidenceExplorerWorkspace
+- ../../apps/web-ui/src/lib/api:fetchEvidenceQualityReport -> fetchEvidenceQualityReport
 - ../../apps/web-ui/src/lib/api:fetchExternalEvidenceCatalog -> fetchExternalEvidenceCatalog
 - ../../apps/web-ui/src/lib/api:fetchResearchEvidencePackDecisionInput -> fetchResearchEvidencePackDecisionInput
 - ../../apps/web-ui/src/lib/api:fetchResearchReview -> fetchResearchReview
 - ../../apps/web-ui/src/lib/api:fetchResearchReviews -> fetchResearchReviews
+- ../../apps/web-ui/src/lib/api:runEvidenceDiscovery -> runEvidenceDiscovery
 - ../../apps/web-ui/src/lib/api:runResearchExtractions -> runResearchExtractions
+- ../../apps/web-ui/src/lib/api:triggerEvidenceQualityAudit -> triggerEvidenceQualityAudit
 - ../fixtures/workspace-view-fixtures:buildWorkspaceViewFixtures -> buildWorkspaceViewFixtures
 - @metrev/domain-contracts:rawCaseInputSchema -> rawCaseInputSchema.parse
 - getWorkspaceFixtures
 - vitest:afterEach -> afterEach
 - vitest:describe -> describe
 - vitest:expect -> expect
+- vitest:expect -> expect(fetchAcquisitionStatus()).resolves.toEqual
+- vitest:expect -> expect(fetchDiscoveryStatus()).resolves.toEqual
 - vitest:expect -> expect(fetchEvaluationCsvExport('eval-001')).rejects.toThrow
 - vitest:expect -> expect(fetchEvaluationList()).rejects.toThrow
+- vitest:expect -> expect(fetchEvidenceQualityReport()).resolves.toEqual
 - vitest:expect -> expect(fetchMock).toHaveBeenCalledWith
 - vitest:expect -> expect(fetchMock).toHaveBeenLastCalledWith
 - vitest:expect -> expect(result).toEqual
+- vitest:expect -> expect(runEvidenceDiscovery()).resolves.toEqual
 - vitest:expect -> expect.objectContaining
 - vitest:it -> it
 - vitest:vi -> vi.fn
@@ -18021,12 +21448,18 @@ TEST_CASES:
 - it: rejects invalid JSON payloads that drift from the shared response contract
 - it: sends the idempotency key when evaluating a case
 - it: surfaces API error payloads for failed CSV exports
+- it: uses the evidence discovery and acquisition endpoints
+- it: uses the evidence intelligence quality audit endpoints
 KEY_ASSERTIONS:
+- expect(fetchAcquisitionStatus()).resolves.toEqual(
+- expect(fetchDiscoveryStatus()).resolves.toEqual(
 - expect(fetchEvaluationCsvExport('eval-001')).rejects.toThrow(
 - expect(fetchEvaluationList()).rejects.toThrow(
+- expect(fetchEvidenceQualityReport()).resolves.toEqual(
 - expect(fetchMock).toHaveBeenCalledWith(
 - expect(fetchMock).toHaveBeenLastCalledWith(
 - expect(result).toEqual({
+- expect(runEvidenceDiscovery()).resolves.toEqual({
 
 FILE: tests/web-ui/auth-config.test.ts
 LINES: 169
@@ -18575,7 +22008,7 @@ KEY_ASSERTIONS:
 - expect(suppliersHtml).toContain('Supplier / material delta');
 
 FILE: tests/web-ui/evaluation-workbench.test.tsx
-LINES: 428
+LINES: 420
 IMPORTS:
 - import rawFixture from '../fixtures/raw-case-input.json';
 - import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18619,7 +22052,7 @@ CALLS_TO:
 - vitest:expect -> expect(failedModelingHtml).toContain
 - vitest:expect -> expect(firstSeries).toBeDefined
 - vitest:expect -> expect(modelingHtml).toContain
-- vitest:expect -> expect(operatingWindowSeries).toBeDefined
+- vitest:expect -> expect(operatingWindowSeries).toBeNull
 - vitest:expect -> expect(recommendationHtml).not.toContain
 - vitest:expect -> expect(recommendationHtml).toContain
 - vitest:expect -> expect(rows.length).toBeGreaterThan
@@ -18674,9 +22107,8 @@ KEY_ASSERTIONS:
 - expect(failedModelingHtml).toContain('Simulation provenance');
 - expect(firstSeries).toBeDefined();
 - expect(modelingHtml).toContain(
-- expect(modelingHtml).toContain('Operating window map');
-- expect(modelingHtml).toContain('simulation-heatmap__cell');
-- expect(operatingWindowSeries).toBeDefined();
+- expect(modelingHtml).toContain('Observed outputs');
+- expect(operatingWindowSeries).toBeNull();
 - expect(recommendationHtml).not.toContain('/evidence/review?q=');
 - expect(recommendationHtml).toContain('/evaluations/');
 - expect(recommendationHtml).toContain('Economic Plausibility');
@@ -18750,11 +22182,79 @@ KEY_ASSERTIONS:
 - expect(catalogHtml).toContain('Registry layers');
 - expect(catalogHtml).toContain('Server-driven sorting and filtering');
 - expect(emptyHtml).toContain('Configure stack');
-- expect(emptyHtml).toContain('Dashboard');
+- expect(emptyHtml).toContain('Home');
 - expect(emptyHtml).toContain('No saved evaluations yet');
 - expect(emptyHtml).toContain('The evaluation registry is empty');
 - expect(sorted[0]?.confidence_level).toBe('high');
 - expect(sorted[1]?.confidence_level).toBe('low');
+
+FILE: tests/web-ui/evidence-quality-workspace.test.tsx
+LINES: 280
+IMPORTS:
+- import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+- import React from 'react';
+- import { describe, expect, it, vi } from 'vitest';
+- import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
+- import type { AcquisitionStatusResponse, DiscoveryStatusResponse, EvidenceQualityAuditResponse, } from '@metrev/domain-contracts/browser';
+- import { EvidenceQualityWorkspace } from '../../apps/web-ui/src/components/evidence-quality/evidence-quality-workspace';
+EXPORTS:
+- none
+LOCAL_DECLARATIONS:
+- createQueryClient : function — function createQueryClient()
+- renderWithClient : function — function renderWithClient(element: React.ReactElement, client: QueryClient)
+- qualityReport : const = { report: { report_id: 'quality-report-001', trigger_mode: 'manual', coverage_matrix: [ { system_type: 'MFC', component_type: 'anode', material: 'carbon felt...
+- discoveryStatus : const = { active_targets: 1, queued_targets: 2, completed_targets: 3, failed_targets: 0, total_records_staged: 5, targets: [], } satisfies DiscoveryStatusResponse
+- acquisitionStatus : const = { queued_attempts: 4, running_attempts: 1, successful_attempts: 8, failed_attempts: 0, skipped_attempts: 0, attempts: [], } satisfies AcquisitionStatusResponse
+SCHEMAS (Zod):
+- none
+CALLS_TO:
+- ../../apps/web-ui/node_modules/react-dom/server.node.js:renderToStaticMarkup -> renderToStaticMarkup
+- createQueryClient
+- react:default -> React.createElement
+- renderWithClient
+- vitest:describe -> describe
+- vitest:expect -> expect
+- vitest:expect -> expect(html).toContain
+- vitest:it -> it
+- vitest:vi -> vi.mock
+SCHEMA_PARSERS:
+- none
+ENVIRONMENT_READS:
+- none
+PRISMA_OPERATIONS:
+- none
+ROLE_GATES:
+- none
+FETCH_CALLS:
+- none
+TANSTACK_QUERY_HOOKS:
+- none
+JSX_SURFACE_MARKERS:
+- none
+LOGIC_FLOW:
+- none
+INVARIANTS_ENFORCED:
+- none
+TEST_CASES:
+- describe: evidence quality workspace
+- it: renders audit coverage, readiness, gaps, outliers, and queue status
+KEY_ASSERTIONS:
+- expect(html).toContain('Accepted record readiness');
+- expect(html).toContain('Accepted source missing full text');
+- expect(html).toContain('Coverage matrix');
+- expect(html).toContain('Evidence funnel');
+- expect(html).toContain('Gap queue');
+- expect(html).toContain('MFC / anode / carbon felt');
+- expect(html).toContain('MFC cathode COD removal pilot evidence');
+- expect(html).toContain('MFC wastewater retrofit');
+- expect(html).toContain('Outlier review');
+- expect(html).toContain('Quality audit');
+- expect(html).toContain('Reacquire Full Text');
+- expect(html).toContain('Readiness scores');
+- expect(html).toContain('acquisition queue');
+- expect(html).toContain('discovery queue');
+- expect(html).toContain('power_density');
+- expect(html).toContain('table ready 1');
 
 FILE: tests/web-ui/evidence-review-actions.test.tsx
 LINES: 46
@@ -18811,7 +22311,7 @@ KEY_ASSERTIONS:
 - expect(reviewExternalEvidenceCatalogItems).toHaveBeenCalledWith({
 
 FILE: tests/web-ui/external-evidence-detail.test.tsx
-LINES: 194
+LINES: 308
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
@@ -18862,6 +22362,9 @@ KEY_ASSERTIONS:
 - expect(html).toContain(
 - expect(html).toContain('Analyst review action bar');
 - expect(html).toContain('Applicability scope');
+- expect(html).toContain('Benchmark rows');
+- expect(html).toContain('Canonical extraction and source coverage');
+- expect(html).toContain('Canonical scientific facts');
 - expect(html).toContain('Claims');
 - expect(html).toContain('Detail workbench');
 - expect(html).toContain('Metadata quality and veracity');
@@ -18870,7 +22373,9 @@ KEY_ASSERTIONS:
 - expect(html).toContain('Payloads');
 - expect(html).toContain('Provenance');
 - expect(html).toContain('Source identity and timestamps');
+- expect(html).toContain('Source-text coverage');
 - expect(html).toContain('Structured claims');
+- expect(html).toContain('power_density');
 - expect(payloadHtml).toContain('Catalog payload');
 - expect(payloadHtml).toContain('Raw source payload');
 - expect(provenanceHtml).toContain(
@@ -18879,7 +22384,7 @@ KEY_ASSERTIONS:
 - expect(provenanceHtml).toContain('Supplier-linked documents');
 
 FILE: tests/web-ui/external-evidence-explorer.test.tsx
-LINES: 181
+LINES: 183
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
@@ -18932,6 +22437,7 @@ KEY_ASSERTIONS:
 - expect(catalogHtml).toContain(
 - expect(catalogHtml).toContain('/admin/intelligence/evidence/review');
 - expect(catalogHtml).toContain('Assistant');
+- expect(catalogHtml).toContain('Canonical facts: 3');
 - expect(catalogHtml).toContain('Catalog');
 - expect(catalogHtml).toContain('Component');
 - expect(catalogHtml).toContain('Curated spotlight');
@@ -18940,6 +22446,7 @@ KEY_ASSERTIONS:
 - expect(catalogHtml).toContain('Exports');
 - expect(catalogHtml).toContain('Facets');
 - expect(catalogHtml).toContain('Full explorer catalog');
+- expect(catalogHtml).toContain('Full text available');
 - expect(catalogHtml).toContain('Intake-ready records');
 - expect(catalogHtml).toContain('Material');
 - expect(catalogHtml).toContain('Metric');
@@ -18957,7 +22464,7 @@ KEY_ASSERTIONS:
 - expect(facetsHtml).toContain('Veracity levels');
 
 FILE: tests/web-ui/external-evidence-review-board.test.tsx
-LINES: 130
+LINES: 132
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
@@ -19006,6 +22513,7 @@ TEST_CASES:
 KEY_ASSERTIONS:
 - expect(queueHtml).toContain('Accept selected');
 - expect(queueHtml).toContain('Audit');
+- expect(queueHtml).toContain('Canonical facts: 3');
 - expect(queueHtml).toContain('Dense review workflow');
 - expect(queueHtml).toContain('Evidence catalog');
 - expect(queueHtml).toContain('Evidence review queue');
@@ -19019,6 +22527,7 @@ KEY_ASSERTIONS:
 - expect(queueHtml).toContain('Rows per page');
 - expect(queueHtml).toContain('Select all visible');
 - expect(queueHtml).toContain('Selected');
+- expect(queueHtml).toContain('Source text: 1 artifact(s), 14 chunk(s)');
 - expect(queueHtml).toContain('Source type');
 - expect(selectedHtml).toContain('No selected records');
 - expect(selectedHtml).toContain('Selected records');
@@ -19076,7 +22585,7 @@ KEY_ASSERTIONS:
 - expect(html).toContain(progressStages[2]);
 
 FILE: tests/web-ui/navigation.test.tsx
-LINES: 190
+LINES: 204
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
@@ -19104,6 +22613,7 @@ CALLS_TO:
 - vitest:expect -> expect
 - vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/evidence/explorer', {}), ).toEqual
 - vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/evidence/explorer/evidence-001', { id: 'evidence-001', }), ).toEqual
+- vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/evidence/quality', {}), ).toEqual
 - vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/evidence/review/evidence-001', { id: 'evidence-001', }), ).toEqual
 - vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/research/reviews', {}), ).toEqual
 - vitest:expect -> expect( buildBreadcrumbs('/admin/intelligence/research/reviews/review-001', { id: 'review-001', }), ).toEqual
@@ -19112,15 +22622,19 @@ CALLS_TO:
 - vitest:expect -> expect( buildBreadcrumbs('/evaluations/eval-001/compare/eval-000', { baselineId: 'eval-000', id: 'eval-001', }), ).toEqual
 - vitest:expect -> expect( buildBreadcrumbs('/evaluations/eval-001/report', { id: 'eval-001' }), ).toEqual
 - vitest:expect -> expect( getNavItemsForRole('ANALYST') .filter((item) => item.section === 'advanced') .map((item) => item.href), ).toEqual
-- vitest:expect -> expect( getNavItemsForRole('VIEWER').some((item) => item.href.startsWith('/admin/intelligence'), ), ).toBe
-- vitest:expect -> expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe
+- vitest:expect -> expect(NAV_ITEMS.find((item) => item.id === 'evaluate')?.disabled).toBe
 - vitest:expect -> expect(NAV_ITEMS.map((item) => item.id)).toEqual
 - vitest:expect -> expect(buildBreadcrumbs('/admin/intelligence/evidence/review', {})).toEqual
 - vitest:expect -> expect(buildBreadcrumbs('/cases/new', {})).toEqual
 - vitest:expect -> expect(buildBreadcrumbs('/cases/new/submitting', {})).toEqual
 - vitest:expect -> expect(buildBreadcrumbs('/dashboard', {})).toEqual
+- vitest:expect -> expect(buildBreadcrumbs('/evaluate', {})).toEqual
 - vitest:expect -> expect(buildBreadcrumbs('/evaluations', {})).toEqual
+- vitest:expect -> expect(buildBreadcrumbs('/evidence/quality', {})).toEqual
+- vitest:expect -> expect(buildBreadcrumbs('/home', {})).toEqual
+- vitest:expect -> expect(buildBreadcrumbs('/research', {})).toEqual
 - vitest:expect -> expect(getNavItemsForRole('VIEWER').map((item) => item.id)).toEqual
+- vitest:expect -> expect(getNavItemsForRole('VIEWER').some((item) => item.minimumRole)).toBe
 - vitest:expect -> expect(html).toContain
 - vitest:it -> it
 - vitest:vi -> vi.mock
@@ -19148,17 +22662,22 @@ TEST_CASES:
 - it: registers the global destinations in the expected order
 - it: renders client and admin navigation groups for analyst users
 KEY_ASSERTIONS:
-- expect(NAV_ITEMS.find((item) => item.id === 'evaluations')?.disabled).toBe(
+- expect(NAV_ITEMS.find((item) => item.id === 'evaluate')?.disabled).toBe(
 - expect(NAV_ITEMS.map((item) => item.id)).toEqual([
 - expect(buildBreadcrumbs('/admin/intelligence/evidence/review', {})).toEqual(
 - expect(buildBreadcrumbs('/cases/new', {})).toEqual([
 - expect(buildBreadcrumbs('/cases/new/submitting', {})).toEqual([
 - expect(buildBreadcrumbs('/dashboard', {})).toEqual([]);
+- expect(buildBreadcrumbs('/evaluate', {})).toEqual([
 - expect(buildBreadcrumbs('/evaluations', {})).toEqual([
+- expect(buildBreadcrumbs('/evidence/quality', {})).toEqual([
+- expect(buildBreadcrumbs('/home', {})).toEqual([]);
+- expect(buildBreadcrumbs('/research', {})).toEqual([
 - expect(getNavItemsForRole('VIEWER').map((item) => item.id)).toEqual([
+- expect(getNavItemsForRole('VIEWER').some((item) => item.minimumRole)).toBe(
 - expect(html).toContain('Admin intelligence');
 - expect(html).toContain('Client workspace');
-- expect(html).toContain('Configure Stack');
+- expect(html).toContain('Evaluate');
 - expect(html).toContain('Evidence Explorer');
 - expect(html).toContain('Research Tables');
 
@@ -19239,7 +22758,7 @@ KEY_ASSERTIONS:
 - expect(traceHtml).toContain('Source links');
 
 FILE: tests/web-ui/public-landing.test.tsx
-LINES: 71
+LINES: 72
 IMPORTS:
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
@@ -19298,7 +22817,7 @@ KEY_ASSERTIONS:
 - expect(html).toContain('/learn/technology');
 - expect(html).toContain('/login');
 - expect(html).toContain('Linear Public Infographic');
-- expect(html).toContain('METREV BIOELETROCHEMICAL DECISION SUPPORT');
+- expect(html).toContain('METREV MFC/MEC + BIOSENSOR DECISION SUPPORT');
 - expect(html).toContain('METREV');
 - expect(html).toContain('Overview');
 - expect(html).toContain('Pressure map');
@@ -19307,6 +22826,7 @@ KEY_ASSERTIONS:
 - expect(html).toContain('public-landing-board-metrev');
 - expect(html).toContain('public-landing-board-problem');
 - expect(html).toContain('public-landing-infographic');
+- expect(html).toContain('wastewater outcomes against baselines');
 
 FILE: tests/web-ui/public-topic-page.test.tsx
 LINES: 63
@@ -19481,14 +23001,14 @@ KEY_ASSERTIONS:
 - expect(requireAuthenticatedSession('/dashboard')).resolves.toBe(
 
 FILE: tests/web-ui/research-review-workspace.test.tsx
-LINES: 910
+LINES: 971
 IMPORTS:
 - import mfcPaperFixture from '../fixtures/research/mfc-paper.json';
 - import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 - import React from 'react';
 - import { describe, expect, it, vi } from 'vitest';
 - import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
-- import { researchBackfillSummarySchema, researchDecisionIngestionPreviewSchema, researchEvidencePackSchema, researchExtractionResultSchema, researchPaperMetadataSchema, researchPaperSearchFailureSchema, researchPaperSearchResultSchema, researchReviewDetailSchema, researchWarehouseProgressResponseSchema, sourceArtifactSchema, } from '@metrev/domain-contracts';
+- import { researchDecisionIngestionPreviewSchema, researchEvidencePackSchema, researchExtractionResultSchema, researchPaperMetadataSchema, researchPaperSearchFailureSchema, researchPaperSearchResultSchema, researchReviewDetailSchema, sourceArtifactSchema, } from '@metrev/domain-contracts';
 - import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 EXPORTS:
 - none
@@ -19504,7 +23024,6 @@ SCHEMAS (Zod):
 - none
 CALLS_TO:
 - ../../apps/web-ui/node_modules/react-dom/server.node.js:renderToStaticMarkup -> renderToStaticMarkup
-- @metrev/domain-contracts:researchBackfillSummarySchema -> researchBackfillSummarySchema.parse
 - @metrev/domain-contracts:researchDecisionIngestionPreviewSchema -> researchDecisionIngestionPreviewSchema.parse
 - @metrev/domain-contracts:researchEvidencePackSchema -> researchEvidencePackSchema.parse
 - @metrev/domain-contracts:researchExtractionResultSchema -> researchExtractionResultSchema.parse
@@ -19512,7 +23031,6 @@ CALLS_TO:
 - @metrev/domain-contracts:researchPaperSearchFailureSchema -> researchPaperSearchFailureSchema.parse
 - @metrev/domain-contracts:researchPaperSearchResultSchema -> researchPaperSearchResultSchema.parse
 - @metrev/domain-contracts:researchReviewDetailSchema -> researchReviewDetailSchema.parse
-- @metrev/domain-contracts:researchWarehouseProgressResponseSchema -> researchWarehouseProgressResponseSchema.parse
 - @metrev/domain-contracts:sourceArtifactSchema -> sourceArtifactSchema.parse
 - @metrev/research-intelligence:getDefaultResearchColumns -> getDefaultResearchColumns
 - buildPackFixture
@@ -19525,6 +23043,7 @@ CALLS_TO:
 - vitest:describe -> describe
 - vitest:expect -> expect
 - vitest:expect -> expect(columnsHtml).toContain
+- vitest:expect -> expect(createHtml).not.toContain
 - vitest:expect -> expect(createHtml).toContain
 - vitest:expect -> expect(html).toContain
 - vitest:expect -> expect(packHtml).toContain
@@ -19538,7 +23057,6 @@ CALLS_TO:
 - vitest:vi -> vi.hoisted
 - vitest:vi -> vi.mock
 SCHEMA_PARSERS:
-- researchBackfillSummarySchema.parse
 - researchDecisionIngestionPreviewSchema.parse
 - researchEvidencePackSchema.parse
 - researchExtractionResultSchema.parse
@@ -19546,7 +23064,6 @@ SCHEMA_PARSERS:
 - researchPaperSearchFailureSchema.parse
 - researchPaperSearchResultSchema.parse
 - researchReviewDetailSchema.parse
-- researchWarehouseProgressResponseSchema.parse
 - sourceArtifactSchema.parse
 ENVIRONMENT_READS:
 - none
@@ -19574,17 +23091,22 @@ INVARIANTS_ENFORCED:
 - researchPaperMetadataSchema.parse({ ...mfcPaperFixture, paper_id: `fixture-paper-mfc-00${index}`, source_document_id: `fixture-source-mfc-00${index}`, title: `Dual chamber microbial fuel cell wastewater treatment fixt...
 - researchEvidencePackSchema.parse({ pack_id: 'pack-001', review_id: 'review-001', title: 'Fixture evidence pack', status: 'draft', source_result_ids: ['result-summary-001'], evidence_items: [ { evidence_id: 'research:r...
 - sourceArtifactSchema.parse({ artifact_id: 'artifact-001', source_document_id: 'source-001', local_path: '/tmp/fixture.pdf', file_name: 'fixture.pdf', file_hash: 'fixture-hash', mime_type: 'application/pdf', file_size_...
-- researchBackfillSummarySchema.parse({ run_id: 'run-001', query: 'microbial fuel cell wastewater', status: 'queued', providers: ['openalex', 'crossref', 'europe_pmc'], per_provider_limit: 25, max_pages: 3, target_recor...
 - researchPaperMetadataSchema.parse({ paper_id: 'staged:source-001', source_document_id: 'source-001', title: 'Imported fixture paper', authors: [], year: 2025, doi: '10.1000/imported-fixture', journal: 'Fixture Journal...
-- researchWarehouseProgressResponseSchema.parse({ target_records: 30000, stored_records: 683, fetched_records: 1200, records_remaining: 29317, completion_ratio: 0.0227666667, pending_records: 683, accepted_records: 0, r...
 - researchPaperSearchFailureSchema.parse({ provider: 'crossref', message: 'Rate limit warning', })
 - researchPaperSearchResultSchema.parse({ source_type: 'openalex', source_key: 'https://openalex.org/W123', title: 'Live search fixture paper', authors: [{ name: 'Fixture Author' }], year: 2025, doi: '10.1000/live-searc...
-- researchPaperMetadataSchema.parse({ ...review.papers[0], abstract_text: '<h4>Background</h4>This study uses &lt;i&gt;E. coli&lt;/i&gt; in wastewater treatment.', })
+- researchPaperMetadataSchema.parse({ ...review.papers[0], abstract_text: null, pdf_url: null, xml_url: null, })
+- researchExtractionResultSchema.parse({ ...result, status: 'valid', answer: {}, evidence_trace: [], missing_fields: [], validation_errors: [], })
+- researchExtractionResultSchema.parse({ ...result, status: 'valid', answer: {}, evidence_trace: [ { source: 'abstract', source_document_id: paper.source_document_id, text_span: paper.abstract_text, source_locator: 'abs...
+- researchExtractionResultSchema.parse({ ...result, status: 'valid', answer: {}, evidence_trace: [], missing_fields: ['product_outputs'], validation_errors: [], })
+- researchExtractionResultSchema.parse({ ...result, status: 'invalid', answer: { validation_errors: ['schema mismatch'], }, evidence_trace: [], missing_fields: [], validation_errors: ['schema mismatch'], })
+- researchPaperMetadataSchema.parse({ ...review.papers[0], abstract_text: '<h4>Background</h4>This study uses &lt;i&gt;E. coli&lt;/i&gt; in wastewater treatment. Encoded &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp...
 - researchExtractionResultSchema.parse({ ...result, answer: { summary: '<jats:p>Structured &lt;b&gt;summary&lt;/b&gt; text with <i>markup</i>.</jats:p>', evidence_span: review.papers[0].abstract_text, confidence: 'mediu...
 - researchDecisionIngestionPreviewSchema.parse({ pack_id: pack.pack_id, review_id: review.review_id, evidence_records: pack.evidence_items, measured_metric_candidates: { power_density_w_m2: 0.85, }, missing_data: ['HRT_...
 TEST_CASES:
 - describe: research review workspace UI
 - it: renders every paper card in the papers tab instead of truncating after three items
+- it: renders explicit no-full-text labels when a paper lacks abstract and linked full text
+- it: renders extraction-state labels instead of generic missing placeholders
 - it: renders persisted evidence-pack decision preview data from cached queries
 - it: renders the review list workspace shell
 - it: renders the table, add-column panel, detail panel, and evidence pack section
@@ -19592,19 +23114,19 @@ TEST_CASES:
 KEY_ASSERTIONS:
 - expect(columnsHtml).toContain('Add structured column');
 - expect(columnsHtml).toContain('Visible columns');
+- expect(createHtml).not.toContain('MFC/MEC warehouse expansion');
+- expect(createHtml).not.toContain('Queue MFC/MEC 30,000 preset');
+- expect(createHtml).not.toContain('Queue warehouse backfill');
+- expect(createHtml).not.toContain('Warehouse backfill');
 - expect(createHtml).toContain('Create review from imported papers');
 - expect(createHtml).toContain('Create review');
 - expect(createHtml).toContain('External paper search');
 - expect(createHtml).toContain('Import selected papers');
 - expect(createHtml).toContain('Live search fixture paper');
 - expect(createHtml).toContain('Local PDF import');
-- expect(createHtml).toContain('MFC/MEC warehouse expansion');
 - expect(createHtml).toContain('Metadata quality');
-- expect(createHtml).toContain('Queue MFC/MEC 30,000 preset');
-- expect(createHtml).toContain('Queue warehouse backfill');
 - expect(createHtml).toContain('Research intelligence');
 - expect(createHtml).toContain('Research layers');
-- expect(createHtml).toContain('Warehouse backfill');
 - expect(createHtml).toContain('fixture.pdf');
 - expect(html).toContain('Assumptions');
 - expect(html).toContain('Evidence Records');
@@ -19620,6 +23142,12 @@ KEY_ASSERTIONS:
 - expect(papersHtml).not.toContain('&lt;i&gt;');
 - expect(papersHtml).toContain(
 - expect(papersHtml).toContain('0.85 W/m2');
+- expect(papersHtml).toContain('Extraction failed');
+- expect(papersHtml).toContain('Missing after extraction');
+- expect(papersHtml).toContain('No abstract or full text available');
+- expect(papersHtml).toContain('No full text available');
+- expect(papersHtml).toContain('Not extracted');
+- expect(papersHtml).toContain('Not stated in source');
 - expect(papersHtml).toContain('Paper details');
 - expect(papersHtml).toContain('dual chamber');
 - expect(papersHtml).toContain('fixture 1');
@@ -22718,9 +26246,7 @@ SPEC_TOUCHED_AREAS:
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/components/*
 - apps/web-ui/src/lib/api.ts
-- bioelectro-copilot-contracts/contracts/
 - bioelectrochem_agent_kit/domain/
-- docs/repository-authority-map.md
 - packages/database/data/bigdata-bootstrap.config.json
 - packages/database/data/curated-bigdata-manifest.json
 - packages/database/data/curated-bigdata-shards/
@@ -22732,7 +26258,6 @@ SPEC_TOUCHED_AREAS:
 - specs/017-full-big-data-workspace/*
 - specs/019-research-intelligence-review-table-engine/
 - specs/020-metrev-three-phase-product-plan/
-- specs/020-metrev-three-phase-product-plan/quickstart.md
 - specs/021-public-infographic-pages/
 - tests/runtime/api.test.ts
 - tests/runtime/external-ingestion-shared.test.ts
@@ -22741,21 +26266,13 @@ SPEC_TOUCHED_AREAS:
 TASK_CHECKBOXES: checked=0; unchecked=0
 
 FILE: specs/017-full-big-data-workspace/quickstart.md
-LINES: 91
+LINES: 10
 SPEC_FOLDER: 017-full-big-data-workspace
 SPEC_ARTIFACT_ROLE: feature artifact
 SPEC_AUTHORITY_STATUS: completed_reference_baseline
-TITLE: 017 Full Big Data Workspace Quickstart
+TITLE: 017 Historical record: Full Big Data Workspace
 HEADINGS:
-- 017 Full Big Data Workspace Quickstart
-- Purpose
-- Setup
-- Bounded Acquisition Checks
-- Local Run
-- Happy Path Smoke Test
-- Validation Sequence
-- Current Validated Outcomes
-- Notes
+- 017 Historical record: Full Big Data Workspace
 SPEC_FOLDER_SIGNALS:
 - has_spec=true
 - has_plan=true
@@ -22770,9 +26287,7 @@ SPEC_TOUCHED_AREAS:
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/components/*
 - apps/web-ui/src/lib/api.ts
-- bioelectro-copilot-contracts/contracts/
 - bioelectrochem_agent_kit/domain/
-- docs/repository-authority-map.md
 - packages/database/data/bigdata-bootstrap.config.json
 - packages/database/data/curated-bigdata-manifest.json
 - packages/database/data/curated-bigdata-shards/
@@ -22784,7 +26299,6 @@ SPEC_TOUCHED_AREAS:
 - specs/017-full-big-data-workspace/*
 - specs/019-research-intelligence-review-table-engine/
 - specs/020-metrev-three-phase-product-plan/
-- specs/020-metrev-three-phase-product-plan/quickstart.md
 - specs/021-public-infographic-pages/
 - tests/runtime/api.test.ts
 - tests/runtime/external-ingestion-shared.test.ts
@@ -22820,9 +26334,7 @@ SPEC_TOUCHED_AREAS:
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/components/*
 - apps/web-ui/src/lib/api.ts
-- bioelectro-copilot-contracts/contracts/
 - bioelectrochem_agent_kit/domain/
-- docs/repository-authority-map.md
 - packages/database/data/bigdata-bootstrap.config.json
 - packages/database/data/curated-bigdata-manifest.json
 - packages/database/data/curated-bigdata-shards/
@@ -22834,7 +26346,6 @@ SPEC_TOUCHED_AREAS:
 - specs/017-full-big-data-workspace/*
 - specs/019-research-intelligence-review-table-engine/
 - specs/020-metrev-three-phase-product-plan/
-- specs/020-metrev-three-phase-product-plan/quickstart.md
 - specs/021-public-infographic-pages/
 - tests/runtime/api.test.ts
 - tests/runtime/external-ingestion-shared.test.ts
@@ -22875,9 +26386,7 @@ SPEC_TOUCHED_AREAS:
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/components/*
 - apps/web-ui/src/lib/api.ts
-- bioelectro-copilot-contracts/contracts/
 - bioelectrochem_agent_kit/domain/
-- docs/repository-authority-map.md
 - packages/database/data/bigdata-bootstrap.config.json
 - packages/database/data/curated-bigdata-manifest.json
 - packages/database/data/curated-bigdata-shards/
@@ -22889,7 +26398,6 @@ SPEC_TOUCHED_AREAS:
 - specs/017-full-big-data-workspace/*
 - specs/019-research-intelligence-review-table-engine/
 - specs/020-metrev-three-phase-product-plan/
-- specs/020-metrev-three-phase-product-plan/quickstart.md
 - specs/021-public-infographic-pages/
 - tests/runtime/api.test.ts
 - tests/runtime/external-ingestion-shared.test.ts
@@ -22929,9 +26437,7 @@ SPEC_TOUCHED_AREAS:
 - apps/web-ui/src/app/layout.tsx
 - apps/web-ui/src/components/*
 - apps/web-ui/src/lib/api.ts
-- bioelectro-copilot-contracts/contracts/
 - bioelectrochem_agent_kit/domain/
-- docs/repository-authority-map.md
 - packages/database/data/bigdata-bootstrap.config.json
 - packages/database/data/curated-bigdata-manifest.json
 - packages/database/data/curated-bigdata-shards/
@@ -22943,7 +26449,6 @@ SPEC_TOUCHED_AREAS:
 - specs/017-full-big-data-workspace/*
 - specs/019-research-intelligence-review-table-engine/
 - specs/020-metrev-three-phase-product-plan/
-- specs/020-metrev-three-phase-product-plan/quickstart.md
 - specs/021-public-infographic-pages/
 - tests/runtime/api.test.ts
 - tests/runtime/external-ingestion-shared.test.ts
@@ -23184,7 +26689,7 @@ FILE: specs/019-research-intelligence-review-table-engine/contracts/research-rev
 LINES: 21
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Planning Contract - Research Review Boundary
 HEADINGS:
 - Planning Contract - Research Review Boundary
@@ -23210,7 +26715,7 @@ FILE: specs/019-research-intelligence-review-table-engine/plan.md
 LINES: 37
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Implementation Plan - Research Intelligence Review Table Engine
 HEADINGS:
 - Implementation Plan - Research Intelligence Review Table Engine
@@ -23241,7 +26746,7 @@ FILE: specs/019-research-intelligence-review-table-engine/quickstart.md
 LINES: 21
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Quickstart - Research Intelligence Review Table Engine
 HEADINGS:
 - Quickstart - Research Intelligence Review Table Engine
@@ -23268,7 +26773,7 @@ FILE: specs/019-research-intelligence-review-table-engine/research.md
 LINES: 21
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Research Notes - Research Intelligence Review Table Engine
 HEADINGS:
 - Research Notes - Research Intelligence Review Table Engine
@@ -23298,7 +26803,7 @@ FILE: specs/019-research-intelligence-review-table-engine/spec.md
 LINES: 37
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Feature Specification - Research Intelligence Review Table Engine
 HEADINGS:
 - Feature Specification - Research Intelligence Review Table Engine
@@ -23328,7 +26833,7 @@ FILE: specs/019-research-intelligence-review-table-engine/tasks.md
 LINES: 16
 SPEC_FOLDER: 019-research-intelligence-review-table-engine
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Tasks - Research Intelligence Review Table Engine
 HEADINGS:
 - Tasks - Research Intelligence Review Table Engine
@@ -23354,7 +26859,7 @@ FILE: specs/020-metrev-three-phase-product-plan/contracts/report-conversation-bo
 LINES: 73
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Report Conversation Boundary
 HEADINGS:
 - Report Conversation Boundary
@@ -23396,7 +26901,7 @@ FILE: specs/020-metrev-three-phase-product-plan/plan.md
 LINES: 88
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Implementation Plan - METREV Three-Phase Product Integration
 HEADINGS:
 - Implementation Plan - METREV Three-Phase Product Integration
@@ -23440,7 +26945,7 @@ FILE: specs/020-metrev-three-phase-product-plan/quickstart.md
 LINES: 70
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Quickstart - METREV Three-Phase Product Integration
 HEADINGS:
 - Quickstart - METREV Three-Phase Product Integration
@@ -23480,7 +26985,7 @@ FILE: specs/020-metrev-three-phase-product-plan/research.md
 LINES: 33
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Research Notes - METREV Three-Phase Product Integration
 HEADINGS:
 - Research Notes - METREV Three-Phase Product Integration
@@ -23519,7 +27024,7 @@ FILE: specs/020-metrev-three-phase-product-plan/spec.md
 LINES: 76
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Feature Specification - METREV Three-Phase Product Integration
 HEADINGS:
 - Feature Specification - METREV Three-Phase Product Integration
@@ -23563,7 +27068,7 @@ FILE: specs/020-metrev-three-phase-product-plan/tasks.md
 LINES: 64
 SPEC_FOLDER: 020-metrev-three-phase-product-plan
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Tasks - METREV Three-Phase Product Integration
 HEADINGS:
 - Tasks - METREV Three-Phase Product Integration
@@ -23604,7 +27109,7 @@ FILE: specs/021-public-infographic-pages/plan.md
 LINES: 85
 SPEC_FOLDER: 021-public-infographic-pages
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Implementation Plan - Public Infographic Pages
 HEADINGS:
 - Implementation Plan - Public Infographic Pages
@@ -23647,7 +27152,7 @@ FILE: specs/021-public-infographic-pages/quickstart.md
 LINES: 76
 SPEC_FOLDER: 021-public-infographic-pages
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Quickstart - Public Infographic Pages
 HEADINGS:
 - Quickstart - Public Infographic Pages
@@ -23686,7 +27191,7 @@ FILE: specs/021-public-infographic-pages/spec.md
 LINES: 91
 SPEC_FOLDER: 021-public-infographic-pages
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Feature Specification - Public Infographic Pages
 HEADINGS:
 - Feature Specification - Public Infographic Pages
@@ -23728,7 +27233,7 @@ FILE: specs/021-public-infographic-pages/tasks.md
 LINES: 68
 SPEC_FOLDER: 021-public-infographic-pages
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Tasks - Public Infographic Pages
 HEADINGS:
 - Tasks - Public Infographic Pages
@@ -24948,7 +28453,7 @@ FILE: specs/030-client-dashboard-research-intelligence/contracts/dashboard-works
 LINES: 22
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Dashboard Workspace Contract Note
 HEADINGS:
 - Dashboard Workspace Contract Note
@@ -24993,7 +28498,7 @@ FILE: specs/030-client-dashboard-research-intelligence/contracts/parameter-state
 LINES: 29
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Parameter State Contract Note
 HEADINGS:
 - Parameter State Contract Note
@@ -25038,7 +28543,7 @@ FILE: specs/030-client-dashboard-research-intelligence/contracts/research-table-
 LINES: 28
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Research Table Trace Contract Note
 HEADINGS:
 - Research Table Trace Contract Note
@@ -25083,7 +28588,7 @@ FILE: specs/030-client-dashboard-research-intelligence/plan.md
 LINES: 77
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Implementation Plan - Client Dashboard And Research Intelligence
 HEADINGS:
 - Implementation Plan - Client Dashboard And Research Intelligence
@@ -25136,7 +28641,7 @@ FILE: specs/030-client-dashboard-research-intelligence/quickstart.md
 LINES: 29
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Quickstart - Client Dashboard And Research Intelligence
 HEADINGS:
 - Quickstart - Client Dashboard And Research Intelligence
@@ -25181,7 +28686,7 @@ FILE: specs/030-client-dashboard-research-intelligence/research.md
 LINES: 39
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Research Notes - Client Dashboard And Research Intelligence
 HEADINGS:
 - Research Notes - Client Dashboard And Research Intelligence
@@ -25228,7 +28733,7 @@ FILE: specs/030-client-dashboard-research-intelligence/spec.md
 LINES: 89
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Feature Specification - Client Dashboard And Research Intelligence
 HEADINGS:
 - Feature Specification - Client Dashboard And Research Intelligence
@@ -25281,7 +28786,7 @@ FILE: specs/030-client-dashboard-research-intelligence/tasks.md
 LINES: 35
 SPEC_FOLDER: 030-client-dashboard-research-intelligence
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
 TITLE: Task List - Client Dashboard And Research Intelligence
 HEADINGS:
 - Task List - Client Dashboard And Research Intelligence
@@ -25728,7 +29233,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/contracts/evidence-decision
 LINES: 51
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: planning contract note
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Contract Note - EvidenceDecisionContext
 HEADINGS:
 - Contract Note - EvidenceDecisionContext
@@ -25785,7 +29290,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/integration-audit.md
 LINES: 66
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Integration Audit - Specs 002 Through 033
 HEADINGS:
 - Integration Audit - Specs 002 Through 033
@@ -25840,7 +29345,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/plan.md
 LINES: 93
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Implementation Plan - UI, API, Database, and Rule Engine Refactor
 HEADINGS:
 - Implementation Plan - UI, API, Database, and Rule Engine Refactor
@@ -25902,7 +29407,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/quickstart.md
 LINES: 100
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Quickstart - UI, API, Database, and Rule Engine Refactor
 HEADINGS:
 - Quickstart - UI, API, Database, and Rule Engine Refactor
@@ -25959,7 +29464,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/research.md
 LINES: 73
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Research Notes - UI, API, Database, and Rule Engine Refactor
 HEADINGS:
 - Research Notes - UI, API, Database, and Rule Engine Refactor
@@ -26017,7 +29522,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/spec.md
 LINES: 72
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Feature Specification - UI, API, Database, and Rule Engine Refactor
 HEADINGS:
 - Feature Specification - UI, API, Database, and Rule Engine Refactor
@@ -26078,7 +29583,7 @@ FILE: specs/033-ui-api-database-rule-engine-refactor/tasks.md
 LINES: 56
 SPEC_FOLDER: 033-ui-api-database-rule-engine-refactor
 SPEC_ARTIFACT_ROLE: feature artifact
-SPEC_AUTHORITY_STATUS: active_execution_or_roadmap_surface
+SPEC_AUTHORITY_STATUS: completed_reference_baseline
 TITLE: Tasks - UI, API, Database, and Rule Engine Refactor
 HEADINGS:
 - Tasks - UI, API, Database, and Rule Engine Refactor
@@ -26521,6 +30026,1320 @@ SPEC_TOUCHED_AREAS:
 - tests/runtime/research-intelligence.test.ts
 - tests/runtime/research-runtime-extractor.test.ts
 TASK_CHECKBOXES: checked=19; unchecked=2
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/planning-notes.md
+LINES: 78
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: planning contract note
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Planning Contract Note - Evidence Intelligence Runtime Shapes
+HEADINGS:
+- Planning Contract Note - Evidence Intelligence Runtime Shapes
+- Purpose
+- Current state
+- Proposed request, response, or shape examples
+- Mapping or adapter notes
+- Validation notes
+- Open questions
+- Promotion steps
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/plan.md
+LINES: 109
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Implementation Plan - Scientific Instrument UI and Evidence Intelligence
+HEADINGS:
+- Implementation Plan - Scientific Instrument UI and Evidence Intelligence
+- Summary
+- Source-of-truth files
+- Affected layers and areas
+- Required durable artifacts
+- Research inputs
+- Contracts and canonical owner files
+- Data model or boundary changes
+- Implementation steps
+- Validation strategy
+- Critique summary
+- Refined final plan
+- Rollback / safety
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/quickstart.md
+LINES: 55
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Quickstart - Scientific Instrument UI and Evidence Intelligence
+HEADINGS:
+- Quickstart - Scientific Instrument UI and Evidence Intelligence
+- Goals
+- Preconditions
+- Setup
+- Happy path
+- Failure path
+- Edge case
+- Verification commands and checks
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/research.md
+LINES: 51
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Research Notes - Scientific Instrument UI and Evidence Intelligence
+HEADINGS:
+- Research Notes - Scientific Instrument UI and Evidence Intelligence
+- Goal
+- Questions
+- Inputs consulted
+- Findings
+- Decisions
+- Open blockers
+- Impact on plan
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/spec.md
+LINES: 92
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Feature Specification - Scientific Instrument UI and Evidence Intelligence
+HEADINGS:
+- Feature Specification - Scientific Instrument UI and Evidence Intelligence
+- Objective
+- Why
+- Primary users
+- Affected layers
+- Scope
+- In
+- Out
+- Functional requirements
+- Acceptance criteria
+- Clarifications and open questions
+- Risks / unknowns
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=0; unchecked=15
+
+FILE: specs/035-scientific-instrument-ui-and-evidence-intelligence/tasks.md
+LINES: 136
+SPEC_FOLDER: 035-scientific-instrument-ui-and-evidence-intelligence
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Tasks - Scientific Instrument UI and Evidence Intelligence
+HEADINGS:
+- Tasks - Scientific Instrument UI and Evidence Intelligence
+- Workstream A - Feature Artifacts
+- Workstream B - Domain, Contracts, and Schemas
+- Workstream C - Database
+- Workstream D - Design System
+- Workstream E - Evidence Audit Package
+- Workstream F - Evidence Discovery Package
+- Workstream G - API, Worker, and Evaluation Integration
+- Workstream H - Web UI Redesign
+- Workstream I - Validation and Restart
+- Dependencies
+- Parallelizable
+- Validation gates
+- Definition of done
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/
+- apps/api-server/src/services/case-evaluation.ts
+- apps/research-worker/
+- apps/research-worker/src/worker.ts
+- apps/web-ui/
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectro-copilot-contracts/contracts/rules/evidence_quality_audit.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- bioelectrochem_agent_kit/domain/rules/evidence-quality-audit.yml
+- docs/internal-feature-workflow.md
+- docs/repository-authority-map.md
+- packages/database/
+- packages/database/prisma/schema.prisma
+- packages/database/scripts/evidence-quality-report.ts
+- packages/design-system
+- packages/domain-contracts/
+- packages/domain-contracts/src/loaders.ts
+- packages/domain-contracts/src/reconciliation.ts
+- packages/domain-contracts/src/research-schemas.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit
+- packages/evidence-discovery
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/
+- specs/035-scientific-instrument-ui-and-evidence-intelligence/contracts/
+TASK_CHECKBOXES: checked=88; unchecked=0
+
+FILE: specs/036-evidence-readiness-cleanup/plan.md
+LINES: 102
+SPEC_FOLDER: 036-evidence-readiness-cleanup
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Implementation Plan - Evidence Readiness Cleanup
+HEADINGS:
+- Implementation Plan - Evidence Readiness Cleanup
+- Summary
+- Source-of-truth files
+- Affected layers and areas
+- Required durable artifacts
+- Research inputs
+- Contracts and canonical owner files
+- Data model or boundary changes
+- Implementation steps
+- Validation strategy
+- Critique summary
+- Refined final plan
+- Current refinement result
+- Rollback / safety
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/external-evidence.ts
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- docs/repository-authority-map.md
+- packages/database/data/table-ready-expansion.config.json
+- packages/database/src/index.ts
+- packages/database/src/research-repository.ts
+- packages/database/src/source-artifacts.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/research-intelligence/src/fulltext/source-content.ts
+- specs/036-evidence-readiness-cleanup/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/036-evidence-readiness-cleanup/quickstart.md
+LINES: 62
+SPEC_FOLDER: 036-evidence-readiness-cleanup
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Quickstart - Evidence Readiness Cleanup
+HEADINGS:
+- Quickstart - Evidence Readiness Cleanup
+- Goals
+- Preconditions
+- Setup
+- Happy path
+- Local curation commands
+- Failure path
+- Edge case
+- Verification commands and checks
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/external-evidence.ts
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- docs/repository-authority-map.md
+- packages/database/data/table-ready-expansion.config.json
+- packages/database/src/index.ts
+- packages/database/src/research-repository.ts
+- packages/database/src/source-artifacts.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/research-intelligence/src/fulltext/source-content.ts
+- specs/036-evidence-readiness-cleanup/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/036-evidence-readiness-cleanup/research.md
+LINES: 35
+SPEC_FOLDER: 036-evidence-readiness-cleanup
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Research Notes - Evidence Readiness Cleanup
+HEADINGS:
+- Research Notes - Evidence Readiness Cleanup
+- Current repo findings
+- Policy guardrails
+- Example-record implication
+- First implementation slice
+- Follow-up implementation slices
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/external-evidence.ts
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- docs/repository-authority-map.md
+- packages/database/data/table-ready-expansion.config.json
+- packages/database/src/index.ts
+- packages/database/src/research-repository.ts
+- packages/database/src/source-artifacts.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/research-intelligence/src/fulltext/source-content.ts
+- specs/036-evidence-readiness-cleanup/
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/036-evidence-readiness-cleanup/spec.md
+LINES: 77
+SPEC_FOLDER: 036-evidence-readiness-cleanup
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Feature Specification - Evidence Readiness Cleanup
+HEADINGS:
+- Feature Specification - Evidence Readiness Cleanup
+- Objective
+- Why
+- Primary users
+- Affected layers
+- Scope
+- In
+- Out
+- Functional requirements
+- Acceptance criteria
+- Clarifications and open questions
+- Risks / unknowns
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/external-evidence.ts
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- docs/repository-authority-map.md
+- packages/database/data/table-ready-expansion.config.json
+- packages/database/src/index.ts
+- packages/database/src/research-repository.ts
+- packages/database/src/source-artifacts.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/research-intelligence/src/fulltext/source-content.ts
+- specs/036-evidence-readiness-cleanup/
+TASK_CHECKBOXES: checked=9; unchecked=0
+
+FILE: specs/036-evidence-readiness-cleanup/tasks.md
+LINES: 86
+SPEC_FOLDER: 036-evidence-readiness-cleanup
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Tasks - Evidence Readiness Cleanup
+HEADINGS:
+- Tasks - Evidence Readiness Cleanup
+- Workstream A - Feature artifacts
+- Workstream B - Route and stale UI cleanup
+- Workstream C - Evidence detail and readiness data
+- Workstream D - Corpus curation and reprocessing
+- Workstream E - Validation and follow-through
+- Dependencies
+- Parallelizable
+- Validation gates
+- Definition of done
+- Latest implementation status - 2026-05-13
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/external-evidence.ts
+- apps/web-ui/src/lib/navigation.ts
+- bioelectro-copilot-contracts/contracts/
+- bioelectro-copilot-contracts/contracts/rules/evidence_discovery.yaml
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/evidence-discovery-targets.yml
+- docs/repository-authority-map.md
+- packages/database/data/table-ready-expansion.config.json
+- packages/database/src/index.ts
+- packages/database/src/research-repository.ts
+- packages/database/src/source-artifacts.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-discovery/src/fulltext-resolver.ts
+- packages/research-intelligence/src/fulltext/source-content.ts
+- specs/036-evidence-readiness-cleanup/
+TASK_CHECKBOXES: checked=39; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/contracts/admin-ui-density-rules.md
+LINES: 46
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: planning contract note
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Contract Note — Admin UI Density Rules
+HEADINGS:
+- Contract Note — Admin UI Density Rules
+- Goal
+- Rules
+- Allowed overflow attribute
+- Density modifier classes
+- Out of scope
+- Migration steps
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/contracts/audit-funnel-semantics.md
+LINES: 84
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: planning contract note
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Contract Note — Audit Funnel Semantics
+HEADINGS:
+- Contract Note — Audit Funnel Semantics
+- Goal
+- Shape (additive)
+- Article funnel stages
+- Document funnel stages
+- Fact funnel stages
+- Benchmark funnel stages
+- Research-cell funnel stages
+- Compat
+- API surface
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/contracts/document-intelligence-model.md
+LINES: 72
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: planning contract note
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Contract Note — Document Intelligence Model (`docintel-v1`)
+HEADINGS:
+- Contract Note — Document Intelligence Model (`docintel-v1`)
+- DocumentParseResult (top level)
+- DocumentPage
+- DocumentBlock
+- DocumentTable
+- DocumentTableCell
+- Persistence path v1
+- v2 normalization (deferred)
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/contracts/research-cell-coverage.md
+LINES: 68
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: planning contract note
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Contract Note — Research Cell Coverage
+HEADINGS:
+- Contract Note — Research Cell Coverage
+- Cell record
+- Cell status enum
+- MissingReason enum
+- EvidenceTrace
+- Derivation rules (deterministic extractor v1)
+- Invariants
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/plan.md
+LINES: 132
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Plan — Evidence/Research Quality Expansion + UI 100% Zoom Correction
+HEADINGS:
+- Plan — Evidence/Research Quality Expansion + UI 100% Zoom Correction
+- Goal
+- Source-of-truth and exception policy
+- Phased plan
+- Phase 0 — Spec pack + ADR drafts + baseline
+- Phase 1 — UI 100% zoom corrections
+- Phase 2 — Layout audit tooling
+- Phase 3 — Audit semantic split v1 (JSON-only)
+- Phase 4 — Research cell provenance v1
+- Phase 5 — Document intelligence v1
+- Phase 6 — Table/metric extraction improvements
+- Phase 7 — Review Gate repair queues
+- Phase 8 — Corpus quality CLIs
+- Phase 9 — METREV doctor
+- Phase 10 — Final validation
+- Rollback / safety
+- Risk register
+- Acceptance criteria
+- Recommended first batch
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/quickstart.md
+LINES: 55
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Quickstart — Spec 037
+HEADINGS:
+- Quickstart — Spec 037
+- Local prerequisites
+- First-batch loop (Phase 0 → 1 → 2)
+- Phase 3+ loop
+- Final validation
+- Environment flags
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/report.md
+LINES: 73
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Spec 037 — Evidence & Research Quality Expansion — Validation Report
+HEADINGS:
+- Spec 037 — Evidence & Research Quality Expansion — Validation Report
+- Phase status
+- Test sweep (Phase 10 / T10.1)
+- Doctor (Phase 10 / T10.2)
+- Deferrals (deliberate)
+- Pre-existing issue (not introduced by this batch)
+- Conclusion
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/research.md
+LINES: 47
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Research — Spec 037
+HEADINGS:
+- Research — Spec 037
+- PDF parsing library
+- Table extraction
+- Audit funnel persistence
+- Research-cell history
+- UI density rule
+- Layout audit reproducibility
+- METREV doctor scope
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/spec.md
+LINES: 61
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Feature Specification — Evidence/Research Quality Expansion + UI 100% Zoom Correction
+HEADINGS:
+- Feature Specification — Evidence/Research Quality Expansion + UI 100% Zoom Correction
+- Objective
+- Why
+- Primary users
+- Affected layers
+- Scope
+- In
+- Out
+- Non-negotiable invariants
+- Acceptance criteria
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/037-evidence-research-quality-expansion/tasks.md
+LINES: 102
+SPEC_FOLDER: 037-evidence-research-quality-expansion
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: Tasks — Spec 037
+HEADINGS:
+- Tasks — Spec 037
+- Phase 0 — Spec pack + ADRs + baseline
+- Phase 1 — UI 100% zoom corrections
+- Phase 2 — Layout audit tooling
+- Phase 3 — Audit semantic split v1
+- Phase 4 — Research cell provenance v1
+- Phase 5 — Document intelligence v1
+- Phase 6 — Table/metric extraction improvements
+- Phase 7 — Review Gate repair queues
+- Phase 8 — Corpus quality CLIs
+- Phase 9 — METREV doctor
+- Phase 10 — Final validation
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=true
+SPEC_TOUCHED_AREAS:
+- apps/api-server/src/routes/evidence-audit.ts
+- apps/research-worker
+- apps/web-ui/src/app/globals.css
+- apps/web-ui/src/app/{evidence,evidence/quality,evidence/review,research}/page.tsx
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/runtime-tooling-setup.md
+- packages/database/scripts/{corpus-score,research-coverage-report,pdf-inspect,audit-explain}.ts
+- packages/database/src/evidence-audit-repository.ts
+- packages/document-intelligence/
+- packages/document-intelligence/src/schema.ts
+- packages/domain-contracts/src/schemas.ts
+- packages/evidence-audit/
+- packages/evidence-audit/src/run-audit.ts
+- packages/research-intelligence/
+- packages/research-intelligence/src/fulltext/source-content.ts
+- scripts/run-audit-explain.mjs
+- scripts/run-corpus-score.mjs
+- scripts/run-metrev-doctor.mjs
+- scripts/run-pdf-inspect.mjs
+- scripts/run-research-coverage.mjs
+- scripts/run-ui-layout-audit.mjs
+- specs/037-.../baseline/
+- specs/037-.../baseline/screenshots/
+- specs/037-.../report.md
+- specs/037-evidence-research-quality-expansion/
+- specs/037-evidence-research-quality-expansion/spec.md
+- tests/e2e/layout-audit.spec.ts
+- tests/runtime/document-intelligence.test.ts
+- tests/runtime/document-intelligence/
+- tests/runtime/evidence-audit-funnels.test.ts
+- tests/runtime/research-cell-coverage.test.ts
+- tests/runtime/research-intelligence.test.ts
+- tests/runtime/research-runtime-extractor.test.ts
+TASK_CHECKBOXES: checked=40; unchecked=12
+
+FILE: specs/038-coupled-mfc-mec-wastewater-biosensors/plan.md
+LINES: 38
+SPEC_FOLDER: 038-coupled-mfc-mec-wastewater-biosensors
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
+TITLE: Implementation plan
+HEADINGS:
+- Implementation plan
+- Phase 1 — scope and scientific contracts
+- Phase 2 — coupled baseline
+- Phase 3 — focused input and literature plumbing
+- Phase 4 — verification and integration
+- Rollback and data safety
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+- packages/domain-contracts/src/schemas.ts
+- tests/fixtures/raw-case-input.json
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/038-coupled-mfc-mec-wastewater-biosensors/quickstart.md
+LINES: 46
+SPEC_FOLDER: 038-coupled-mfc-mec-wastewater-biosensors
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
+TITLE: Quickstart
+HEADINGS:
+- Quickstart
+- Check a mechanistic model
+- Intake a site or lab wastewater case
+- Plan focused literature work without side effects
+- Broader engineering checks
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+- packages/domain-contracts/src/schemas.ts
+- tests/fixtures/raw-case-input.json
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/038-coupled-mfc-mec-wastewater-biosensors/research.md
+LINES: 28
+SPEC_FOLDER: 038-coupled-mfc-mec-wastewater-biosensors
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
+TITLE: Research and technical basis
+HEADINGS:
+- Research and technical basis
+- Scientific basis used for the implementation boundary
+- Engineering decisions
+- Known limitations and next evidence needs
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+- packages/domain-contracts/src/schemas.ts
+- tests/fixtures/raw-case-input.json
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/038-coupled-mfc-mec-wastewater-biosensors/spec.md
+LINES: 94
+SPEC_FOLDER: 038-coupled-mfc-mec-wastewater-biosensors
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
+TITLE: Spec 038: Coupled MFC/MEC, wastewater, and biosensor foundation
+HEADINGS:
+- Spec 038: Coupled MFC/MEC, wastewater, and biosensor foundation
+- Problem
+- Goals
+- Non-goals
+- Current model boundary
+- Inputs and data foundation
+- Requirements
+- Functional
+- Validation and operational
+- Acceptance criteria
+- Risks and decision points
+- Future increments
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+- packages/domain-contracts/src/schemas.ts
+- tests/fixtures/raw-case-input.json
+TASK_CHECKBOXES: checked=0; unchecked=0
+
+FILE: specs/038-coupled-mfc-mec-wastewater-biosensors/tasks.md
+LINES: 46
+SPEC_FOLDER: 038-coupled-mfc-mec-wastewater-biosensors
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: authority_map_referenced_surface
+TITLE: Tasks
+HEADINGS:
+- Tasks
+- Scope and contracts
+- Mechanistic execution
+- Intake and data workflows
+- Verification and release
+- Verification notes
+SPEC_FOLDER_SIGNALS:
+- has_spec=true
+- has_plan=true
+- has_tasks=true
+- has_quickstart=true
+- has_research=true
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
+- packages/domain-contracts/src/schemas.ts
+- tests/fixtures/raw-case-input.json
+TASK_CHECKBOXES: checked=19; unchecked=1
+
+FILE: specs/README.md
+LINES: 110
+SPEC_FOLDER: README.md
+SPEC_ARTIFACT_ROLE: feature artifact
+SPEC_AUTHORITY_STATUS: numbered_feature_pack_not_explicitly_listed_in_authority_map
+TITLE: METREV specification index
+HEADINGS:
+- METREV specification index
+- Current direction recorded in this review
+- Historical direction by phase
+- Spec register
+- Current source-of-truth layers
+- Known status and reproducibility gaps
+- Historical materials not available in this checkout
+- Current implementation boundary
+SPEC_FOLDER_SIGNALS:
+- has_spec=false
+- has_plan=false
+- has_tasks=false
+- has_quickstart=false
+- has_research=false
+- has_contract_notes=false
+SPEC_TOUCHED_AREAS:
+- bioelectro-copilot-contracts/contracts/
+- bioelectrochem_agent_kit/domain/
+- docs/repository-authority-map.md
+TASK_CHECKBOXES: checked=0; unchecked=0
 
 FILE: specs/_examples/000-evaluation-history-filters/contracts/history-filters-api.md
 LINES: 47

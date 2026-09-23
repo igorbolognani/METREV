@@ -14,17 +14,17 @@ export function PublicOverviewHub() {
       <section className="public-route-hub__hero">
         <div className="public-route-hub__hero-copy">
           <h1 className="public-route-hub__hero-title">
-            METREV BIOELETROCHEMICAL DECISION SUPPORT
+            METREV MFC/MEC + BIOSENSOR DECISION SUPPORT
           </h1>
           <p className="public-route-hub__hero-subtitle">
             Explore the scientific instrument one engineering lens at a time.
           </p>
           <p className="public-route-hub__hero-intro">
             Follow the same decision path METREV uses in practice: bound
-            influent and operating uncertainty, distinguish the relevant BES
-            family, anchor the configured stack, compare against baselines,
-            frame defensible impact, and carry the result into a traceable
-            report.
+            influent and operating uncertainty, distinguish MFC, MEC, and
+            biosensor deployment modes, anchor the configured system, compare
+            wastewater outcomes against baselines, and carry the result into a
+            traceable report.
           </p>
         </div>
 

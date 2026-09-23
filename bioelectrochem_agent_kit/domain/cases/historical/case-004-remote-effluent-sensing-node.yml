@@ -1,8 +1,11 @@
+# Historical illustrative input only; not validated scientific data or calibration material.
 case_id: GOLDEN-004
 case_metadata:
   created_by: system
   created_at: '2026-04-24'
-  case_status: golden_reference
+  case_status: historical_unvalidated_reference
+  active_in_scientific_modeling: false
+  scientific_validation: not_verified
 
 business_context:
   client_type: municipal_utility

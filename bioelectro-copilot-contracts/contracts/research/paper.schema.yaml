@@ -54,5 +54,5 @@ rules:
   - Existing ExternalSourceRecord rows remain the canonical source-document backing store.
   - Paper metadata snapshots may be stored for review stability but must not replace source-document provenance.
   - Runtime code may keep the paper_metadata name for backward compatibility, but new ingestion should treat it as document metadata.
-  - Active research reviews may include only full-access, traceable sources that explicitly address MFC, MEC, or MET surfaces.
+  - Active research reviews may include only full-access, traceable sources that explicitly address MFC, MEC, electrochemical biosensors, or their in-scope wastewater applications.
   - Eligibility sweeps must preserve excluded source records and reason buckets for audit; filtering must not delete warehouse rows.

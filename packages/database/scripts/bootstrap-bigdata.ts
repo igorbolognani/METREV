@@ -4,13 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { disconnectPrismaClient, getPrismaClient } from '../src/prisma-client';
 
 import {
-    collectIngestionInventory,
-    optionFlag,
-    optionList,
-    optionNumber,
-    optionValue,
-    parseScriptOptions,
-    readJsonFile,
+  collectIngestionInventory,
+  optionFlag,
+  optionList,
+  optionNumber,
+  optionValue,
+  parseScriptOptions,
+  readJsonFile,
 } from './external-ingestion-shared.mjs';
 import { runCrossrefIngestion } from './ingest-crossref-literature';
 import { runCuratedManifestIngestion } from './ingest-curated-manifest';
@@ -33,6 +33,20 @@ type BootstrapSource = keyof typeof runnerBySource;
 type BootstrapRunner = (
   overrides?: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
+
+interface BootstrapSourceConfig {
+  enabled?: boolean;
+  perQueryLimit?: number;
+  pageSize?: number;
+  maxPages?: number;
+}
+
+interface BootstrapConfig {
+  queries?: string[];
+  sources?: Partial<Record<BootstrapSource, BootstrapSourceConfig>>;
+  defaults?: Omit<BootstrapSourceConfig, 'enabled'>;
+  manifests?: string[];
+}
 
 interface BootstrapScalePlan {
   activeSources: BootstrapSource[];
@@ -59,7 +73,7 @@ function normalizeBootstrapSource(value: string): BootstrapSource | null {
 }
 
 function buildBootstrapScalePlan(input: {
-  config: Record<string, any>;
+  config: BootstrapConfig;
   queries: string[];
   selectedSources: string[];
   targetRecords: number;
@@ -74,7 +88,7 @@ function buildBootstrapScalePlan(input: {
   }
 
   const runSlots = activeSources.length * input.queries.length;
-  const perQueryLimit = Math.max(1, Math.ceil(input.targetRecords / runSlots));
+  const perQueryLimit = Math.max(1, Math.floor(input.targetRecords / runSlots));
   const pageSize = Math.max(1, Math.min(200, perQueryLimit));
 
   return {
@@ -160,7 +174,7 @@ export async function runBigDataBootstrap(
   overrides = {},
   dependencies: {
     collectInventory?: typeof collectIngestionInventory;
-    configData?: Record<string, unknown>;
+    configData?: BootstrapConfig;
     prisma?: {
       ingestionRun: {
         findFirst: (args: Record<string, unknown>) => Promise<{
@@ -181,9 +195,10 @@ export async function runBigDataBootstrap(
     'config',
     '../data/bigdata-bootstrap.config.json',
   );
-  const config =
+  const config: BootstrapConfig =
     dependencies.configData ?? readJsonFile(configPath, import.meta.url);
   const dryRun = optionFlag(options, 'dryRun', false);
+  const planOnly = optionFlag(options, 'planOnly', false);
   const resume = optionFlag(options, 'resume', true);
   const selectedSources = optionList(
     options,
@@ -197,13 +212,7 @@ export async function runBigDataBootstrap(
     0,
     1000,
   );
-  const targetRecords = optionNumber(
-    options,
-    'targetRecords',
-    Number.NaN,
-    1,
-    500000,
-  );
+  const targetRecords = optionNumber(options, 'targetRecords', 500, 1, 5000);
   const perQueryLimitOverride = optionNumber(
     options,
     'perQueryLimit',
@@ -229,8 +238,9 @@ export async function runBigDataBootstrap(
     ...runnerBySource,
     ...dependencies.runners,
   } as Record<BootstrapSource, BootstrapRunner>;
-  const ownsPrisma = !dependencies.prisma && !dryRun;
-  const prisma = dependencies.prisma ?? (dryRun ? null : getPrismaClient());
+  const ownsPrisma = !dependencies.prisma && !dryRun && !planOnly;
+  const prisma =
+    dependencies.prisma ?? (dryRun || planOnly ? null : getPrismaClient());
 
   const queries = Array.isArray(config?.queries)
     ? config.queries.slice(0, queryLimit || config.queries.length)
@@ -243,6 +253,34 @@ export async function runBigDataBootstrap(
         targetRecords,
       })
     : null;
+  const plannedRuns = scalePlan
+    ? scalePlan.activeSources.flatMap((source) =>
+        queries.map((query) => ({
+          source,
+          query,
+          limit: scalePlan.perQueryLimit,
+          pageSize: scalePlan.pageSize,
+          maxPages: scalePlan.maxPages,
+        })),
+      )
+    : [];
+  if (planOnly) {
+    const plan = {
+      configPath,
+      planOnly: true,
+      targetRecords,
+      estimatedMaxRecords: plannedRuns.reduce(
+        (total, run) => total + run.limit,
+        0,
+      ),
+      queryCount: queries.length,
+      providerQueryCount: plannedRuns.length,
+      plannedRuns,
+      scalePlan,
+    };
+    console.log(JSON.stringify(plan, null, 2));
+    return plan;
+  }
   const runResults = [];
 
   for (const source of selectedSources) {
