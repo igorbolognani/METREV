@@ -179,10 +179,8 @@ describe('workspace presenters', () => {
         }),
       );
 
-      expect(modelingHtml).toContain(
-        '1 line series and 0 operating-window map(s)',
-      );
-      expect(modelingHtml).toContain('Observed outputs');
+      expect(modelingHtml).toContain('1 modeled series share this unit');
+      expect(modelingHtml).toContain('Modeled outputs');
 
       const failedModelingHtml = renderToStaticMarkup(
         React.createElement(EvaluationModelingTab, {

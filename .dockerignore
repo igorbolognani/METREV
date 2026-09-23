@@ -10,6 +10,4 @@ build
 __pycache__
 *.log
 archive/
-copilot_project_starter_detailed/
-bioelectrochem_agent_kit/ALL_FILES_CODE.md
 tests/

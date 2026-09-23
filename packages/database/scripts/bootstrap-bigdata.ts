@@ -193,7 +193,7 @@ export async function runBigDataBootstrap(
   const configPath = optionValue(
     options,
     'config',
-    '../data/bigdata-bootstrap.config.json',
+    '../data/focused-mfc-mec-wastewater-biosensors.config.json',
   );
   const config: BootstrapConfig =
     dependencies.configData ?? readJsonFile(configPath, import.meta.url);

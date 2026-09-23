@@ -59,7 +59,7 @@ describe('public landing page', () => {
     expect(html).not.toContain('Browse the 6 lenses');
     expect(html).not.toContain('Go to dashboard');
     expect(html).not.toContain(
-      'The public front door now separates the BES story into six focused pages',
+      'The public front door now separates the electrochemical decision-support story into six focused pages',
     );
     expect(html).not.toContain(
       'The public layer teaches the system. The workspace evaluates it.',

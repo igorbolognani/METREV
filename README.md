@@ -1,66 +1,72 @@
 # METREV
 
-METREV is a decision-support and modeling workspace for **microbial fuel cells (MFC), microbial electrolysis cells (MEC), wastewater treatment/management, and electrochemical biosensors**. Biosensors may run independently or be integrated with an MFC/MEC.
+METREV is a scientific modeling and decision-support workspace for microbial fuel cells (MFC), microbial electrolysis cells (MEC), wastewater treatment and management, and electrochemical biosensors. A biosensor may run standalone or be integrated with an MFC or MEC. MEC hydrogen is a secondary output.
 
-The active technical scope and current implementation are tracked in [spec 038](specs/038-coupled-mfc-mec-wastewater-biosensors/spec.md). The earlier feature history is indexed in [specs/README.md](specs/README.md); old volumes such as 30,000 or 500,000 literature records are not current goals.
+## Bootstrap
 
-## System boundary
-
-The executable model is a source-backed, isothermal, well-mixed 0D MFC/MEC model with differential reactor states and an algebraic electrochemical closure. It couples COD removal, electroactive biofilm activity, pH response, MFC oxygen transfer, electrode kinetics, electrolyte/membrane/contact resistance, cell voltage/current, and power or hydrogen outputs. A biosensor can use an amperometric linear, Langmuir, or Michaelis–Menten calibration, standalone or coupled to the cell's available power.
-
-This is a runnable mechanistic baseline, not a spatially resolved multiphysics package. It does not yet resolve individual ionic species, detailed microbial guilds, spatial biofilm gradients, dynamic membrane fouling, thermal gradients, or full wastewater speciation. Missing model parameters return an `insufficient_data` result rather than proxy outputs. Synthetic, test-only parameters are labelled as fixtures and must not be treated as measured or literature data.
-
-The canonical meaning lives in `bioelectrochem_agent_kit/domain/`. `bioelectro-copilot-contracts/contracts/` defines input and serialization boundaries; loaders and runtime implementations live in `packages/` and `apps/`.
-
-## Local setup and checks
-
-Use Node and pnpm versions compatible with `package.json` (`pnpm@10.6.0`). For a fresh checkout:
+Requirements: Node.js 24, pnpm 10.6.0, and Docker for the local PostgreSQL-backed application.
 
 ```bash
 pnpm install
 pnpm prisma:generate
+cp .env.example .env
+```
+
+Set a private `AUTH_SECRET` and configure PostgreSQL in `.env` before running the application. Start the Docker workspace with `pnpm run local:view:up`; stop it with `pnpm run local:view:down`. The web app is available at `http://localhost:3012/login`.
+
+Run focused checks:
+
+```bash
 pnpm run test:python
-pnpm exec vitest run tests/runtime/mechanistic-electrochem-model.test.ts tests/runtime/case-intake-preset.test.ts tests/runtime/bootstrap-bigdata.test.ts
+pnpm exec vitest run tests/runtime/mechanistic-electrochem-model.test.ts tests/runtime/case-intake-preset.test.ts tests/runtime/bootstrap-bigdata.test.ts tests/runtime/research-scope-boundary.test.ts
 pnpm exec tsc --noEmit -p packages/domain-contracts/tsconfig.json
 pnpm exec tsc --noEmit -p packages/electrochem-models/tsconfig.json
 pnpm exec tsc --noEmit -p apps/web-ui/tsconfig.json
 ```
 
-The full engineering gates are `pnpm run lint`, `pnpm run test:fast`, `pnpm run test:advanced`, and `pnpm run build`. Database and browser checks require their own configured PostgreSQL/Docker and Playwright environment (`pnpm run test:db`, `pnpm run test:e2e`).
+`pnpm run test:fast`, `pnpm run lint`, and `pnpm run build` are the broader checks. Database, Docker, and browser checks need their own configured environment.
 
-The case intake has five deliberately empty focused templates: wastewater MFC, wastewater MEC (with hydrogen as a secondary output), standalone biosensor, MFC-integrated biosensor, and MEC-integrated biosensor. Supply the full mechanistic model, biosensor, and water-quality objects as JSON. Each scientific parameter carries a value, unit, source kind/reference, and optional uncertainty. COD from a source-backed `mgCOD/L` measurement is normalized to `kgCOD/m3` while retaining its original value and unit.
+## Scientific boundary
 
-## Focused evidence workflow
+The executable reactor model (`coupled-0d-dae-v1`) is a lumped, isothermal 0D continuous-flow model. It integrates soluble COD, electroactive biomass, MFC cathode oxygen, and anode/cathode pH with fixed-step RK4; current is closed algebraically through Butler–Volmer kinetics, ohmic resistance, electron supply, and the MFC load or MEC applied-voltage boundary. It is not a spatially resolved or independently calibrated model.
 
-The committed research preset contains MFC/MEC wastewater, electroactive biology/materials, and standalone/integrated biosensor queries for OpenAlex, Crossref, and Europe PMC. It is bounded to 500 planned records and 20 focused queries. Search results are literature candidates; they do not silently become measured case inputs.
+The model does not resolve microbial guilds, detailed metabolism, nitrogen species, alkalinity speciation, gas crossover/transfer, dynamic membrane fouling, thermal gradients, multiphase flow, or parameter uncertainty. The biosensor calculation is a static amperometric calibration (linear, Langmuir, or Michaelis–Menten); it does not simulate reaction/diffusion, correct for matrix interference, apply drift correction, or propagate sensor noise. A complete input may therefore produce a model result without establishing predictive accuracy for a site.
 
-Plan the literature query queue without initializing PostgreSQL or contacting providers:
+Every scientific parameter must carry a value, unit, source kind (`measured`, `literature`, `default`, `assumption`, or `test_fixture`), and source reference. Uncertainty is optional and must have a unit when supplied. No scientific value is silently filled in. Missing or inconsistent critical inputs return `insufficient_data`. Test fixtures are not measurements or literature data.
 
-```bash
-pnpm run research:queue:focused-literature:dry-run
-```
+All solver observations and series are marked as modeled outputs. MFC electrical output, auxiliary demand, and sensor demand have separate boundaries. MEC electrical input is not generation; gross and captured hydrogen are separate Faraday-based outputs. The displayed confidence score is a fixed heuristic, not a probability or a calibration result. Uncertainty fields are stored but are not propagated.
 
-Plan the provider bootstrap without network requests or database writes:
+The solver permits at most 2,000 integration steps and emits at most 200 points per series. Plots must compare like units; sampled curves are model output, not experimental observations. A validation test passing proves the tested contract or numerical invariant only, not agreement with an independent experiment.
+
+## Inputs and results
+
+The intake starts with five empty templates: wastewater MFC, wastewater MEC, standalone biosensor, MFC-integrated biosensor, and MEC-integrated biosensor. Empty templates deliberately contain no scientific operating values. Wastewater inputs retain sample/method context; supported conversions include COD from `mgCOD/L` to `kgCOD/m3`, temperature from Celsius to Kelvin, and conductivity from `mS/cm` to `S/m` when the units and source reference are explicit.
+
+Model results include COD and biomass trajectories, pH, MFC cathode oxygen, current and voltage, electrical output or input, auxiliary demand, MEC hydrogen, and biosensor signal/detection/power checks when those inputs are provided. Other wastewater fields may be stored as measurements but are not all modeled state variables.
+
+## Literature plan and corpus status
+
+The focused search configuration has 20 queries across OpenAlex, Crossref, and Europe PMC. A target of 500 is a planning budget, not a downloaded or validated corpus. With 20 queries and 3 providers there are 60 query/provider slots; distributing 500 with one-page integer limits assigns 8 records per slot, so the theoretical request ceiling is 480 before duplicates, empty responses, access checks, or review. The checked-in curated manifest currently has zero records.
+
+The focused plan-only run reports 60 planned slots and the backfill dry-run queues zero jobs. The empty checked-in manifest describes this repository file only; it does not report prior or remote database contents. This checkout did not inspect a database.
+
+These commands only plan work and make no provider or database calls:
 
 ```bash
 pnpm run db:bootstrap:focused:dry-run
+pnpm run research:queue:focused-literature:dry-run
 ```
 
-To execute either ingestion path, configure a disposable/intended PostgreSQL database, review its target, then use the non-dry-run command. The queue path also needs the research worker to process queued work. Ingestion and migration commands are not test setup and must be run intentionally.
+They do not download papers, establish access rights, extract full text, deduplicate provider records, validate measurements, or create a reviewed evidence set. A real ingestion requires a deliberately configured database and provider access; use it only after reviewing the target database and the source/access policy. A 500-record target is not a claim that the literature is complete, representative, or scientifically validated.
 
-## Local application
+## Source map
 
-Copy `.env.example` to `.env`, configure PostgreSQL and the shared auth secret, then run the repository's usual setup:
+- `bioelectrochem_agent_kit/domain/`: active system meaning, taxonomies, and scientific rules.
+- `bioelectro-copilot-contracts/contracts/`: validation and serialization contracts.
+- `packages/electrochem-models/`: executable mechanistic model and simulation mapping.
+- `packages/domain-contracts/`: schemas, normalization, and loading/reconciliation.
+- `packages/database/`: persistence, literature ingestion, and evidence review.
+- `apps/`: web interface, API, and research worker.
+- `tests/`: contract, model, API, database, and UI checks.
 
-```bash
-pnpm run db:bootstrap
-pnpm run dev:api
-pnpm run dev:research-worker
-pnpm run dev:web
-```
-
-For the Docker-backed local workspace, `pnpm run local:view:up`, `pnpm run local:view:status`, and `pnpm run local:view:down` manage the stack. The web app defaults to `http://localhost:3000/login`; the local-view wrapper uses port 3012.
-
-## Scope maintenance
-
-Specs 002–037 document the project's earlier runtime, product, corpus-scale, and governance directions. They remain available as historical decision records; their checked task boxes do not prove current operation. New scientific functionality belongs under the MFC/MEC, wastewater, and electrochemical-biosensor scope in spec 038. Other electrochemical technologies and nutrient/biogas recovery are retained only as historical or compatibility data, not active intake/research taxonomies.
+Repository working rules are in [`AGENTS.md`](AGENTS.md); Copilot uses the same rules through [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
