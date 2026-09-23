@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 22638)
-Total output lines: 2431
-
 import { z } from 'zod';
 
 export const activeTechnologyFamilyValues = [
@@ -648,7 +645,1315 @@ const electricalInterconnectSchema = flexibleObjectSchema.extend({
 const balanceOfPlantSchema = flexibleObjectSchema.extend({
   flow_control: z.string().default('unknown'),
   gas_handling_readiness: z.string().default('unknown'),
-  dosing_capability: z.string().default(…12638 tokens truncated…int().nonnegative().optional(),
+  dosing_capability: z.string().default('unknown'),
+});
+
+const sensorsAndAnalyticsSchema = flexibleObjectSchema.extend({
+  data_quality: z.string().default('medium'),
+  voltage_current_logging: z.string().default('unknown'),
+  water_quality_coverage: z.string().default('unknown'),
+  biosensor: biosensorConfigurationDraftSchema.optional(),
+});
+
+const operationalBiologySchema = flexibleObjectSchema.extend({
+  biofilm_maturity: z.string().default('unknown'),
+  contamination_risk: z.string().default('unknown'),
+  inoculum_source: z.string().default('unknown'),
+  startup_protocol: z.string().default('unknown'),
+});
+
+export const stackBlocksSchema = z.object({
+  reactor_architecture: reactorArchitectureSchema.default({}),
+  anode_biofilm_support: anodeBiofilmSupportSchema.default({}),
+  cathode_catalyst_support: cathodeCatalystSupportSchema.default({}),
+  membrane_or_separator: membraneOrSeparatorSchema.default({}),
+  electrical_interconnect_and_sealing: electricalInterconnectSchema.default({}),
+  balance_of_plant: balanceOfPlantSchema.default({}),
+  sensors_and_analytics: sensorsAndAnalyticsSchema.default({}),
+  operational_biology: operationalBiologySchema.default({}),
+});
+
+const technoeconomicsLayerSchema = flexibleObjectSchema.extend({
+  maintenance_burden: z.string().default('medium'),
+  capex_constraint_level: z.string().optional(),
+  opex_sensitivity_level: z.string().optional(),
+  priorities: z.array(z.string()).default([]),
+  hard_constraints: z.array(z.string()).default([]),
+  local_energy_cost_note: z.string().optional(),
+});
+
+const evidenceAndProvenanceLayerSchema = flexibleObjectSchema.extend({
+  evidence_profile: z.string().default('evidence_sparse'),
+  supplier_claim_fraction: z.string().default('none'),
+  typed_evidence: z.array(evidenceRecordSchema).default([]),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+const riskAndMaturityLayerSchema = flexibleObjectSchema.extend({
+  trl: z.number().int().min(1).max(9).default(3),
+  scale_up_risk: z.string().default('unknown'),
+  serviceability_risk: z.string().default('unknown'),
+  supplier_context: supplierContextSchema.default({
+    current_suppliers: [],
+    preferred_suppliers: [],
+    excluded_suppliers: [],
+  }),
+});
+
+export const crossCuttingLayersSchema = z.object({
+  technoeconomics: technoeconomicsLayerSchema.default({}),
+  evidence_and_provenance: evidenceAndProvenanceLayerSchema.default({}),
+  risk_and_maturity: riskAndMaturityLayerSchema.default({}),
+});
+
+export const rawCaseInputSchema = z.object({
+  case_id: z.string().optional(),
+  case_metadata: flexibleObjectSchema.optional(),
+  technology_family: z.string().optional(),
+  architecture_family: z.string().optional(),
+  primary_objective: z.string().optional(),
+  business_context: businessContextSchema.optional(),
+  technology_context: technologyContextSchema.optional(),
+  feed_and_operation: feedAndOperationSchema.optional(),
+  mechanistic_model: mechanisticModelDraftInputSchema.optional(),
+  stack_blocks: z.object({}).catchall(flexibleObjectSchema).optional(),
+  cross_cutting_layers: crossCuttingLayersSchema.partial().optional(),
+  measured_metrics: z.record(z.string(), z.unknown()).optional(),
+  evidence_refs: z.array(z.string()).optional(),
+  evidence_records: z.array(rawEvidenceRecordSchema).optional(),
+  assumptions: z.array(z.string()).optional(),
+  missing_data: z.array(z.string()).optional(),
+  defaults_used: z.array(z.string()).optional(),
+  parameter_state: z.record(z.string(), parameterStateSchema).optional(),
+  supplier_context: supplierContextSchema.optional(),
+  normalization_status: flexibleObjectSchema.optional(),
+});
+
+export const normalizedCaseInputSchema = z.object({
+  case_id: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  architecture_family: z.string().min(1),
+  primary_objective: primaryObjectiveReadSchema,
+  business_context: businessContextSchema.default({}),
+  technology_context: technologyContextSchema.default({}),
+  feed_and_operation: feedAndOperationSchema.default({}),
+  mechanistic_model: mechanisticModelDraftInputSchema.optional(),
+  stack_blocks: stackBlocksSchema,
+  cross_cutting_layers: crossCuttingLayersSchema,
+  measured_metrics: z.record(z.string(), z.unknown()).default({}),
+  evidence_refs: z.array(z.string()).default([]),
+  assumptions: z.array(z.string()).default([]),
+  missing_data: z.array(z.string()).default([]),
+  defaults_used: z.array(z.string()).default([]),
+});
+
+export const recommendationRecordSchema = z.object({
+  recommendation_id: z.string().min(1),
+  linked_diagnosis: z.string().min(1),
+  rationale: z.string().min(1),
+  expected_benefit: z.string().min(1),
+  implementation_effort: z.enum(['low', 'medium', 'high']),
+  economic_plausibility: z.enum(['low', 'medium', 'high']),
+  risk_level: z.enum(['low', 'medium', 'high']),
+  maturity_level: z.enum(['low', 'medium', 'high']),
+  evidence_strength_summary: z.string().min(1),
+  assumptions: z.array(z.string()),
+  missing_data_dependencies: z.array(z.string()),
+  confidence_level: confidenceLevelSchema,
+  supplier_candidates: z.array(z.string()).optional(),
+  prerequisite_actions: z.array(z.string()).optional(),
+  measurement_requests: z.array(z.string()).optional(),
+  phase_assignment: z.string().optional(),
+  rule_refs: z.array(z.string()).optional(),
+  evidence_refs: z.array(z.string()).optional(),
+  provenance_notes: z.array(z.string()).optional(),
+  priority_score: z.number().min(0).max(100).optional(),
+});
+
+export const currentStackDiagnosisSchema = z.object({
+  summary: z.string().min(1),
+  block_findings: z.array(
+    z.object({
+      block: z.string().min(1),
+      status: z.enum(['documented', 'needs-data', 'attention']),
+      finding: z.string().min(1),
+      rule_refs: z.array(z.string()).default([]),
+      severity: z.enum(['low', 'medium', 'high']).optional(),
+    }),
+  ),
+  main_weaknesses_or_blind_spots: z.array(z.string()).default([]),
+});
+
+export const impactMapEntrySchema = z.object({
+  option: z.string().min(1),
+  technical_impact: z.string().min(1),
+  economic_plausibility: z.string().min(1),
+  maturity_or_readiness: z.string().min(1),
+  dependencies: z.array(z.string()),
+  confidence: confidenceLevelSchema,
+  priority_score: z.number().min(0).max(100).optional(),
+});
+
+export const supplierShortlistEntrySchema = z.object({
+  category: z.string().min(1),
+  candidate_path: z.string().min(1),
+  fit_note: z.string().min(1),
+  missing_information_before_commitment: z.array(z.string()),
+});
+
+export const phasedRoadmapEntrySchema = z.object({
+  phase: z.string().min(1),
+  title: z.string().min(1),
+  actions: z.array(z.string()),
+});
+
+export const assumptionsAndDefaultsAuditSchema = z.object({
+  assumptions: z.array(z.string()),
+  defaults_used: z.array(z.string()),
+  missing_data: z.array(z.string()),
+});
+
+export const confidenceAndUncertaintySummarySchema = z.object({
+  confidence_level: confidenceLevelSchema,
+  summary: z.string().min(1),
+  next_tests: z.array(z.string()),
+  provenance_notes: z.array(z.string()).default([]),
+  sensitivity_level: z.enum(['low', 'medium', 'high']).optional(),
+});
+
+export const simulationAxisSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().nullable().default(null),
+});
+
+export const simulationSeriesPointSchema = z.object({
+  x: z.number(),
+  y: z.number().nullable(),
+  z: z.number().nullable().optional(),
+  label: z.string().optional(),
+  note: z.string().optional(),
+  meta: flexibleObjectSchema.default({}),
+});
+
+export const derivedObservationSchema = z.object({
+  observation_id: z.string().min(1),
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: scalarValueSchema,
+  unit: z.string().nullable().default(null),
+  source_kind: signalSourceKindSchema,
+  confidence_level: confidenceLevelSchema,
+  decision_relevance: decisionRelevanceSchema,
+  provenance_note: z.string().min(1),
+  assumptions: z.array(z.string()).default([]),
+  missing_dependencies: z.array(z.string()).default([]),
+});
+
+export const simulationSeriesSchema = z.object({
+  series_id: z.string().min(1),
+  title: z.string().min(1),
+  series_type: simulationSeriesTypeSchema,
+  x_axis: simulationAxisSchema,
+  y_axis: simulationAxisSchema,
+  points: z.array(simulationSeriesPointSchema).default([]),
+  source_kind: signalSourceKindSchema,
+  provenance_note: z.string().min(1),
+});
+
+export const simulationConfidenceSchema = z.object({
+  level: confidenceLevelSchema,
+  score: z.number().min(0).max(100),
+  drivers: z.array(z.string()).default([]),
+});
+
+export const simulationProvenanceSchema = z.object({
+  provider: z.string().min(1),
+  execution_mode: simulationExecutionModeSchema,
+  source_version: z.string().min(1),
+  generated_at: z.string().min(1),
+  source_refs: z.array(z.string()).default([]),
+  note: z.string().optional(),
+});
+
+export const simulationSummarySchema = z.object({
+  status: simulationEnrichmentStatusSchema,
+  model_version: z.string().min(1),
+  confidence_level: confidenceLevelSchema,
+  derived_observation_count: z.number().int().nonnegative(),
+  has_series: z.boolean(),
+});
+
+export const simulationEnrichmentSchema = z.object({
+  status: simulationEnrichmentStatusSchema,
+  model_version: z.string().min(1),
+  input_snapshot: flexibleObjectSchema.default({}),
+  derived_observations: z.array(derivedObservationSchema).default([]),
+  series: z.array(simulationSeriesSchema).default([]),
+  assumptions: z.array(z.string()).default([]),
+  confidence: simulationConfidenceSchema,
+  provenance: simulationProvenanceSchema,
+  failure_detail: flexibleObjectSchema.optional(),
+});
+
+export const evidenceDecisionContextSystemTypeSchema = z.enum([
+  'MFC',
+  'MEC',
+  'BIOSENSOR',
+  'UNCLASSIFIED',
+]);
+
+export const evidenceDecisionContextQuerySchema = z.object({
+  system_type: evidenceDecisionContextSystemTypeSchema,
+  application: primaryObjectiveSchema,
+  component_types: z.array(z.string()).default([]),
+  materials: z.array(z.string()).default([]),
+  metric_types: z.array(z.string()).default([]),
+  limit: z.number().int().nonnegative(),
+  decision_ready_only: z.boolean().default(true),
+});
+
+export const evidenceDecisionBenchmarkRangeSchema = z.object({
+  canonical_key: z.string().min(1),
+  metric_type: z.string().min(1),
+  normalized_unit: z.string().min(1),
+  system_type: z.string().nullable().default(null),
+  application: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
+  record_count: z.number().int().nonnegative(),
+  min_value: z.number().nullable().default(null),
+  p25_value: z.number().nullable().default(null),
+  median_value: z.number().nullable().default(null),
+  p75_value: z.number().nullable().default(null),
+  p90_value: z.number().nullable().default(null),
+  max_value: z.number().nullable().default(null),
+  mean_value: z.number().nullable().default(null),
+  confidence_coverage: z.number().nullable().default(null),
+});
+
+export const evidenceDecisionMatchedEvidenceSchema = z.object({
+  catalog_item_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  title: z.string().min(1),
+  review_status: z.string().nullable().default(null),
+  source_state: z.string().nullable().default(null),
+  access_status: z.string().nullable().default(null),
+  source_license: z.string().nullable().default(null),
+  doi: z.string().nullable().default(null),
+  source_url: z.string().nullable().default(null),
+  canonical_key: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
+  confidence: z.number().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+});
+
+export const evidenceDecisionSignalSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  summary: z.string().min(1),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+export const evidenceDecisionUncertaintySummarySchema = z.object({
+  confidence_level: confidenceLevelSchema,
+  summary: z.string().min(1),
+  missing_dependencies: z.array(z.string()).default([]),
+  excluded_evidence_reasons: z.array(z.string()).default([]),
+});
+
+export const evidenceDecisionContextSchema = z.object({
+  case_id: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  system_type: evidenceDecisionContextSystemTypeSchema,
+  primary_objective: primaryObjectiveSchema,
+  query: evidenceDecisionContextQuerySchema,
+  benchmark_ranges: z.array(evidenceDecisionBenchmarkRangeSchema).default([]),
+  matched_evidence: z.array(evidenceDecisionMatchedEvidenceSchema).default([]),
+  material_comparisons: z.array(evidenceDecisionSignalSchema).default([]),
+  operating_window_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  failure_mode_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  cost_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  supplier_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  regulatory_social_signals: z.array(evidenceDecisionSignalSchema).default([]),
+  uncertainty_summary: evidenceDecisionUncertaintySummarySchema,
+  excluded_evidence_summary: z.array(evidenceDecisionSignalSchema).default([]),
+  provenance_note: z.string().min(1),
+  source_refs: z.array(z.string()).default([]),
+  builder_version: z.string().min(1),
+});
+
+export const decisionOutputSchema = z.object({
+  current_stack_diagnosis: currentStackDiagnosisSchema,
+  prioritized_improvement_options: z.array(recommendationRecordSchema),
+  impact_map: z.array(impactMapEntrySchema),
+  supplier_shortlist: z.array(supplierShortlistEntrySchema),
+  phased_roadmap: z.array(phasedRoadmapEntrySchema),
+  assumptions_and_defaults_audit: assumptionsAndDefaultsAuditSchema,
+  confidence_and_uncertainty_summary: confidenceAndUncertaintySummarySchema,
+});
+
+export const agentPipelineStageSchema = z.object({
+  stage_id: z.string().min(1),
+  agent_name: z.string().min(1),
+  mode: agentStageModeSchema,
+  status: agentStageStatusSchema,
+  input_contract: z.string().min(1),
+  output_contract: z.string().min(1),
+  assistant_surface: z.string().optional(),
+  deterministic_owner: z.string().optional(),
+  notes: z.array(z.string()).default([]),
+});
+
+export const narrativeMetadataSchema = z.object({
+  mode: narrativeModeSchema,
+  provider: z.string().nullable(),
+  model: z.string().nullable(),
+  status: narrativeStatusSchema,
+  fallback_used: z.boolean(),
+  prompt_version: z.string().min(1),
+  error_message: z.string().nullable().optional(),
+});
+
+export const runtimeVersionSchema = z.object({
+  contract_version: z.string().min(1),
+  ontology_version: z.string().min(1),
+  ruleset_version: z.string().min(1),
+  prompt_version: z.string().min(1),
+  model_version: z.string().min(1),
+  workspace_schema_version: z.string().min(1),
+});
+
+export const traceabilitySummarySchema = z.object({
+  subject_type: z.enum(['workspace', 'case', 'evaluation']),
+  subject_id: z.string().min(1),
+  case_id: z.string().optional(),
+  evaluation_id: z.string().optional(),
+  entrypoint: z.enum(['ui', 'api', 'batch', 'test']),
+  transformation_stages: z.array(z.string()).default([]),
+  rule_refs: z.array(z.string()).default([]),
+  evidence_refs: z.array(z.string()).default([]),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  evidence_count: z.number().int().nonnegative(),
+});
+
+export const workspaceMetaSchema = z.object({
+  generated_at: z.string().min(1),
+  versions: runtimeVersionSchema,
+  traceability: traceabilitySummarySchema,
+});
+
+export const auditRecordSchema = z.object({
+  audit_id: z.string().min(1),
+  timestamp: z.string().min(1),
+  actor_role: z.string().min(1),
+  actor_id: z.string().optional(),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  confidence_level: confidenceLevelSchema,
+  summary: z.string().min(1),
+  defaults_used: z.array(z.string()).default([]),
+  missing_data: z.array(z.string()).default([]),
+  assumptions: z.array(z.string()).default([]),
+  next_tests: z.array(z.string()).default([]),
+  provenance_notes: z.array(z.string()).default([]),
+  raw_input_snapshot: rawCaseInputSchema,
+  typed_evidence: z.array(evidenceRecordSchema).default([]),
+  evidence_decision_context: evidenceDecisionContextSchema
+    .nullable()
+    .default(null),
+  agent_pipeline_trace: z.array(agentPipelineStageSchema).default([]),
+  runtime_versions: runtimeVersionSchema,
+  traceability: traceabilitySummarySchema,
+  idempotency_key: z.string().min(1).optional(),
+});
+
+export const evaluationResponseSchema = z.object({
+  evaluation_id: z.string().min(1),
+  case_id: z.string().min(1),
+  normalized_case: normalizedCaseInputSchema,
+  decision_output: decisionOutputSchema,
+  audit_record: auditRecordSchema,
+  evidence_decision_context: evidenceDecisionContextSchema
+    .nullable()
+    .default(null),
+  narrative: z.string().nullable(),
+  narrative_metadata: narrativeMetadataSchema,
+  simulation_enrichment: simulationEnrichmentSchema.optional(),
+  source_usages: z.array(z.lazy(() => evaluationSourceUsageSchema)).default([]),
+  claim_usages: z.array(z.lazy(() => evaluationClaimUsageSchema)).default([]),
+  workspace_snapshots: z
+    .array(z.lazy(() => workspaceSnapshotRecordSchema))
+    .default([]),
+});
+
+export const evaluationSummarySchema = z.object({
+  evaluation_id: z.string().min(1),
+  case_id: z.string().min(1),
+  created_at: z.string().min(1),
+  confidence_level: confidenceLevelSchema,
+  technology_family: technologyFamilySchema,
+  primary_objective: primaryObjectiveReadSchema,
+  summary: z.string().min(1),
+  narrative_available: z.boolean(),
+  simulation_summary: simulationSummarySchema.optional(),
+});
+
+export const dashboardReportSummarySchema = evaluationSummarySchema.extend({
+  report_href: z.string().min(1),
+});
+
+export const evaluationListSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  filtered_total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  page_size: z.number().int().positive(),
+  total_pages: z.number().int().positive(),
+  returned: z.number().int().nonnegative(),
+});
+
+function createEmptyEvaluationLineage() {
+  return {
+    source_usages: [],
+    claim_usages: [],
+    workspace_snapshots: [],
+  };
+}
+
+export const evaluationListResponseSchema = z.object({
+  items: z.array(evaluationSummarySchema),
+  summary: evaluationListSummarySchema,
+});
+
+export const caseSnapshotSchema = z.object({
+  case_id: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  architecture_family: z.string().min(1),
+  primary_objective: primaryObjectiveReadSchema,
+  raw_intake_snapshot: rawCaseInputSchema,
+  normalized_case: normalizedCaseInputSchema,
+  defaults_used: z.array(z.string()),
+  missing_data: z.array(z.string()),
+  assumptions: z.array(z.string()),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const auditEventSchema = z.object({
+  event_id: z.string().min(1),
+  case_id: z.string().optional(),
+  evaluation_id: z.string().optional(),
+  event_type: z.string().min(1),
+  actor_role: z.string().min(1),
+  actor_id: z.string().optional(),
+  payload: flexibleObjectSchema,
+  created_at: z.string().min(1),
+});
+
+export const caseHistoryResponseSchema = z.object({
+  case: caseSnapshotSchema,
+  evaluations: z.array(evaluationSummarySchema),
+  evidence_records: z.array(evidenceRecordSchema),
+  audit_events: z.array(auditEventSchema),
+});
+
+export const externalEvidenceCatalogListSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  catalog_total: z.number().int().nonnegative().optional(),
+  filtered_total: z.number().int().nonnegative().default(0),
+  pending: z.number().int().nonnegative(),
+  pending_review: z.number().int().nonnegative().optional(),
+  accepted: z.number().int().nonnegative(),
+  rejected: z.number().int().nonnegative(),
+  failed_ingestion: z.number().int().nonnegative().default(0),
+  duplicate_skipped: z.number().int().nonnegative().default(0),
+  canonical_processed: z.number().int().nonnegative().default(0),
+  canonical_extracted: z.number().int().nonnegative().default(0),
+  canonical_insufficient_source: z.number().int().nonnegative().default(0),
+  canonical_needs_full_text: z.number().int().nonnegative().default(0),
+  canonical_needs_review: z.number().int().nonnegative().default(0),
+  canonical_failed: z.number().int().nonnegative().default(0),
+  canonical_facts: z.number().int().nonnegative().default(0),
+  benchmark_ready_facts: z.number().int().nonnegative().default(0),
+  benchmark_aggregates: z.number().int().nonnegative().default(0),
+  last_ingestion_batch: z.string().nullable().default(null),
+  ingestion_progress: z
+    .object({
+      active: z.boolean(),
+      run_id: z.string().nullable().default(null),
+      target_total: z.number().int().nonnegative(),
+      current_total: z.number().int().nonnegative(),
+      records_remaining: z.number().int().nonnegative(),
+      completion_ratio: z.number().min(0).max(1),
+      records_fetched: z.number().int().nonnegative(),
+      records_stored: z.number().int().nonnegative(),
+      records_failed: z.number().int().nonnegative(),
+      duplicates_skipped: z.number().int().nonnegative(),
+    })
+    .nullable()
+    .default(null),
+  canonicalization_progress: z
+    .object({
+      active: z.boolean(),
+      run_id: z.string().nullable().default(null),
+      target_total: z.number().int().nonnegative(),
+      processed_total: z.number().int().nonnegative(),
+      records_remaining: z.number().int().nonnegative(),
+      completion_ratio: z.number().min(0).max(1),
+      canonical_facts: z.number().int().nonnegative(),
+      benchmark_records: z.number().int().nonnegative(),
+      insufficient_source: z.number().int().nonnegative(),
+      needs_full_text: z.number().int().nonnegative(),
+      needs_review: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+    })
+    .nullable()
+    .default(null),
+  page: z.number().int().positive().default(1),
+  page_size: z.number().int().positive().default(25),
+  total_pages: z.number().int().positive().default(1),
+  returned: z.number().int().nonnegative().default(0),
+});
+
+export const workspaceCopySchema = z.object({
+  headline: z.string().trim().min(1).max(80),
+  summary: z.string().trim().min(1).max(180),
+  detail: z.string().trim().min(1).max(320).optional(),
+});
+
+export const workspaceTabSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(32),
+});
+
+export const workspaceBadgeSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(48),
+  tone: workspaceToneSchema,
+});
+
+export const workspacePrimaryActionSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(48),
+  href: z.string().trim().min(1),
+});
+
+export const workspacePropertyRowSchema = z.object({
+  label: z.string().trim().min(1),
+  value: z.string().trim().min(1),
+  unit: z.string().trim().min(1).nullable().optional(),
+  source: z.string().trim().min(1).nullable().optional(),
+});
+
+export const workspacePropertyGroupSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  rows: z.array(workspacePropertyRowSchema).min(1),
+});
+
+export const workspacePresentationSchema = z.object({
+  page_title: z.string().trim().min(1).max(80),
+  short_summary: z.string().trim().min(1).max(180),
+  default_tab: z.string().trim().min(1),
+  tabs: z.array(workspaceTabSchema).default([]),
+  badges: z.array(workspaceBadgeSchema).default([]),
+  primary_actions: z.array(workspacePrimaryActionSchema).default([]),
+  copy: workspaceCopySchema.optional(),
+});
+
+export const workspaceHeroCardSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  detail: z.string().min(1),
+  tone: workspaceToneSchema,
+});
+
+export const workspaceBriefCardSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  detail: z.string().min(1),
+});
+
+export const workspaceAttentionItemSchema = z.object({
+  key: z.string().min(1),
+  block: z.string().min(1),
+  finding: z.string().min(1),
+  severity: z.string().min(1),
+  tone: workspaceToneSchema,
+});
+
+export const workspaceLeadActionSchema = z.object({
+  title: z.string().min(1),
+  phase: z.string().min(1),
+  score_label: z.string().min(1),
+  confidence_label: z.string().min(1),
+  effort_label: z.string().min(1),
+  benefit_label: z.string().min(1),
+  rationale: z.string().min(1),
+  blockers: z.array(z.string()).default([]),
+  measurement_requests: z.array(z.string()).default([]),
+  supplier_candidates: z.array(z.string()).default([]),
+});
+
+export const workspaceRoadmapItemSchema = z.object({
+  phase: z.string().min(1),
+  title: z.string().min(1),
+  detail: z.string().min(1),
+  action_count: z.number().int().nonnegative(),
+});
+
+export const workspaceImpactItemSchema = z.object({
+  key: z.string().min(1),
+  title: z.string().min(1),
+  impact: z.string().min(1),
+  economic: z.string().min(1),
+  readiness: z.string().min(1),
+  score_label: z.string().min(1),
+});
+
+export const workspaceMetricRecordSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  numeric_value: z.number().nullable(),
+  unit: z.string().nullable(),
+  source_kind: signalSourceKindSchema,
+  note: z.string().min(1),
+});
+
+export const parameterStateSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  client_values: z.number().int().nonnegative(),
+  system_defaults: z.number().int().nonnegative(),
+  excluded: z.number().int().nonnegative(),
+  unresolved: z.number().int().nonnegative(),
+});
+
+export const dashboardParameterSummarySchema = parameterStateSummarySchema;
+
+export const parameterStateAuditEntrySchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  included: z.boolean(),
+  value_source: parameterValueSourceSchema,
+  value_label: z.string().min(1),
+  unit: z.string().min(1).nullable(),
+  confidence_impact: parameterConfidenceImpactSchema.nullable(),
+  default_rationale: z.string().min(1).nullable(),
+  audit_note: z.string().min(1).nullable(),
+  evidence_refs: z.array(z.string()).default([]),
+});
+
+export const parameterStateAuditSchema = z.object({
+  summary: parameterStateSummarySchema,
+  entries: z.array(parameterStateAuditEntrySchema),
+});
+
+export const coverageEntrySchema = z.object({
+  system_type: z.string().min(1).nullable().default(null),
+  component_type: z.string().min(1).nullable().default(null),
+  material: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  scale: z.string().min(1).nullable().default(null),
+  trl: z.number().int().nullable().default(null),
+  record_count: z.number().int().nonnegative(),
+  coverage_level: evidenceCoverageLevelSchema,
+  newest_publication_year: z.number().int().nullable().default(null),
+  recency_status: evidenceRecencyStatusSchema,
+});
+
+export const evidenceGapSchema = z.object({
+  gap_id: z.string().min(1),
+  system_type: z.string().min(1).nullable().default(null),
+  component_type: z.string().min(1).nullable().default(null),
+  material: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  severity: evidenceGapSeveritySchema,
+  affects_golden_cases: z.array(z.string().min(1)).default([]),
+  recommended_query: z.string().min(1).nullable().default(null),
+  priority: z.number().int().min(1).max(100),
+});
+
+export const evidenceOutlierSchema = z.object({
+  fact_id: z.string().min(1),
+  canonical_key: z.string().min(1).nullable().default(null),
+  metric_type: z.string().min(1),
+  normalized_value: z.number(),
+  aggregate_median: z.number(),
+  z_score: z.number(),
+  source_document_id: z.string().min(1),
+  title: z.string().min(1),
+  action: evidenceOutlierActionSchema,
+});
+
+export const externalEvidenceScientificFactSchema = z.object({
+  id: z.string().min(1),
+  fact_layer: z.string().min(1),
+  fact_type: z.string().min(1),
+  field_key: z.string().min(1),
+  canonical_key: z.string().nullable().default(null),
+  decision_ready: z.boolean().default(false),
+  extraction_status: z.string().min(1),
+  normalization_status: z.string().min(1),
+  original_value: z.string().nullable().default(null),
+  original_unit: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_text: z.string().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  confidence: z.number().min(0).max(1),
+  evidence_quality: z.string().nullable().default(null),
+  system_type: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  quality_flags: z.array(z.string().min(1)).default([]),
+  payload: z.unknown(),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const externalEvidenceBenchmarkRecordSchema = z.object({
+  id: z.string().min(1),
+  canonical_key: z.string().nullable().default(null),
+  decision_ready: z.boolean().default(false),
+  confidence: z.number().min(0).max(1).nullable().default(null),
+  system_type: z.string().nullable().default(null),
+  application: z.string().nullable().default(null),
+  component_type: z.string().nullable().default(null),
+  material: z.string().nullable().default(null),
+  membrane_separator: z.string().nullable().default(null),
+  operating_condition_key: z.string().nullable().default(null),
+  metric_type: z.string().nullable().default(null),
+  normalized_value: z.number().nullable().default(null),
+  normalized_unit: z.string().nullable().default(null),
+  publication_year: z.number().int().nullable().default(null),
+  evidence_quality: z.string().nullable().default(null),
+  scale: z.string().nullable().default(null),
+  trl: z.number().int().nullable().default(null),
+  cost_indicator: z.string().nullable().default(null),
+  risk_indicator: z.string().nullable().default(null),
+  source_locator: z.string().nullable().default(null),
+  source_text_hash: z.string().nullable().default(null),
+  payload: z.unknown(),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+});
+
+export const externalEvidenceSourceTextStatusSchema = z.object({
+  access_status: externalEvidenceAccessStatusSchema.default('unknown'),
+  abstract_available: z.boolean().default(false),
+  source_artifact_count: z.number().int().nonnegative(),
+  source_text_chunk_count: z.number().int().nonnegative(),
+  source_url_available: z.boolean().default(false),
+  pdf_url_available: z.boolean().default(false),
+  xml_url_available: z.boolean().default(false),
+  full_text_available: z.boolean().default(false),
+});
+
+export const acceptedEvidenceReadinessActionSchema = z.enum([
+  'keep',
+  'reacquire_full_text',
+  'rerun_extraction',
+  'quarantine_for_review',
+  'reject_from_intake',
+  'delete_record',
+]);
+
+export const acceptedEvidenceReadinessCandidateSchema = z.object({
+  catalog_item_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  title: z.string().min(1),
+  source_type: externalEvidenceSourceTypeSchema,
+  published_at: z.string().nullable().default(null),
+  extraction_status: z.string().min(1),
+  normalization_status: z.string().min(1),
+  evidence_quality: z.string().nullable().default(null),
+  claim_count: z.number().int().nonnegative(),
+  canonical_fact_count: z.number().int().nonnegative(),
+  decision_ready_fact_count: z.number().int().nonnegative(),
+  benchmark_record_count: z.number().int().nonnegative(),
+  decision_ready_benchmark_count: z.number().int().nonnegative(),
+  abstract_available: z.boolean().default(false),
+  full_text_available: z.boolean().default(false),
+  source_artifact_count: z.number().int().nonnegative(),
+  source_text_chunk_count: z.number().int().nonnegative(),
+  doi_available: z.boolean().default(false),
+  source_url_available: z.boolean().default(false),
+  pdf_url_available: z.boolean().default(false),
+  xml_url_available: z.boolean().default(false),
+});
+
+export const acceptedEvidenceReadinessRecordSchema =
+  acceptedEvidenceReadinessCandidateSchema.extend({
+    issue_flags: z.array(z.string().min(1)).default([]),
+    table_ready: z.boolean().default(false),
+    recommended_action: acceptedEvidenceReadinessActionSchema,
+    rationale: z.string().min(1),
+  });
+
+export const acceptedEvidenceReadinessSummarySchema = z.object({
+  total_accepted_records: z.number().int().nonnegative(),
+  table_ready_records: z.number().int().nonnegative(),
+  keep_count: z.number().int().nonnegative(),
+  reacquire_full_text_count: z.number().int().nonnegative(),
+  rerun_extraction_count: z.number().int().nonnegative(),
+  quarantine_for_review_count: z.number().int().nonnegative(),
+  reject_from_intake_count: z.number().int().nonnegative(),
+  delete_record_count: z.number().int().nonnegative(),
+});
+
+export const readinessScoreSchema = z.object({
+  case_archetype: z.string().min(1),
+  technology_family: technologyFamilySchema,
+  primary_objective: primaryObjectiveReadSchema,
+  readiness_level: evidenceReadinessLevelSchema.exclude(['no_audit']),
+  primary_metrics_coverage: z.number().int().nonnegative(),
+  material_comparison_count: z.number().int().nonnegative(),
+  operating_window_count: z.number().int().nonnegative(),
+  critical_gaps: z.array(z.string().min(1)).default([]),
+  recommendation: z.string().min(1),
+});
+
+export const funnelStageCountSchema = z.object({
+  stage: z.string().min(1),
+  count: z.number().int().nonnegative(),
+  conversion_rate: z.number().min(0).max(1).nullable().default(null),
+});
+
+/** Evidence quality summaries retain separate source, document, fact, and metric funnels. */
+export const evidenceFunnelGroupSchema = z.object({
+  article: z.array(funnelStageCountSchema).default([]),
+  document: z.array(funnelStageCountSchema).default([]),
+  fact: z.array(funnelStageCountSchema).default([]),
+  benchmark: z.array(funnelStageCountSchema).default([]),
+  research_cell: z.array(funnelStageCountSchema).default([]),
+});
+
+export const evidenceQualityReportSchema = z.object({
+  report_id: z.string().min(1),
+  trigger_mode: evidenceQualityAuditTriggerModeSchema,
+  coverage_matrix: z.array(coverageEntrySchema).default([]),
+  gaps: z.array(evidenceGapSchema).default([]),
+  outliers: z.array(evidenceOutlierSchema).default([]),
+  readiness_scores: z.array(readinessScoreSchema).default([]),
+  accepted_record_readiness: z
+    .array(acceptedEvidenceReadinessRecordSchema)
+    .optional(),
+  accepted_record_summary: acceptedEvidenceReadinessSummarySchema.optional(),
+  funnel_metrics: z.array(funnelStageCountSchema).default([]),
+  funnels: evidenceFunnelGroupSchema.optional(),
+  summary: z.object({
+    total_benchmark_records: z.number().int().nonnegative(),
+    decision_ready_records: z.number().int().nonnegative(),
+    coverage_ratio: z.number().min(0).max(1),
+    critical_gap_count: z.number().int().nonnegative(),
+    stale_metric_count: z.number().int().nonnegative(),
+    outlier_count: z.number().int().nonnegative(),
+  }),
+  created_at: z.string().min(1),
+});
+
+export const discoveryTargetSchema = z.object({
+  target_id: z.string().min(1),
+  audit_report_id: z.string().min(1).nullable().default(null),
+  gap_id: z.string().min(1),
+  query: z.string().min(1),
+  providers: z
+    .array(z.enum(['openalex', 'crossref', 'europe_pmc']))
+    .default([]),
+  priority: z.number().int().min(1).max(100),
+  status: discoveryTargetStatusSchema,
+  records_found: z.number().int().nonnegative().default(0),
+  records_staged: z.number().int().nonnegative().default(0),
+  failure_detail: flexibleObjectSchema.nullable().default(null),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1).optional(),
+  completed_at: z.string().min(1).nullable().default(null),
+});
+
+export const acquisitionAttemptSchema = z.object({
+  attempt_id: z.string().min(1),
+  source_record_id: z.string().min(1),
+  strategy: acquisitionAttemptStrategySchema,
+  status: acquisitionAttemptStatusSchema,
+  found_url: z.string().nullable().default(null),
+  found_access_status: externalEvidenceAccessStatusSchema
+    .nullable()
+    .default(null),
+  failure_reason: z.string().nullable().default(null),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1).optional(),
+});
+
+export const evidenceIntelligenceSummarySchema = z.object({
+  readiness_level: evidenceReadinessLevelSchema,
+  critical_gap_count: z.number().int().nonnegative(),
+  stale_metric_count: z.number().int().nonnegative(),
+  decision_ready_records: z.number().int().nonnegative(),
+  coverage_ratio: z.number().min(0).max(1).nullable().default(null),
+  last_audit_at: z.string().min(1).nullable().default(null),
+  discovery_active: z.boolean(),
+});
+export const dashboardRunOutputStatusSchema = z.object({
+  report_available: z.boolean(),
+  narrative_available: z.boolean(),
+  modeled: z.boolean(),
+});
+
+export const dashboardLatestRunOverviewSchema = z.object({
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  defaults_count: z.number().int().nonnegative(),
+  missing_data_count: z.number().int().nonnegative(),
+  assumptions_count: z.number().int().nonnegative(),
+  evidence_count: z.number().int().nonnegative(),
+  attention_count: z.number().int().nonnegative(),
+  parameter_summary: dashboardParameterSummarySchema,
+  brief_cards: z.array(workspaceBriefCardSchema),
+  attention_items: z.array(workspaceAttentionItemSchema),
+  lead_action: workspaceLeadActionSchema,
+  output_status: dashboardRunOutputStatusSchema,
+});
+
+export const dashboardWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  summary: z.object({
+    total_runs: z.number().int().nonnegative(),
+    total_cases: z.number().int().nonnegative(),
+    high_confidence_runs: z.number().int().nonnegative(),
+    modeled_runs: z.number().int().nonnegative(),
+  }),
+  evidence_traceability: z.object({
+    accepted_refs_count: z.number().int().nonnegative(),
+    decision_context_available: z.boolean(),
+    source_refs_count: z.number().int().nonnegative(),
+    excluded_evidence_count: z.number().int().nonnegative(),
+  }),
+  hero: z.object({
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    latest_case_id: z.string().nullable(),
+    latest_summary: z.string().nullable(),
+  }),
+  trends: z.object({
+    run_growth: z.array(z.number()).default([]),
+    confidence: z.array(z.number()).default([]),
+    model_coverage: z.array(z.number()).default([]),
+  }),
+  quick_actions: z.object({
+    new_evaluation_href: z.string().min(1),
+    latest_evaluation_href: z.string().nullable(),
+    latest_case_history_href: z.string().nullable(),
+  }),
+  evidence_intelligence: evidenceIntelligenceSummarySchema.optional(),
+  latest_run_overview: dashboardLatestRunOverviewSchema.nullable(),
+  recent_evaluations: z.array(evaluationSummarySchema),
+  recent_reports: z.array(dashboardReportSummarySchema),
+});
+
+export const evaluationWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  evaluation: evaluationResponseSchema,
+  history_summary: z.object({
+    total_runs: z.number().int().nonnegative(),
+    latest_case_history_href: z.string().min(1),
+    default_compare_target_id: z.string().nullable(),
+    compare_candidates: z.array(evaluationSummarySchema),
+  }),
+  overview: z.object({
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    hero_cards: z.array(workspaceHeroCardSchema),
+    brief_cards: z.array(workspaceBriefCardSchema),
+    attention_items: z.array(workspaceAttentionItemSchema),
+    lead_action: workspaceLeadActionSchema,
+    key_metrics: z.array(workspaceMetricRecordSchema),
+    roadmap: z.array(workspaceRoadmapItemSchema),
+    impact_map: z.array(workspaceImpactItemSchema),
+  }),
+  links: z.object({
+    history_href: z.string().min(1),
+    compare_href: z.string().nullable(),
+    report_href: z.string().min(1),
+    export_json_href: z.string().min(1),
+    export_csv_href: z.string().min(1),
+  }),
+});
+
+export const caseHistoryTimelineItemSchema = z.object({
+  evaluation: evaluationSummarySchema,
+  delta_summary: z.string().min(1),
+  compare_href: z.string().nullable(),
+  is_latest: z.boolean(),
+});
+
+export const caseHistoryWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  case: caseSnapshotSchema,
+  timeline: z.array(caseHistoryTimelineItemSchema),
+  evidence_records: z.array(evidenceRecordSchema),
+  audit_events: z.array(auditEventSchema),
+  current_evaluation_id: z.string().nullable(),
+  current_evaluation_lineage: z
+    .lazy(() => evaluationLineageSchema)
+    .default(createEmptyEvaluationLineage()),
+});
+
+export const comparisonMetricDeltaSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  current_value: z.string().min(1),
+  baseline_value: z.string().min(1),
+  delta_label: z.string().min(1),
+  direction: z.enum(['improved', 'declined', 'steady', 'unknown']),
+  source_kind: signalSourceKindSchema,
+});
+
+export const recommendationDeltaSchema = z.object({
+  recommendation_id: z.string().min(1),
+  current_rank: z.number().int().positive().nullable(),
+  baseline_rank: z.number().int().positive().nullable(),
+  delta_label: z.string().min(1),
+  summary: z.string().min(1),
+});
+
+export const supplierShortlistDeltaSchema = z.object({
+  category: z.string().min(1),
+  current_candidate: z.string().nullable(),
+  baseline_candidate: z.string().nullable(),
+  detail: z.string().min(1),
+});
+
+export const evaluationComparisonResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  current_evaluation: evaluationSummarySchema,
+  baseline_evaluation: evaluationSummarySchema,
+  conclusion: z.object({
+    summary: z.string().min(1),
+    confidence_change: z.string().min(1),
+    defaults_change: z.string().min(1),
+    missing_data_change: z.string().min(1),
+    model_status_change: z.string().min(1),
+  }),
+  metric_deltas: z.array(comparisonMetricDeltaSchema),
+  recommendation_deltas: z.array(recommendationDeltaSchema),
+  supplier_shortlist_delta: z.array(supplierShortlistDeltaSchema),
+});
+
+export const evidenceReviewWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    search_query: z.string().optional(),
+  }),
+  summary: externalEvidenceCatalogListSummarySchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  items: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+});
+
+export const evidenceExplorerFacetBucketSchema = z.object({
+  value: z.string().min(1),
+  label: z.string().min(1),
+  count: z.number().int().nonnegative(),
+});
+
+export const evidenceExplorerFacetsSchema = z.object({
+  source_types: z.array(evidenceExplorerFacetBucketSchema),
+  evidence_types: z.array(evidenceExplorerFacetBucketSchema),
+  review_statuses: z.array(evidenceExplorerFacetBucketSchema),
+  publishers: z.array(evidenceExplorerFacetBucketSchema),
+  metadata_quality_levels: z
+    .array(evidenceExplorerFacetBucketSchema)
+    .default([]),
+  veracity_levels: z.array(evidenceExplorerFacetBucketSchema).default([]),
+});
+
+export const evidenceExplorerWarehouseSnapshotSchema = z.object({
+  filtered_item_count: z.number().int().nonnegative(),
+  returned_item_count: z.number().int().nonnegative(),
+  claim_count: z.number().int().nonnegative(),
+  reviewed_claim_count: z.number().int().nonnegative(),
+  doi_count: z.number().int().nonnegative(),
+  linked_source_count: z.number().int().nonnegative(),
+  publisher_count: z.number().int().nonnegative(),
+});
+
+export const externalEvidenceCatalogWarehouseAggregateSchema = z.object({
+  facets: evidenceExplorerFacetsSchema,
+  snapshot: evidenceExplorerWarehouseSnapshotSchema,
+});
+
+export const evidenceExplorerWorkspaceResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
+    search_query: z.string().optional(),
+  }),
+  summary: externalEvidenceCatalogListSummarySchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  items: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  table_groups: z.object({
+    intake_ready: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+    recently_published: z.array(
+      z.lazy(() => externalEvidenceCatalogSummarySchema),
+    ),
+  }),
+  warehouse_facets: evidenceExplorerFacetsSchema,
+  warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,
+  export_csv_href: z.string().min(1),
+});
+
+export const evidenceExplorerAssistantResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  filters: z.object({
+    active_status: externalEvidenceReviewStatusSchema.optional(),
+    active_source_type: externalEvidenceSourceTypeSchema.optional(),
+    decision_ready: z.boolean().optional(),
+    system_type: z.string().optional(),
+    component_type: z.string().optional(),
+    material: z.string().optional(),
+    metric_type: z.string().optional(),
+    search_query: z.string().optional(),
+  }),
+  warehouse_snapshot: evidenceExplorerWarehouseSnapshotSchema,
+  spotlight: z.array(z.lazy(() => externalEvidenceCatalogSummarySchema)),
+  assistant: z.object({
+    summary: z.string().nullable(),
+    narrative_metadata: narrativeMetadataSchema,
+    provenance_summary: z.string().min(1),
+    uncertainty_summary: z.string().min(1),
+    recommended_next_checks: z.array(z.string().min(1)),
+    cited_evidence_ids: z.array(z.string().min(1)),
+  }),
+});
+
+export const printableEvaluationReportResponseSchema = z.object({
+  meta: workspaceMetaSchema,
+  presentation: workspacePresentationSchema.optional(),
+  evaluation: evaluationSummarySchema,
+  evaluation_lineage: z
+    .lazy(() => evaluationLineageSchema)
+    .default(createEmptyEvaluationLineage()),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  sections: z.object({
+    stack_diagnosis: currentStackDiagnosisSchema,
+    prioritized_improvements: z.array(recommendationRecordSchema),
+    impact_map: z.array(impactMapEntrySchema),
+    supplier_shortlist: z.array(supplierShortlistEntrySchema),
+    phased_roadmap: z.array(phasedRoadmapEntrySchema),
+    assumptions_and_defaults_audit: assumptionsAndDefaultsAuditSchema,
+    parameter_state_audit: parameterStateAuditSchema,
+    confidence_and_uncertainty_summary: confidenceAndUncertaintySummarySchema,
+  }),
+});
+
+export const reportConversationTurnSchema = z.object({
+  turn_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  actor: z.enum(['user', 'assistant', 'system']),
+  message: z.string().min(1),
+  selected_section: z.string().trim().min(1).nullable().default(null),
+  created_at: z.string().min(1),
+});
+
+export const reportConversationCitationSchema = z.object({
+  citation_id: z.string().min(1),
+  label: z.string().min(1),
+  section: z.string().min(1),
+  source_document_id: z.string().nullable().default(null),
+  claim_id: z.string().nullable().default(null),
+  note: z.string().nullable().default(null),
+});
+
+export const reportConversationGroundingSchema = z.object({
+  evaluation_id: z.string().min(1),
+  report_title: z.string().min(1),
+  selected_section: z.string().nullable().default(null),
+  used_sections: z.array(z.string().min(1)),
+  source_usage_count: z.number().int().nonnegative(),
+  claim_usage_count: z.number().int().nonnegative(),
+  snapshot_count: z.number().int().nonnegative(),
+});
+
+export const reportConversationMetadataSchema = z.object({
+  conversation_id: z.string().min(1),
+  mode: z.enum(['server', 'internal']).default('server'),
+  context_version: z.string().min(1),
+  persisted: z.boolean(),
+  created_at: z.string().min(1),
+});
+
+export const reportConversationRequestSchema = z.object({
+  evaluation_id: z.string().trim().min(1),
+  message: z.string().trim().min(1).max(2000),
+  selected_section: z.string().trim().min(1).max(120).optional(),
+  conversation_id: z.string().trim().min(1).optional(),
+});
+
+export const reportConversationResponseSchema = z.object({
+  conversation_id: z.string().min(1),
+  answer: z.string().nullable(),
+  citations: z.array(reportConversationCitationSchema),
+  grounding_summary: reportConversationGroundingSchema,
+  uncertainty_summary: z.string().min(1),
+  recommended_next_checks: z.array(z.string().min(1)),
+  narrative_metadata: narrativeMetadataSchema,
+  metadata: reportConversationMetadataSchema,
+  refusal_reason: z.string().nullable().default(null),
+});
+
+export const exportCsvResponseMetadataSchema = z.object({
+  file_name: z.string().min(1),
+  content_type: z.literal('text/csv'),
+  generated_at: z.string().min(1),
+  column_count: z.number().int().positive(),
+  row_count: z.number().int().nonnegative(),
+  versions: runtimeVersionSchema,
+});
+
+export const externalEvidenceCatalogSummarySchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  evidence_type: evidenceTypeSchema,
+  strength_level: evidenceStrengthSchema,
+  review_status: externalEvidenceReviewStatusSchema,
+  source_state: externalEvidenceSourceStateSchema,
+  source_type: externalEvidenceSourceTypeSchema,
+  canonical_fact_count: z.number().int().nonnegative().optional(),
+  decision_ready_fact_count: z.number().int().nonnegative().optional(),
+  benchmark_record_count: z.number().int().nonnegative().optional(),
+  decision_ready_benchmark_count: z.number().int().nonnegative().optional(),
+  source_artifact_count: z.number().int().nonnegative().optional(),
+  source_text_chunk_count: z.number().int().nonnegative().optional(),
   abstract_available: z.boolean().optional(),
   full_text_available: z.boolean().optional(),
   source_category: z.string().nullable(),
