@@ -30,6 +30,12 @@ updates:
       semver-minor-days: 7
       semver-patch-days: 3
     groups:
+      react-runtime:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
       production-dependencies:
         dependency-type: 'production'
         patterns:
