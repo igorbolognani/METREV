@@ -8,8 +8,9 @@ const MANIFEST_EXTRACTOR_VERSION = 'manifest-v1';
 const CLAIM_SENTENCE_LIMIT = 6;
 export const TRUSTED_CORPUS_AUTO_ACCEPT_POLICY =
   'auto_accept_trusted_scientific_corpus_v1';
-export const DEFAULT_EVIDENCE_TARGET_TOTAL = 500000;
-export const DEFAULT_EVIDENCE_BATCH_SIZE = 1000;
+export const DEFAULT_EVIDENCE_TARGET_TOTAL = 500;
+export const DEFAULT_EVIDENCE_MAX_RECORDS = 5000;
+export const DEFAULT_EVIDENCE_BATCH_SIZE = 100;
 const METRIC_VALUE_PATTERN =
   /\b(\d+(?:\.\d+)?)\s?(mW\/m2|W\/m2|A\/m2|mA\/cm2|mA\/g|V|mV|%|mg\/L|g\/L|mg\/g|g\/m2|kWh\/m3|kWh|ohm|ohms|days?|hours?|USD\/kg|USD|EUR)\b/i;
 const CONDITION_KEYWORDS = [
@@ -48,7 +49,6 @@ const ARCHITECTURE_KEYWORDS = [
   'microbial fuel cell',
   'microbial electrolysis cell',
   'bioelectrochemical system',
-  'desalination cell',
 ];
 const LIMITATION_KEYWORDS = [
   'limitation',
@@ -222,9 +222,9 @@ export function getEvidenceIngestionConfig(options = {}) {
     maxRecords: optionNumber(
       options,
       ['max-records', 'maxRecords'],
-      Number(process.env.EVIDENCE_MAX_RECORDS ?? DEFAULT_EVIDENCE_TARGET_TOTAL),
+      Number(process.env.EVIDENCE_MAX_RECORDS ?? DEFAULT_EVIDENCE_MAX_RECORDS),
       1,
-      Number.MAX_SAFE_INTEGER,
+      DEFAULT_EVIDENCE_MAX_RECORDS,
     ),
     reviewOnlyExceptions: optionFlag(
       options,
@@ -238,7 +238,7 @@ export function getEvidenceIngestionConfig(options = {}) {
         process.env.EVIDENCE_TARGET_TOTAL ?? DEFAULT_EVIDENCE_TARGET_TOTAL,
       ),
       1,
-      Number.MAX_SAFE_INTEGER,
+      DEFAULT_EVIDENCE_MAX_RECORDS,
     ),
   };
 }
@@ -2187,15 +2187,12 @@ function inferSystemType(text) {
     return 'MFC';
   }
 
-  if (normalized.includes('microbial electrochemical technolog')) {
-    return 'MET';
-  }
-
   if (
-    normalized.includes('bioelectrochemical system') ||
-    /\bbes\b/i.test(text)
+    normalized.includes('electrochemical biosensor') ||
+    normalized.includes('bioelectrochemical sensor') ||
+    normalized.includes('amperometric biosensor')
   ) {
-    return 'BES';
+    return 'electrochemical_biosensor';
   }
 
   return null;

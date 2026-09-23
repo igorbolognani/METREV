@@ -280,7 +280,7 @@ function matchedLabels(
   );
 }
 
-function detectTechnologyClasses(text: string) {
+export function detectTechnologyClasses(text: string) {
   const classes = new Set<string>();
 
   if (/\bMFCs?\b/i.test(text) || includesAny(text, ['microbial fuel cell'])) {
@@ -293,34 +293,13 @@ function detectTechnologyClasses(text: string) {
     classes.add('MEC');
   }
   if (
-    /\bMETs?\b/i.test(text) ||
     includesAny(text, [
-      'microbial electrochemical technolog',
-      'microbial electrochemical system',
-      'microbial electrosynthesis',
+      'electrochemical biosensor',
+      'bioelectrochemical sensor',
+      'amperometric biosensor',
     ])
   ) {
-    classes.add('MET');
-  }
-  if (
-    /\bMDCs?\b/i.test(text) ||
-    includesAny(text, ['microbial desalination cell'])
-  ) {
-    classes.add('MDC');
-  }
-  if (
-    /\bBES\b/i.test(text) ||
-    includesAny(text, ['bioelectrochemical system'])
-  ) {
-    classes.add('BES');
-  }
-  if (includesAny(text, ['bioelectrochemical sensor', 'biosensor'])) {
-    classes.add('bioelectrochemical_sensor');
-  }
-  if (
-    includesAny(text, ['hybrid', 'wetland-integrated', 'anaerobic digestion'])
-  ) {
-    classes.add('hybrid_system');
+    classes.add('electrochemical_biosensor');
   }
 
   return classes.size > 0 ? [...classes] : ['not_reported'];
@@ -1725,14 +1704,14 @@ function buildAnswer(input: DeterministicExtractionInput): {
 
   if (input.column.output_schema_key === 'technology_application') {
     const text = fullText(input);
-    const application = detectFirst(text, [
-      'wastewater treatment',
-      'hydrogen recovery',
-      'nitrogen recovery',
-      'sensing',
-      'desalination',
-      'energy recovery',
-    ]);
+    const normalizedText = text.toLowerCase();
+    const application =
+      normalizedText.includes('biosensor') ||
+      normalizedText.includes('biosensing')
+        ? 'biosensing'
+        : /\b(wastewater|waste water|effluent)\b/.test(normalizedText)
+          ? 'wastewater_treatment'
+          : null;
 
     return {
       answer: {

@@ -5,11 +5,11 @@ import { researchPaperMetadataSchema } from '@metrev/domain-contracts';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 
 import {
-    seededEvidenceSourceKey,
-    seededEvidenceSummary,
-    seededEvidenceTitle,
-    seededResearchPaperTitle,
-    seededResearchReviewFixtures,
+  seededEvidenceSourceKey,
+  seededEvidenceSummary,
+  seededEvidenceTitle,
+  seededResearchPaperTitle,
+  seededResearchReviewFixtures,
 } from './local-runtime';
 
 function padIndex(index: number): string {
@@ -127,7 +127,12 @@ export async function seedResearchReviewFixtures(): Promise<void> {
             review_id: fixture.reviewId,
             review_title: fixture.title,
             paper_index: index,
-            technology_scope: ['MFC', 'MEC', 'MET'],
+            technology_scope: [
+              'MFC',
+              'MEC',
+              'electrochemical_biosensor',
+              'wastewater_treatment',
+            ],
           },
         },
         create: {
@@ -158,7 +163,12 @@ export async function seedResearchReviewFixtures(): Promise<void> {
             review_id: fixture.reviewId,
             review_title: fixture.title,
             paper_index: index,
-            technology_scope: ['MFC', 'MEC', 'MET'],
+            technology_scope: [
+              'MFC',
+              'MEC',
+              'electrochemical_biosensor',
+              'wastewater_treatment',
+            ],
           },
         },
         select: {

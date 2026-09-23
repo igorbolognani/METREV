@@ -2,14 +2,23 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvidenceBenchmarkSlice } from '@metrev/database';
 import {
-    evidenceDecisionContextSchema,
-    type DerivedObservation,
-    type EvidenceDecisionContext,
-    type NormalizedCaseInput,
+  evidenceDecisionContextSchema,
+  loadEvidenceQualityAuditPolicy,
+  type DerivedObservation,
+  type EvidenceDecisionContext,
+  type NormalizedCaseInput,
+  type PrimaryObjective,
+  primaryObjectiveSchema,
 } from '@metrev/domain-contracts';
 
 function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function activePrimaryObjective(value: string): PrimaryObjective {
+  const parsed = primaryObjectiveSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  return value === 'sensing' ? 'biosensing' : 'wastewater_treatment';
 }
 
 function normalizeToken(value: string | null | undefined): string | null {
@@ -82,8 +91,10 @@ export class EvidenceDecisionContextBuilder {
         return 'MFC';
       case 'microbial_electrolysis_cell':
         return 'MEC';
+      case 'electrochemical_biosensor':
+        return 'BIOSENSOR';
       default:
-        return 'MET';
+        return 'UNCLASSIFIED';
     }
   }
 
@@ -128,19 +139,18 @@ export class EvidenceDecisionContextBuilder {
       : normalized;
   }
 
-  metricTypesForObjective(value: string): string[] {
-    switch (value) {
-      case 'hydrogen_recovery':
-        return ['hydrogen_production', 'current_density', 'energy_input'];
-      case 'biogas_synergy':
-        return ['methane_biogas_relationship', 'removal_efficiency'];
-      case 'nitrogen_recovery':
-        return ['removal_efficiency', 'current_density'];
-      case 'low_power_generation':
-        return ['power_density', 'current_density'];
-      default:
-        return ['removal_efficiency', 'power_density', 'current_density'];
-    }
+  metricTypesForObjective(value: string, systemType?: string): string[] {
+    const normalizedObjective = value === 'sensing' ? 'biosensing' : value;
+    const resolvedSystemType = systemType ?? 'UNCLASSIFIED';
+    const policy = loadEvidenceQualityAuditPolicy();
+    const primary =
+      policy.primary_metrics_by_objective[normalizedObjective]?.[
+        resolvedSystemType
+      ] ?? [];
+    const secondary =
+      policy.secondary_metrics_by_system[resolvedSystemType] ?? [];
+
+    return [...new Set([...primary, ...secondary])];
   }
 
   deriveStackFilters(normalizedCase: NormalizedCaseInput): {
@@ -176,7 +186,8 @@ export class EvidenceDecisionContextBuilder {
         ),
       ),
       metricTypes: this.metricTypesForObjective(
-        normalizedCase.primary_objective,
+        activePrimaryObjective(normalizedCase.primary_objective),
+        this.systemTypeForTechnologyFamily(normalizedCase.technology_family),
       ),
       systemType: this.systemTypeForTechnologyFamily(
         normalizedCase.technology_family,
@@ -217,6 +228,9 @@ export class EvidenceDecisionContextBuilder {
     const systemType = evidenceDecisionContextSchema.shape.system_type.parse(
       input.systemType,
     );
+    const primaryObjective = activePrimaryObjective(
+      input.normalizedCase.primary_objective,
+    );
     const benchmarkRanges = input.benchmarkSlice.aggregates.filter(
       isAdmissibleBenchmarkRange,
     );
@@ -247,10 +261,10 @@ export class EvidenceDecisionContextBuilder {
       case_id: input.normalizedCase.case_id,
       technology_family: input.normalizedCase.technology_family,
       system_type: systemType,
-      primary_objective: input.normalizedCase.primary_objective,
+      primary_objective: primaryObjective,
       query: {
         system_type: systemType,
-        application: input.normalizedCase.primary_objective,
+        application: primaryObjective,
         component_types: input.componentTypes,
         materials: input.materials,
         metric_types: input.metricTypes,

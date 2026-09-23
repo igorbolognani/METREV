@@ -4,25 +4,28 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-    addResearchColumnRequestSchema,
-    createResearchEvidencePackRequestSchema,
-    createResearchReviewRequestSchema,
-    localSourceImportRequestSchema,
-    researchWarehouseEligibilityRequestSchema,
-    researchWarehouseProgressResponseSchema,
-    runResearchExtractionsRequestSchema,
-    runResearchExtractionsResponseSchema,
-    searchResearchPapersRequestSchema,
-    stageResearchPapersRequestSchema,
+  addResearchColumnRequestSchema,
+  createResearchEvidencePackRequestSchema,
+  createResearchReviewRequestSchema,
+  localSourceImportRequestSchema,
+  researchWarehouseEligibilityRequestSchema,
+  researchWarehouseProgressResponseSchema,
+  queueResearchBackfillPresetRequestSchema,
+  queueResearchBackfillPresetResponseSchema,
+  runResearchExtractionsRequestSchema,
+  runResearchExtractionsResponseSchema,
+  searchResearchPapersRequestSchema,
+  stageResearchPapersRequestSchema,
 } from '@metrev/domain-contracts';
+import { planResearchBackfillPreset } from '@metrev/database';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    executeResearchExtraction,
-    getDefaultResearchColumns,
-    hydrateResearchPaperText,
-    type HydratedResearchPaperText,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  executeResearchExtraction,
+  getDefaultResearchColumns,
+  hydrateResearchPaperText,
+  type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 import { withSpan } from '@metrev/telemetry';
 
@@ -501,11 +504,54 @@ export async function registerResearchRoutes(
         return reply;
       }
 
-      return reply.code(410).send({
-        error: 'research_backfill_removed',
-        message:
-          'Research warehouse backfill presets have been removed. Use curated search, staging, and review workflows for evidence intake.',
+      const parsed = queueResearchBackfillPresetRequestSchema.safeParse(
+        request.body,
+      );
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: 'invalid_input',
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const plan = planResearchBackfillPreset({
+        presetId: parsed.data.preset_id,
+        targetRecords: parsed.data.target_records,
       });
+      const existing = await app.researchRepository.listResearchBackfills();
+      const activeQueries = new Set(
+        existing.items
+          .filter(
+            (item) => item.status === 'queued' || item.status === 'running',
+          )
+          .map((item) => item.query.trim().toLowerCase()),
+      );
+      const skippedQueries: string[] = [];
+      const backfills = [];
+      for (const backfill of plan.plannedBackfills) {
+        const queryKey = backfill.query.trim().toLowerCase();
+        if (activeQueries.has(queryKey)) {
+          skippedQueries.push(backfill.query);
+          continue;
+        }
+        const queued = await app.researchRepository.enqueueResearchBackfill({
+          ...backfill,
+          actorId: actor.userId,
+        });
+        backfills.push(queued);
+        activeQueries.add(queryKey);
+      }
+
+      const response = queueResearchBackfillPresetResponseSchema.parse({
+        preset_id: plan.presetId,
+        target_records: plan.targetRecords,
+        estimated_max_records: plan.estimatedMaxRecords,
+        query_count: plan.queryCount,
+        queued_runs: backfills.length,
+        skipped_queries: skippedQueries,
+        backfills,
+      });
+      return reply.code(202).send(response);
     },
   );
 

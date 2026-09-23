@@ -9,7 +9,7 @@ test.describe('local-view smoke', () => {
     await expect(
       page.getByRole('heading', {
         level: 1,
-        name: 'METREV BIOELETROCHEMICAL DECISION SUPPORT',
+        name: 'METREV MFC/MEC + BIOSENSOR DECISION SUPPORT',
       }),
     ).toBeVisible();
 

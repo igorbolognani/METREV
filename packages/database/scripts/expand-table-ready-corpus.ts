@@ -50,25 +50,32 @@ export function buildTableReadyExpansionPlan(
     targetTotal?: number;
   } = {},
 ) {
+  const targetTotal = Math.max(1, Math.min(input.targetTotal ?? 500, 5000));
+  const queryLimit = Math.max(1, Math.min(input.queryLimit ?? 20, 20));
   return {
-    canonical_limit: input.canonicalLimit ?? 1000,
+    canonical_limit: Math.max(1, Math.min(input.canonicalLimit ?? 500, 5000)),
     config: input.config ?? DEFAULT_CONFIG,
     dry_run: input.dryRun ?? true,
-    ingestion_batch_size: input.ingestionBatchSize ?? 50,
+    ingestion_batch_size: Math.max(
+      1,
+      Math.min(input.ingestionBatchSize ?? 100, 1000),
+    ),
     lawful_acquisition_policy:
       'Only existing artifacts/chunks, OA metadata/full-text URLs, publisher OA URLs, Europe PMC OA content, Semantic Scholar OA links, Unpaywall/OpenAlex OA URLs, and analyst-provided local PDFs with access/license metadata may be used. Paywall bypass sources are out of scope.',
-    max_provider_pages: input.maxProviderPages ?? 90,
-    query_limit: input.queryLimit ?? 30,
-    readiness_limit: input.readinessLimit ?? 5000,
+    max_provider_pages: Math.max(
+      1,
+      Math.min(input.maxProviderPages ?? 20, 100),
+    ),
+    query_limit: queryLimit,
+    readiness_limit: Math.max(1, Math.min(input.readinessLimit ?? 500, 5000)),
     stages: [
-      'ingest lawful OA/bibliographic metadata from configured providers',
+      'search focused MFC/MEC wastewater and biosensor queries for lawful OA/bibliographic metadata',
       'hydrate open full text and persist source chunks during canonicalization',
       'store canonical scientific facts and normalized benchmark records',
       'refresh aggregate benchmarks from decision-ready records',
       'emit strict article-level readiness report',
-      'use research:hard-prune --table-ready-only after backup/dry-run approval',
     ],
-    target_total: input.targetTotal ?? 5000,
+    target_total: targetTotal,
   } satisfies ExpansionPlan;
 }
 
@@ -116,14 +123,14 @@ export async function runTableReadyExpansionCampaign(plan: ExpansionPlan) {
 
 async function main() {
   const plan = buildTableReadyExpansionPlan({
-    canonicalLimit: optionNumber('canonical-limit', 1000),
+    canonicalLimit: optionNumber('canonical-limit', 500),
     config: optionValue('config', DEFAULT_CONFIG),
     dryRun: !hasFlag('--execute'),
-    ingestionBatchSize: optionNumber('batch-size', 50),
-    maxProviderPages: optionNumber('max-provider-pages', 90),
-    queryLimit: optionNumber('queryLimit', 30),
-    readinessLimit: optionNumber('readiness-limit', 5000),
-    targetTotal: optionNumber('target-total', 5000),
+    ingestionBatchSize: optionNumber('batch-size', 100),
+    maxProviderPages: optionNumber('max-provider-pages', 20),
+    queryLimit: optionNumber('queryLimit', 20),
+    readinessLimit: optionNumber('readiness-limit', 500),
+    targetTotal: optionNumber('target-total', 500),
   });
 
   try {

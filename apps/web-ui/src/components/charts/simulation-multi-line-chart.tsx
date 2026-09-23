@@ -3,14 +3,14 @@
 import type { SimulationSeries } from '@metrev/domain-contracts';
 import * as React from 'react';
 import {
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
@@ -35,6 +35,41 @@ export interface SimulationChartRow {
 export interface SimulationMultiLineChartProps {
   height?: number;
   series?: SimulationSeries[];
+}
+
+export interface SimulationSeriesAxisGroup {
+  key: string;
+  xAxis: SimulationSeries['x_axis'];
+  yAxis: SimulationSeries['y_axis'];
+  series: SimulationSeries[];
+}
+
+export function groupSimulationSeriesByAxis(
+  series: SimulationSeries[],
+): SimulationSeriesAxisGroup[] {
+  const groups = new Map<string, SimulationSeriesAxisGroup>();
+
+  for (const entry of series) {
+    const key = JSON.stringify([
+      entry.x_axis.key,
+      entry.x_axis.unit,
+      entry.y_axis.unit,
+    ]);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.series.push(entry);
+    } else {
+      groups.set(key, {
+        key,
+        xAxis: entry.x_axis,
+        yAxis: entry.y_axis,
+        series: [entry],
+      });
+    }
+  }
+
+  return [...groups.values()];
 }
 
 function axisLabel(
@@ -85,7 +120,13 @@ export function SimulationMultiLineChart({
   const rows = buildSimulationChartRows(series);
   const referenceSeries = series[0];
   const xAxisLabel = axisLabel(referenceSeries.x_axis);
-  const yAxisLabel = axisLabel(referenceSeries.y_axis);
+  const yAxisLabels = new Set(series.map((entry) => entry.y_axis.label));
+  const yAxisLabel =
+    yAxisLabels.size > 1
+      ? referenceSeries.y_axis.unit
+        ? `Value (${referenceSeries.y_axis.unit})`
+        : 'Value'
+      : axisLabel(referenceSeries.y_axis);
 
   return (
     <div className="evaluation-chart-shell">
@@ -135,7 +176,7 @@ export function SimulationMultiLineChart({
               name={entry.title}
               stroke={chartColors[index % chartColors.length]}
               strokeWidth={2.5}
-              type="monotone"
+              type="linear"
             />
           ))}
         </LineChart>
@@ -205,7 +246,9 @@ export function SimulationHeatmapChart({
                 ? point.z
                 : null;
             const intensity =
-              zValue === null ? 0 : Math.max(0, Math.min(1, (zValue - minZ) / range));
+              zValue === null
+                ? 0
+                : Math.max(0, Math.min(1, (zValue - minZ) / range));
 
             return (
               <span

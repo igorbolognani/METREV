@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import {
-    MemoryEvaluationRepository,
-    MemoryResearchRepository,
+  MemoryEvaluationRepository,
+  MemoryResearchRepository,
 } from '@metrev/database';
 import { getDefaultResearchColumns } from '@metrev/research-intelligence';
 import { buildApp } from '../../apps/api-server/src/app';
@@ -453,8 +453,8 @@ describe('research API flow', () => {
       expect(eligibility).toMatchObject({
         dry_run: true,
         total_linked_records: 3,
-        eligible_records: 2,
-        excluded_records: 1,
+        eligible_records: 1,
+        excluded_records: 2,
         inaccessible_records: 1,
         missing_full_text_records: 1,
       });
@@ -476,8 +476,8 @@ describe('research API flow', () => {
           }),
           expect.objectContaining({
             source_type: 'europe_pmc',
-            status: 'eligible',
-            technology_classes: expect.arrayContaining(['MET']),
+            status: 'excluded',
+            reasons: expect.arrayContaining(['out_of_scope_technology']),
           }),
         ]),
       );
@@ -494,8 +494,8 @@ describe('research API flow', () => {
       expect(sampledEligibilityResponse.json()).toMatchObject({
         dry_run: true,
         total_linked_records: 3,
-        eligible_records: 2,
-        excluded_records: 1,
+        eligible_records: 1,
+        excluded_records: 2,
         inaccessible_records: 1,
         missing_full_text_records: 1,
         items: [expect.any(Object)],
@@ -567,8 +567,8 @@ describe('research API flow', () => {
       expect(sweepResponse.statusCode).toBe(200);
       expect(sweepResponse.json()).toMatchObject({
         dry_run: false,
-        eligible_records: 2,
-        excluded_records: 1,
+        eligible_records: 1,
+        excluded_records: 2,
         items: [],
       });
 
@@ -589,7 +589,7 @@ describe('research API flow', () => {
 
       expect(createResponse.statusCode).toBe(201);
       const created = createResponse.json();
-      expect(created.paper_count).toBe(2);
+      expect(created.paper_count).toBe(1);
       expect(created.papers).toEqual(
         expect.not.arrayContaining([
           expect.objectContaining({ source_type: 'crossref' }),
@@ -598,6 +598,10 @@ describe('research API flow', () => {
       expect(created.papers).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ source_type: 'openalex' }),
+        ]),
+      );
+      expect(created.papers).toEqual(
+        expect.not.arrayContaining([
           expect.objectContaining({ source_type: 'europe_pmc' }),
         ]),
       );
@@ -732,14 +736,18 @@ describe('research API flow', () => {
           cookie: sessionCookie('research-analyst-session'),
         },
         payload: {
-          preset_id: 'mfc_mec_30000',
-          target_records: 30000,
+          preset_id: 'mfc_mec_wastewater_biosensors',
+          target_records: 500,
         },
       });
 
-      expect(presetResponse.statusCode).toBe(410);
+      expect(presetResponse.statusCode).toBe(202);
       expect(presetResponse.json()).toMatchObject({
-        error: 'research_backfill_removed',
+        preset_id: 'mfc_mec_wastewater_biosensors',
+        target_records: 500,
+        estimated_max_records: 480,
+        query_count: 20,
+        queued_runs: 20,
       });
 
       const updatedProgressResponse = await app.inject({
@@ -752,8 +760,8 @@ describe('research API flow', () => {
 
       expect(updatedProgressResponse.statusCode).toBe(200);
       expect(updatedProgressResponse.json()).toMatchObject({
-        target_records: 0,
-        queued_backfills: 0,
+        target_records: 480,
+        queued_backfills: 20,
       });
     } finally {
       await app.close();

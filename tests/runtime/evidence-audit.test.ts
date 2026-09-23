@@ -3,15 +3,16 @@ import fixture from '../fixtures/raw-case-input.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-    normalizeCaseInput,
-    rawCaseInputSchema,
-    type AcceptedEvidenceReadinessCandidate,
-    type EvidenceQualityReport,
-    type FunnelStageCount,
+  normalizeCaseInput,
+  rawCaseInputSchema,
+  type AcceptedEvidenceReadinessCandidate,
+  type EvidenceQualityReport,
+  type FunnelStageCount,
 } from '@metrev/domain-contracts';
 import {
-    runEvidenceQualityAudit,
-    type EvidenceAuditRepositoryLike,
+  detectGaps,
+  runEvidenceQualityAudit,
+  type EvidenceAuditRepositoryLike,
 } from '@metrev/evidence-audit';
 
 class FakeAuditRepository implements EvidenceAuditRepositoryLike {
@@ -106,14 +107,31 @@ function acceptedCandidate(
 }
 
 describe('evidence quality audit', () => {
+  it('maps a legacy objective to active wastewater gap metrics', () => {
+    const legacyCase = normalizeCaseInput(rawCaseInputSchema.parse(fixture));
+    legacyCase.primary_objective = 'nitrogen_recovery';
+
+    const gaps = detectGaps({
+      coverageMatrix: [],
+      goldenCases: [legacyCase],
+    });
+
+    expect(gaps.map((gap) => gap.metric_type)).toContain(
+      'contaminant_removal_efficiency',
+    );
+    expect(gaps.map((gap) => gap.metric_type)).not.toContain(
+      'nitrogen_recovery',
+    );
+  });
+
   it('scores a covered golden case as ready and stores the report', async () => {
     const goldenCase = normalizeCaseInput(rawCaseInputSchema.parse(fixture));
     const repository = new FakeAuditRepository(
       [
-        coveredRow('power_density_w_m2', 'carbon_cloth'),
-        coveredRow('cod_removal_pct', 'carbon_felt'),
-        coveredRow('coulombic_efficiency_pct', 'graphite_felt'),
-        coveredRow('internal_resistance_ohm', 'activated_carbon'),
+        coveredRow('power_density', 'carbon_cloth'),
+        coveredRow('contaminant_removal_efficiency', 'carbon_felt'),
+        coveredRow('coulombic_efficiency', 'graphite_felt'),
+        coveredRow('current_density', 'activated_carbon'),
       ],
       [acceptedCandidate()],
     );
@@ -163,7 +181,7 @@ describe('evidence quality audit', () => {
     expect(report.summary.coverage_ratio).toBe(0);
     expect(report.readiness_scores[0]?.readiness_level).toBe('insufficient');
     expect(report.readiness_scores[0]?.critical_gaps).toContain(
-      'power_density_w_m2',
+      'contaminant_removal_efficiency',
     );
     expect(report.accepted_record_summary?.reacquire_full_text_count).toBe(1);
     expect(report.accepted_record_readiness?.[0]?.recommended_action).toBe(
