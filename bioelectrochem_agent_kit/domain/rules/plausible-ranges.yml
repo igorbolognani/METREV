@@ -29,11 +29,10 @@ cross_field_checks:
       membrane_presence: absent
       primary_objective:
         any_of:
-          - hydrogen_recovery
-          - nitrogen_recovery
+          - wastewater_treatment
     then:
       flag: review_required
-      rationale: Separation-free strategies may conflict with high-purity recovery goals depending on the architecture.
+      rationale: Separator-free strategies can create crossover and effluent-quality tradeoffs that depend on the selected wastewater-treatment architecture.
   - name: low_observability_high_confidence_conflict
     if:
       sensing_summary: minimal_visibility_assumed

@@ -6,6 +6,18 @@ properties:
     description: Current per projected or normalized active area
     comparability_notes: Compare only when geometry and normalization basis are compatible
 
+  - name: current_a
+    unit: A
+    category: mechanistic_model_output
+    description: Simulated instantaneous reactor current at a stated integration time
+    comparability_notes: Preserve the MFC/MEC family, boundary condition, model version, and time coordinate
+
+  - name: cell_voltage_v
+    unit: V
+    category: mechanistic_model_output
+    description: Simulated cell voltage at a stated integration time
+    comparability_notes: Preserve system family, applied/load boundary, model version, and time coordinate
+
   - name: power_density_w_m2
     unit: W/m2
     category: electrochemical
@@ -24,11 +36,257 @@ properties:
     description: Lumped resistance indicator
     comparability_notes: Measurement method and frequency range should be recorded
 
+  - name: supply_limitation_voltage_loss_v
+    unit: V
+    category: mechanistic_model_residual
+    description: Voltage residual needed to close the load or applied-voltage balance when modeled supply limits cap current
+    comparability_notes: Model residual, not a separately measured loss; preserve the model version and system boundary
+
   - name: cod_removal_pct
     unit: '%'
     category: biological
     description: Fraction of chemical oxygen demand removed
     comparability_notes: Requires influent/effluent definition and sampling basis
+
+  - name: cod_kg_m3
+    unit: kgCOD/m3
+    category: mechanistic_model_state
+    description: Simulated anode dissolved COD concentration at a stated integration time
+    comparability_notes: Preserve model version, influent basis, reactor boundary, and time coordinate
+
+  - name: biomass_kg_m3
+    unit: kgVSS/m3
+    category: mechanistic_model_state
+    description: Simulated electroactive biomass concentration at a stated integration time
+    comparability_notes: Preserve the modeled biomass definition, model version, and time coordinate
+
+  - name: dissolved_oxygen_kg_m3
+    unit: kgO2/m3
+    category: mechanistic_model_state
+    description: Simulated cathode dissolved oxygen concentration at a stated integration time
+    comparability_notes: Preserve the MFC boundary, oxygen transfer inputs, and time coordinate
+
+  - name: ph_anode
+    unit: pH
+    category: mechanistic_model_state
+    description: Simulated anode pH at a stated integration time
+    comparability_notes: Preserve buffer, transfer, influent, model version, and time coordinate
+
+  - name: ph_cathode
+    unit: pH
+    category: mechanistic_model_state
+    description: Simulated cathode pH at a stated integration time
+    comparability_notes: Preserve buffer, transfer, model version, and time coordinate
+
+  - name: ph_anode_final
+    unit: pH
+    category: mechanistic_model_output
+    description: Simulated anode pH at the final integration time
+    comparability_notes: This is a model output and not a measurement
+
+  - name: ph_cathode_final
+    unit: pH
+    category: mechanistic_model_output
+    description: Simulated cathode pH at the final integration time
+    comparability_notes: This is a model output and not a measurement
+
+  - name: effluent_cod_kg_m3
+    unit: kgCOD/m3
+    category: wastewater_treatment
+    description: Final modeled or measured effluent chemical oxygen demand concentration
+    comparability_notes: Preserve analytical method, sample basis, and source kind
+
+  - name: biosensor_signal_current_a
+    unit: A
+    category: biosensing
+    description: Amperometric biosensor output current at a stated analyte concentration
+    comparability_notes: Requires calibration model, matrix, range, temperature, and pH
+
+  - name: biosensor_lod
+    unit: analyte_specific
+    category: biosensor_analytical_performance
+    description: Source-reported limit of detection with the analyte concentration unit retained
+    comparability_notes: Compare only for the same analyte, matrix, and analytical protocol
+
+  - name: biosensor_loq
+    unit: analyte_specific
+    category: biosensor_analytical_performance
+    description: Source-reported limit of quantification with the analyte concentration unit retained
+    comparability_notes: Compare only for the same analyte, matrix, and analytical protocol
+
+  - name: biosensor_response_time_s
+    unit: s
+    category: biosensor_analytical_performance
+    description: Time to reach the reported response criterion after analyte exposure
+    comparability_notes: Preserve the response threshold definition
+
+  - name: biosensor_selectivity_pct
+    unit: '%'
+    category: biosensor_analytical_performance
+    description: Selectivity against named interferents under the stated matrix conditions
+    comparability_notes: Preserve interferent identity and concentration
+
+  - name: biosensor_recovery_time_s
+    unit: s
+    category: biosensor_analytical_performance
+    description: Time for the sensor to return to its specified baseline after exposure
+    comparability_notes: Preserve the baseline criterion and matrix
+
+  - name: biosensor_drift_a_per_day
+    unit: A/day
+    category: biosensor_analytical_performance
+    description: Source-reported signal drift over time
+    comparability_notes: Preserve sign, duration, calibration protocol, and matrix
+
+  - name: biosensor_repeatability_cv_pct
+    unit: '%'
+    category: biosensor_analytical_performance
+    description: Within-protocol repeatability coefficient of variation
+    comparability_notes: Replicate count and concentration range must be retained
+
+  - name: biosensor_accuracy_pct
+    unit: '%'
+    category: biosensor_analytical_performance
+    description: Accuracy against a stated reference method
+    comparability_notes: Preserve reference method, matrix, and validation range
+
+  - name: biosensor_signal_to_noise_ratio
+    unit: '1'
+    category: biosensor_analytical_performance
+    description: Calibrated absolute current divided by baseline noise standard deviation
+    comparability_notes: A zero-noise input is reported as unbounded and is not a finite measured SNR
+
+  - name: biosensor_detection_status
+    unit: categorical
+    category: biosensor_analytical_performance
+    description: Below LOD, detected below LOQ, or quantifiable for the supplied analyte concentration
+    comparability_notes: Depends on source-backed matrix-specific calibration and detection limits
+
+  - name: influent_cod_kg_m3
+    unit: kgCOD/m3
+    category: wastewater_treatment
+    description: Influent COD concentration normalized to the model's SI basis
+    comparability_notes: Preserve original laboratory unit, sample point, analytical method, and normalization rule
+
+  - name: bod5_mg_o2_l
+    unit: mgO2/L
+    category: wastewater_treatment
+    description: Five-day biochemical oxygen demand for the wastewater sample
+    comparability_notes: Preserve incubation method, sample point, and filtered/total basis
+
+  - name: tss_mg_l
+    unit: mg/L
+    category: wastewater_treatment
+    description: Total suspended solids for the wastewater sample
+    comparability_notes: Preserve sample point, method, and filtered/total basis
+
+  - name: mec_electrical_input_density_w_m2
+    unit: W/m2
+    category: electrical_input
+    description: Applied MEC electrical input normalized by projected anode area
+    comparability_notes: This is consumption, not generated power; preserve electrode area basis
+
+  - name: mec_cell_electrical_input_w
+    unit: W
+    category: electrical_input
+    description: MEC applied cell voltage times simulated current
+    comparability_notes: External electrical input is not reported as generation
+
+  - name: mec_total_electrical_demand_w
+    unit: W
+    category: electrical_input
+    description: MEC cell input plus auxiliary electrical demand
+    comparability_notes: Sensor bus demand is reported separately
+
+  - name: gross_power_w
+    unit: W
+    category: electrical_output
+    description: MFC output power delivered to the external load before auxiliary demand
+    comparability_notes: Preserve the load boundary, model version, and operating point
+
+  - name: auxiliary_power_w
+    unit: W
+    category: electrical_demand
+    description: Source-referenced balance-of-plant auxiliary power supplied with the case
+    comparability_notes: State which pumps, dosing, controls, and other devices are included
+
+  - name: net_power_w
+    unit: W
+    category: electrical_output
+    description: MFC external-load output after auxiliary electrical demand
+    comparability_notes: Integrated sensor loads and reporting boundary must be explicit
+
+  - name: mec_cell_electrical_input_energy_j
+    unit: J
+    category: electrical_input_energy
+    description: MEC cell electrical input integrated over the modeled duration
+    comparability_notes: External electrical input is not generated energy; preserve model duration and boundary
+
+  - name: mec_auxiliary_energy_demand_j
+    unit: J
+    category: electrical_demand_energy
+    description: MEC auxiliary electrical demand integrated over the modeled duration
+    comparability_notes: Preserve which auxiliary devices are included and the modeled duration
+
+  - name: mec_total_electrical_demand_energy_j
+    unit: J
+    category: electrical_input_energy
+    description: MEC cell input energy plus auxiliary demand over the modeled duration
+    comparability_notes: Sensor demand is separate; this is consumption, not energy generation
+
+  - name: gross_electrical_output_energy_j
+    unit: J
+    category: electrical_output_energy
+    description: MFC external-load output energy integrated over the modeled duration
+    comparability_notes: Preserve the load boundary, model duration, and model version
+
+  - name: auxiliary_energy_demand_j
+    unit: J
+    category: electrical_demand_energy
+    description: Source-referenced MFC auxiliary electrical demand integrated over the modeled duration
+    comparability_notes: State which auxiliary devices are included; sensor demand is excluded
+
+  - name: net_electrical_energy_j
+    unit: J
+    category: electrical_output_energy
+    description: MFC external-load output energy minus auxiliary demand over the modeled duration
+    comparability_notes: Integrated sensor demand is excluded and must remain a separate boundary item
+
+  - name: net_power_density_w_m2
+    unit: W/m2
+    category: electrical_output
+    description: MFC net power after auxiliary demand per projected anode area
+    comparability_notes: Sensor load treatment and geometric basis must be explicit
+
+  - name: hydrogen_gross_production_mol_s
+    unit: mol/s
+    category: MEC_secondary_output
+    description: Gross Faradaic hydrogen generation before gas capture losses
+    comparability_notes: Preserve current, Faradaic efficiency, and system boundary
+
+  - name: hydrogen_captured_production_mol_s
+    unit: mol/s
+    category: MEC_secondary_output
+    description: Hydrogen generation multiplied by the source-backed capture fraction
+    comparability_notes: Preserve collection efficiency and measured/modelled status
+
+  - name: hydrogen_gross_production_mol
+    unit: mol
+    category: MEC_secondary_output
+    description: Gross Faradaic hydrogen generated over the modeled duration before collection losses
+    comparability_notes: Preserve integrated current, Faradaic efficiency, model duration, and boundary
+
+  - name: hydrogen_captured_production_mol
+    unit: mol
+    category: MEC_secondary_output
+    description: Gross MEC hydrogen multiplied by the source-backed capture fraction over the modeled duration
+    comparability_notes: Preserve collection efficiency, model duration, and measured/modelled status
+
+  - name: biosensor_net_power_w
+    unit: W
+    category: biosensor_power_budget
+    description: Remaining power budget after the configured electrochemical biosensor demand
+    comparability_notes: Preserve whether power is external, MFC-harvested, or supplied through the MEC bus
 
   - name: cost_per_kwh_eur
     unit: EUR/kWh

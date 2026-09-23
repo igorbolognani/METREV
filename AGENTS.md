@@ -1,71 +1,30 @@
-# METREV Agent Operating Rules
+# METREV working rules
 
-## Workspace layers
+Read `README.md` for the current scope, model boundary, input policy, setup, and checks. Do not create numbered feature specs, plans, ADRs, or parallel workflow documents; keep essential operating guidance here and in the code contracts/tests.
 
-- `bioelectrochem_agent_kit/domain/` is the semantic source of truth for domain vocabulary, stack decomposition, evidence semantics, defaults behavior, uncertainty handling, compatibility logic, and scoring intent.
-- `bioelectro-copilot-contracts/contracts/` is the authoritative contract boundary for validation, serialization, storage, and future API or database surfaces.
-- `copilot_project_starter_detailed/` is a reusable starter and reference kit. Reuse its workflow patterns, but do not treat unresolved placeholders inside it as live project facts.
-- `bioelectrochem_agent_kit/ALL_FILES_CODE.md`, nested workflow assets under `bioelectrochem_agent_kit/.github/` and `copilot_project_starter_detailed/.github/`, and optional local tooling configs such as `.serena/project.yml` are not active source-of-truth surfaces unless they are intentionally promoted.
+## Active scope and owners
 
-## Active customization rule
+- Product scope: MFC, MEC, wastewater treatment/management, and standalone or integrated electrochemical biosensors. MEC hydrogen remains secondary.
+- `bioelectrochem_agent_kit/domain/` owns scientific meaning, active taxonomies, and domain rules.
+- `bioelectro-copilot-contracts/contracts/` owns validation and serialization shapes.
+- `packages/domain-contracts/` loads, normalizes, and reconciles those sources; `packages/`, `apps/`, and `tests/` implement and verify runtime behavior.
+- Keep legacy enum values only where required to read stored cases. Do not offer them as new choices, classify unknown technology as MET, or reactivate out-of-scope applications.
 
-- This root `AGENTS.md` and the root `.github/instructions/` directory are the active workspace policy for AI-assisted development.
-- The root `.github/copilot-instructions.md` file is an active detailed companion for runtime workflow, tooling, and validation behavior. If it conflicts with this file on source-of-truth rules or domain semantics, this `AGENTS.md` file wins.
-- Nested `.github/` folders under `bioelectrochem_agent_kit/` and `copilot_project_starter_detailed/` are reference assets until they are intentionally promoted into the workspace root.
+## Scientific input and output rules
 
-## Default working loop
+- Never invent, backfill, or silently default a scientific measurement or parameter.
+- Each scientific parameter must retain `value`, `unit`, `source_kind`, and `source_ref`. Distinguish measured, literature, default, assumption, and test-fixture values; fixtures are test data only.
+- Validate units and ranges at the boundary. Missing critical inputs return `insufficient_data` rather than proxy results.
+- Keep wastewater measurements, model inputs, modeled outputs, and independent observations distinct. Literature search results are candidates, not case measurements.
+- Describe the implemented model as lumped 0D and isothermal. Do not claim spatial resolution, independent calibration, uncertainty propagation, or experimental validation without evidence.
+- MEC electrical input is not generated energy. Report gross and captured hydrogen separately and keep auxiliary/sensor loads explicit.
+- Preserve model and data limits in the UI, API, and reports. A test of an invariant does not establish predictive accuracy.
 
-1. Read the relevant repository context first.
-2. Summarize the working assumption and identify the affected layer.
-3. Plan before medium or large changes.
-4. Implement in small, localized steps.
-5. Verify with tests, checks, or direct artifact inspection.
-6. Critique the result for drift, missing validation, and integration gaps before concluding.
+## Change and data safety
 
-## Internal feature workflow
-
-- Medium and large changes should use a maintained feature folder under `specs/NNN-feature-slug/`.
-- The default durable feature pack is `spec.md`, `plan.md`, `tasks.md`, and `quickstart.md`.
-- Add `research.md` when external library behavior, architecture uncertainty, version-sensitive setup, or non-trivial integration risk materially affects the plan.
-- Add notes under `specs/<feature>/contracts/` only when API, serialization, persistence, adapter, or boundary mappings need explicit design review.
-- Recommended semantic branch names should mirror the feature slug, for example `feature/NNN-feature-slug`, `fix/NNN-bug-slug`, or `chore/NNN-workflow-slug`.
-
-## Layering and source-of-truth rules
-
-- Domain semantics start in `bioelectrochem_agent_kit/domain/`.
-- Interface shape, rooted field paths, and validation-facing contracts live in `bioelectro-copilot-contracts/contracts/`.
-- If those layers disagree, treat the mismatch as a repository defect. Do not resolve it ad hoc in only one layer.
-- Do not introduce a second domain vocabulary or rename existing concepts casually.
-- Notes under `specs/<feature>/contracts/` are planning artifacts only. They must cite canonical owner files and never override the domain kit or hardened contract boundary.
-- If a feature-level contract note implies a canonical change, promote the approved change into `bioelectro-copilot-contracts/contracts/` and aligned tests before considering the work complete.
-- When changing ontology, rules, case shape, supplier normalization, or report structure, update the counterpart layer, relevant evals, and tests in the same change when feasible.
-
-## Bioelectrochemical decision-support contract
-
-- The product is an auditable decision-support platform, not a multiphysics simulator-first system.
-- Every non-trivial recommendation must separate observed input, normalized input, defaults used, missing data, evidence used, rule-based inference, prioritization logic, unresolved uncertainty, and next tests or measurements.
-- Preferred output structure is: current stack diagnosis, prioritized improvement options, impact map, supplier or material shortlist, phased roadmap, assumptions or defaults audit, and confidence or uncertainty summary.
-
-## Modeling and evidence rules
-
-- Keep business rules out of UI layers and narrative summaries.
-- Do not treat supplier claims as validated evidence unless explicitly typed that way.
-- Do not hide defaults, estimated values, or missing critical data.
-- Prefer this order for reasoning: deterministic validation, plausible-range checks, compatibility logic, benchmark comparison, scoring, sensitivity framing, then narrative synthesis.
-- If evidence is sparse or conflicting, lower confidence explicitly and recommend the next measurements or tests that would reduce uncertainty.
-
-## Review expectations
-
-Always check:
-
-- domain and contract vocabulary alignment
-- defaults and missing-data transparency
-- confidence labeling
-- report/output contract alignment
-- regression risk in tests or eval checklists
-- accidental use of archived or generated duplicate files as source material
-
-## Context ingestion rule
-
-- Use `docs/repository-authority-map.md` first when deciding which repository surfaces are active, reference-only, or local-optional.
-- Use `stack.md` only as legacy background context when a historical architecture brief is still helpful.
+- Put business rules in domain/runtime packages, not UI copy or LLM narrative. Keep route handlers thin and types/contracts aligned.
+- For behavior changes, add focused regression coverage for valid, missing, unit/range-invalid, and boundary cases as applicable.
+- Run the narrowest relevant test/typecheck/lint first, then broader available checks. Report blocked gates accurately.
+- Dry-run/planning commands must stay offline and must not initialize PostgreSQL or call providers. Do not run real ingestion, migration, seed, pruning, or database writes unless the task explicitly calls for a configured target database.
+- Keep copyrighted full text local unless redistribution rights permit committing it. Preserve source access/license metadata and do not present supplier claims as validated measurements.
+- Update this file or `README.md` only when the operating rules or bootstrap steps actually change; do not add decision-history documents.

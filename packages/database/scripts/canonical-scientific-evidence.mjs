@@ -30,7 +30,6 @@ export const REQUIRED_CANONICAL_FIELDS = [
   'power_density',
   'coulombic_efficiency',
   'hydrogen_production',
-  'methane_biogas_relationship',
   'contaminant_removal_efficiency',
   'scale',
   'trl_maturity',
@@ -62,23 +61,12 @@ const SYSTEM_TYPE_RULES = [
     ],
   },
   {
-    canonical: 'MET',
+    canonical: 'electrochemical_biosensor',
     patterns: [
-      /\bmicrobial electrochemical technolog(?:y|ies)\b/i,
-      /\bMETs?\b/,
+      /\belectrochemical biosensors?\b/i,
+      /\bbioelectrochemical sensors?\b/i,
+      /\bamperometric biosensors?\b/i,
     ],
-  },
-  {
-    canonical: 'MDC',
-    patterns: [/\bmicrobial desalination cells?\b/i, /\bMDCs?\b/],
-  },
-  {
-    canonical: 'BES',
-    patterns: [/\bbioelectrochemical systems?\b/i, /\bBESs?\b/],
-  },
-  {
-    canonical: 'bioelectrochemical_system',
-    patterns: [/\bbioelectrochemical\b/i],
   },
 ];
 

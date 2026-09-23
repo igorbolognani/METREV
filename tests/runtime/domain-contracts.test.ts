@@ -3,6 +3,7 @@ import fixture from '../fixtures/raw-case-input.json';
 import { describe, expect, it } from 'vitest';
 
 import {
+  activeTechnologyFamilyValues,
   canonicalOutputSections,
   createRawInputFromDomainTemplate,
   loadContractInputDefinition,
@@ -11,6 +12,7 @@ import {
   loadEvidenceQualityAuditPolicy,
   normalizeCaseInput,
   normalizedCaseInputSchema,
+  primaryObjectiveReadSchema,
   primaryObjectiveSchema,
   rawCaseInputSchema,
   runtimeAuthorityDecision,
@@ -21,6 +23,24 @@ import {
 } from '@metrev/domain-contracts';
 
 describe('domain-contract runtime alignment', () => {
+  it('keeps active taxonomy narrow and isolates historic read compatibility', () => {
+    expect([...activeTechnologyFamilyValues]).toEqual([
+      'microbial_fuel_cell',
+      'microbial_electrolysis_cell',
+      'electrochemical_biosensor',
+    ]);
+    expect(primaryObjectiveSchema.options).toEqual([
+      'wastewater_treatment',
+      'biosensing',
+    ]);
+    expect(primaryObjectiveSchema.safeParse('hydrogen_recovery').success).toBe(
+      false,
+    );
+    expect(
+      primaryObjectiveReadSchema.safeParse('hydrogen_recovery').success,
+    ).toBe(true);
+  });
+
   it('normalizes the runtime fixture into the contract-aligned shape', () => {
     const raw = rawCaseInputSchema.parse(fixture);
     const normalized = normalizeCaseInput(raw);
@@ -56,6 +76,10 @@ describe('domain-contract runtime alignment', () => {
 
     expect(normalized.technology_family).toBe(
       'microbial_electrochemical_technology',
+    );
+    expect(normalized.primary_objective).toBe('wastewater_treatment');
+    expect(normalized.defaults_used).toContain(
+      'primary_objective:legacy_other_mapped_to_wastewater_treatment',
     );
     expect(
       normalized.cross_cutting_layers.evidence_and_provenance.typed_evidence,
@@ -151,12 +175,29 @@ describe('domain-contract runtime alignment', () => {
         'technology_context.current_trl:invalid_input_fallback',
       ]),
     );
+    expect(normalized.technology_family).toBe('unclassified');
     expect(normalized.missing_data).toEqual(
       expect.arrayContaining([
         'technology_family',
         'primary_objective',
         'technology_context.current_trl',
       ]),
+    );
+  });
+
+  it('keeps an absent family unclassified instead of reusing the MFC template default', () => {
+    const normalized = normalizeCaseInput(
+      rawCaseInputSchema.parse({
+        case_id: 'CASE-MISSING-FAMILY-001',
+        architecture_family: 'single_chamber',
+        primary_objective: 'wastewater_treatment',
+      }),
+    );
+
+    expect(normalized.technology_family).toBe('unclassified');
+    expect(normalized.missing_data).toContain('technology_family');
+    expect(normalized.defaults_used).toContain(
+      'technology_family:missing_input',
     );
   });
 
@@ -231,11 +272,11 @@ describe('domain-contract runtime alignment', () => {
   it('keeps evidence-intelligence policies aligned with canonical objectives', () => {
     const auditPolicy = loadEvidenceQualityAuditPolicy();
     const discoveryPolicy = loadEvidenceDiscoveryPolicy();
-    const primaryObjectives = new Set(primaryObjectiveSchema.options);
+    const activePrimaryObjectives = ['biosensing', 'wastewater_treatment'];
 
     expect(
       Object.keys(auditPolicy.primary_metrics_by_objective).sort(),
-    ).toEqual([...primaryObjectives].sort());
+    ).toEqual(activePrimaryObjectives);
     expect(discoveryPolicy.acquisition_policy.preferred_access_order).toEqual(
       expect.arrayContaining([
         'locally_imported_full_text',

@@ -25,12 +25,17 @@ properties:
     allowed:
       - microbial_fuel_cell
       - microbial_electrolysis_cell
-      - microbial_electrochemical_technology
+      - electrochemical_biosensor
     legacy_aliases:
       - hybrid_or_other_met
+    historical_values:
+      - microbial_electrochemical_technology
+    normalization_only_values:
+      - unclassified
     description: Primary technology family for the case.
     required: true
-    default_behavior: domain_template_default_with_missing_flag
+    default_behavior: no_family_default
+    missing_behavior: normalize_to_unclassified_and_block_model_execution
     provenance_source: raw
     confidence_impact: high
     runtime_field_paths:
@@ -40,6 +45,8 @@ properties:
     type: enum
     allowed:
       - wastewater_treatment
+      - biosensing
+    historical_values:
       - hydrogen_recovery
       - nitrogen_recovery
       - sensing
@@ -54,6 +61,26 @@ properties:
     runtime_field_paths:
       - primary_objective
       - business_context.primary_objective
+  mechanistic_model:
+    type: object
+    description: Coupled source-backed 0D MFC/MEC model input; exact paths and units are owned by mechanistic-model.yml.
+    required: false
+    default_behavior: no_default
+    missing_behavior: return_insufficient_data_without_proxy_outputs
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - mechanistic_model
+  stack_blocks.sensors_and_analytics.biosensor:
+    type: object
+    description: Standalone or MFC/MEC-integrated electrochemical biosensor calibration, material, analytical-performance, matrix, and power-budget record.
+    required: false
+    default_behavior: no_default
+    missing_behavior: preserve_as_unavailable_without_inference
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - stack_blocks.sensors_and_analytics.biosensor
   influent_type:
     type: string
     description: Description of wastewater, sidestream, substrate, or relevant feed.
@@ -108,6 +135,172 @@ properties:
     confidence_impact: medium
     runtime_field_paths:
       - feed_and_operation.conductivity_ms_per_cm
+  feed_and_operation.water_quality:
+    type: object
+    description: Source-backed wastewater sample composition and sampling context.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_each_unmeasured_field_as_missing
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - feed_and_operation.water_quality
+  feed_and_operation.water_quality.cod_mg_cod_l:
+    type: scientific_parameter
+    units: mgCOD/L
+    description: Source-backed influent/effluent COD with original analytical basis retained.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_missing_without_model_proxy
+    provenance_source: raw
+    confidence_impact: high
+    normalized_runtime_field_path: mechanistic_model.operation.influent_cod_kg_m3
+    normalization_rule_id: wastewater.cod.mg_cod_l_to_kg_cod_m3.v1
+    runtime_field_paths:
+      - feed_and_operation.water_quality.cod_mg_cod_l
+  feed_and_operation.water_quality.bod5_mg_o2_l:
+    type: scientific_parameter
+    units: mgO2/L
+    description: Five-day biochemical oxygen demand of the sampled wastewater.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - feed_and_operation.water_quality.bod5_mg_o2_l
+  feed_and_operation.water_quality.tss_mg_l:
+    type: scientific_parameter
+    units: mg/L
+    description: Total suspended solids with filtered/total and sampling method context.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.tss_mg_l
+  feed_and_operation.water_quality.alkalinity_mol_m3:
+    type: scientific_parameter
+    units: mol/m3
+    description: Measured acid-neutralizing capacity in molar equivalents per volume.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - feed_and_operation.water_quality.alkalinity_mol_m3
+  feed_and_operation.water_quality.total_nitrogen_mg_n_l:
+    type: scientific_parameter
+    units: mgN/L
+    description: Total nitrogen contextual measurement; nitrogen recovery is outside the active modeled objective.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.total_nitrogen_mg_n_l
+  feed_and_operation.water_quality.ammonium_mg_n_l:
+    type: scientific_parameter
+    units: mgN/L
+    description: Ammonium concentration as contextual wastewater composition.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.ammonium_mg_n_l
+  feed_and_operation.water_quality.nitrate_mg_n_l:
+    type: scientific_parameter
+    units: mgN/L
+    description: Nitrate concentration as contextual wastewater composition.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.nitrate_mg_n_l
+  feed_and_operation.water_quality.total_phosphorus_mg_p_l:
+    type: scientific_parameter
+    units: mgP/L
+    description: Total phosphorus concentration as contextual wastewater composition.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.total_phosphorus_mg_p_l
+  feed_and_operation.water_quality.sulfate_mg_s_l:
+    type: scientific_parameter
+    units: mgS/L
+    description: Sulfate concentration as a competing electron-acceptor and matrix descriptor.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.sulfate_mg_s_l
+  feed_and_operation.water_quality.chloride_mg_l:
+    type: scientific_parameter
+    units: mg/L
+    description: Chloride concentration as wastewater ionic-strength context.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.chloride_mg_l
+  feed_and_operation.water_quality.salinity_kg_m3:
+    type: scientific_parameter
+    units: kg/m3
+    description: Measured wastewater salinity when available.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.salinity_kg_m3
+  feed_and_operation.water_quality.turbidity_ntu:
+    type: scientific_parameter
+    units: NTU
+    description: Optical turbidity measurement for suspended/colloidal matrix context.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: low
+    runtime_field_paths:
+      - feed_and_operation.water_quality.turbidity_ntu
+  feed_and_operation.water_quality.volatile_fatty_acids_mol_m3:
+    type: scientific_parameter
+    units: mol/m3
+    description: Volatile fatty acid concentration as a substrate/intermediate descriptor.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: medium
+    runtime_field_paths:
+      - feed_and_operation.water_quality.volatile_fatty_acids_mol_m3
+  feed_and_operation.water_quality.dissolved_oxygen_mg_l:
+    type: scientific_parameter
+    units: mgO2/L
+    description: Dissolved oxygen measurement with point, method, and time context.
+    required: false
+    default_behavior: no_default
+    missing_behavior: retain_as_optional_measurement
+    provenance_source: raw
+    confidence_impact: high
+    runtime_field_paths:
+      - feed_and_operation.water_quality.dissolved_oxygen_mg_l
   hydraulic_retention_time_h:
     type: number
     units: h

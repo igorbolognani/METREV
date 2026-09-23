@@ -89,8 +89,7 @@ const systemTypeOptions = [
   { label: 'All system types', value: 'all' },
   { label: 'MFC', value: 'MFC' },
   { label: 'MEC', value: 'MEC' },
-  { label: 'MET', value: 'MET' },
-  { label: 'BES', value: 'BES' },
+  { label: 'Electrochemical biosensor', value: 'BIOSENSOR' },
 ];
 
 const componentTypeOptions = [

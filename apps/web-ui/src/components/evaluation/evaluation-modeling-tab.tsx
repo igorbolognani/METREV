@@ -4,14 +4,15 @@ import type { EvaluationResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
 import {
-    SimulationHeatmapChart,
-    SimulationMultiLineChart,
+  groupSimulationSeriesByAxis,
+  SimulationHeatmapChart,
+  SimulationMultiLineChart,
 } from '@/components/charts/simulation-multi-line-chart';
 import { Badge } from '@/components/ui/badge';
 import { SignalBadge } from '@/components/workbench/signal-badge';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
 } from '@/components/workspace-chrome';
 import { ChartPanel } from '@/components/workspace/chart-panel';
 import { DisclosurePanel } from '@/components/workspace/disclosure-panel';
@@ -68,6 +69,7 @@ export function EvaluationModelingTab({
   const lineSeries = simulation.series.filter(
     (series) => series.series_type !== 'operating_window',
   );
+  const lineSeriesGroups = groupSimulationSeriesByAxis(lineSeries);
 
   return (
     <div className="workspace-form-layout">
@@ -91,15 +93,16 @@ export function EvaluationModelingTab({
         </div>
       ) : null}
 
-      {lineSeries.length > 0 ? (
+      {lineSeriesGroups.map((group) => (
         <ChartPanel
-          meta={`Model ${simulation.model_version}`}
-          summary={`${lineSeries.length} line series and ${operatingWindowSeries.length} operating-window map(s) available in the current model artifact.`}
-          title={formatToken(simulation.status)}
+          key={group.key}
+          meta={`Model ${simulation.model_version} · Y unit ${group.yAxis.unit ?? 'unspecified'}`}
+          summary={`${group.series.length} modeled series share this unit. Values are sampled solver output, not measurements.`}
+          title={`Modeled series · ${group.yAxis.unit ?? group.yAxis.label}`}
         >
-          <SimulationMultiLineChart series={lineSeries} />
+          <SimulationMultiLineChart series={group.series} />
         </ChartPanel>
-      ) : null}
+      ))}
 
       {operatingWindowSeries.map((series) => (
         <ChartPanel
@@ -116,8 +119,8 @@ export function EvaluationModelingTab({
         <WorkspaceDataCard>
           <div className="workspace-data-card__header">
             <div>
-              <span className="badge subtle">Derived observations</span>
-              <h3>Observed outputs</h3>
+              <span className="badge subtle">Derived model outputs</span>
+              <h3>Modeled outputs</h3>
             </div>
           </div>
           {simulation.derived_observations.length > 0 ? (
@@ -148,7 +151,11 @@ export function EvaluationModelingTab({
         </WorkspaceDataCard>
 
         <WorkspaceDataCard>
-          <span className="badge subtle">Model confidence</span>
+          <span className="badge subtle">Heuristic confidence</span>
+          <p className="muted">
+            Fixed rule-based score; it is not a probability or an independent
+            validation result.
+          </p>
           <div className="workspace-chip-list compact">
             <Badge
               variant={

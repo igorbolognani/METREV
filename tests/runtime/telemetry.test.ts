@@ -12,6 +12,8 @@ const originalTelemetryEnabled = process.env.METREV_OTEL_ENABLED;
 const originalOtlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 const originalOtlpTracesEndpoint =
   process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+const originalTraceSampler = process.env.OTEL_TRACES_SAMPLER;
+const originalTraceSamplerArg = process.env.OTEL_TRACES_SAMPLER_ARG;
 
 describe.sequential('telemetry export', () => {
   afterEach(async () => {
@@ -34,6 +36,18 @@ describe.sequential('telemetry export', () => {
     } else {
       process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT =
         originalOtlpTracesEndpoint;
+    }
+
+    if (originalTraceSampler === undefined) {
+      delete process.env.OTEL_TRACES_SAMPLER;
+    } else {
+      process.env.OTEL_TRACES_SAMPLER = originalTraceSampler;
+    }
+
+    if (originalTraceSamplerArg === undefined) {
+      delete process.env.OTEL_TRACES_SAMPLER_ARG;
+    } else {
+      process.env.OTEL_TRACES_SAMPLER_ARG = originalTraceSamplerArg;
     }
   });
 
@@ -61,6 +75,8 @@ describe.sequential('telemetry export', () => {
 
       process.env.METREV_OTEL_ENABLED = 'true';
       delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+      delete process.env.OTEL_TRACES_SAMPLER;
+      delete process.env.OTEL_TRACES_SAMPLER_ARG;
       process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = `http://127.0.0.1:${address.port}/v1/traces`;
 
       await initializeTelemetry('metrev-telemetry-test');

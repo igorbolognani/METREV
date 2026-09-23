@@ -1,23 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-    deduplicateEntries,
-    extractClaimCandidates,
-    getEvidenceIngestionConfig,
-    normalizeCuratedManifestRecord,
-    normalizeEuropePmcWork,
-    optionFlag,
-    optionNumber,
-    optionValue,
-    parseScriptOptions,
+  deduplicateEntries,
+  extractClaimCandidates,
+  getEvidenceIngestionConfig,
+  normalizeCuratedManifestRecord,
+  normalizeEuropePmcWork,
+  optionFlag,
+  optionNumber,
+  optionValue,
+  parseScriptOptions,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 import { loadCuratedManifestRecords } from '../../packages/database/scripts/ingest-curated-manifest';
 import {
-    findOrCreateBulkRun,
-    recordBulkIngestionFailure,
-    resolveBulkRunFinalState,
-    runScientificEvidenceIngestion,
-    shouldTreatProviderHttpFailureAsExhaustedCursor,
+  findOrCreateBulkRun,
+  recordBulkIngestionFailure,
+  resolveBulkRunFinalState,
+  runScientificEvidenceIngestion,
+  shouldTreatProviderHttpFailureAsExhaustedCursor,
 } from '../../packages/database/scripts/ingest-scientific-evidence';
 
 describe('external ingestion shared helpers', () => {
@@ -140,27 +140,19 @@ describe('external ingestion shared helpers', () => {
     expect(entry?.catalogItem.evidenceType).toBe('literature_evidence');
   });
 
-  it('loads sharded curated manifests through the committed snapshot index', () => {
+  it('keeps the active curated manifest empty until claims have reviewed sources', () => {
     const manifest = loadCuratedManifestRecords(
       '../../packages/database/data/curated-bigdata-manifest.json',
       import.meta.url,
     );
 
-    expect(manifest.shardCount).toBe(3);
-    expect(manifest.records).toHaveLength(12);
-    expect(manifest.records[0]).toMatchObject({
-      sourceCategory: 'supplier_profile',
+    expect(manifest.shardCount).toBe(0);
+    expect(manifest.records).toEqual([]);
+    expect(manifest.manifest).toMatchObject({
+      snapshotType: 'empty_until_source_review',
+      recordCount: 0,
+      claimCount: 0,
     });
-    expect(
-      manifest.records.some(
-        (record) => record.sourceCategory === 'market_snapshot',
-      ),
-    ).toBe(true);
-    expect(
-      manifest.records.some(
-        (record) => record.sourceCategory === 'analyst_brief',
-      ),
-    ).toBe(true);
   });
 
   it('extracts heuristic claims from abstract sentences', () => {
@@ -293,27 +285,31 @@ describe('external ingestion shared helpers', () => {
     expect(normalized?.catalogItem.reviewRequired).toBe(true);
   });
 
-  it('reads the production-scale evidence ingestion defaults from CLI-style options', () => {
+  it('bounds evidence ingestion to the focused corpus range', () => {
     const config = getEvidenceIngestionConfig({
-      'target-total': '500000',
-      'batch-size': '1000',
+      'target-total': '500',
+      'batch-size': '100',
       'auto-accept': 'true',
       'review-only-exceptions': 'true',
     });
 
     expect(config).toMatchObject({
-      targetTotal: 500000,
-      batchSize: 1000,
+      targetTotal: 500,
+      maxRecords: 5000,
+      batchSize: 100,
       autoAcceptTrustedCorpus: true,
       reviewOnlyExceptions: true,
     });
+    expect(
+      getEvidenceIngestionConfig({ 'target-total': '500000' }).targetTotal,
+    ).toBe(5000);
   });
 
-  it('plans the production-scale evidence ingestion command without mutating data in dry-run mode', async () => {
+  it('plans a bounded evidence-ingestion operation without mutating data in dry-run mode', async () => {
     const result = await runScientificEvidenceIngestion({
       dryRun: true,
-      'target-total': '500000',
-      'batch-size': '1000',
+      'target-total': '500',
+      'batch-size': '100',
       'auto-accept': 'true',
       queryLimit: '1',
     });
@@ -321,8 +317,8 @@ describe('external ingestion shared helpers', () => {
     expect(result).toMatchObject({
       dryRun: true,
       command: 'evidence:ingest',
-      targetTotal: 500000,
-      batchSize: 1000,
+      targetTotal: 500,
+      batchSize: 100,
       autoAcceptTrustedCorpus: true,
       acceptancePolicy: 'auto_accept_trusted_scientific_corpus_v1',
     });
@@ -463,9 +459,9 @@ describe('external ingestion shared helpers', () => {
 });
 
 import {
-    expandOpenAlexAbstract,
-    normalizeCrossrefWork,
-    normalizeOpenAlexWork,
+  expandOpenAlexAbstract,
+  normalizeCrossrefWork,
+  normalizeOpenAlexWork,
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 describe('external ingestion normalization', () => {

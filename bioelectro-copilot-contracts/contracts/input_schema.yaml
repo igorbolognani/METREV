@@ -1,6 +1,16 @@
 version: 0.2
 normalized_case_input:
   description: Canonical intake contract for a bioelectrochemical decision-support case.
+  active_scope:
+    technology_family:
+      [
+        microbial_fuel_cell,
+        microbial_electrolysis_cell,
+        electrochemical_biosensor,
+      ]
+    primary_objective: [wastewater_treatment, biosensing]
+    legacy_values_are_read_compatibility_only: true
+    normalization_only_values: [unclassified]
   required_fields:
     - case_id
     - technology_family
@@ -10,6 +20,7 @@ normalized_case_input:
     - business_context
     - technology_context
     - feed_and_operation
+    - mechanistic_model
     - stack_blocks
     - cross_cutting_layers
     - measured_metrics
@@ -43,6 +54,48 @@ field_groups:
       - hydraulic_retention_time_h
       - salinity_or_conductivity_context
       - operating_regime
+      - influent_cod_mg_per_l
+      - conductivity_ms_per_cm
+      - water_quality
+      - water_quality.cod_mg_cod_l
+      - water_quality.bod5_mg_o2_l
+      - water_quality.tss_mg_l
+      - water_quality.alkalinity_mol_m3
+      - water_quality.total_nitrogen_mg_n_l
+      - water_quality.ammonium_mg_n_l
+      - water_quality.nitrate_mg_n_l
+      - water_quality.total_phosphorus_mg_p_l
+      - water_quality.sulfate_mg_s_l
+      - water_quality.chloride_mg_l
+      - water_quality.salinity_kg_m3
+      - water_quality.turbidity_ntu
+      - water_quality.volatile_fatty_acids_mol_m3
+      - water_quality.dissolved_oxygen_mg_l
+      - water_quality.temperature_c
+      - water_quality.ph
+      - water_quality.conductivity_ms_per_cm
+      - water_quality.sample_method
+      - water_quality.sampling_point
+      - water_quality.filtered_or_total
+    scientific_value_shape:
+      required: [value, unit, source_kind, source_ref]
+      optional:
+        [
+          uncertainty,
+          uncertainty_unit,
+          original_value,
+          original_unit,
+          normalization_rule_id,
+        ]
+      source_kind: [measured, literature, default, assumption, test_fixture]
+  mechanistic_model:
+    model_version: coupled-0d-dae-v1
+    systems: [MFC, MEC]
+    parameter_contract:
+      { value: number, unit: string, source_kind: string, source_ref: string }
+    optional_parameter_fields: [uncertainty, uncertainty_unit]
+    required_groups: [geometry, materials, operation, biology, electrochemistry]
+    details_owner: bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
   stack_blocks:
     required_shape:
       reactor_architecture: object
@@ -52,6 +105,33 @@ field_groups:
       electrical_interconnect_and_sealing: object
       balance_of_plant: object
       sensors_and_analytics: object
+      sensors_and_analytics.biosensor:
+        deployment_mode: [standalone, mfc_integrated, mec_integrated]
+        power_source: [external, mfc_harvested, mec_power_bus]
+        required_fields:
+          - analyte_id
+          - measurand
+          - concentration_unit
+          - matrix
+          - recognition_element
+          - working_electrode_material
+          - reference_electrode_material
+          - counter_electrode_material
+          - electrode_material_source_ref
+          - electrode_immobilization_method
+          - electrode_coating_or_membrane
+          - working_electrode_area_m2
+          - ionic_strength_mol_m3
+          - transduction_mode
+          - concentration
+          - temperature_k
+          - ph
+          - calibration
+          - analytical_performance
+          - power_consumption_w
+          - power_available_w
+        calibration_models: [linear, langmuir, michaelis_menten]
+        currently_executable_transduction: amperometric
       operational_biology: object
   cross_cutting_layers:
     required_shape:
@@ -63,3 +143,6 @@ rules:
   - Do not silently infer absent critical fields as known facts.
   - Defaults are allowed only when surfaced in the final output.
   - Missing critical inputs must reduce confidence and narrowness of recommendations.
+  - Each mechanistic parameter must retain value, unit, source kind, and source reference; missing critical parameters block simulation.
+  - Convert COD only through the registered mgCOD/L-to-kgCOD/m3 rule and retain the original value/unit/source.
+  - Biosensor runs require calibration range, LOD/LOQ, response/recovery, noise/drift, repeatability, accuracy, selectivity/interferences, and an explicit power budget.

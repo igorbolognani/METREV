@@ -7,7 +7,11 @@ import type {
   ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
 
-import type { CaseIntakeFormValues, CaseIntakePreset } from '@/lib/case-intake';
+import type {
+  AdvancedInputJsonField,
+  CaseIntakeFormValues,
+  CaseIntakePreset,
+} from '@/lib/case-intake';
 
 import { Textarea } from '@/components/ui/textarea';
 import { WorkspaceDataCard } from '@/components/workspace-chrome';
@@ -39,6 +43,7 @@ function renderSummaryChips(values: string[], emptyMessage: string) {
 }
 
 export interface CaseFormReviewSubmitStepProps {
+  advancedInputErrors: Partial<Record<AdvancedInputJsonField, string>>;
   activePreset: CaseIntakePreset | undefined;
   evidenceCount: number;
   formValues: CaseIntakeFormValues;
@@ -54,6 +59,7 @@ export interface CaseFormReviewSubmitStepProps {
 }
 
 export function CaseFormReviewSubmitStep({
+  advancedInputErrors,
   activePreset,
   evidenceCount,
   formValues,
@@ -145,6 +151,59 @@ export function CaseFormReviewSubmitStep({
               Membrane presence: {formValues.membranePresence || 'not stated'}.
             </p>
           </section>
+        </div>
+      </WorkspaceDataCard>
+
+      <WorkspaceDataCard>
+        <span className="badge subtle">Scientific model inputs</span>
+        <h3>Wastewater, reactor, and biosensor parameters</h3>
+        <p>
+          Paste source-backed JSON objects when parameterizing the model. Each
+          model parameter needs a value, SI unit, source kind, and source
+          reference. Partial inputs stay visible and return an insufficient-data
+          result.
+        </p>
+        <div className="workspace-form-grid">
+          <Textarea
+            className="workspace-form-field--wide"
+            error={advancedInputErrors.mechanisticModelJson}
+            label="Coupled MFC/MEC model input"
+            onChange={(event) =>
+              onFieldChange('mechanisticModelJson', event.target.value)
+            }
+            placeholder={
+              '{\n  "system_type": "MFC",\n  "...": "Paste the typed mechanistic_model object"\n}'
+            }
+            rows={8}
+            value={formValues.mechanisticModelJson}
+          />
+          <Textarea
+            className="workspace-form-field--wide"
+            error={advancedInputErrors.biosensorConfigurationJson}
+            label="Electrochemical biosensor configuration"
+            onChange={(event) =>
+              onFieldChange('biosensorConfigurationJson', event.target.value)
+            }
+            placeholder={
+              '{\n  "deployment_mode": "standalone",\n  "...": "Paste the typed biosensor object"\n}'
+            }
+            rows={6}
+            value={formValues.biosensorConfigurationJson}
+          />
+          <Textarea
+            className="workspace-form-field--wide"
+            error={advancedInputErrors.wastewaterQualityJson}
+            hint="COD in mgCOD/L is converted to kgCOD/m³ for the model when no case COD is supplied. The original value, unit, source, and conversion rule are retained. Other water-quality fields remain measurement context unless a validated balance is implemented."
+            label="Wastewater quality measurements"
+            onChange={(event) =>
+              onFieldChange('wastewaterQualityJson', event.target.value)
+            }
+            placeholder={
+              '{\n  "cod_mg_cod_l": {\n    "value": 850,\n    "unit": "mgCOD/L",\n    "source_kind": "measured",\n    "source_ref": "lab-sample:WW-001"\n  },\n  "sampling_point": "influent"\n}'
+            }
+            rows={8}
+            value={formValues.wastewaterQualityJson}
+          />
         </div>
       </WorkspaceDataCard>
 
