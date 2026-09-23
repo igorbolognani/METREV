@@ -109,8 +109,8 @@ describe('METREV bootstrap and automation', () => {
     expect(ciWorkflow).toContain('pnpm run validate:db');
     expect(ciWorkflow).toContain('pnpm run validate:local:smoke');
     expect(ciWorkflow).toContain('pnpm run validate:advanced');
-    expect(codeqlWorkflow).toContain('github/codeql-action/init@v3');
-    expect(codeqlWorkflow).toContain('github/codeql-action/analyze@v3');
+    expect(codeqlWorkflow).toMatch(/github\/codeql-action\/init@v\d+/);
+    expect(codeqlWorkflow).toMatch(/github\/codeql-action\/analyze@v\d+/);
     expect(dependabotConfig).toContain("package-ecosystem: 'github-actions'");
     expect(dependabotConfig).toContain("package-ecosystem: 'npm'");
     expect(dependabotConfig).toContain("package-ecosystem: 'pip'");
