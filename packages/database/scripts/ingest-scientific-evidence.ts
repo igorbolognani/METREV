@@ -481,7 +481,11 @@ export async function runScientificEvidenceIngestion(overrides = {}) {
       ),
     ).trim() || null;
   const configPath = String(
-    optionValue(options, 'config', '../data/bigdata-bootstrap.config.json'),
+    optionValue(
+      options,
+      'config',
+      '../data/focused-mfc-mec-wastewater-biosensors.config.json',
+    ),
   );
   const queryLimit = optionNumber(options, 'queryLimit', 0, 0, 10000);
   const queries = readConfiguredQueries(configPath, queryLimit);

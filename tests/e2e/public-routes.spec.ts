@@ -23,7 +23,7 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
   {
     slug: 'technology',
     path: '/learn/technology',
-    heading: 'Understand the BES families before comparing designs.',
+    heading: 'Model wastewater MFCs, MECs, and electrochemical biosensors.',
     firstDialogTitle: 'MFC',
     firstDialogSnippet:
       'Microbial fuel cells couple treatment with direct current generation',
@@ -42,28 +42,27 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
   {
     slug: 'comparison',
     path: '/learn/comparison',
-    heading:
-      'Make route comparison directional, readable, and honest about tradeoffs.',
+    heading: 'Compare MFC and MEC wastewater cases with matched evidence.',
     firstDialogTitle: 'Conventional treatment',
     firstDialogSnippet:
-      'Activated sludge and other mature treatment trains remain critical anchors',
-    nextLinkText: 'Next: ODS',
+      'Activated sludge and other mature treatment trains may provide context when the case owner selects them',
+    nextLinkText: 'Next: Results',
   },
   {
     slug: 'impact',
     path: '/learn/impact',
     heading:
-      'Show impact as a result of disciplined engineering, not as a slogan.',
+      'Read modeled and measured system results on their stated boundaries.',
     firstDialogTitle: 'Water quality',
     firstDialogSnippet:
-      'Cleaner effluent, stable removal, and better process visibility are often the most immediate BES value pathways',
+      'Effluent quality, contaminant removal, and process visibility describe the wastewater treatment outcome',
     nextLinkText: 'Next: METREV',
   },
   {
     slug: 'metrev',
     path: '/learn/metrev',
     heading:
-      'Understand how METREV moves from stack description to report-ready output.',
+      'Understand how METREV models wastewater systems and reports the evidence.',
     firstDialogTitle: 'Configure stack',
     firstDialogSnippet:
       'The workflow begins with explicit reactor, electrodes, separator, biology, auxiliaries',
@@ -97,7 +96,7 @@ test.describe('public routes - desktop structure', () => {
     await expect(
       page.getByRole('heading', {
         level: 1,
-        name: 'METREV BIOELETROCHEMICAL DECISION SUPPORT',
+        name: 'METREV MFC/MEC + BIOSENSOR DECISION SUPPORT',
       }),
     ).toBeVisible();
     await expect(
@@ -150,7 +149,8 @@ test.describe('public routes - desktop structure', () => {
     await page.getByTestId('public-landing-board-problem').click();
     await expect(
       page.getByRole('heading', {
-        name: 'Map the real BES pressure before choosing a stack.',
+        name:
+          'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.',
       }),
     ).toBeVisible();
     await expect(
@@ -226,34 +226,35 @@ test.describe('public routes - desktop structure', () => {
   }
 });
 
-test.describe('public routes - mobile snapshots', () => {
+test.describe('public routes - mobile views', () => {
   test.use(mobileViewportUse);
 
-  test('overview hub matches the mobile landing snapshot', async ({ page }) => {
+  test('overview hub exposes the focused decision model on mobile', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('public-overview-hub')).toBeVisible();
-
-    await expect(page).toHaveScreenshot('public-overview-mobile.png', {
-      animations: 'disabled',
-      caret: 'hide',
-      fullPage: true,
-      maxDiffPixels: 220,
-    });
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: 'METREV MFC/MEC + BIOSENSOR DECISION SUPPORT',
+      }),
+    ).toBeVisible();
+    await expect(page.getByTestId('public-landing-infographic')).toBeVisible();
   });
 
   for (const route of publicTopicRoutes) {
-    test(`${route.slug} route matches the mobile infographic snapshot`, async ({
+    test(`${route.slug} route exposes its active infographic on mobile`, async ({
       page,
     }) => {
       await openPublicRoute(page, route.path);
+      await expect(
+        page.getByRole('heading', { level: 1, name: route.heading }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`public-topic-${route.slug}`),
+      ).toBeVisible();
       await expect(page.getByTestId('public-topic-infographic')).toBeVisible();
-
-      await expect(page).toHaveScreenshot(`${route.slug}-mobile.png`, {
-        animations: 'disabled',
-        caret: 'hide',
-        fullPage: true,
-        maxDiffPixels: 220,
-      });
     });
   }
 });

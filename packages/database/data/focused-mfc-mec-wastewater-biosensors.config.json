@@ -1,8 +1,8 @@
 {
-  "version": 2,
+  "version": 1,
   "defaults": {
-    "perQueryLimit": 8,
-    "pageSize": 8,
+    "perQueryLimit": 10,
+    "pageSize": 10,
     "maxPages": 1
   },
   "queries": [
@@ -30,20 +30,20 @@
   "sources": {
     "openalex": {
       "enabled": true,
-      "perQueryLimit": 8,
-      "pageSize": 8,
+      "perQueryLimit": 10,
+      "pageSize": 10,
       "maxPages": 1
     },
     "crossref": {
       "enabled": true,
-      "perQueryLimit": 8,
-      "pageSize": 8,
+      "perQueryLimit": 10,
+      "pageSize": 10,
       "maxPages": 1
     },
     "europepmc": {
       "enabled": true,
-      "perQueryLimit": 8,
-      "pageSize": 8,
+      "perQueryLimit": 10,
+      "pageSize": 10,
       "maxPages": 1
     }
   },

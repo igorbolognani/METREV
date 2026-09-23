@@ -1,143 +1,175 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import {
-  decisionOutputSchema,
   type ExternalEvidenceCatalogItemSummary,
   normalizeCaseInput,
   rawCaseInputSchema,
 } from '@metrev/domain-contracts';
-import { runCaseEvaluation } from '@metrev/rule-engine';
-
 import {
-  biogasSynergyGoldenCasePreset,
   buildCaseInputFromFormValues,
   caseIntakePresets,
-  hydrogenRecoveryGoldenCasePreset,
-  nitrogenRecoveryGoldenCasePreset,
-  sensingGoldenCasePreset,
-  wastewaterGoldenCasePreset,
+  focusedWastewaterMfcPreset,
+  focusedWastewaterMecPreset,
+  standaloneWastewaterBiosensorPreset,
+  mfcIntegratedWastewaterBiosensorPreset,
+  mecIntegratedWastewaterBiosensorPreset,
+  validateAdvancedInputJson,
 } from '../../apps/web-ui/src/lib/case-intake';
 
-const goldenCasePresets = [
-  wastewaterGoldenCasePreset,
-  nitrogenRecoveryGoldenCasePreset,
-  hydrogenRecoveryGoldenCasePreset,
-  sensingGoldenCasePreset,
-  biogasSynergyGoldenCasePreset,
+const focusedPresets = [
+  focusedWastewaterMfcPreset,
+  focusedWastewaterMecPreset,
+  standaloneWastewaterBiosensorPreset,
+  mfcIntegratedWastewaterBiosensorPreset,
+  mecIntegratedWastewaterBiosensorPreset,
 ];
 
-function sourceDomainCasePath(preset: (typeof goldenCasePresets)[number]) {
-  const caseMetadata = (preset.payload.case_metadata ?? {}) as {
-    source_domain_case?: string;
-  };
-
-  return caseMetadata.source_domain_case;
-}
-
 describe('case intake preset catalog', () => {
-  it('registers the five validated presets for the intake UI', () => {
+  it('registers only the five focused MFC/MEC/wastewater/biosensor templates', () => {
     expect(caseIntakePresets.map((preset) => preset.id)).toEqual(
-      goldenCasePresets.map((preset) => preset.id),
+      focusedPresets.map((preset) => preset.id),
     );
+    expect(
+      caseIntakePresets.every(
+        (preset) => preset.expectedRecommendationIds.length === 0,
+      ),
+    ).toBe(true);
   });
 
-  it('keeps each runtime preset tied to a canonical domain source path', () => {
-    for (const preset of goldenCasePresets) {
-      const sourcePath = sourceDomainCasePath(preset);
-
-      expect(sourcePath).toBeTruthy();
-      expect(preset.sourceReference).toContain(sourcePath!);
-      expect(existsSync(resolve(process.cwd(), sourcePath!))).toBe(true);
-    }
-  });
-
-  it.each(goldenCasePresets)(
-    'builds a valid raw case input for $label that exercises the deterministic rule path',
+  it.each(focusedPresets)(
+    'builds an honest empty raw case input for $label without fabricated evidence or model outputs',
     (preset) => {
       const payload = buildCaseInputFromFormValues(preset.formValues, preset);
 
       expect(() => rawCaseInputSchema.parse(payload)).not.toThrow();
-      expect(payload.evidence_records).toHaveLength(1);
-
-      const normalized = normalizeCaseInput(payload);
-      const decisionOutput = decisionOutputSchema.parse(
-        runCaseEvaluation(normalized),
-      );
-      const recommendationIds =
-        decisionOutput.prioritized_improvement_options.map(
-          (record) => record.recommendation_id,
-        );
-
-      expect(recommendationIds).toEqual(
-        expect.arrayContaining(preset.expectedRecommendationIds),
-      );
-      expect(decisionOutput.impact_map.length).toBeGreaterThanOrEqual(3);
-      expect(decisionOutput.phased_roadmap.length).toBeGreaterThan(0);
-      expect(
-        decisionOutput.confidence_and_uncertainty_summary.provenance_notes.join(
-          ' ',
-        ),
-      ).toContain('typed evidence');
+      expect(payload.evidence_records).toBeUndefined();
+      expect(payload.mechanistic_model).toBeUndefined();
+      expect(payload.missing_data?.length).toBeGreaterThan(0);
+      expect(preset.sourceReference).toContain('no measured');
+      expect(() => normalizeCaseInput(payload)).not.toThrow();
     },
   );
-
-  it('keeps the nitrogen-recovery preset explicit about its missing-data boundary', () => {
-    const payload = buildCaseInputFromFormValues(
-      nitrogenRecoveryGoldenCasePreset.formValues,
-      nitrogenRecoveryGoldenCasePreset,
-    );
-
-    expect(() => rawCaseInputSchema.parse(payload)).not.toThrow();
-    expect(payload.primary_objective).toBe('nitrogen_recovery');
-    expect(payload.stack_blocks?.membrane_or_separator?.fouling_risk).toBe(
-      'high',
-    );
-
-    const normalized = normalizeCaseInput(payload);
-    const decisionOutput = decisionOutputSchema.parse(
-      runCaseEvaluation(normalized),
-    );
-    const recommendationIds =
-      decisionOutput.prioritized_improvement_options.map(
-        (record) => record.recommendation_id,
-      );
-
-    expect(recommendationIds).toEqual(
-      expect.arrayContaining(
-        nitrogenRecoveryGoldenCasePreset.expectedRecommendationIds,
-      ),
-    );
-    expect(decisionOutput.assumptions_and_defaults_audit.missing_data).toEqual(
-      expect.arrayContaining([
-        'cathode_material_exact_family',
-        'membrane_durability_validation',
-        'gas_handling_detail',
-      ]),
-    );
-  });
 
   it('lets visible inputs clear preset-backed evidence and list fields before submission', () => {
     const payload = buildCaseInputFromFormValues(
       {
-        ...wastewaterGoldenCasePreset.formValues,
+        ...focusedWastewaterMfcPreset.formValues,
         painPoints: '',
         preferredSuppliers: '',
         evidenceTitle: '',
         evidenceSummary: '',
       },
-      wastewaterGoldenCasePreset,
+      focusedWastewaterMfcPreset,
     );
 
     expect(payload.technology_context?.current_pain_points).toEqual([]);
     expect(payload.supplier_context?.preferred_suppliers).toEqual([]);
     expect(payload.evidence_records).toBeUndefined();
+    expect(payload.stack_blocks?.cathode_catalyst_support).toBeUndefined();
+  });
+
+  it('converts source-backed influent COD into the mechanistic SI input and retains the original unit', () => {
+    const payload = buildCaseInputFromFormValues(
+      {
+        ...focusedWastewaterMfcPreset.formValues,
+        wastewaterQualityJson: JSON.stringify({
+          cod_mg_cod_l: {
+            value: 850,
+            unit: 'mgCOD/L',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+            uncertainty: 10,
+          },
+          temperature_c: {
+            value: 25,
+            unit: '°C',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+            uncertainty: 0.2,
+          },
+          ph: {
+            value: 6.9,
+            unit: 'pH',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+          },
+          conductivity_ms_per_cm: {
+            value: 12,
+            unit: 'mS/cm',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+            uncertainty: 0.5,
+          },
+          sampling_point: 'influent',
+        }),
+        evidenceTitle: '',
+        evidenceSummary: '',
+      },
+      focusedWastewaterMfcPreset,
+    );
+
     expect(
-      payload.stack_blocks?.cathode_catalyst_support
-        ?.mass_transport_limitation_risk,
-    ).toBe('high');
+      payload.feed_and_operation?.water_quality?.cod_mg_cod_l,
+    ).toMatchObject({
+      value: 850,
+      unit: 'mgCOD/L',
+      source_ref: 'lab-sample:WW-001',
+    });
+    expect(
+      payload.mechanistic_model?.operation?.influent_cod_kg_m3,
+    ).toMatchObject({
+      value: 0.85,
+      unit: 'kgCOD/m3',
+      source_kind: 'measured',
+      source_ref: 'lab-sample:WW-001',
+      original_value: 850,
+      original_unit: 'mgCOD/L',
+      normalization_rule_id: 'wastewater.cod.mg_cod_l_to_kg_cod_m3.v1',
+      uncertainty: 0.01,
+      uncertainty_unit: 'kgCOD/m3',
+    });
+    expect(payload.mechanistic_model?.operation?.temperature_k).toMatchObject({
+      value: 298.15,
+      unit: 'K',
+      source_ref: 'lab-sample:WW-001',
+      original_value: 25,
+      original_unit: '°C',
+      normalization_rule_id: 'wastewater.temperature.c_to_k.v1',
+      uncertainty: 0.2,
+      uncertainty_unit: 'K',
+    });
+    expect(payload.mechanistic_model?.operation?.influent_ph).toMatchObject({
+      value: 6.9,
+      unit: 'pH',
+      source_ref: 'lab-sample:WW-001',
+      original_value: 6.9,
+      normalization_rule_id: 'wastewater.ph.identity.v1',
+    });
+    expect(
+      payload.mechanistic_model?.operation?.electrolyte_conductivity_s_m,
+    ).toMatchObject({
+      value: 1.2,
+      unit: 'S/m',
+      source_ref: 'lab-sample:WW-001',
+      original_value: 12,
+      original_unit: 'mS/cm',
+      normalization_rule_id: 'wastewater.conductivity.ms_cm_to_s_m.v1',
+      uncertainty: 0.05,
+      uncertainty_unit: 'S/m',
+    });
+  });
+
+  it('rejects malformed advanced JSON before the review-submit step', () => {
+    expect(
+      validateAdvancedInputJson({
+        mechanisticModelJson: '{"system_type":',
+        biosensorConfigurationJson: '',
+        wastewaterQualityJson: '[]',
+      }),
+    ).toEqual({
+      mechanisticModelJson: 'JSON is incomplete or invalid.',
+      wastewaterQualityJson: 'Enter a JSON object.',
+    });
   });
 
   it('merges accepted catalog evidence into the outgoing typed-evidence bundle without replacing visible intake evidence', () => {
@@ -195,16 +227,23 @@ describe('case intake preset catalog', () => {
       updated_at: '2026-04-14T12:00:00.000Z',
     };
 
+    const visibleEvidenceTitle = 'Measured wastewater sample note';
     const payload = buildCaseInputFromFormValues(
-      wastewaterGoldenCasePreset.formValues,
-      wastewaterGoldenCasePreset,
+      {
+        ...focusedWastewaterMfcPreset.formValues,
+        evidenceType: 'internal_benchmark',
+        evidenceTitle: visibleEvidenceTitle,
+        evidenceSummary: 'Sample metadata recorded by the site laboratory.',
+        evidenceStrength: 'moderate',
+      },
+      focusedWastewaterMfcPreset,
       [acceptedCatalogEvidence],
     );
 
     expect(payload.evidence_records).toHaveLength(2);
     expect(payload.evidence_records?.map((entry) => entry.title)).toEqual(
       expect.arrayContaining([
-        wastewaterGoldenCasePreset.formValues.evidenceTitle,
+        visibleEvidenceTitle,
         acceptedCatalogEvidence.title,
       ]),
     );
@@ -232,11 +271,11 @@ describe('case intake preset catalog', () => {
   it('appends research-pack evidence, assumptions, and missing-data flags into the outgoing intake payload', () => {
     const payload = buildCaseInputFromFormValues(
       {
-        ...wastewaterGoldenCasePreset.formValues,
+        ...focusedWastewaterMfcPreset.formValues,
         evidenceTitle: '',
         evidenceSummary: '',
       },
-      wastewaterGoldenCasePreset,
+      focusedWastewaterMfcPreset,
       [],
       {
         pack_id: 'pack-001',
@@ -291,7 +330,8 @@ describe('case intake preset catalog', () => {
   it('maps explicit parameter controls into raw intake state and audit-visible defaults or exclusions', () => {
     const payload = buildCaseInputFromFormValues(
       {
-        ...wastewaterGoldenCasePreset.formValues,
+        ...focusedWastewaterMfcPreset.formValues,
+        conductivity: '7.2',
         cathodeGasHandlingInterface:
           'Passive air cathode with intermittent fouling risk',
         electricalCurrentCollectionStrategy: 'Bolted graphite plate contacts',
@@ -315,7 +355,7 @@ describe('case intake preset catalog', () => {
           electricalCorrosionProtectionLevel: 'client',
         },
       },
-      wastewaterGoldenCasePreset,
+      focusedWastewaterMfcPreset,
     );
 
     expect(payload.parameter_state).toEqual(

@@ -54,16 +54,39 @@ export const researchExtractionResultStatusSchema = z.enum([
 
 export const researchEvidencePackStatusSchema = z.enum(['draft', 'reviewed']);
 
-export const researchTechnologyClassSchema = z.enum([
+const activeResearchTechnologyClassSchema = z.enum([
   'MFC',
   'MEC',
-  'MET',
-  'MDC',
-  'BES',
-  'bioelectrochemical_sensor',
-  'hybrid_system',
+  'electrochemical_biosensor',
   'not_reported',
 ]);
+
+/** Read older warehouse labels without reintroducing retired classes to active output. */
+export const researchTechnologyClassSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase();
+  if (
+    [
+      'biosensor',
+      'bioelectrochemical_sensor',
+      'electrochemical sensor',
+    ].includes(normalized)
+  ) {
+    return 'electrochemical_biosensor';
+  }
+  if (
+    [
+      'met',
+      'mdc',
+      'bes',
+      'hybrid_system',
+      'bioelectrochemical_system',
+    ].includes(normalized)
+  ) {
+    return 'not_reported';
+  }
+  return value;
+}, activeResearchTechnologyClassSchema);
 
 export const researchDocumentTypeSchema = z.enum([
   'paper',
@@ -605,14 +628,18 @@ export const queueResearchBackfillRequestSchema = z.object({
   providers: z.array(researchSearchProviderSchema).min(1).max(3).optional(),
   per_provider_limit: z.number().int().min(1).max(1000).default(25),
   max_pages: z.number().int().min(1).max(500).default(1),
-  target_records: z.number().int().min(1).max(300000).optional(),
+  target_records: z.number().int().min(1).max(5000).optional(),
 });
 
-export const queueResearchBackfillPresetSchema = z.enum(['mfc_mec_30000']);
+export const queueResearchBackfillPresetSchema = z.enum([
+  'mfc_mec_wastewater_biosensors',
+]);
 
 export const queueResearchBackfillPresetRequestSchema = z.object({
-  preset_id: queueResearchBackfillPresetSchema.default('mfc_mec_30000'),
-  target_records: z.number().int().min(1).max(300000).default(30000),
+  preset_id: queueResearchBackfillPresetSchema.default(
+    'mfc_mec_wastewater_biosensors',
+  ),
+  target_records: z.number().int().min(60).max(5000).default(500),
 });
 
 export const researchBackfillSummarySchema = z.object({
@@ -711,6 +738,8 @@ export const researchWarehouseEligibilityRequestSchema = z.object({
 export const queueResearchBackfillPresetResponseSchema = z.object({
   preset_id: queueResearchBackfillPresetSchema,
   target_records: z.number().int().positive(),
+  estimated_max_records: z.number().int().positive(),
+  query_count: z.number().int().positive(),
   queued_runs: z.number().int().nonnegative(),
   skipped_queries: z.array(z.string().min(1)).default([]),
   backfills: z.array(researchBackfillSummarySchema).default([]),

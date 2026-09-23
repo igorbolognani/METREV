@@ -65,32 +65,21 @@ funnel_stages:
 
 primary_metrics_by_objective:
   wastewater_treatment:
-    - power_density_w_m2
-    - cod_removal_pct
-    - coulombic_efficiency_pct
-    - internal_resistance_ohm
-  hydrogen_recovery:
-    - current_density_a_m2
-    - hydrogen_production_ml_l_d
-    - hydrogen_yield_mol_mol
-    - coulombic_efficiency_pct
-  nitrogen_recovery:
-    - ammonium_recovery_pct
-    - current_density_a_m2
-    - energy_input_kwh_m3
-  sensing:
-    - voltage_v
-    - internal_resistance_ohm
-    - durability_d
-  low_power_generation:
-    - power_density_w_m2
-    - voltage_v
-    - internal_resistance_ohm
-  biogas_synergy:
-    - cod_removal_pct
-    - current_density_a_m2
-    - energy_input_kwh_m3
-  other:
-    - current_density_a_m2
-    - coulombic_efficiency_pct
-    - durability_d
+    MFC:
+      - contaminant_removal_efficiency
+      - current_density
+      - power_density
+      - coulombic_efficiency
+    MEC:
+      - contaminant_removal_efficiency
+      - current_density
+      - energy_input
+  biosensing:
+    BIOSENSOR:
+      - biosensor_sensitivity
+      - biosensor_lod_loq
+      - biosensor_interference
+
+secondary_metrics_by_system:
+  MEC:
+    - hydrogen_production
