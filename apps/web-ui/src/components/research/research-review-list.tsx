@@ -240,9 +240,9 @@ export function ResearchReviewListView({
                 </div>
               </div>
               <p>
-                Import local MFC, MEC, MET, BES, and metadata sources as
-                analyst-gated evidence with file hashes, extraction traces, page
-                locators, and confidence penalties.
+                Import local MFC, MEC, wastewater-treatment, and electrochemical
+                biosensor sources as analyst-gated evidence with file hashes,
+                extraction traces, page locators, and confidence penalties.
               </p>
               <label>
                 <span>PDF paths</span>

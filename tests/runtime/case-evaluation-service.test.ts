@@ -85,6 +85,7 @@ describe('case evaluation service', () => {
     const evaluation = await createPersistedCaseEvaluation({
       rawInput: rawCaseInputSchema.parse({
         ...fixture,
+        mechanistic_model: undefined,
         feed_and_operation: {
           influent_type: fixture.feed_and_operation.influent_type,
         },

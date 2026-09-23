@@ -48,6 +48,8 @@ const technologyFamilyAliases: Record<
   NormalizedCaseInput['technology_family']
 > = {
   hybrid_or_other_met: 'microbial_electrochemical_technology',
+  biosensor: 'electrochemical_biosensor',
+  electrochemical_sensor: 'electrochemical_biosensor',
 };
 
 const trlAliases: Record<string, number> = {
@@ -100,7 +102,12 @@ function normalizeTechnologyFamily(
   defaultsUsed: string[],
   missingData: string[],
 ): NormalizedCaseInput['technology_family'] {
-  const candidate = firstNonEmptyString(value) ?? 'microbial_fuel_cell';
+  const candidate = firstNonEmptyString(value);
+  if (!candidate) {
+    defaultsUsed.push('technology_family:missing_input');
+    missingData.push('technology_family');
+    return 'unclassified';
+  }
   const parsed = technologyFamilySchema.safeParse(
     technologyFamilyAliases[candidate] ?? candidate,
   );
@@ -111,8 +118,20 @@ function normalizeTechnologyFamily(
 
   defaultsUsed.push('technology_family:invalid_input_fallback');
   missingData.push('technology_family');
-  return 'microbial_electrochemical_technology';
+  return 'unclassified';
 }
+
+const legacyObjectiveAliases: Record<
+  string,
+  NormalizedCaseInput['primary_objective']
+> = {
+  sensing: 'biosensing',
+  hydrogen_recovery: 'wastewater_treatment',
+  nitrogen_recovery: 'wastewater_treatment',
+  low_power_generation: 'wastewater_treatment',
+  biogas_synergy: 'wastewater_treatment',
+  other: 'wastewater_treatment',
+};
 
 function normalizePrimaryObjective(
   value: unknown,
@@ -120,7 +139,13 @@ function normalizePrimaryObjective(
   missingData: string[],
 ): NormalizedCaseInput['primary_objective'] {
   const candidate = firstNonEmptyString(value) ?? 'wastewater_treatment';
-  const parsed = primaryObjectiveSchema.safeParse(candidate);
+  const normalizedCandidate = legacyObjectiveAliases[candidate] ?? candidate;
+  if (normalizedCandidate !== candidate) {
+    defaultsUsed.push(
+      `primary_objective:legacy_${candidate}_mapped_to_${normalizedCandidate}`,
+    );
+  }
+  const parsed = primaryObjectiveSchema.safeParse(normalizedCandidate);
 
   if (parsed.success) {
     return parsed.data;
@@ -128,7 +153,7 @@ function normalizePrimaryObjective(
 
   defaultsUsed.push('primary_objective:invalid_input_fallback');
   missingData.push('primary_objective');
-  return 'other';
+  return 'wastewater_treatment';
 }
 
 function mergeStackBlock(
@@ -451,18 +476,13 @@ export function normalizeCaseInput(input: RawCaseInput): NormalizedCaseInput {
   );
 
   const technologyFamilyInput =
-    raw.technology_family ?? technologyContext.technology_family;
+    raw.technology_family ??
+    ensureRecord(raw.technology_context).technology_family;
   const technologyFamily = normalizeTechnologyFamily(
-    technologyFamilyInput ?? template.technology_context?.technology_family,
+    technologyFamilyInput,
     defaultsUsed,
     missingData,
   );
-  if (
-    !isNonEmptyString(raw.technology_family) &&
-    !isNonEmptyString(technologyContext.technology_family)
-  ) {
-    defaultsUsed.push('technology_family:domain_template_default');
-  }
 
   const architectureFamilyInput =
     raw.architecture_family ??
@@ -634,7 +654,7 @@ export function normalizeCaseInput(input: RawCaseInput): NormalizedCaseInput {
       ...rawCathodeBlock,
       reaction_target:
         firstNonEmptyString(rawCathodeBlock.reaction_target) ??
-        (primaryObjective === 'hydrogen_recovery' ? 'HER' : 'ORR'),
+        (technologyFamily === 'microbial_electrolysis_cell' ? 'HER' : 'ORR'),
       catalyst_family:
         firstNonEmptyString(
           rawCathodeBlock.catalyst_family,
@@ -776,6 +796,7 @@ export function normalizeCaseInput(input: RawCaseInput): NormalizedCaseInput {
     business_context: normalizedBusinessContext,
     technology_context: normalizedTechnologyContext,
     feed_and_operation: normalizedFeedAndOperation,
+    mechanistic_model: raw.mechanistic_model,
     stack_blocks: normalizedStackBlocks,
     cross_cutting_layers: normalizedCrossCuttingLayers,
     measured_metrics: raw.measured_metrics ?? {},

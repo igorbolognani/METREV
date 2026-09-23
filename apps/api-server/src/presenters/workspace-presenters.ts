@@ -73,6 +73,16 @@ const coreMetricDefinitions = [
     unit: 'W/m2',
   },
   {
+    key: 'gross_power_w',
+    label: 'Gross MFC power',
+    unit: 'W',
+  },
+  {
+    key: 'net_power_w',
+    label: 'Net MFC power',
+    unit: 'W',
+  },
+  {
     key: 'internal_resistance_ohm',
     label: 'Internal resistance',
     unit: 'ohm',
@@ -83,14 +93,94 @@ const coreMetricDefinitions = [
     unit: '%',
   },
   {
-    key: 'nitrogen_recovery_proxy_pct',
-    label: 'Nitrogen recovery proxy',
-    unit: '%',
+    key: 'effluent_cod_kg_m3',
+    label: 'Effluent COD',
+    unit: 'kgCOD/m3',
   },
   {
-    key: 'hydrogen_recovery_proxy_rate',
-    label: 'Hydrogen recovery proxy',
-    unit: 'kgH2/m3/d',
+    key: 'mec_electrical_input_density_w_m2',
+    label: 'MEC electrical input density',
+    unit: 'W/m2',
+  },
+  {
+    key: 'mec_cell_electrical_input_w',
+    label: 'MEC cell electrical input',
+    unit: 'W',
+  },
+  {
+    key: 'mec_total_electrical_demand_w',
+    label: 'MEC total electrical demand',
+    unit: 'W',
+  },
+  {
+    key: 'net_power_density_w_m2',
+    label: 'Net MFC power density',
+    unit: 'W/m2',
+  },
+  {
+    key: 'gross_electrical_output_energy_j',
+    label: 'Gross MFC electrical output energy',
+    unit: 'J',
+  },
+  {
+    key: 'net_electrical_energy_j',
+    label: 'Net MFC electrical energy',
+    unit: 'J',
+  },
+  {
+    key: 'mec_cell_electrical_input_energy_j',
+    label: 'MEC cell electrical input energy',
+    unit: 'J',
+  },
+  {
+    key: 'mec_total_electrical_demand_energy_j',
+    label: 'MEC total electrical demand energy',
+    unit: 'J',
+  },
+  {
+    key: 'auxiliary_energy_demand_j',
+    label: 'MFC auxiliary energy demand',
+    unit: 'J',
+  },
+  {
+    key: 'mec_auxiliary_energy_demand_j',
+    label: 'MEC auxiliary energy demand',
+    unit: 'J',
+  },
+  {
+    key: 'hydrogen_gross_production_mol_s',
+    label: 'Gross MEC hydrogen rate',
+    unit: 'mol/s',
+  },
+  {
+    key: 'hydrogen_captured_production_mol_s',
+    label: 'Captured MEC hydrogen rate',
+    unit: 'mol/s',
+  },
+  {
+    key: 'hydrogen_gross_production_mol',
+    label: 'Gross MEC hydrogen produced',
+    unit: 'mol',
+  },
+  {
+    key: 'hydrogen_captured_production_mol',
+    label: 'MEC hydrogen captured',
+    unit: 'mol',
+  },
+  {
+    key: 'biosensor_signal_current_a',
+    label: 'Biosensor signal current',
+    unit: 'A',
+  },
+  {
+    key: 'biosensor_signal_to_noise_ratio',
+    label: 'Biosensor signal-to-noise ratio',
+    unit: '1',
+  },
+  {
+    key: 'biosensor_net_power_w',
+    label: 'Biosensor remaining power budget',
+    unit: 'W',
   },
 ] as const;
 

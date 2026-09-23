@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { EvidenceBenchmarkSlice } from '@metrev/database';
 import {
-    normalizeCaseInput,
-    rawCaseInputSchema,
+  normalizeCaseInput,
+  rawCaseInputSchema,
 } from '@metrev/domain-contracts';
 import { EvidenceDecisionContextBuilder } from '../../apps/api-server/src/services/evidence-decision-context-builder';
 
@@ -162,7 +162,7 @@ describe('EvidenceDecisionContextBuilder', () => {
     );
   });
 
-  it('derives MEC evidence filters for hydrogen recovery cases', () => {
+  it('keeps wastewater treatment primary and hydrogen evidence secondary for MEC cases', () => {
     const builder = new EvidenceDecisionContextBuilder();
     const normalizedCase = buildNormalizedCase({
       case_id: 'CASE-BUILDER-MEC-001',
@@ -173,10 +173,31 @@ describe('EvidenceDecisionContextBuilder', () => {
 
     expect(filters.systemType).toBe('MEC');
     expect(filters.metricTypes).toEqual([
-      'hydrogen_production',
+      'contaminant_removal_efficiency',
       'current_density',
       'energy_input',
+      'hydrogen_production',
     ]);
+  });
+
+  it('maps legacy objectives to active decision-context applications', () => {
+    const builder = new EvidenceDecisionContextBuilder();
+    const normalizedCase = buildNormalizedCase({
+      case_id: 'CASE-BUILDER-LEGACY-OBJECTIVE-001',
+    });
+    normalizedCase.primary_objective = 'hydrogen_recovery';
+    const filters = builder.deriveStackFilters(normalizedCase);
+    const context = builder.build({
+      benchmarkSlice: buildBenchmarkSlice(),
+      componentTypes: filters.componentTypes,
+      materials: filters.materials,
+      metricTypes: filters.metricTypes,
+      normalizedCase,
+      systemType: filters.systemType,
+    });
+
+    expect(context.primary_objective).toBe('wastewater_treatment');
+    expect(context.query.application).toBe('wastewater_treatment');
   });
 
   it('excludes unknown-access evidence when no license policy is available', () => {
