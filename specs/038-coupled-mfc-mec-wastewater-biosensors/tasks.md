@@ -30,7 +30,7 @@
 - [x] Run mechanistic, case, research API, queue, ingestion planner, and contract tests.
 - [x] Run available typecheck/lint/build gates; record environment-blocked checks accurately.
 - [x] Inspect final diff for generated artifacts, active/historical taxonomy drift, and unsafe data operations.
-- [ ] Commit the implementation on the focused branch and open a pull request for review.
+- [x] Commit the implementation on the focused branch and open a pull request for review.
 
 ## Verification notes
 

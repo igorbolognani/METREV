@@ -2,10 +2,10 @@
 
 # METREV Full Repository Functional Description — Machine-Readable Export
 
-Generated at: 2026-09-23T15:27:43.863Z
+Generated at: 2026-09-23T15:41:15.715Z
 Generator version: full-export-v3
 Source branch: codex/focus-mfc-mec-wastewater-biosensors
-Source commit: e7f77ec32d34417bcca1fedc01a7efb16a95d8db
+Source commit: 0f6a7142ed38c063d25e9a28ce07520312c47b35
 
 This document is generated from tracked repository files for downstream LLM use without repository file access.
 
@@ -31311,7 +31311,7 @@ SPEC_TOUCHED_AREAS:
 - bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml
 - packages/domain-contracts/src/schemas.ts
 - tests/fixtures/raw-case-input.json
-TASK_CHECKBOXES: checked=19; unchecked=1
+TASK_CHECKBOXES: checked=20; unchecked=0
 
 FILE: specs/README.md
 LINES: 110
