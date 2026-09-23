@@ -225,7 +225,7 @@ test.describe('local-first professional workspace', () => {
 
     const wastewaterPreset = page
       .locator('article')
-      .filter({ hasText: 'Autofill industrial wastewater stabilization case' })
+      .filter({ hasText: 'MFC wastewater model inputs' })
       .first();
     await wastewaterPreset
       .getByRole('button', { name: 'Load preset' })
