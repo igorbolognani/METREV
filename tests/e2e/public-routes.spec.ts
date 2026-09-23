@@ -149,7 +149,7 @@ test.describe('public routes - desktop structure', () => {
     await page.getByTestId('public-landing-board-problem').click();
     await expect(
       page.getByRole('heading', {
-        name: 'Map the real biosensor constraints before choosing a stack.',
+        name: 'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.',
       }),
     ).toBeVisible();
     await expect(
