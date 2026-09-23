@@ -540,8 +540,8 @@ function derivativesWithRates(
         : 0,
     phAnode:
       dilution * (p(input, 'operation.influent_ph') - safe.phAnode) +
-      (-protonFlux - phExchange) / anodeBuffer,
-    phCathode: (protonFlux + phExchange) / cathodeBuffer,
+      (-protonFlux + phExchange) / anodeBuffer,
+    phCathode: (protonFlux - phExchange) / cathodeBuffer,
   };
 }
 
@@ -1263,6 +1263,7 @@ export function simulateMechanisticCase(
   const auxiliaryPowerW = p(model, 'operation.auxiliary_power_w');
   const hasAssumedValues = (() => {
     const stack: unknown[] = [model];
+    if (sensor) stack.push(sensor);
     while (stack.length) {
       const next = stack.pop();
       if (!next || typeof next !== 'object') continue;

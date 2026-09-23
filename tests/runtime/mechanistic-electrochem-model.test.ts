@@ -216,6 +216,70 @@ describe('coupled electrochemical mechanistic model', () => {
     );
   });
 
+  it('damps a cathode-to-anode pH gradient through inter-chamber exchange', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    const model = raw.mechanistic_model!;
+    delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
+    model.operation.initial_biomass_kg_m3.value = 0;
+    model.operation.influent_ph.value = 6;
+    model.operation.initial_ph_anode.value = 6;
+    model.operation.initial_ph_cathode.value = 8;
+    model.operation.flow_m3_s.value = 1e-12;
+    model.operation.duration_s.value = 100;
+    model.operation.time_step_s.value = 100;
+    model.biology.proton_transfer_coefficient_mol_s_ph.value = 1e-5;
+
+    const result = evaluate(raw);
+    expect(result.status).toBe('completed');
+    const anodeSeries = result.series.find(
+      (entry) => entry.y_axis.key === 'ph_anode',
+    );
+    const cathodeSeries = result.series.find(
+      (entry) => entry.y_axis.key === 'ph_cathode',
+    );
+    expect(anodeSeries).toBeDefined();
+    expect(cathodeSeries).toBeDefined();
+    const anodePh = anodeSeries!.points;
+    const cathodePh = cathodeSeries!.points;
+    const initialGap = Math.abs(anodePh[0].y - cathodePh[0].y);
+    const nextGap = Math.abs(anodePh[1].y - cathodePh[1].y);
+
+    expect(anodePh[1].y).toBeGreaterThan(anodePh[0].y);
+    expect(cathodePh[1].y).toBeLessThan(cathodePh[0].y);
+    expect(nextGap).toBeLessThan(initialGap);
+  });
+
+  it('lowers integrated biosensor confidence when sensor inputs are assumptions', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    const markSourceKind = (
+      value: unknown,
+      sourceKind: 'measured' | 'assumption',
+    ) => {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => markSourceKind(entry, sourceKind));
+        return;
+      }
+      if (!value || typeof value !== 'object') return;
+      const record = value as Record<string, unknown>;
+      if ('source_kind' in record) record.source_kind = sourceKind;
+      Object.values(record).forEach((entry) =>
+        markSourceKind(entry, sourceKind),
+      );
+    };
+
+    markSourceKind(raw.mechanistic_model, 'measured');
+    markSourceKind(
+      raw.stack_blocks!.sensors_and_analytics!.biosensor,
+      'assumption',
+    );
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('completed');
+    expect(result.confidence.level).toBe('low');
+    expect(result.confidence.score).toBe(20);
+  });
+
   it('solves the MEC voltage boundary and derives hydrogen from Faraday balance', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     raw.technology_family = 'microbial_electrolysis_cell';

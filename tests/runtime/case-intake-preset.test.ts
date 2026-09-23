@@ -159,6 +159,63 @@ describe('case intake preset catalog', () => {
     });
   });
 
+  it('merges wastewater-derived parameters into a partial mechanistic model draft', () => {
+    const payload = buildCaseInputFromFormValues(
+      {
+        ...focusedWastewaterMfcPreset.formValues,
+        mechanisticModelJson: JSON.stringify({
+          operation: {
+            auxiliary_power_w: {
+              value: 0.002,
+              unit: 'W',
+              source_kind: 'measured',
+              source_ref: 'lab-sample:WW-001',
+            },
+          },
+        }),
+        wastewaterQualityJson: JSON.stringify({
+          cod_mg_cod_l: {
+            value: 850,
+            unit: 'mgCOD/L',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+          },
+          temperature_c: {
+            value: 25,
+            unit: '°C',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+          },
+          ph: {
+            value: 6.9,
+            unit: 'pH',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+          },
+          conductivity_ms_per_cm: {
+            value: 12,
+            unit: 'mS/cm',
+            source_kind: 'measured',
+            source_ref: 'lab-sample:WW-001',
+          },
+        }),
+        evidenceTitle: '',
+        evidenceSummary: '',
+      },
+      focusedWastewaterMfcPreset,
+    );
+
+    expect(payload.mechanistic_model?.operation).toEqual(
+      expect.objectContaining({
+        auxiliary_power_w: expect.objectContaining({ value: 0.002 }),
+        influent_cod_kg_m3: expect.objectContaining({ value: 0.85 }),
+        temperature_k: expect.objectContaining({ value: 298.15 }),
+        influent_ph: expect.objectContaining({ value: 6.9 }),
+        electrolyte_conductivity_s_m: expect.objectContaining({ value: 1.2 }),
+      }),
+    );
+  });
+
   it('rejects malformed advanced JSON before the review-submit step', () => {
     expect(
       validateAdvancedInputJson({
