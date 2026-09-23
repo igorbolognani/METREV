@@ -31,7 +31,10 @@ scientific_decision_database_layers:
   raw_evidence:
     purpose: Preserve article/source metadata, provenance, original payload, ingestion batch, and audit trail.
   extracted_scientific_facts:
-    purpose: Store article-derived technical facts such as BES/MFC/MEC system type, materials, membranes, biology, operating conditions, metrics, scale, TRL, limitations, and failure modes.
+    purpose: >-
+      Store source-derived technical facts for MFC, MEC, wastewater, and
+      electrochemical biosensor cases: materials, membranes, biology, operating
+      conditions, metrics, scale, limitations, and failure modes.
   normalized_comparison:
     purpose: Preserve original values while adding canonical units, material names, ontology mappings, confidence, missing-data flags, and uncertainty.
   benchmark:

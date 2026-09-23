@@ -76,22 +76,17 @@ export type TechnicalCompletenessAssessment = {
 export const TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES = [
   'MFC',
   'MEC',
-  'MET',
-  'BES',
+  'electrochemical_biosensor',
 ] as const;
 
 const DOMAIN_TERMS = [
-  'bioelectrochemical',
-  'bio-electrochemical',
   'microbial fuel cell',
   'microbial electrolysis',
-  'microbial electrosynthesis',
-  'microbial desalination cell',
-  'electromethanogenesis',
-  'microbial electrochemical',
+  'electrochemical biosensor',
+  'bioelectrochemical sensor',
   'mfc',
   'mec',
-  'bes',
+  'biosensor',
 ];
 
 const BROAD_REVIEW_TERMS = [
@@ -118,14 +113,17 @@ const REACTOR_MATERIAL_TERMS = [
 ];
 
 const PERFORMANCE_METRIC_TERMS = [
+  'amperometric',
+  'biosensor',
   'cod',
   'coulombic',
   'current',
   'hydrogen',
-  'methane',
+  'lod',
+  'loq',
   'power',
-  'recovery',
   'removal',
+  'signal',
   'voltage',
 ];
 
@@ -192,11 +190,15 @@ function isNormalizedMetric(input: {
 }
 
 function hasTechnologyClassSignal(candidate: TechnicalCompletenessCandidate) {
-  const allowedClasses = new Set<string>(TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES);
+  const allowedClasses = new Set(
+    TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES.map((technology) =>
+      technology.toLowerCase(),
+    ),
+  );
   return [...candidate.canonicalFacts, ...candidate.benchmarkRecords].some(
     (entry) => {
       const systemType = 'systemType' in entry ? entry.systemType : null;
-      return systemType ? allowedClasses.has(systemType.toUpperCase()) : false;
+      return systemType ? allowedClasses.has(systemType.toLowerCase()) : false;
     },
   );
 }
@@ -204,9 +206,13 @@ function hasTechnologyClassSignal(candidate: TechnicalCompletenessCandidate) {
 export function hasTechnicalResearchTechnologyClass(
   technologyClasses: string[],
 ) {
-  const allowedClasses = new Set<string>(TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES);
+  const allowedClasses = new Set(
+    TECHNICAL_RESEARCH_TECHNOLOGY_CLASSES.map((technology) =>
+      technology.toLowerCase(),
+    ),
+  );
   return technologyClasses.some((technology) =>
-    allowedClasses.has(technology.toUpperCase()),
+    allowedClasses.has(technology.toLowerCase()),
   );
 }
 
@@ -265,7 +271,7 @@ export function evaluateTechnicalCompleteness(
       notLowQuality,
   };
   const requirements: Array<[string, boolean]> = [
-    ['domain_specific_met_mfc_mec_bes', domainSpecific],
+    ['domain_specific_mfc_mec_biosensor', domainSpecific],
     ['stable_identifier', sourceIdentity],
     ['abstract_available', candidate.abstractAvailable],
     ['traceable_source_chunks', traceableSourceText],

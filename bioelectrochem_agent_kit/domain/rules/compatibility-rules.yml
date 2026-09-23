@@ -17,17 +17,17 @@ rules:
     output_note: Consider architectures and BOP configurations that tolerate solids, shocks, and maintenance access.
 
   - id: mec_cathode_priority_001
-    title: Hydrogen-oriented MEC objectives increase cathode-side criticality
+    title: MEC wastewater-treatment cases require cathode-side hydrogen handling
     applies_when:
       technology_family: microbial_electrolysis_cell
-      primary_objective: hydrogen_recovery
+      primary_objective: wastewater_treatment
     logic:
       increase_weight_for:
         - target_reaction_fit
         - durability
         - gas_handling_readiness
         - crossover_control
-    output_note: Cathode strategy, gas handling, and separator logic become priority design dimensions.
+    output_note: Hydrogen is a secondary modeled MEC output; cathode strategy, gas handling, and separator logic remain explicit design dimensions.
 
   - id: sensing_confidence_001
     title: Limited sensing reduces defensibility of strong operational conclusions

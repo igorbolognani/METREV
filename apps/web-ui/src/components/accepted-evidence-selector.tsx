@@ -114,8 +114,7 @@ export function AcceptedEvidenceSelector({
             { label: 'All accepted systems', value: 'all' },
             { label: 'MFC', value: 'MFC' },
             { label: 'MEC', value: 'MEC' },
-            { label: 'MET', value: 'MET' },
-            { label: 'BES', value: 'BES' },
+            { label: 'Electrochemical biosensor', value: 'BIOSENSOR' },
           ]}
           value={systemType || 'all'}
         />

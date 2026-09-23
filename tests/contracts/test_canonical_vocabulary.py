@@ -122,6 +122,31 @@ def test_rule_metric_references_use_only_property_dictionary_metrics() -> None:
     assert not invalid, f"Invalid metric references found: {invalid}"
 
 
+def test_mechanistic_and_sensor_outputs_are_registered_metrics() -> None:
+    property_dictionary = _load_yaml(ONTOLOGY_ROOT / "property_dictionary.yaml")
+    metric_names = [item["name"] for item in property_dictionary["properties"]]
+    registered = set(metric_names)
+    required_model_outputs = {
+        "cod_removal_pct",
+        "effluent_cod_kg_m3",
+        "mec_cell_electrical_input_w",
+        "mec_total_electrical_demand_w",
+        "mec_cell_electrical_input_energy_j",
+        "mec_total_electrical_demand_energy_j",
+        "gross_electrical_output_energy_j",
+        "hydrogen_gross_production_mol_s",
+        "hydrogen_captured_production_mol_s",
+        "hydrogen_gross_production_mol",
+        "hydrogen_captured_production_mol",
+        "biosensor_signal_current_a",
+        "biosensor_signal_to_noise_ratio",
+        "biosensor_detection_status",
+    }
+
+    assert required_model_outputs.issubset(registered)
+    assert len(metric_names) == len(registered), "Duplicate property dictionary metrics found"
+
+
 def test_defaults_policy_keys_use_only_contract_stack_paths() -> None:
     allowed = _allowed_stack_fields()
     defaults = _load_yaml(RULES_ROOT / "defaults.yaml")
@@ -230,6 +255,18 @@ def test_domain_property_dictionary_declares_control_metadata_for_core_fields() 
             f"Missing confidence_impact for {field_name}"
         )
 
+    technology_family = properties["technology_family"]
+    assert technology_family.get("allowed") == [
+        "microbial_fuel_cell",
+        "microbial_electrolysis_cell",
+        "electrochemical_biosensor",
+    ]
+    assert technology_family.get("normalization_only_values") == ["unclassified"]
+    assert technology_family.get("default_behavior") == "no_family_default"
+    assert technology_family.get("missing_behavior") == (
+        "normalize_to_unclassified_and_block_model_execution"
+    )
+
 
 def test_domain_property_dictionary_uses_canonical_technology_family() -> None:
     property_dictionary = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "property-dictionary.yml")
@@ -237,10 +274,44 @@ def test_domain_property_dictionary_uses_canonical_technology_family() -> None:
         "technology_family", {}
     )
 
+    assert set(technology_family.get("allowed", [])) == {
+        "microbial_fuel_cell",
+        "microbial_electrolysis_cell",
+        "electrochemical_biosensor",
+    }
     assert "microbial_electrochemical_technology" in technology_family.get(
-        "allowed", []
+        "historical_values", []
     )
+    assert technology_family.get("normalization_only_values") == ["unclassified"]
     assert "hybrid_or_other_met" in technology_family.get("legacy_aliases", [])
+
+    primary_objective = (property_dictionary.get("properties") or {}).get(
+        "primary_objective", {}
+    )
+    assert set(primary_objective.get("allowed", [])) == {
+        "wastewater_treatment",
+        "biosensing",
+    }
+    assert "hydrogen_recovery" in primary_objective.get("historical_values", [])
+
+    stack_taxonomy = _load_yaml(DOMAIN_ONTOLOGY_ROOT / "stack-taxonomy.yml")
+    assert set(stack_taxonomy["scope"]["primary_technologies"]) == {
+        "microbial_fuel_cell",
+        "microbial_electrolysis_cell",
+        "electrochemical_biosensor",
+    }
+    assert stack_taxonomy["scope"]["normalization_only_values"] == ["unclassified"]
+
+    stack_contract = _load_yaml(ONTOLOGY_ROOT / "stack.yaml")
+    case_fields = stack_contract["canonical_entities"]["case"]["fields"]
+    assert case_fields["technology_family"]["allowed"] == [
+        "microbial_fuel_cell",
+        "microbial_electrolysis_cell",
+        "electrochemical_biosensor",
+    ]
+    assert case_fields["technology_family"]["normalization_only_values"] == [
+        "unclassified"
+    ]
 
 
 def test_research_contract_pack_declares_core_boundaries() -> None:
@@ -281,8 +352,9 @@ def test_research_taxonomy_and_contracts_align_on_active_surface_eligibility() -
         or []
     )
 
-    assert {"MFC", "MEC", "MET"}.issubset(required_scope)
-    assert {"MFC", "MEC", "MET"}.issubset(technology_contract)
+    assert required_scope == {"MFC", "MEC", "electrochemical_biosensor"}
+    assert required_scope.issubset(technology_contract)
+    assert not {"MET", "MDC", "BES", "hybrid_system"}.intersection(technology_contract)
     assert {
         "full_access_traceable",
         "missing_full_text_link",
@@ -358,11 +430,9 @@ def test_research_domain_taxonomy_and_metric_rules_cover_runtime_terms() -> None
     assert {
         "MFC",
         "MEC",
-        "MDC",
-        "BES",
-        "bioelectrochemical_sensor",
-        "hybrid_system",
+        "electrochemical_biosensor",
     }.issubset(technologies)
+    assert technologies == {"MFC", "MEC", "electrochemical_biosensor"}
 
     metric_rules = _load_yaml(DOMAIN_RULES_ROOT / "research-metric-normalization.yml")
     rule_ids = {rule.get("id") for rule in metric_rules.get("rules") or []}
@@ -385,16 +455,12 @@ def test_research_domain_taxonomy_and_metric_rules_cover_runtime_terms() -> None
     }.issubset(rule_ids)
 
     applications = set((taxonomy.get("application_areas") or {}).keys())
-    assert {
+    assert applications == {
+        "wastewater_treatment",
+        "biosensing",
+        "coupled_system_modeling",
         "electrode_materials",
-        "nutrient_recovery",
-        "hydrogen_recovery",
-        "co2_valorisation",
-        "desalination",
-        "bioremediation",
-        "industrial_bioproduction",
-        "industrial_adoption",
-    }.issubset(applications)
+    }
 
 
 def test_metadata_taxonomy_declares_veracity_and_local_ingestion_boundaries() -> None:

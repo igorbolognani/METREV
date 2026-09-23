@@ -21,17 +21,7 @@ enums:
   confidence:
     allowed: [low, medium, high]
   technology_class:
-    allowed:
-      [
-        MFC,
-        MEC,
-        MET,
-        MDC,
-        BES,
-        bioelectrochemical_sensor,
-        hybrid_system,
-        not_reported,
-      ]
+    allowed: [MFC, MEC, electrochemical_biosensor, not_reported]
   component_type:
     allowed:
       - reactor

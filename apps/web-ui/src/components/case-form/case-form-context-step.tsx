@@ -17,20 +17,12 @@ const technologyFamilyOptions = [
     label: 'Microbial electrolysis cell',
     value: 'microbial_electrolysis_cell',
   },
-  {
-    label: 'Microbial electrochemical technology',
-    value: 'microbial_electrochemical_technology',
-  },
+  { label: 'Electrochemical biosensor', value: 'electrochemical_biosensor' },
 ] as const;
 
 const primaryObjectiveOptions = [
   { label: 'Wastewater treatment', value: 'wastewater_treatment' },
-  { label: 'Hydrogen recovery', value: 'hydrogen_recovery' },
-  { label: 'Nitrogen recovery', value: 'nitrogen_recovery' },
-  { label: 'Sensing', value: 'sensing' },
-  { label: 'Low power generation', value: 'low_power_generation' },
-  { label: 'Biogas synergy', value: 'biogas_synergy' },
-  { label: 'Other', value: 'other' },
+  { label: 'Biosensing', value: 'biosensing' },
 ] as const;
 
 const currentTrlSuggestions = ['lab', 'bench', 'pilot', 'field'];

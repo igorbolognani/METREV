@@ -1,13 +1,10 @@
 {
-  "version": 2,
-  "name": "metrev-curated-bigdata-seed",
-  "snapshotType": "sharded_curated_manifest",
-  "recordCount": 12,
-  "claimCount": 20,
-  "supplierDocumentCount": 5,
-  "shards": [
-    "./curated-bigdata-shards/supplier-profiles.json",
-    "./curated-bigdata-shards/market-snapshots.json",
-    "./curated-bigdata-shards/analyst-briefs.json"
-  ]
+  "version": 3,
+  "name": "metrev-empty-curated-manifest",
+  "snapshotType": "empty_until_source_review",
+  "recordCount": 0,
+  "claimCount": 0,
+  "supplierDocumentCount": 0,
+  "shards": [],
+  "records": []
 }
