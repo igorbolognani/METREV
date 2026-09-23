@@ -15,7 +15,30 @@
   "feed_and_operation": {
     "influent_type": "high-strength industrial wastewater",
     "temperature_c": 28,
-    "pH": 7.1
+    "pH": 7.1,
+    "water_quality": {
+      "bod5_mg_o2_l": {
+        "value": 500,
+        "unit": "mgO2/L",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "tss_mg_l": {
+        "value": 120,
+        "unit": "mg/L",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "alkalinity_mol_m3": {
+        "value": 20,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "sample_method": "synthetic fixture values for contract tests only",
+      "sampling_point": "influent",
+      "filtered_or_total": "total"
+    }
   },
   "stack_blocks": {
     "anode_biofilm_support": {
@@ -26,7 +49,449 @@
     },
     "balance_of_plant": {
       "bop_summary": "recirculation loop with manual dosing"
+    },
+    "sensors_and_analytics": {
+      "biosensor": {
+        "deployment_mode": "mfc_integrated",
+        "power_source": "mfc_harvested",
+        "analyte_id": "bod",
+        "measurand": "biochemical oxygen demand",
+        "concentration_unit": "mg/L",
+        "matrix": "synthetic wastewater test matrix",
+        "recognition_element": "mixed microbial biofilm",
+        "transduction_mode": "amperometric",
+        "concentration": {
+          "value": 40,
+          "unit": "mg/L",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "temperature_k": {
+          "value": 301.15,
+          "unit": "K",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "ph": {
+          "value": 7.1,
+          "unit": "pH",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "calibration": {
+          "model": "linear",
+          "sensitivity_a_per_unit": {
+            "value": 1e-7,
+            "unit": "A/(mg/L)",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "intercept_a": {
+            "value": 1e-8,
+            "unit": "A",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "calibration_date": "2026-01-01",
+          "reference_method": "synthetic calibration for software tests only",
+          "range_min": {
+            "value": 0,
+            "unit": "mg/L",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "range_max": {
+            "value": 100,
+            "unit": "mg/L",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          }
+        },
+        "analytical_performance": {
+          "lod": {
+            "value": 2,
+            "unit": "mg/L",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "loq": {
+            "value": 6,
+            "unit": "mg/L",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "response_time_s": {
+            "value": 600,
+            "unit": "s",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "recovery_time_s": {
+            "value": 1200,
+            "unit": "s",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "noise_std_a": {
+            "value": 1e-9,
+            "unit": "A",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "drift_a_per_day": {
+            "value": 1e-8,
+            "unit": "A/day",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "repeatability_cv_pct": {
+            "value": 5,
+            "unit": "%",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "accuracy_pct": {
+            "value": 90,
+            "unit": "%",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "selectivity_pct": {
+            "value": 85,
+            "unit": "%",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "interferences": ["ammonia", "salinity", "temperature"],
+          "calibration_r2": {
+            "value": 0.99,
+            "unit": "1",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          },
+          "replicate_count": {
+            "value": 3,
+            "unit": "count",
+            "source_kind": "test_fixture",
+            "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+          }
+        },
+        "power_consumption_w": {
+          "value": 1e-7,
+          "unit": "W",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "working_electrode_material": "glassy carbon",
+        "reference_electrode_material": "Ag/AgCl",
+        "counter_electrode_material": "platinum",
+        "electrode_material_source_ref": "test-fixture://coupled-mfc-biosensor-v1",
+        "electrode_immobilization_method": "covalent attachment",
+        "electrode_coating_or_membrane": "Nafion film",
+        "working_electrode_area_m2": {
+          "value": 0.0001,
+          "unit": "m2",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "biorecognition_loading_mg_cm2": {
+          "value": 0.1,
+          "unit": "mg/cm2",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "ionic_strength_mol_m3": {
+          "value": 100,
+          "unit": "mol/m3",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        },
+        "power_available_w": {
+          "value": 0.01,
+          "unit": "W",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+        }
+      }
     }
   },
-  "evidence_refs": ["literature:pilot-baseline"]
+  "evidence_refs": ["literature:pilot-baseline"],
+  "mechanistic_model": {
+    "model_version": "coupled-0d-dae-v1",
+    "system_type": "MFC",
+    "geometry": {
+      "anode_chamber_volume_m3": {
+        "value": 0.001,
+        "unit": "m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_chamber_volume_m3": {
+        "value": 0.001,
+        "unit": "m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "anode_area_m2": {
+        "value": 0.01,
+        "unit": "m2",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_area_m2": {
+        "value": 0.01,
+        "unit": "m2",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "electrode_gap_m": {
+        "value": 0.01,
+        "unit": "m",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "membrane_present": false
+    },
+    "operation": {
+      "flow_m3_s": {
+        "value": 1e-9,
+        "unit": "m3/s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "influent_cod_kg_m3": {
+        "value": 0.8,
+        "unit": "kgCOD/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "temperature_k": {
+        "value": 301.15,
+        "unit": "K",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "influent_ph": {
+        "value": 7.1,
+        "unit": "pH",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "initial_ph_anode": {
+        "value": 7.1,
+        "unit": "pH",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "initial_ph_cathode": {
+        "value": 7.1,
+        "unit": "pH",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "initial_cod_kg_m3": {
+        "value": 0.8,
+        "unit": "kgCOD/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "initial_biomass_kg_m3": {
+        "value": 0.2,
+        "unit": "kgVSS/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "initial_dissolved_oxygen_kg_m3": {
+        "value": 0.008,
+        "unit": "kgO2/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "oxygen_saturation_kg_m3": {
+        "value": 0.008,
+        "unit": "kgO2/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "electrolyte_conductivity_s_m": {
+        "value": 0.2,
+        "unit": "S/m",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "duration_s": {
+        "value": 86400,
+        "unit": "s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "time_step_s": {
+        "value": 3600,
+        "unit": "s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "biomass_washout_rate_s_inv": {
+        "value": 0.0,
+        "unit": "1/s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "auxiliary_power_w": {
+        "value": 0.001,
+        "unit": "W",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      }
+    },
+    "biology": {
+      "max_specific_cod_uptake_kg_cod_kg_biomass_s": {
+        "value": 0.0001,
+        "unit": "kgCOD/(kgVSS*s)",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "half_saturation_cod_kg_m3": {
+        "value": 0.1,
+        "unit": "kgCOD/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "biomass_yield_kg_biomass_kg_cod": {
+        "value": 0.1,
+        "unit": "kgVSS/kgCOD",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "decay_rate_s_inv": {
+        "value": 1e-6,
+        "unit": "1/s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "coulombic_efficiency": {
+        "value": 0.6,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "ph_optimum": {
+        "value": 7.0,
+        "unit": "pH",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "ph_tolerance": {
+        "value": 1.5,
+        "unit": "pH",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "activation_energy_j_mol": {
+        "value": 40000,
+        "unit": "J/mol",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "reference_temperature_k": {
+        "value": 298.15,
+        "unit": "K",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "buffer_capacity_anode_mol_m3_ph": {
+        "value": 100,
+        "unit": "mol/(m3*pH)",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "buffer_capacity_cathode_mol_m3_ph": {
+        "value": 100,
+        "unit": "mol/(m3*pH)",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "proton_transfer_coefficient_mol_s_ph": {
+        "value": 1e-7,
+        "unit": "mol/(s*pH)",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      }
+    },
+    "electrochemistry": {
+      "reversible_cell_voltage_v": {
+        "value": 0.8,
+        "unit": "V",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "anode_exchange_current_density_a_m2": {
+        "value": 0.1,
+        "unit": "A/m2",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_exchange_current_density_a_m2": {
+        "value": 1.0,
+        "unit": "A/m2",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "anode_charge_transfer_coefficient": {
+        "value": 0.5,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_charge_transfer_coefficient": {
+        "value": 0.5,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "oxygen_mass_transfer_coefficient_m_s": {
+        "value": 1e-5,
+        "unit": "m/s",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "external_load_ohm": {
+        "value": 100,
+        "unit": "ohm",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_reaction": "oxygen_reduction",
+      "contact_resistance_ohm": {
+        "value": 0.1,
+        "unit": "ohm",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      }
+    },
+    "materials": {
+      "anode_material_family": "carbon felt",
+      "anode_material_source_ref": "test-fixture://coupled-mfc-biosensor-v1",
+      "cathode_material_family": "carbon cloth",
+      "cathode_material_source_ref": "test-fixture://coupled-mfc-biosensor-v1",
+      "anode_electroactive_area_factor": {
+        "value": 1.0,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "cathode_electroactive_area_factor": {
+        "value": 1.0,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      },
+      "biofilm_electroactive_fraction": {
+        "value": 0.6,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "test-fixture://coupled-mfc-biosensor-v1"
+      }
+    }
+  }
 }

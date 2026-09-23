@@ -103,7 +103,7 @@ export const DEFAULT_RESEARCH_COLUMNS: ResearchColumnDefinition[] = [
     type: 'deterministic',
     answer_structure: 'system_performance_subset',
     instructions:
-      'Extract H2, methane, acetate, desalination, recovered chemicals, or other product outputs when stated.',
+      'Extract MEC hydrogen as a secondary output and wastewater treatment metrics when stated; preserve source units and evidence spans.',
     output_schema_key: 'system_performance',
     output_schema: {},
     visible: true,

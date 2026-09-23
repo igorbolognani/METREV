@@ -4,64 +4,64 @@ import { basename } from 'node:path';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    evidenceClaimSchema,
-    localSourceImportResponseSchema,
-    metadataQualityProfileSchema,
-    researchBackfillListResponseSchema,
-    researchBackfillSummarySchema,
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchExtractionJobSchema,
-    researchExtractionResultSchema,
-    researchPaperMetadataSchema,
-    researchPaperSearchFailureSchema,
-    researchReviewDetailSchema,
-    researchReviewListResponseSchema,
-    researchReviewSummarySchema,
-    researchWarehouseEligibilityResponseSchema,
-    searchResearchPapersResponseSchema,
-    sourceArtifactSchema,
-    stageResearchPapersResponseSchema,
-    type AddResearchColumnRequest,
-    type CreateResearchReviewRequest,
-    type EvidenceClaim,
-    type LocalSourceImportRequest,
-    type LocalSourceImportResponse,
-    type QueueResearchBackfillRequest,
-    type ResearchBackfillListResponse,
-    type ResearchBackfillSummary,
-    type ResearchColumnDefinition,
-    type ResearchDecisionIngestionPreview,
-    type ResearchEvidencePack,
-    type ResearchExtractionJob,
-    type ResearchExtractionResult,
-    type ResearchPaperMetadata,
-    type ResearchPaperSearchFailure,
-    type ResearchPaperSearchResult,
-    type ResearchReviewDetail,
-    type ResearchReviewListResponse,
-    type ResearchWarehouseEligibilityItem,
-    type ResearchWarehouseEligibilityRequest,
-    type ResearchWarehouseEligibilityResponse,
-    type SearchResearchPapersRequest,
-    type SearchResearchPapersResponse,
-    type SourceArtifact,
-    type StageResearchPapersRequest,
-    type StageResearchPapersResponse,
+  evidenceClaimSchema,
+  localSourceImportResponseSchema,
+  metadataQualityProfileSchema,
+  researchBackfillListResponseSchema,
+  researchBackfillSummarySchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchExtractionJobSchema,
+  researchExtractionResultSchema,
+  researchPaperMetadataSchema,
+  researchPaperSearchFailureSchema,
+  researchReviewDetailSchema,
+  researchReviewListResponseSchema,
+  researchReviewSummarySchema,
+  researchWarehouseEligibilityResponseSchema,
+  searchResearchPapersResponseSchema,
+  sourceArtifactSchema,
+  stageResearchPapersResponseSchema,
+  type AddResearchColumnRequest,
+  type CreateResearchReviewRequest,
+  type EvidenceClaim,
+  type LocalSourceImportRequest,
+  type LocalSourceImportResponse,
+  type QueueResearchBackfillRequest,
+  type ResearchBackfillListResponse,
+  type ResearchBackfillSummary,
+  type ResearchColumnDefinition,
+  type ResearchDecisionIngestionPreview,
+  type ResearchEvidencePack,
+  type ResearchExtractionJob,
+  type ResearchExtractionResult,
+  type ResearchPaperMetadata,
+  type ResearchPaperSearchFailure,
+  type ResearchPaperSearchResult,
+  type ResearchReviewDetail,
+  type ResearchReviewListResponse,
+  type ResearchWarehouseEligibilityItem,
+  type ResearchWarehouseEligibilityRequest,
+  type ResearchWarehouseEligibilityResponse,
+  type SearchResearchPapersRequest,
+  type SearchResearchPapersResponse,
+  type SourceArtifact,
+  type StageResearchPapersRequest,
+  type StageResearchPapersResponse,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 
 import { getPrismaClient } from './prisma-client';
 import {
-    dedupeResearchPaperItems,
-    searchResearchPapers as searchResearchPapersFromProviders,
-    stageResearchPapers as stageResearchPapersToWarehouse,
+  dedupeResearchPaperItems,
+  searchResearchPapers as searchResearchPapersFromProviders,
+  stageResearchPapers as stageResearchPapersToWarehouse,
 } from './research-paper-search';
 import {
-    buildEvidenceVeracityScore,
-    getSourceArtifactForSourceDocument,
-    importLocalPdfSources,
-    resolveLocalSourceImportRequestToInput,
+  buildEvidenceVeracityScore,
+  getSourceArtifactForSourceDocument,
+  importLocalPdfSources,
+  resolveLocalSourceImportRequestToInput,
 } from './source-artifacts';
 
 export interface CreateResearchReviewInput extends CreateResearchReviewRequest {
@@ -459,7 +459,7 @@ function summarizeEligibilityItems(items: ResearchWarehouseEligibilityItem[]) {
   };
 }
 
-function detectResearchTechnologyClasses(
+export function detectResearchTechnologyClasses(
   text: string,
 ): ResearchWarehouseEligibilityItem['technology_classes'] {
   const normalized = text.toLowerCase();
@@ -477,18 +477,11 @@ function detectResearchTechnologyClasses(
     classes.add('MEC');
   }
   if (
-    /\bMETs?\b/i.test(text) ||
-    normalized.includes('microbial electrochemical technolog') ||
-    normalized.includes('microbial electrochemical system') ||
-    normalized.includes('microbial electrosynthesis')
+    normalized.includes('electrochemical biosensor') ||
+    normalized.includes('bioelectrochemical sensor') ||
+    normalized.includes('amperometric biosensor')
   ) {
-    classes.add('MET');
-  }
-  if (
-    /\bBES\b/i.test(text) ||
-    normalized.includes('bioelectrochemical system')
-  ) {
-    classes.add('BES');
+    classes.add('electrochemical_biosensor');
   }
 
   return [...classes];
@@ -542,7 +535,7 @@ function hasFullTextLink(source: {
   );
 }
 
-function assessResearchWarehouseEligibility(source: {
+export function assessResearchWarehouseEligibility(source: {
   abstractText?: string | null;
   accessStatus?: unknown;
   doi?: string | null;
@@ -585,7 +578,7 @@ function assessResearchWarehouseEligibility(source: {
   }
   if (
     technologyClasses.filter((technology) =>
-      ['MFC', 'MEC', 'MET'].includes(technology),
+      ['MFC', 'MEC', 'electrochemical_biosensor'].includes(technology),
     ).length === 0
   ) {
     reasons.push('out_of_scope_technology');
@@ -1216,12 +1209,12 @@ function createDefaultMemoryPaper(index: number): ResearchPaperMetadata {
     source_document_id: `memory-source-${index}`,
     title:
       index === 1
-        ? 'Microbial fuel cell wastewater treatment with carbon felt anodes'
-        : 'Microbial electrolysis cell hydrogen recovery under pilot conditions',
+        ? 'TEST FIXTURE ONLY: MFC wastewater treatment with carbon felt anodes'
+        : 'TEST FIXTURE ONLY: MEC wastewater treatment with hydrogen as a secondary output',
     authors: [{ name: 'METREV Fixture Author' }],
-    year: 2025,
-    doi: `10.1000/research-${index}`,
-    journal: 'METREV deterministic research fixtures',
+    year: null,
+    doi: null,
+    journal: 'METREV test fixture (not a publication)',
     publisher: 'METREV Local Evidence Lab',
     source_type: 'manual',
     source_url: null,
@@ -1229,10 +1222,10 @@ function createDefaultMemoryPaper(index: number): ResearchPaperMetadata {
     xml_url: null,
     abstract_text:
       index === 1
-        ? 'A dual chamber microbial fuel cell using carbon felt anodes and an air cathode reached power density of 850 mW/m2 with COD removal of 82% at pH 7 and 30 C. Membrane fouling and scale-up cost remained challenges.'
-        : 'A microbial electrolysis cell produced hydrogen from acetate wastewater at current density of 1.8 A/m2. Long startup and electrode cost limited implementation.',
+        ? 'TEST FIXTURE ONLY; these numbers are fabricated for software tests, not research evidence: a dual chamber microbial fuel cell using carbon felt anodes and an air cathode reached power density of 850 mW/m2 with COD removal of 82% at pH 7 and 30 C.'
+        : 'TEST FIXTURE ONLY; these numbers are fabricated for software tests, not research evidence: a microbial electrolysis cell treating wastewater produced hydrogen at current density of 1.8 A/m2.',
     citation_count: null,
-    metadata: {},
+    metadata: { test_fixture: true, not_scientific_evidence: true },
   });
 }
 
@@ -1273,7 +1266,7 @@ export class MemoryResearchRepository implements ResearchRepository {
           'A live-search fixture paper describing carbon felt anodes, COD removal, and power density.',
         citation_count: 14,
         access_status: 'green',
-        source_license: 'CC-BY-4.0',
+        source_license: null,
         metadata: {
           fixture: true,
           provider: 'openalex',
@@ -1306,7 +1299,7 @@ export class MemoryResearchRepository implements ResearchRepository {
         source_type: 'europe_pmc',
         source_key: 'MED:12345678',
         document_type: 'paper',
-        title: `Europe PMC wastewater recovery fixture for ${compactQuery}`,
+        title: `TEST FIXTURE ONLY: Europe PMC wastewater biosensor record for ${compactQuery}`,
         authors: [{ name: 'Fixture Europe PMC Author' }],
         year: 2023,
         doi: '10.5555/europepmc-fixture-001',
@@ -1316,10 +1309,10 @@ export class MemoryResearchRepository implements ResearchRepository {
         pdf_url: null,
         xml_url: 'https://europepmc.org/articles/PMC123456/fulltext.xml',
         abstract_text:
-          'A Europe PMC fixture covering nutrient recovery and bioelectrochemical wastewater treatment.',
+          'TEST FIXTURE ONLY; not a real Europe PMC record. Used to test wastewater biosensor search import.',
         citation_count: 5,
         access_status: 'green',
-        source_license: 'CC-BY-4.0',
+        source_license: null,
         metadata: {
           fixture: true,
           provider: 'europe_pmc',

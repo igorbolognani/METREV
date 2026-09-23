@@ -837,7 +837,7 @@ function LandingReferenceIcon({ slug }: { slug: PublicTopicSlug }) {
           fill="#fff"
           fontWeight="800"
         >
-          BES
+          MFC/MEC
         </text>
         <text
           x="16"

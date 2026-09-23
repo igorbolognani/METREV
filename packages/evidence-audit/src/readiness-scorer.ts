@@ -18,14 +18,30 @@ function toSystemType(
     return 'MEC';
   }
 
-  return 'MET';
+  if (technologyFamily === 'electrochemical_biosensor') {
+    return 'BIOSENSOR';
+  }
+
+  return 'UNCLASSIFIED';
 }
 
-function objectiveMetrics(objective: PrimaryObjective): string[] {
+function objectiveMetrics(
+  objective: PrimaryObjective,
+  systemType: string,
+): string[] {
   return (
-    loadEvidenceQualityAuditPolicy().primary_metrics_by_objective[objective] ??
-    []
+    loadEvidenceQualityAuditPolicy().primary_metrics_by_objective[objective]?.[
+      systemType
+    ] ?? []
   );
+}
+
+function activeObjective(
+  objective: NormalizedCaseInput['primary_objective'],
+): PrimaryObjective {
+  return objective === 'biosensing' || objective === 'sensing'
+    ? 'biosensing'
+    : 'wastewater_treatment';
 }
 
 function matchingEntries(input: {
@@ -55,7 +71,10 @@ export function scoreReadiness(input: {
 }): ReadinessScore[] {
   return (input.goldenCases ?? []).map((caseInput) => {
     const systemType = toSystemType(caseInput.technology_family);
-    const metricTypes = objectiveMetrics(caseInput.primary_objective);
+    const metricTypes = objectiveMetrics(
+      activeObjective(caseInput.primary_objective),
+      systemType,
+    );
     const entries = matchingEntries({
       coverageMatrix: input.coverageMatrix,
       systemType,

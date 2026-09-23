@@ -8,7 +8,7 @@ defaults_policy:
   defaults:
     case.cross_cutting_layers.risk_and_maturity.trl:
       default: 3
-      justification: Conservative assumption for early BES deployments unless stronger evidence exists.
+      justification: Conservative assumption for early MFC/MEC wastewater or electrochemical biosensor deployments unless stronger evidence exists.
 
     case.stack_blocks.sensors_and_analytics.data_quality:
       default: medium
