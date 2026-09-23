@@ -8,12 +8,32 @@ canonical_entities:
       case_id: string
       technology_family:
         type: enum
-        allowed: [microbial_fuel_cell, microbial_electrolysis_cell, microbial_electrochemical_technology]
+        allowed:
+          [
+            microbial_fuel_cell,
+            microbial_electrolysis_cell,
+            electrochemical_biosensor,
+          ]
+        historical_read_values: [microbial_electrochemical_technology]
+        normalization_only_values: [unclassified]
       architecture_family: string
-      primary_objective: string
+      primary_objective:
+        type: enum
+        allowed: [wastewater_treatment, biosensing]
+        historical_read_values:
+          [
+            hydrogen_recovery,
+            nitrogen_recovery,
+            sensing,
+            low_power_generation,
+            biogas_synergy,
+            other,
+          ]
+        normalized_active_values: [wastewater_treatment, biosensing]
       business_context: object
       technology_context: object
       feed_and_operation: object
+      mechanistic_model: object
       stack_blocks: object
       cross_cutting_layers: object
 
@@ -41,6 +61,27 @@ canonical_entities:
         hydraulic_retention_time_h: number
         salinity_or_conductivity_context: string
         operating_regime: string
+        water_quality:
+          cod_mg_cod_l: object
+          bod5_mg_o2_l: object
+          tss_mg_l: object
+          alkalinity_mol_m3: object
+          total_nitrogen_mg_n_l: object
+          ammonium_mg_n_l: object
+          nitrate_mg_n_l: object
+          total_phosphorus_mg_p_l: object
+          sulfate_mg_s_l: object
+          chloride_mg_l: object
+          salinity_kg_m3: object
+          turbidity_ntu: object
+          volatile_fatty_acids_mol_m3: object
+          dissolved_oxygen_mg_l: object
+          temperature_c: object
+          ph: object
+          conductivity_ms_per_cm: object
+          sample_method: string
+          sampling_point: string
+          filtered_or_total: string
 
       stack_blocks:
         reactor_architecture:
@@ -72,6 +113,53 @@ canonical_entities:
           data_quality: string
           voltage_current_logging: string
           water_quality_coverage: string
+          biosensor:
+            deployment_mode: string
+            power_source: string
+            analyte_id: string
+            measurand: string
+            concentration_unit: string
+            matrix: string
+            recognition_element: string
+            working_electrode_material: string
+            reference_electrode_material: string
+            counter_electrode_material: string
+            electrode_material_source_ref: string
+            electrode_immobilization_method: string
+            electrode_coating_or_membrane: string
+            electron_transfer_mediator: string
+            working_electrode_area_m2: object
+            biorecognition_loading_mg_cm2: object
+            ionic_strength_mol_m3: object
+            transduction_mode: string
+            concentration: object
+            temperature_k: object
+            ph: object
+            calibration:
+              model: string
+              sensitivity_a_per_unit: object
+              intercept_a: object
+              maximum_current_a: object
+              half_saturation_concentration: object
+              calibration_date: string
+              reference_method: string
+              range_min: object
+              range_max: object
+            analytical_performance:
+              lod: object
+              loq: object
+              response_time_s: object
+              recovery_time_s: object
+              noise_std_a: object
+              drift_a_per_day: object
+              repeatability_cv_pct: object
+              accuracy_pct: object
+              selectivity_pct: object
+              interferences: list[string]
+              calibration_r2: object
+              replicate_count: object
+            power_consumption_w: object
+            power_available_w: object
         operational_biology:
           biofilm_maturity: string
           contamination_risk: string
@@ -105,7 +193,12 @@ stack_blocks:
   balance_of_plant:
     description: Pumps, gas handling, dosing, recirculation, and auxiliary hardware.
   sensors_and_analytics:
-    description: Instrumentation, diagnostics, data logging, and laboratory validation.
+    description: Instrumentation and electrochemical biosensors, including standalone and reactor-integrated deployments.
+    fields:
+      - biosensor_definition
+      - calibration
+      - analytical_performance
+      - power_budget
   operational_biology:
     description: Inoculum, startup behavior, microbial resilience, and biological operating regime.
 

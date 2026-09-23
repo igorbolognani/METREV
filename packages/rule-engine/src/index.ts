@@ -58,8 +58,6 @@ const derivedObservationRuleInputKeys = new Set([
   'power_density_w_m2',
   'internal_resistance_ohm',
   'cod_removal_pct',
-  'nitrogen_recovery_proxy_pct',
-  'hydrogen_recovery_proxy_rate',
   'operating_window_temperature_c',
   'operating_window_ph',
   'operating_window_conductivity_ms_per_cm',

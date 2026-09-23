@@ -28,7 +28,7 @@ describe('public landing page', () => {
     expect(html).toContain('Public topic routes');
     expect(html).toContain('Overview');
     expect(html).toContain('METREV');
-    expect(html).toContain('METREV BIOELETROCHEMICAL DECISION SUPPORT');
+    expect(html).toContain('METREV MFC/MEC + BIOSENSOR DECISION SUPPORT');
     expect(html).toContain(
       'Explore the scientific instrument one engineering lens at a time.',
     );
@@ -46,8 +46,9 @@ describe('public landing page', () => {
       'Follow the same decision path METREV uses in practice:',
     );
     expect(html).toContain(
-      'Map the real BES pressure before choosing a stack.',
+      'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.',
     );
+    expect(html).toContain('wastewater outcomes against baselines');
     expect(html).toContain('Pressure map');
     expect(html).toContain('Workflow instrument');
     expect(html).toContain(
@@ -58,7 +59,7 @@ describe('public landing page', () => {
     expect(html).not.toContain('Browse the 6 lenses');
     expect(html).not.toContain('Go to dashboard');
     expect(html).not.toContain(
-      'The public front door now separates the BES story into six focused pages',
+      'The public front door now separates the electrochemical decision-support story into six focused pages',
     );
     expect(html).not.toContain(
       'The public layer teaches the system. The workspace evaluates it.',

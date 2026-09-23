@@ -13,8 +13,6 @@ packages/database/generated/
 __pycache__/
 .pytest_cache/
 .~lock*
-apps/api-server/.tsbuildinfo
-apps/web-ui/.tsbuildinfo
-packages/**/.tsbuildinfo
+*.tsbuildinfo
 playwright-report/
 test-results/

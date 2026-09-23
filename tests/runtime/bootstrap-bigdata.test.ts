@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runBigDataBootstrap } from '../../packages/database/scripts/bootstrap-bigdata';
+import { runQueueResearchBackfillTarget } from '../../packages/database/scripts/queue-research-backfill-target';
 import { planResearchBackfillPreset } from '../../packages/database/src/research-backfill-presets';
 
 describe('bigdata bootstrap', () => {
@@ -66,7 +67,7 @@ describe('bigdata bootstrap', () => {
     expect(runner).toHaveBeenCalledWith(
       expect.objectContaining({
         cursor: 'cursor:resume-from-page-3',
-        maxPages: 3,
+        maxPages: 1,
         query: 'microbial fuel cell wastewater',
         triggerMode: 'bigdata_bootstrap',
       }),
@@ -177,18 +178,80 @@ describe('bigdata bootstrap', () => {
     expect(collectInventory).toHaveBeenCalledTimes(1);
   });
 
-  it('plans the 30000 MFC/MEC preset as query-scoped queued backfills', () => {
+  it('plans a bounded MFC/MEC, wastewater, and biosensor literature preset', () => {
     const result = planResearchBackfillPreset({
-      targetRecords: 30000,
+      targetRecords: 500,
     });
 
-    expect(result.presetId).toBe('mfc_mec_30000');
-    expect(result.queryCount).toBeGreaterThanOrEqual(20);
-    expect(result.targetRecords).toBe(30000);
+    expect(result.presetId).toBe('mfc_mec_wastewater_biosensors');
+    expect(result.queryCount).toBe(20);
+    expect(result.targetRecords).toBe(500);
+    expect(result.estimatedMaxRecords).toBeLessThanOrEqual(500);
     expect(result.plannedBackfills[0]).toMatchObject({
       max_pages: 1,
-      per_provider_limit: 1000,
-      target_records: 1000,
+      per_provider_limit: 8,
+      target_records: 24,
+    });
+  });
+
+  it('plans the focused provider bootstrap without contacting providers or opening a database', async () => {
+    const runner = vi.fn();
+    const findFirst = vi.fn();
+    const collectInventory = vi.fn();
+    const result = await runBigDataBootstrap(
+      {
+        planOnly: true,
+        sources: 'openalex,crossref',
+        targetRecords: 500,
+      },
+      {
+        collectInventory,
+        configData: {
+          queries: ['MFC wastewater', 'wastewater biosensor'],
+          sources: {
+            openalex: { enabled: true },
+            crossref: { enabled: true },
+          },
+        },
+        prisma: { ingestionRun: { findFirst } },
+        runners: { openalex: runner, crossref: runner },
+      },
+    );
+
+    expect(result).toMatchObject({
+      planOnly: true,
+      targetRecords: 500,
+      estimatedMaxRecords: 500,
+      queryCount: 2,
+      providerQueryCount: 4,
+    });
+    expect(result.plannedRuns).toHaveLength(4);
+    expect(runner).not.toHaveBeenCalled();
+    expect(findFirst).not.toHaveBeenCalled();
+    expect(collectInventory).not.toHaveBeenCalled();
+  });
+
+  it('dry-runs the focused queue without initializing Prisma or enqueuing work', async () => {
+    const result = await runQueueResearchBackfillTarget({
+      preset: 'mfc_mec_wastewater_biosensors',
+      targetRecords: 500,
+      dryRun: true,
+    });
+
+    expect(result).toMatchObject({
+      dry_run: true,
+      target_records: 500,
+      estimated_max_records: 480,
+      query_count: 20,
+      queued_runs: 0,
+      backfills: [],
+      planned_backfills: expect.arrayContaining([
+        expect.objectContaining({
+          query: expect.stringContaining('biosensor'),
+          providers: ['openalex', 'crossref', 'europe_pmc'],
+          max_pages: 1,
+        }),
+      ]),
     });
   });
 });
