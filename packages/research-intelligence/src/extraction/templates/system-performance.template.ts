@@ -1,8 +1,10 @@
 export const SYSTEM_PERFORMANCE_EXTRACTION_TEMPLATE = `
 Extract structured system performance and design parameters from the paper.
 
-Focus on microbial electrochemical systems, including MFC, MEC, MDC, BES,
-bioelectrochemical sensors, and hybrid wastewater-energy systems.
+Focus only on microbial fuel cells (MFC), microbial electrolysis cells (MEC),
+electrochemical biosensors, and their wastewater treatment/management context.
+Hydrogen is a secondary MEC output. Do not classify unrelated system families
+or applications as active METREV scope.
 
 Extract only information explicitly stated in the source. Do not infer
 numerical values. If data is absent, return null and add the field path to

@@ -4,11 +4,7 @@ scope:
   primary_technologies:
     - MFC
     - MEC
-    - MET
-    - MDC
-    - BES
-    - bioelectrochemical_sensor
-    - hybrid_system
+    - electrochemical_biosensor
   source_role: literature_review_and_evidence_pack_generation
   downstream_boundary: bioelectrochemical_decision_support
   supported_source_types:
@@ -36,13 +32,13 @@ scope:
     required_technology_scope:
       - MFC
       - MEC
-      - MET
+      - electrochemical_biosensor
     excluded_when:
       - closed_access
       - unknown_access_without_license_or_policy
       - missing_full_text_link_or_artifact
       - source_is_only_supplier_market_or_regulatory_context
-      - source_does_not_address_MFC_MEC_or_MET
+      - source_does_not_address_MFC_MEC_or_electrochemical_biosensor
   research_lenses:
     - electroactive_biology
     - redox_reactor_engineering
@@ -52,26 +48,27 @@ scope:
     - adoption_readiness
     - evidence_provenance
     - data_metadata_readiness
+    - mechanistic_parameterization
+    - biosensor_analytical_performance
 
 application_areas:
   wastewater_treatment:
-    description: Organic matter removal, effluent polishing, and treatment-performance benchmarking.
-  hydrogen_recovery:
-    description: MEC-oriented hydrogen production, gas handling, purity, and scale-up readiness.
-  nutrient_recovery:
-    description: Ammonia, nitrogen, phosphorus, and resource-recovery pathways.
-  co2_valorisation:
-    description: Microbial electrosynthesis and CO2 recycling into carbon-neutral products.
-  desalination:
-    description: Microbial desalination and salinity/conductivity-driven recovery use cases.
-  bioremediation:
-    description: Soil, aquifer, wastewater, organosulfur, and pollutant transformation cases.
-  industrial_bioproduction:
-    description: Bioelectrochemical production of fuels, chemicals, and industrial intermediates.
+    description: Wastewater composition, treatment trains, COD removal, effluent quality, process integration, and operational stability.
+  biosensing:
+    description: Standalone and MFC/MEC-integrated electrochemical biosensors for wastewater analytes, calibration, and validation.
+  coupled_system_modeling:
+    description: Mechanistic reactor, material, biological, electrochemical, transport, and sensor parameterization.
   electrode_materials:
     description: Anode, cathode, catalyst, separator, surface modification, durability, and procurement signals.
-  industrial_adoption:
-    description: TRL, scale-up, CAPEX/OPEX, integration, standards, reproducibility, and implementation barriers.
+
+historical_or_secondary_applications:
+  hydrogen_recovery: MEC hydrogen is a modeled secondary output, not a separate active product direction.
+  nutrient_recovery: Preserve existing cases and evidence as historical or secondary context pending a focused model.
+  co2_valorisation: Outside the active MFC/MEC wastewater and electrochemical-biosensor scope.
+  desalination: Outside the active MFC/MEC wastewater and electrochemical-biosensor scope.
+  bioremediation: Outside the active MFC/MEC wastewater and electrochemical-biosensor scope.
+  industrial_bioproduction: Outside the active MFC/MEC wastewater and electrochemical-biosensor scope.
+  industrial_adoption: Retain cost and maturity fields as system constraints, not as the primary research taxonomy.
 
 review_column_groups:
   identification:
@@ -114,6 +111,8 @@ technical_detail_sections:
   - eligibility_audit
   - component_parameters
   - component_profiles
+  - mechanistic_model_input_set
+  - biosensor_calibration_and_validation
 
 scientific_component_parameters:
   required_trace_fields:
@@ -137,6 +136,8 @@ scientific_component_parameters:
     - electrolyte
     - external_circuit
     - sensors_instrumentation
+    - biosensor_recognition_element
+    - biosensor_working_reference_counter_electrodes
     - balance_of_plant
   parameter_kinds:
     - material
@@ -150,6 +151,11 @@ scientific_component_parameters:
     - biology
     - cost_maturity
     - limitation
+    - kinetic_parameter
+    - electrochemical_parameter
+    - mass_transfer_parameter
+    - sensor_calibration_parameter
+    - analytical_performance_parameter
 
 metrev_research_lens_mapping:
   electroactive_biology:
@@ -168,13 +174,7 @@ metrev_research_lens_mapping:
     outputs:
       [treatment_outputs, energy_or_product_outputs, operating_conditions]
   environmental_operating_context:
-    outputs:
-      [
-        treatment_outputs,
-        nutrient_recovery,
-        bioremediation,
-        operating_conditions,
-      ]
+    outputs: [treatment_outputs, operating_conditions]
   adoption_readiness:
     outputs: [risk_and_maturity, technoeconomics, phased_roadmap]
   evidence_provenance:
@@ -192,7 +192,7 @@ rules:
   - EvidenceDecisionContext is built by the API/database decision layer, not by review UI state, and may admit only decision-ready evidence.
   - Context or methodology references may inform vocabulary, metadata organization, and evidence targeting but must not be treated as validated stack performance evidence.
   - Metadata quality and evidence veracity are distinct review dimensions and both must remain audit-visible.
-  - Warehouse eligibility sweeps may mark active sources only when sources are full-access, traceable, and explicitly in MFC, MEC, or MET scope.
+  - Warehouse eligibility sweeps may mark active sources only when sources are full-access, traceable, and explicitly in MFC, MEC, electrochemical-biosensor, or in-scope wastewater applications.
   - Eligibility filtering must preserve excluded source records and reason buckets for audit instead of deleting source rows.
   - Papers, reviews, patents, datasheets, manuals, SOPs, supplier documents, case studies, market reports, and regulatory reports must remain typed source documents; only decision-ready evidence can cross into decision inputs.
   - Component profiles must not hide defaults: missing material, geometry, surface, loading, biology, and operating fields stay visible in missing_fields.

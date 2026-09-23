@@ -72,10 +72,7 @@ const ALLOWED_LLM_MEASUREMENT_FIELDS = new Map<string, string>([
 const ALLOWED_LLM_SYSTEM_TYPES = new Set([
   'MFC',
   'MEC',
-  'MET',
-  'MDC',
-  'BES',
-  'bioelectrochemical_system',
+  'electrochemical_biosensor',
 ]);
 const ALLOWED_LLM_REACTOR_TYPES = new Set([
   'single_chamber',
@@ -1422,25 +1419,13 @@ function inferApplication(record: any, fact: any) {
     .join(' ')
     .toLowerCase();
 
-  if (/hydrogen|biohydrogen/.test(text)) {
-    return 'hydrogen_recovery';
-  }
-  if (/nitrogen|ammonium|ammonia/.test(text)) {
-    return 'nitrogen_recovery';
-  }
-  if (/sensor|sensing/.test(text)) {
-    return 'sensing';
-  }
-  if (/biogas|methane/.test(text)) {
-    return 'biogas_synergy';
+  if (/biosensor|biosensing|electrochemical sensor|sensor|sensing/.test(text)) {
+    return 'biosensing';
   }
   if (/wastewater|cod|removal|treatment|effluent/.test(text)) {
     return 'wastewater_treatment';
   }
-  if (/power|electricity|bioelectricity/.test(text)) {
-    return 'low_power_generation';
-  }
-  return 'other';
+  return null;
 }
 
 function buildBenchmarkRecord(input: {

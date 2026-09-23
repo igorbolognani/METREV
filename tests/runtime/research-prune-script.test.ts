@@ -78,16 +78,37 @@ function completeTechnicalCandidate() {
 }
 
 describe('research hard-prune source selection', () => {
-  it('keeps eligible MFC/MEC/MET sources in broad warehouse mode', () => {
-    expect(
-      shouldKeepResearchSourceForPrune({
-        eligibilityStatus: 'eligible',
-        sourceDocumentId: 'source-001',
-        tableReadyOnly: false,
-        tableReadySourceIds: new Set(),
-        technologyClasses: ['MFC'],
-      }),
-    ).toBe(true);
+  it('keeps only eligible active MFC/MEC and biosensor sources', () => {
+    for (const technology of [
+      'MFC',
+      'MEC',
+      'electrochemical_biosensor',
+      'ELECTROCHEMICAL_BIOSENSOR',
+    ]) {
+      expect(
+        shouldKeepResearchSourceForPrune({
+          eligibilityStatus: 'eligible',
+          sourceDocumentId: 'source-001',
+          tableReadyOnly: false,
+          tableReadySourceIds: new Set(),
+          technologyClasses: [technology],
+        }),
+      ).toBe(true);
+    }
+  });
+
+  it('does not keep legacy MET or unclassified records on the active surface', () => {
+    for (const technology of ['MET', 'BES', 'MDC', 'unclassified']) {
+      expect(
+        shouldKeepResearchSourceForPrune({
+          eligibilityStatus: 'eligible',
+          sourceDocumentId: 'source-legacy',
+          tableReadyOnly: false,
+          tableReadySourceIds: new Set(),
+          technologyClasses: [technology],
+        }),
+      ).toBe(false);
+    }
   });
 
   it('requires strict table readiness when table-ready mode is enabled', () => {
@@ -150,6 +171,27 @@ describe('strict table-ready technical completeness', () => {
       overview: true,
       reactorMaterials: true,
     });
+  });
+
+  it('recognizes biosensor evidence from its explicit technology class', () => {
+    const candidate = completeTechnicalCandidate();
+    candidate.title = 'Experimental wastewater monitoring study';
+    candidate.summary = 'Experimental wastewater response calibration.';
+    candidate.tags = ['wastewater', 'experimental'];
+    candidate.canonicalFacts = candidate.canonicalFacts.map((fact) => ({
+      ...fact,
+      canonicalKey: `biosensor.${fact.canonicalKey}`,
+      systemType: 'electrochemical_biosensor',
+    }));
+    candidate.benchmarkRecords = candidate.benchmarkRecords.map((record) => ({
+      ...record,
+      systemType: 'electrochemical_biosensor',
+    }));
+
+    const assessment = evaluateTechnicalCompleteness(candidate);
+
+    expect(assessment.strictTableReady).toBe(true);
+    expect(assessment.missingRequirements).toEqual([]);
   });
 
   it('rejects broad review-like records without experimental signals', () => {

@@ -152,6 +152,23 @@ export interface ContractEvidenceSchema {
   rules?: string[];
 }
 
+export interface MechanisticModelDefinition {
+  version: number;
+  model_id: string;
+  input_parameters: Record<
+    string,
+    {
+      unit: string;
+      required_when: 'always' | 'membrane_present' | 'MFC' | 'MEC';
+    }
+  >;
+  biosensor_inputs: {
+    deployment_modes: string[];
+    required_metadata: string[];
+    currently_executable_transduction: string;
+  };
+}
+
 export interface ContractPropertyDictionary {
   version: string;
   properties: Array<{
@@ -177,7 +194,8 @@ export interface ContractEvidenceQualityAuditPolicy {
   outlier_policy: Record<string, unknown>;
   readiness_levels: Record<string, unknown>;
   funnel_stages: string[];
-  primary_metrics_by_objective: Record<string, string[]>;
+  primary_metrics_by_objective: Record<string, Record<string, string[]>>;
+  secondary_metrics_by_system: Record<string, string[]>;
 }
 
 export interface ContractEvidenceDiscoveryPolicy {
@@ -280,5 +298,11 @@ export function loadEvidenceDiscoveryPolicy(): ContractEvidenceDiscoveryPolicy {
 export function loadDomainCaseTemplate(): Record<string, unknown> {
   return loadYamlFile<Record<string, unknown>>(
     resolve(domainRootPath, 'cases/templates/client-case-template.yml'),
+  );
+}
+
+export function loadMechanisticModelDefinition(): MechanisticModelDefinition {
+  return loadYamlFile<MechanisticModelDefinition>(
+    resolve(domainRootPath, 'rules/mechanistic-model.yml'),
   );
 }
