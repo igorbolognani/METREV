@@ -107,6 +107,40 @@ async function createEvaluationViaApi(
   return JSON.parse(response.body) as { evaluation_id: string };
 }
 
+async function chooseFocusedMfcTemplate(
+  page: import('@playwright/test').Page,
+) {
+  await page.getByRole('button', { name: /Preset library/ }).click();
+  const template = page
+    .locator('article')
+    .filter({ hasText: 'MFC wastewater model inputs' })
+    .first();
+  await template.getByRole('button', { name: 'Load preset' }).first().click();
+}
+
+async function fillRequiredFocusedMfcContext(
+  page: import('@playwright/test').Page,
+  caseId: string,
+) {
+  await page.getByLabel('Case identifier').fill(caseId);
+  await page.getByLabel('Current TRL').fill('pilot');
+  await page.getByLabel('Decision horizon').fill('test fixture, 12 months');
+  await page
+    .getByLabel('Deployment context')
+    .fill('Test fixture only; no measured site data.');
+
+  await page.getByRole('button', { name: /Operating Envelope/ }).click();
+  const painPoints = page.getByLabel('Current pain points');
+  await painPoints.fill('test fixture monitoring gap');
+  await painPoints.press('Enter');
+  await page
+    .getByLabel('Influent type')
+    .fill('Test fixture wastewater context.');
+  await page
+    .getByLabel('Substrate profile')
+    .fill('Test fixture only; no measured composition supplied.');
+}
+
 test.describe('local-first professional workspace', () => {
   test('lets analysts jump freely across all 11 cockpit flow points without losing draft context', async ({
     page,
@@ -221,18 +255,8 @@ test.describe('local-first professional workspace', () => {
     await page.getByRole('link', { name: 'Open stack cockpit' }).click();
     await expect(page).toHaveURL(/\/cases\/new$/);
 
-    await page.getByRole('button', { name: /Preset library/ }).click();
-
-    const wastewaterPreset = page
-      .locator('article')
-      .filter({ hasText: 'MFC wastewater model inputs' })
-      .first();
-    await wastewaterPreset
-      .getByRole('button', { name: 'Load preset' })
-      .first()
-      .click();
-
-    await page.getByLabel('Case identifier').fill(caseId);
+    await chooseFocusedMfcTemplate(page);
+    await fillRequiredFocusedMfcContext(page, caseId);
     await page.getByRole('button', { name: /Suppliers & Constraints/ }).click();
 
     await page
@@ -323,6 +347,8 @@ test.describe('local-first professional workspace', () => {
 
     await page.goto('/cases/new');
     await expect(page).toHaveURL(/\/cases\/new$/);
+    await chooseFocusedMfcTemplate(page);
+    await fillRequiredFocusedMfcContext(page, caseId);
     await page.getByRole('button', { name: /Review & Submit/ }).click();
     await page
       .getByLabel('Working assumptions')
