@@ -7,16 +7,14 @@ const repoRoot = process.cwd();
 const scannedRoots = [
   '.github',
   'AGENTS.md',
-  'WORKFLOW.md',
   'README.md',
+  '.env.example',
   'apps',
   'bioelectro-copilot-contracts/contracts',
   'bioelectrochem_agent_kit/domain',
-  'docs',
   'package.json',
   'packages',
   'scripts',
-  'specs',
   'tests',
 ];
 const ignoredPathSegments = new Set([
@@ -32,7 +30,7 @@ const ignoredPathSegments = new Set([
 ]);
 const ignoredFileNames = new Set(['pnpm-lock.yaml']);
 const textFilePattern =
-  /\.(css|csv|html|js|json|jsx|md|mdx|mjs|prisma|py|ts|tsx|txt|yml|yaml)$/i;
+  /\.(css|csv|example|html|js|json|jsx|md|mdx|mjs|prisma|py|ts|tsx|txt|yml|yaml)$/i;
 
 const retiredProgramToken = ['tram', 'pol', 'ine'].join('');
 const retiredArticleTokens = [

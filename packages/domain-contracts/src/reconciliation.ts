@@ -48,7 +48,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
       'bioelectro-copilot-contracts/contracts/ontology/stack.yaml#canonical_entities.case.fields.technology_family',
     runtime_path: 'normalized_case.technology_family',
     ui_surface: 'apps/web-ui/src/components/case-form.tsx#CaseForm',
-    note: 'Canonical runtime value uses microbial_electrochemical_technology; the legacy hybrid_or_other_met label is treated only as an intake alias during normalization.',
+    note: 'Active choices are MFC, MEC, and electrochemical biosensor. Historical umbrella values remain read-compatible; missing or invalid classifications normalize to unclassified and cannot execute a mechanistic model.',
   },
   {
     concern: 'reactor_architecture',

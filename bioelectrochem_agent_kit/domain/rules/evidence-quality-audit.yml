@@ -38,7 +38,7 @@ recency_policy:
     - system_type
     - component_type
     - metric_type
-  rationale: BES material and operating literature moves quickly enough that old-only benchmark coverage must lower confidence or trigger review.
+  rationale: MFC, MEC, wastewater-treatment, and biosensor evidence changes with materials, matrix, and operating context; old-only benchmarks lower confidence or trigger review.
 
 outlier_policy:
   z_score_threshold: 3.0
@@ -80,31 +80,20 @@ funnel_stages:
 primary_metrics_by_objective:
   wastewater_treatment:
     - power_density_w_m2
+    - mec_electrical_input_density_w_m2
+    - net_power_density_w_m2
     - cod_removal_pct
     - coulombic_efficiency_pct
     - internal_resistance_ohm
-  hydrogen_recovery:
+    - effluent_cod_kg_m3
     - current_density_a_m2
-    - hydrogen_production_ml_l_d
-    - hydrogen_yield_mol_mol
-    - coulombic_efficiency_pct
-  nitrogen_recovery:
-    - ammonium_recovery_pct
-    - current_density_a_m2
-    - energy_input_kwh_m3
-  sensing:
-    - voltage_v
-    - internal_resistance_ohm
-    - durability_d
-  low_power_generation:
-    - power_density_w_m2
-    - voltage_v
-    - internal_resistance_ohm
-  biogas_synergy:
-    - cod_removal_pct
-    - current_density_a_m2
-    - energy_input_kwh_m3
-  other:
-    - current_density_a_m2
-    - coulombic_efficiency_pct
-    - durability_d
+  biosensing:
+    - biosensor_signal_current_a
+    - biosensor_lod
+    - biosensor_loq
+    - biosensor_response_time_s
+    - biosensor_recovery_time_s
+    - biosensor_drift_a_per_day
+    - biosensor_repeatability_cv_pct
+    - biosensor_accuracy_pct
+    - biosensor_selectivity_pct

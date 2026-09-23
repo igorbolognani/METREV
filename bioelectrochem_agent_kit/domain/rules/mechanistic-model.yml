@@ -1,0 +1,202 @@
+version: 1
+model_id: coupled-0d-dae-v1
+scope:
+  systems: [MFC, MEC]
+  wastewater_role: dynamic COD treatment and bioelectrochemical energy or hydrogen conversion
+  biosensor_role: standalone, MFC-integrated, and MEC-integrated amperometric response
+  spatial_dimension: 0D_lumped
+  reactor_assumption: continuous_stirred_tank_anode_and_mixed_cathode_with_attached_electroactive_biomass
+  thermal_assumption: isothermal_fixed_boundary_temperature
+  solver: explicit_RK4_for_differential_states_with_algebraic_electrochemical_current
+  maximum_integration_steps: 2000
+  maximum_output_points: 200
+
+scientific_basis:
+  statement: These publications support the model structure and selected balances; they do not supply default parameter values or validate this implementation.
+  references:
+    - id: hamelers-2011-bioanode-bv-monod
+      citation: Hamelers et al. Butler-Volmer-Monod model for describing bio-anode polarization curves. Bioresource Technology 102(1), 381-387 (2011).
+      doi: 10.1016/j.biortech.2010.06.156
+      supports:
+        [Monod-coupled bio-anode kinetics, Butler-Volmer charge transfer]
+    - id: zeng-2010-two-chamber-mfc
+      citation: Zeng et al. Modelling and simulation of two-chamber microbial fuel cell. Journal of Power Sources 195(1), 79-89 (2010).
+      doi: 10.1016/j.jpowsour.2009.06.101
+      supports:
+        [dynamic mass and charge balance coupling, MFC load and polarization]
+    - id: pinto-2011-unified-mfc-mec-model
+      citation: Pinto et al. A unified model for electricity and hydrogen production in microbial electrochemical cells. IFAC Proceedings Volumes 44(1), 6084-6089 (2011).
+      doi: 10.3182/20110828-6-IT-1002.01636
+      supports:
+        [shared anode kinetics with distinct MFC and MEC cathodic boundaries]
+    - id: call-2010-mec-hydrogen-faradaic-balance
+      citation: Call and Logan. Hydrogen Production by Geobacter Species and a Mixed Consortium in a Microbial Electrolysis Cell. Applied and Environmental Microbiology 76(6), 1742-1747 (2010).
+      doi: 10.1128/AEM.01760-09
+      supports:
+        [
+          MEC hydrogen rate from current and Faraday balance,
+          coulombic efficiency,
+        ]
+    - id: wardman-2021-bioelectrochemical-sensor-stability
+      citation: Spurr et al. No re-calibration required? Stability of a bioelectrochemical sensor for biodegradable organic matter over 800 days. Biosensors and Bioelectronics 190, 113392 (2021).
+      doi: 10.1016/j.bios.2021.113392
+      supports:
+        [
+          MFC-integrated organic-load sensor calibration and long-term drift as validation fields,
+        ]
+
+state_variables:
+  - {
+      name: soluble_cod,
+      unit: kgCOD/m3,
+      balance: flow_in_minus_flow_out_minus_biological_uptake,
+    }
+  - {
+      name: electroactive_biomass,
+      unit: kgVSS/m3,
+      balance: growth_minus_decay_minus_explicit_biomass_washout,
+    }
+  - {
+      name: cathode_dissolved_oxygen,
+      unit: kgO2/m3,
+      balance: transfer_from_saturation_minus_oxygen_reduction,
+    }
+  - {
+      name: anode_ph,
+      unit: pH,
+      balance: current_driven_proton_flux_buffering_and_inter_chamber_transfer,
+    }
+  - {
+      name: cathode_ph,
+      unit: pH,
+      balance: current_driven_proton_flux_buffering_and_inter_chamber_transfer,
+    }
+
+algebraic_couplings:
+  - biology: Monod COD uptake with biomass yield, decay, pH inhibition, and Arrhenius temperature response
+  - electron_supply: coulombic_efficiency times electroactive_biofilm_fraction times COD electron equivalents (4 F per 32 g COD)
+  - charge_transfer: full Butler-Volmer relation at both electrodes using source-backed electroactive-area factors
+  - ionic_transport: electrode-gap electrolyte resistance, separator resistance using separator area, and contact resistance
+  - cathode_transport: oxygen mass-transfer-limited current coupled to dissolved oxygen inventory
+  - MFC_boundary: load-line intersection of reversible voltage, electrode polarization, ohmic loss, and external load
+  - MEC_boundary: applied voltage minus reversible voltage, polarization, and ohmic loss; H2 production uses 2 F per mole H2 and separately reports Faradaic yield and gas capture
+  - supply_limit_closure: when substrate/electron or cathode oxygen transfer limits current below the electrical boundary solution, report the residual voltage loss needed to close the load-line/voltage balance
+  - proton_balance: 1 mol proton per mole electron, chamber buffer capacity, and explicit transfer coefficient
+
+required_parameter_source_fields:
+  fields: [value, unit, source_kind, source_ref]
+  uncertainty_when_available: true
+  source_kinds: [measured, literature, default, assumption, test_fixture]
+  rule: A missing source reference, dimensional mismatch, or absent boundary-condition parameter blocks execution. Defaults and assumptions must be explicitly typed and reduce confidence.
+
+input_parameters:
+  geometry.anode_chamber_volume_m3: { unit: m3, required_when: always }
+  geometry.cathode_chamber_volume_m3: { unit: m3, required_when: always }
+  geometry.anode_area_m2: { unit: m2, required_when: always }
+  geometry.cathode_area_m2: { unit: m2, required_when: always }
+  geometry.electrode_gap_m: { unit: m, required_when: always }
+  geometry.membrane_area_m2: { unit: m2, required_when: membrane_present }
+  geometry.membrane_thickness_m: { unit: m, required_when: membrane_present }
+  geometry.membrane_conductivity_s_m:
+    { unit: S/m, required_when: membrane_present }
+  materials.anode_electroactive_area_factor:
+    { unit: '1', required_when: always }
+  materials.cathode_electroactive_area_factor:
+    { unit: '1', required_when: always }
+  materials.biofilm_electroactive_fraction: { unit: '1', required_when: always }
+  operation.flow_m3_s: { unit: m3/s, required_when: always }
+  operation.influent_cod_kg_m3: { unit: kgCOD/m3, required_when: always }
+  operation.temperature_k: { unit: K, required_when: always }
+  operation.influent_ph: { unit: pH, required_when: always }
+  operation.initial_ph_anode: { unit: pH, required_when: always }
+  operation.initial_ph_cathode: { unit: pH, required_when: always }
+  operation.initial_cod_kg_m3: { unit: kgCOD/m3, required_when: always }
+  operation.initial_biomass_kg_m3: { unit: kgVSS/m3, required_when: always }
+  operation.biomass_washout_rate_s_inv: { unit: 1/s, required_when: always }
+  operation.initial_dissolved_oxygen_kg_m3:
+    { unit: kgO2/m3, required_when: MFC }
+  operation.oxygen_saturation_kg_m3: { unit: kgO2/m3, required_when: MFC }
+  operation.electrolyte_conductivity_s_m: { unit: S/m, required_when: always }
+  operation.auxiliary_power_w: { unit: W, required_when: always }
+  operation.duration_s: { unit: s, required_when: always }
+  operation.time_step_s: { unit: s, required_when: always }
+  biology.max_specific_cod_uptake_kg_cod_kg_biomass_s:
+    { unit: kgCOD/(kgVSS*s), required_when: always }
+  biology.half_saturation_cod_kg_m3: { unit: kgCOD/m3, required_when: always }
+  biology.biomass_yield_kg_biomass_kg_cod:
+    { unit: kgVSS/kgCOD, required_when: always }
+  biology.decay_rate_s_inv: { unit: 1/s, required_when: always }
+  biology.coulombic_efficiency: { unit: '1', required_when: always }
+  biology.ph_optimum: { unit: pH, required_when: always }
+  biology.ph_tolerance: { unit: pH, required_when: always }
+  biology.activation_energy_j_mol: { unit: J/mol, required_when: always }
+  biology.reference_temperature_k: { unit: K, required_when: always }
+  biology.buffer_capacity_anode_mol_m3_ph:
+    { unit: mol/(m3*pH), required_when: always }
+  biology.buffer_capacity_cathode_mol_m3_ph:
+    { unit: mol/(m3*pH), required_when: always }
+  biology.proton_transfer_coefficient_mol_s_ph:
+    { unit: mol/(s*pH), required_when: always }
+  electrochemistry.reversible_cell_voltage_v: { unit: V, required_when: always }
+  electrochemistry.anode_exchange_current_density_a_m2:
+    { unit: A/m2, required_when: always }
+  electrochemistry.cathode_exchange_current_density_a_m2:
+    { unit: A/m2, required_when: always }
+  electrochemistry.anode_charge_transfer_coefficient:
+    { unit: '1', required_when: always }
+  electrochemistry.cathode_charge_transfer_coefficient:
+    { unit: '1', required_when: always }
+  electrochemistry.contact_resistance_ohm: { unit: ohm, required_when: always }
+  electrochemistry.oxygen_mass_transfer_coefficient_m_s:
+    { unit: m/s, required_when: MFC }
+  electrochemistry.external_load_ohm: { unit: ohm, required_when: MFC }
+  electrochemistry.applied_voltage_v: { unit: V, required_when: MEC }
+  electrochemistry.hydrogen_faraday_efficiency:
+    { unit: '1', required_when: MEC }
+  electrochemistry.hydrogen_capture_fraction: { unit: '1', required_when: MEC }
+
+biosensor_inputs:
+  deployment_modes: [standalone, mfc_integrated, mec_integrated]
+  required_metadata:
+    - analyte_id
+    - measurand
+    - concentration_unit
+    - matrix
+    - recognition_element
+    - transduction_mode
+    - calibration_date
+    - reference_method
+    - working_range
+    - sensitivity_or_binding_parameters
+    - lod
+    - loq
+    - response_time
+    - recovery_time
+    - noise
+    - drift
+    - repeatability
+    - accuracy
+    - selectivity_and_interferences
+    - power_draw_and_power_source
+    - working_reference_and_counter_electrode_materials_and_area
+    - immobilization_membrane_and_mediator
+    - calibration_fit_quality_and_replicate_count
+    - explicit_external_or_integrated_power_budget
+  currently_executable_transduction: amperometric
+  power_rules:
+    - MFC harvested power is checked against simulated MFC output after sensor load.
+    - MEC power_bus is an external electrical input and is never reported as generated power.
+    - Standalone sensors require an explicit external supply with a source-backed power budget.
+    - Integrated sensors are checked against MFC net output after auxiliary loads or the MEC external bus after cell and auxiliary loads.
+
+not_yet_modeled:
+  - spatial biofilm gradients and resolved porous-electrode transport
+  - multiple competing microbial guilds and detailed metabolic pathways
+  - nitrogen-species balances, alkalinity speciation, gas crossover and gas-transfer losses
+  - thermal dynamics, dynamic ionic strength, membrane fouling, and multi-phase fluid flow
+  - stochastic uncertainty propagation, parameter fitting, and posterior prediction
+
+data_policy:
+  evidence_role: Literature/data warehouse may supply candidate parameter values only when units and source locators are retained.
+  execution_gate: A source-backed case-level parameter set is required; literature averages are not silently substituted for case measurements.
+  volume_target: none

@@ -9,8 +9,8 @@ import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 import {
-    buildEvaluationComparison,
-    buildEvaluationWorkspace,
+  buildEvaluationComparison,
+  buildEvaluationWorkspace,
 } from '../../apps/api-server/src/presenters/workspace-presenters';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 import { buildSimulationChartRows } from '../../apps/web-ui/src/components/charts/simulation-multi-line-chart';
@@ -18,8 +18,8 @@ import { EvaluationAuditTab } from '../../apps/web-ui/src/components/evaluation/
 import { EvaluationEvidenceTab } from '../../apps/web-ui/src/components/evaluation/evaluation-evidence-tab';
 import { EvaluationModelingTab } from '../../apps/web-ui/src/components/evaluation/evaluation-modeling-tab';
 import {
-    EvaluationRecommendationsTable,
-    sortRecommendations,
+  EvaluationRecommendationsTable,
+  sortRecommendations,
 } from '../../apps/web-ui/src/components/evaluation/evaluation-recommendations-table';
 
 vi.mock('next/link', () => ({
@@ -89,13 +89,6 @@ describe('workspace presenters', () => {
     const repository = new MemoryEvaluationRepository();
 
     try {
-      const baseline = await createPersistedCaseEvaluation({
-        rawInput: rawCaseInputSchema.parse(rawFixture),
-        actor,
-        evaluationRepository: repository,
-        logger,
-        environment: 'test',
-      });
       const current = await createPersistedCaseEvaluation({
         rawInput: rawCaseInputSchema.parse({
           ...rawFixture,
@@ -123,7 +116,7 @@ describe('workspace presenters', () => {
         ) ?? null;
 
       expect(firstSeries).toBeDefined();
-      expect(operatingWindowSeries).toBeDefined();
+      expect(operatingWindowSeries).toBeNull();
 
       const rows = buildSimulationChartRows([
         firstSeries!,
@@ -179,18 +172,15 @@ describe('workspace presenters', () => {
             simulation_enrichment: workspace.evaluation.simulation_enrichment
               ? {
                   ...workspace.evaluation.simulation_enrichment,
-                  series: operatingWindowSeries ? [operatingWindowSeries] : [],
+                  series: firstSeries ? [firstSeries] : [],
                 }
               : null,
           },
         }),
       );
 
-      expect(modelingHtml).toContain('Operating window map');
-      expect(modelingHtml).toContain(
-        'Sensitivity map from x/y operating conditions to modeled operating-window score.',
-      );
-      expect(modelingHtml).toContain('simulation-heatmap__cell');
+      expect(modelingHtml).toContain('1 modeled series share this unit');
+      expect(modelingHtml).toContain('Modeled outputs');
 
       const failedModelingHtml = renderToStaticMarkup(
         React.createElement(EvaluationModelingTab, {
