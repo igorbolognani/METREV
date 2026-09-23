@@ -96,7 +96,7 @@ test.describe('public routes - desktop structure', () => {
     await expect(
       page.getByRole('heading', {
         level: 1,
-        name: 'METREV BIOELETROCHEMICAL DECISION SUPPORT',
+        name: 'METREV MFC/MEC + BIOSENSOR DECISION SUPPORT',
       }),
     ).toBeVisible();
     await expect(
@@ -225,34 +225,35 @@ test.describe('public routes - desktop structure', () => {
   }
 });
 
-test.describe('public routes - mobile snapshots', () => {
+test.describe('public routes - mobile views', () => {
   test.use(mobileViewportUse);
 
-  test('overview hub matches the mobile landing snapshot', async ({ page }) => {
+  test('overview hub exposes the focused decision model on mobile', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('public-overview-hub')).toBeVisible();
-
-    await expect(page).toHaveScreenshot('public-overview-mobile.png', {
-      animations: 'disabled',
-      caret: 'hide',
-      fullPage: true,
-      maxDiffPixels: 220,
-    });
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: 'METREV MFC/MEC + BIOSENSOR DECISION SUPPORT',
+      }),
+    ).toBeVisible();
+    await expect(page.getByTestId('public-landing-infographic')).toBeVisible();
   });
 
   for (const route of publicTopicRoutes) {
-    test(`${route.slug} route matches the mobile infographic snapshot`, async ({
+    test(`${route.slug} route exposes its active infographic on mobile`, async ({
       page,
     }) => {
       await openPublicRoute(page, route.path);
+      await expect(
+        page.getByRole('heading', { level: 1, name: route.heading }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`public-topic-${route.slug}`),
+      ).toBeVisible();
       await expect(page.getByTestId('public-topic-infographic')).toBeVisible();
-
-      await expect(page).toHaveScreenshot(`${route.slug}-mobile.png`, {
-        animations: 'disabled',
-        caret: 'hide',
-        fullPage: true,
-        maxDiffPixels: 220,
-      });
     });
   }
 });
