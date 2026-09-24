@@ -43,7 +43,8 @@ test('runs all five solver modes and navigates modeled SVG sections in Chromium'
 
     await sections.getByRole('button', { name: 'Process and outputs' }).click();
     if (item.mode === 'MFC') {
-      await expect(svg).toContainText('Gross MFC power');
+      await expect(svg).toContainText('Gross electrical output');
+      await expect(svg).toContainText('Net MFC power after auxiliary demand');
     } else if (item.mode === 'MEC') {
       await expect(svg).toContainText('Gross MEC hydrogen production rate');
       await expect(svg).toContainText('Captured MEC hydrogen rate');
