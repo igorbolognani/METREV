@@ -1,0 +1,626 @@
+Edinburgh Research Explorer
+Microbial fuel cell biosensor for the determination of biochemical
+oxygen demand of wastewater samples containing readily and
+slowly biodegradable organics
+
+Citation for published version:
+Tardy, GM, Lóránt, B, Gyalai-Korpos, M, Bakos, V, Simpson, D & Goryanin, I 2021, 'Microbial fuel cell
+biosensor for the determination of biochemical oxygen demand of wastewater samples containing readily
+and slowly biodegradable organics', Biotechnology letters, vol. 43, no. 2, pp. 445-454.
+https://doi.org/10.1007/s10529-020-03050-5
+
+
+Digital Object Identifier (DOI):
+10.1007/s10529-020-03050-5
+
+
+Link:
+Link to publication record in Edinburgh Research Explorer
+
+
+Document Version:
+Publisher's PDF, also known as Version of record
+
+
+
+Published In:
+Biotechnology letters
+
+
+
+
+General rights
+Copyright for the publications made accessible via the Edinburgh Research Explorer is retained by the author(s)
+and / or other copyright owners and it is a condition of accessing these publications that users recognise and
+abide by the legal requirements associated with these rights.
+
+
+Take down policy
+The University of Edinburgh has made every reasonable effort to ensure that Edinburgh Research Explorer
+content complies with UK legislation. If you believe that the public display of this file breaches copyright please
+contact openaccess@ed.ac.uk providing details, and we will remove access to the work immediately and
+investigate your claim.
+
+
+
+
+Download date: 24. Sep. 2026
+Biotechnol Lett (2021) 43:445–454
+https://doi.org/10.1007/s10529-020-03050-5   (0123456789().,-volV)
+                                                                 ( 01234567
+                                                                         89().,-volV)
+
+
+
+
+ ORIGINAL RESEARCH PAPER
+
+
+
+Microbial fuel cell biosensor for the determination
+of biochemical oxygen demand of wastewater samples
+containing readily and slowly biodegradable organics
+Gábor Márk Tardy . Bálint Lóránt . Miklós Gyalai-Korpos .
+Vince Bakos . David Simpson . Igor Goryanin
+
+
+
+
+Received: 17 April 2020 / Accepted: 15 November 2020 / Published online: 27 November 2020
+Ó The Author(s) 2020
+
+
+Abstract                                                                                samples were analyzed: acetate and peptone samples
+Objectives Single-chamber air cathode microbial                                         containing only soluble readily biodegradable sub-
+fuel cells (MFCs) were applied as biosensors for                                        strates; corn starch and milk samples with suspended
+biochemical oxygen demand (BOD) measurement of                                          and colloidal organics; real domestic and brewery
+real wastewaters with considerable suspended and/or                                     wastewaters. Linear regression fitted to the Q vs.
+slowly biodegradable organic content.                                                   BOD5 measurement points of the real wastewaters
+Results The measurement method consists of batch                                        provided high ([ 0.985) R2 values. Time requirement
+sample injection, continuous measurement of cell                                        of the measurement varied from 1 to 4 days, depend-
+voltage and calculation of total charge (Q) gained                                      ing on the composition of the sample.
+during the biodegradation of organic content. Diverse                                   Conclusions Relative error of BOD measured in the
+                                                                                        MFCs comparing with BOD5 was less than 10%, thus
+                                                                                        the method might be a good basis for the development
+Electronic supplementary material The online version of
+this article (https://doi.org/10.1007/s10529-020-03050-5) con-                          of on-site automatic BOD sensors for real wastewater
+tains supplementary material, which is available to authorized                          samples.
+users.
+
+G. M. Tardy (&)  B. Lóránt  V. Bakos                                                D. Simpson  I. Goryanin
+Department of Applied Biotechnology and Food Science,                                   Okinawa Institute of Science and Technology, 1919-1
+Budapest University of Technology and Economics, Szt.                                   Tancha, Onna-Son, Kunigami-gun, Okinawa 904-0495,
+Gellért tér 4., Budapest 1111, Hungary                                                Japan
+e-mail: gtardy@mail.bme.hu                                                              e-mail: djwsimpson00@googlemail.com
+B. Lóránt                                                                             I. Goryanin
+e-mail: balintlorant99@gmail.com                                                        e-mail: goryanin@gmail.com
+V. Bakos
+                                                                                        I. Goryanin
+e-mail: vbakos@mail.bme.hu
+                                                                                        School of Informatics, University of Edinburgh, 10
+                                                                                        Crichton str., Edinburgh EH8 9AB, UK
+M. Gyalai-Korpos
+Pannon Pro Innovations Ltd., P.O.B 41, Budapest 1400,
+                                                                                        I. Goryanin
+Hungary
+                                                                                        Tianjin Institute of Industrial Biotechnology, 32 West 7th
+e-mail: miklos.gyalai@ppis.hu
+                                                                                        Avenue, Tianjin Airport Economic Area, Tianjin 300308,
+                                                                                        China
+M. Gyalai-Korpos
+BES Europe Ltd, 39 Murányi u., Budapest 1078, Hungary
+
+
+
+
+                                                                                                                                           123
+446                                                                               Biotechnol Lett (2021) 43:445–454
+
+
+Keywords Biochemical oxygen demand                      suspended organic content has not yet been evaluated
+Biosensor  Microbial fuel cell  Wastewater             in details, although it is a crucial point in the practical
+characterization                                         application of MFC BOD biosensors.
+                                                            In the current research, single-chamber air cathode
+                                                         MFCs were applied as BOD sensors. The main aims of
+                                                         the research were: (1) to determine the relationship
+Introduction                                             between the total charge and BOD5 for artificial
+                                                         wastewater samples with variable suspended slowly
+In microbial fuel cells (MFCs), the chemical energy of   biodegradable organic content; (2) to verify the
+biodegradable organics can be converted directly to      accuracy and reliability of the developed method by
+electricity through the metabolism of exoelectrogenic    the investigation of real wastewater samples.
+bacteria. The generated electricity can be measured
+and/or utilized (Rabaey and Verstraete 2005). A
+promising perspective for the application of this        Materials and methods
+technology is to create MFC-based biosensors for
+the detection and measurement of biodegradable           MFC architecture and inoculation
+organics and/or toxic materials in water or wastewater
+(Yang et al. 2015; Lóránt et al. 2019).                Three identical cubic-shaped single-chamber air cath-
+   One of the most important parameters for the          ode MFCs were applied as biosensors, with an inner
+characterization of polluted water/wastewater samples    volume of 230 cm3 (see Fig. 1). 10 cm diameter
+is biochemical oxygen demand (BOD). With the main        graphite brushes (made of Zoltek 3505015T-13 fiber)
+aim of simplifying the standard respirometry-based       were used as anode. Porous ceramic plates with ion
+BOD5 measurement and reducing its time requirement       exchange polymer in the pores were used as proton
+of 5 days, numerous researches have been carried out     exchange membranes (PEM). The air cathodes con-
+recently to develop MFC-based BOD measurement            tained 25 ml of biomass-originated carbon granules,
+methods (Spurr et al. 2018; Do et al. 2020).             connected to the PEM through a conducting glassy
+   In MFC biosensors, prompt assessment of BOD can       carbon cloth layer with an interface of 48 cm2. More
+be attempted based on the Monod-type relationship
+between the generated current and the actual
+biodegradable organic content in the anolyte (Lóránt
+et al. 2019). The result of this measurement method,
+however, refers only to the soluble readily biodegrad-
+able content, as the slowly biodegradable suspended
+organic fraction of real wastewaters needs consider-
+able time (several hours to few days) to be hydrolyzed
+and biodegraded (Henze et al. 2015; Do et al. 2020;
+How et al. 2020). To take this fraction into consider-
+ation, total charge (Q) gained by the elimination of
+substrates has to be calculated within a longer time-
+frame (typically few hours to few days) of the
+biodegradation. Q was found to be in linear relation-
+ship with the BOD5 concentration (Liu et al. 2018;
+Wang et al. 2018). Although Q derived BOD may
+involve the measurement of suspended slowly
+biodegradable substrate content, most of the related
+references investigated basically soluble, readily
+biodegradable substrates (e.g. Wang et al. 2018; Gao
+                                                         Fig. 1 Scheme of the applied single-chamber air cathode
+et al. 2020). To our knowledge, MFC-based measure-       microbial fuel cells (Rext external resistance, PEM proton
+ment of real wastewater samples with highly variable     exchange membrane)
+
+
+123
+Biotechnol Lett (2021) 43:445–454                                                                               447
+
+
+detailed description of the cells including basic           – Acetate and Peptone (soluble substrates): stock
+performance characteristics can be found in our               solution was prepared and diluted to the desired
+previous publication (Lóránt et al. 2019).                  concentrations by water before injection.
+    The electrolyte inlet and outlet were positioned on     – Corn starch (partly suspended polysaccharide):
+the opposite side of the anode chamber to facilitate its      stock suspension was prepared by suspending and
+rinsing with a standard (substrate free) electrolyte. The     stirring corn starch in water while heating it up
+flow was provided by a MasterflexÒ peristaltic pump.          to * 80 °C for 10 min to hydrate and partly
+The composition of the standard electrolyte was as            dissolve the polysaccharide content. The stock
+follows: 3.13 g NaHCO3 l-1, 0.31 g NH4Cl l-1,                 suspension was diluted to the desired concentra-
+0.13 g KCl l-1, 4.22 g NaH2PO4 l-1, 6.93 g Na2-               tion by water prior to injection. COD and CODD
+HPO4*12 H2O l-1 (based on Oh et al. 2004). A                  measurements showed, that in average * 20% of
+sealable sample injection hole was placed on the top of       the sample’s total COD content was in dissolved
+the anode chamber. The external circuit included the          form, while the rest was in suspended form.
+adjustable resistance and a data collection device          – Milk (soluble and colloidal organic content):
+(Graphtec midi logger GL840 oscilloscope).                    commercial milk was diluted with water before
+    The MFCs were inoculated with diluted primary             injection.
+settled sludge from domestic wastewater treatment           – Domestic and brewery wastewaters (soluble, col-
+plant (South-pest WWTP), with sodium acetate sub-             loidal and suspended organic content): Before the
+strate in 40 mM concentration. Within a 2 weeks long          injection, some of the original wastewater samples
+inoculation period applying 1000 X external resis-            were diluted by water in order to cover a wide
+tance, the voltage increased and stabilized at                BOD5 concentration range (59–660 mg BOD l-1),
+0.5–0.6 V in each cell. Having the voltage reached            enabling the calculation of an appropriate Q vs.
+its maximum plateau, the inoculating suspension was           BOD5 correlation. Detailed analytics of real
+washed out with standard electrolyte, and 1 month of          wastewaters are summarized in Supplementary
+startup period was carried out using acetate substrate        Table 1.
+(40 mM) to reach stable operation prior to
+measurements.
+                                                            Procedure of the BOD measurement using MFC
+                                                            biosensors
+Basic sample quality measurements
+                                                            Before each measurement, anode chambers of the cells
+BOD5 measurements and chemical oxygen demand
+                                                            were rinsed with 0.7 l of standard electrolyte to ensure
+(COD) measurements were carried out according to
+                                                            the biodegradable substrate free state in the cell. Once
+international standards (APHA 1999). In case of
+                                                            the rinsing finished, the electrolyte flow was stopped
+samples with considerable suspended organics con-
+                                                            and sample injection procedure started: before the
+tent, dissolved COD concentrations (CODD) were also
+                                                            introduction of the sample, equal volume of anolyte
+determined besides total COD. Preparation of samples
+                                                            was vented from the MFCs, then the anode chamber
+for CODD measurement was carried out by floccula-
+                                                            was filled up with the sample by automatic pipette, and
+tion using ZnSO4 and consequent filtration as
+                                                            the measurement started. During method development
+described by Mamais et al. (1993).
+                                                            it was revealed that the favorable amount of
+                                                            biodegradable organics introduced to the anodic
+Applied substrate materials
+                                                            chamber should be below 40 mg in BOD5 to result
+                                                            in an acceptable measurement time (\ 4 d) and above
+In order to investigate the reliability, evaluate and
+                                                            4 mg to enable an accurate measurement. Thus, the
+adapt the measurement with MFC biosensors to real
+                                                            amount of the introduced substrate was adjusted: the
+wastewaters, series of samples containing substrates
+                                                            volume of the injection was 4 ml in case of artificial
+with different complexity and solubility were inves-
+                                                            samples and 60 ml in case of real wastewaters with
+tigated (see in Table 1).
+                                                            lower initial BOD5 concentrations (see Table 1).
+   Sample preparation of investigated materials were
+as follows:
+
+                                                                                                         123
+448                                                                                         Biotechnol Lett (2021) 43:445–454
+
+
+Table 1 Origin and description of the materials investigated in the MFCs
+Name                                     Media type              Substrate content of the media               Concentration
+                                                                                                              (mg BOD5 l-1)
+
+Sodium-acetate (Molar chemicals)         Chemically              Soluble readily biodegradable                2600
+                                         defined                                                              (stock solution)
+Peptone                                  Complex                 Soluble readily biodegradable                37,000
+(Molar chemicals)                                                                                             (stock solution)
+Corn starch (Hungrana Ltd.)              Polysaccharide          Partly suspended partly soluble              12,000
+                                                                                                              (stock solution)
+Milk                                     Complex                 Partly soluble,                              80,000–110,000
+(Alföldi Tej Ltd.)                                              partly colloidal
+Pre-clarified domestic wastewater        Complex                 Soluble readily biodegradable and            80–320
+(South-pest WWTP)                                                 suspended slowly biodegradable
+Brewery wastewater                       Complex                 Soluble readily biodegradable and            59–660
+(Mad Scientist Craft Brewery)                                     suspended slowly biodegradable
+
+
+
+   During experiments with acetate, external resis-               where I is the current in the external circuit (A), U is
+tance (Rext) was set to 400 X as polarization curves              the voltage (V) measured on the external resistance
+suggested the maximum power output at that value.                 (Rext, X), Q is the total charge (C) flown through the
+All other cases Rext was set to 100 X to enhance the              external circuit during the measurement, ts (s) is the
+rate of biodegradation. During measurement, voltage               starting time of the experiment, te (s) is the end time of
+on the external resistor was registered in every 5 min            the measurement. During the whole research, three
+by the data collection device. At the beginning,                  identical MFCs were operated in parallel, referred in
+voltage increased rapidly and generally reached a                 the paper as MFC ‘‘A’’, ‘‘B’’ and ‘‘C’’. Coulombic
+plateau. After some time (depending on the amount                 efficiencies were calculated from Q and the known
+and quality of the sample), the voltage began to                  COD values of the samples, based on Logan (2008).
+decrease as a result of substrate depletion. The end-
+point of the measurement was defined as a discrete
+voltage value determined during the development of                Results and discussion
+the method (0.02 V in case of real wastewater samples
+and 0.05 V in case of all other samples). At these                Verification of the measurement procedure
+cutoff points the substrates were considered to be                with acetate substrate
+practically depleted.
+   Knowing the external resistance, current was                   Figure 2a shows the voltage vs. time curves with
+calculated by Ohm’s law, and the current vs. time in              different amounts of acetate, proving that the mea-
+the measurement time frame was numerically inte-                  surement reproduced the results of similar studies
+grated as described by Eqs. (1, 2). The total charge              (Modin and Wilén 2012; Wang et al. 2018) in the
+obtained from biodegradation was calculated and                   applied cells. * 0.01 V of substrate-free baseline of
+compared with the BOD5 value of the sample:                       the voltage (related to endogenous respiration) was
+        U                                                         measured by maintaining 3 days long substrate-free
+I¼                                                        ð1Þ
+       Rext                                                       state in the anode chambers. To shorten the measure-
+       Z te                                                       ment time, however, the end-point was considered to
+Q¼            I dt                                        ð2Þ     be 0.05 V. This consideration was based on the
+         ts                                                       concentration dependence of the voltage in the cells
+                                                                  (Lóránt et al. 2019), which suggested that at 0.05 V
+                                                                  potential on the 400 X Rext, the remaining readily
+
+
+123
+Biotechnol Lett (2021) 43:445–454                                                                                      449
+
+
+                                                                    deviation (SD = 0.64; RSD = 8.0%) were found with
+                                                                    the calibration line slopes of different MFCs. Coulom-
+                                                                    bic efficiencies (CE) in the cells A, B and C were
+                                                                    found to be 57%, 46% and 62% in average, with RSD
+                                                                    below 10% in each cell, similar to the results of Wang
+                                                                    et al. (2018).
+                                                                       With the applied 400 X Rext, the average substrate
+                                                                    elimination rate was * 0.23 mg BOD5 l-1 h-1 with
+                                                                    5.2 mg introduced BOD5. In order to accelerate the
+                                                                    biodegradation of the substrates, Rext was reduced to
+                                                                    100 X. Due to this adjustment, the substrate elimina-
+                                                                    tion rate was increased considerably by 35%, from
+                                                                    0.23 to 0.31 mg BOD5 l-1 h-1 with the same amount
+                                                                    of BOD5 spiked. At the same time, maximum voltage
+                                                                    plateau remained above 0.25 V, still enabling reliable
+                                                                    measurement. Thus, 100 X Rext was used in further
+                                                                    experiments.
+
+                                                                    Evaluation of measurements with complex
+                                                                    artificial media samples
+
+                                                                    On Fig. 3 Q vs. injected BOD5 correlations of three
+                                                                    different complex artificial substrates (peptone solu-
+                                                                    tion, starch suspension, diluted milk) are depicted for
+                                                                    the three MFCs. With the investigated substrates,
+                                                                    linear correlations provided very high ([ 0.97) R2
+                                                                    values in each cell. The slopes of calibration lines of
+                                                                    the three MFCs proved to be similar with every
+                                                                    substrate. Slope averages together with SD and RSD
+                                                                    data, as well as the coulombic efficiency averages with
+                                                                    similar statistical evaluation are summarized in
+                                                                    Table 2. The low SD (B 0.4) and RSD (\ 5%) values
+                                                                    suggest that practically the same Q vs. introduced
+                                                                    BOD5 calibration can be applied for MFCs with
+Fig. 2 a Voltage vs. time curves with different amounts of
+introduced acetate (given in mg BOD5) in MFC ‘‘A’’; b linear        identical design and inoculation.
+correlation of the total charge (Q) values vs. introduced acetate      For the readily biodegradable soluble substrate of
+in mg BOD5 for each MFC (error bars = standard deviation of         peptone, high (75.8%) coulombic efficiency was
+Q, n = 3–5)
+                                                                    observed. The COD derived coulombic efficiency
+                                                                    obtained for the corn starch samples containing large
+biodegradable substrate concentration in the anode                  amount of suspended organics was considerably lower
+chamber is as low as * 0.08 mg BOD5 l-1. As a                       (48.3%), indicating that a larger part of the suspended
+result, the measurement time was shortened by *                     content was not biodegraded in the measurement by
+ 12–24 h, still practically representing the complete               exoelectrogenic metabolism. The slope of the Q vs.
+biodegradation. Figure 2b shows that the calculated                 injected BOD5 correlation, however, is similar to those
+total charge values give good linear correlation with               obtained with peptone (8.62 and 8.25, respectively,
+the BOD5 values of the samples: coefficient of                      see Table 2). This suggests that similar fraction of
+determination (R2) is higher than 0.99 in each MFC.                 starch suspension was biodegraded in the standard
+Small standard deviation and relative standard                      BOD measurement as in the MFC, which makes the
+                                                                    two measurement comparable. Samples prepared with
+
+                                                                                                                123
+450                               Biotechnol Lett (2021) 43:445–454
+
+      b Fig. 3 Linear correlation of the total charge values vs.
+       introduced mg BOD5 in case of a peptone; b corn starch;
+       c milk, for each MFC (error bars = standard deviation, n = 3–5)
+
+
+
+       milk provided higher (64.2%) CE, with similarly low
+       SD and RSD values. At the same time, the calculated
+       average slope values of the linear regressions were
+       very close to each other (8.62, 8.25, 9.02 C mg-1
+       BOD5 for peptone, corn starch and milk, respectively),
+       with RSD \ 5%. The time requirement of the mea-
+       surements was 0.5–4 days depending on the injected
+       amount of substrate. Based on these results it can be
+       suggested that the BOD5 value of samples containing
+       suspended biodegradable organics (* 80% of the
+       corn starch sample’s organic content) and/or colloidal
+       complex substrates (e.g. the fat content of milk) can be
+       reliably measured with the described method in the
+       MFC biosensors.
+
+       Evaluation of measurements with real wastewater
+       samples
+
+       11 pre-clarified domestic wastewater samples and 10
+       brewery wastewater samples were investigated in the
+       three MFCs (see Supplementary Table 1). As the
+       biodegradable organic concentration of real wastew-
+       ater samples were orders of magnitude lower than the
+       applied stock solutions of the previously investigated
+       artificial samples (see in Table 1), the injection volume
+       was set to 60 ml (instead of 4 ml), to reach the
+       applicable range of injected BOD5 from 4 to 40 mg.
+          The composition of the domestic and the brewery
+       wastewater (Supplementary Table 1) was consider-
+       ably different: average CODD/COD ratio of the
+       domestic wastewater was 0.32, while that of the
+       brewery wastewater was 0.63. Thus, larger part of the
+       domestic wastewater’s organic content was in sus-
+       pended form (presumably slowly biodegradable,
+       based on Choi et al. (2005)), while the organic content
+       of the brewery wastewater was predominantly in
+       soluble (presumably readily biodegradable) form.
+          The typical shape of the voltage vs. time curve was
+       different with the two wastewaters, as it is depicted on
+       Fig. 4, comparing two samples with similar amount of
+       injected BOD5. The ‘‘two step’’ shape of the curves
+       obtained with domestic wastewater has to be high-
+       lighted: it can be suggested that the first peak belongs
+       to the biodegradation of soluble readily biodegradable
+
+
+123
+Biotechnol Lett (2021) 43:445–454                                                                                             451
+
+
+Table 2 Slope averages (C mg-1 BOD5) of the linear correlations of total charge (Q) vs introduced BOD5, and coulombic efficiency
+(CE) averages obtained for the three cells with standard deviation and relative standard deviation values
+Substrate                 Slope               SD                RSD (%)            CE (%)            SD               RSD (%)
+
+Peptone                   8.62                0.36              4.1                75.8              9.59             12.6
+Corn starch               8.25                0.31              3.7                48.3              4.96             10.3
+Milk                      9.02                0.40              4.4                64.2              6.00               9.3
+
+
+
+                                                                      step’’ characteristics of the voltage curve has not yet
+                                                                      been described in the literature. As brewery wastew-
+                                                                      ater contained biodegradable organics mainly in
+                                                                      dissolved form, voltage peak supposedly related to
+                                                                      the elimination of readily biodegradable organics was
+                                                                      considerably wider than in case of domestic wastew-
+                                                                      ater, and ‘‘two step’’ characteristics of the curve was
+                                                                      not observed (see Fig. 4).
+                                                                         As the average potential of the ‘‘shoulder’’ obtained
+                                                                      in the measurement of domestic wastewater samples
+                                                                      was * 0.05 V in general, the previously determined
+                                                                      0.05 V cutoff boundary had to be reduced to ensure the
+                                                                      measurement of the slowly biodegradable fraction.
+                                                                      Therefore, the cutoff point with real wastewaters was
+                                                                      considered to be the time when the potential fell to
+                                                                      0.02 V (two times higher than the 0.01 V baseline). In
+                                                                      a previous research (Gao et al. 2020) the cutoff point
+Fig. 4 Typical shape of the voltage vs. time curve for domestic       of a similar measurement in dual chamber MFCs was
+and brewery wastewaters obtained from the measurement of              determined by the maximum voltage drop. This
+samples D3 and B6 (Supplementary Table 1). Dashed black line:
+0.05 V cutoff potential previously applied for artificial samples;
+                                                                      method, however, proved to be appropriate only for
+Solid black line 0.02 V cutoff potential applied for real             the investigation of soluble substrates. The fixed
+wastewater samples. Purple dashed line stands for the result          0.02 V cutoff potential resolves the problem of
+obtained in MFC ‘‘A’’ for the sample D3 filtrated before the          measurements with real wastewater samples.
+measurement
+                                                                         The Q vs. BOD5 correlation obtained for domestic
+                                                                      and brewery wastewater samples proved to be linear
+substrates, while the following low-potential ‘‘shoul-
+                                                                      with high (C 0.97) R2 values (see Fig. 5a, b). As the
+der’’ belongs to the hydrolysis and the consequent
+                                                                      relative differences were lower than 4% between the
+biodegradation of the suspended, slowly biodegrad-
+                                                                      slopes of the correlation lines obtained for domestic
+able compounds. This suggestion can be verified by
+                                                                      and brewery wastewaters and the average value
+comparing the curves of the original domestic
+                                                                      (Supplementary Table 2), it can be suggested to use
+wastewater samples with the same sample filtered
+                                                                      one unified calibration for the two different wastew-
+before injection (not containing the suspended organ-
+                                                                      aters (see Fig. 5c). The R2 values of these unified
+ics). The ‘‘two step’’ shape of the voltage vs. time
+                                                                      linear correlations are higher than 0.985. It means that
+curve is in accordance with the Activated Sludge
+                                                                      by applying the described method, two wastewater
+Models (Henze et al. 2015) describing the biodegra-
+                                                                      types with considerably different composition can be
+dation of the organic fractions of wastewaters. Most of
+                                                                      appropriately measured with the same calibration line.
+the previous researches focused on samples without
+                                                                      The intersections of the unified linear regressions were
+considerable suspended organic content (Modin and
+                                                                      18.9 mg BOD5 l-1 in average, with 11% RSD. This
+Wilén 2012; Commault et al. 2016; Wang et al. 2018;
+                                                                      derives from the fact, that with real wastewater
+Gao et al. 2020), and to our knowledge, this ‘‘two
+                                                                      samples below * 20 mg BOD5 l-1 concentration,
+
+
+                                                                                                                    123
+452                               Biotechnol Lett (2021) 43:445–454
+
+      b Fig. 5 Linear correlation of the total charge values vs. BOD5
+        concentrations (mg l-1) of real wastewater samples obtained
+        with the developed measurement, applying the 0.02 V cutoff
+        voltage a domestic wastewater; b brewery wastewater; c com-
+        bined correlation for brewery and domestic wastewaters
+        (circles: domestic ww; triangles: brewery ww)
+
+
+
+        the developed method does not produce voltage values
+        higher than 0.02 V to calculate with, therefore this
+        concentration can be considered as the limit of
+        detection.
+           Depending on the concentration of the injected
+        samples, the time requirement of the measurements
+        varied from 0.5 to 4 days (see Supplementary Table 1).
+        This is considerably longer than the 5–17.5 h obtained
+        by Commault et al. (2016) in MFCs with 1 ml volume.
+        Response time can be reduced by decreasing the size
+        of the cell, however, it has its drawbacks: (1) due to
+        possible inhomogeneity, the standard deviation of
+        measurements originated from the sampling of liquid
+        containing suspended solids can be very high when the
+        sample volume is small, i.e. few milliliters (Rieger
+        et al. 2010); (2) below 1 d measurement time the
+        biodegradation of the suspended organics content is
+        not ensured. MFC measured BOD (BODMFC) con-
+        centrations were calculated from Q values by the
+        obtained calibration. Comparing the BODMFC values
+        with the BOD5 concentrations (measured by standard
+        respirometric method) of the samples, the difference
+        was less than 10% in average.
+
+
+        Conclusion
+
+        Single-chamber air cathode microbial fuel cells were
+        applied as biosensors for the determination of BOD of
+        real wastewaters. Artificial sample series containing
+        complex, suspended and colloidal organics (e.g. corn
+        starch, milk) provided linear correlations with
+        R2 [ 0.97 for Q vs. injected BOD5, proving that
+        besides soluble readily biodegradable substrates, the
+        applied measurement method is appropriate for the
+        determination of suspended and colloidal substrate
+        content as well.
+           With the adapted method, two types of wastewaters
+        (domestic, brewery) with significantly different com-
+        position can be measured using the same linear Q vs.
+        BOD5 calibration (R2 [ 0.985). The relative error of
+
+
+123
+Biotechnol Lett (2021) 43:445–454                                                                                                     453
+
+
+BOD values determined with the MFCs related to the                     not included in the article’s Creative Commons licence and your
+BOD5 concentrations measured by standard respirom-                     intended use is not permitted by statutory regulation or exceeds
+                                                                       the permitted use, you will need to obtain permission directly
+etry method was less than 10%. As most single-                         from the copyright holder. To view a copy of this licence, visit
+chamber air cathode MFC designs require little                         http://creativecommons.org/licenses/by/4.0/.
+maintenance and the sampling/rinsing steps can be
+easily automated based on the measured voltage
+signal, it can be suggested that this technology with
+the developed measurement method provides a                            References
+promising candidate for on-site automatic BOD
+sensors.                                                               APHA - American Public Health Association (1999) Standard
+                                                                             methods for the examination of water and wastewater, 20th
+    Characteristics of the voltage vs. time curves                           edn. APHA - American Public Health Association,
+obtained for domestic wastewater contains a higher                           Washington, D.C.
+voltage peak supposedly related to the biodegradation                  Choi EH, Klapwijk B, Mels A, Brouwer H (2005) Evaluation of
+of readily biodegradable soluble substrates, and a                           wastewater characterization methods. Water Sci Technol
+                                                                             52:61–68
+lower voltage (* 0.05 V) ‘‘shoulder’’ presumably                       Commault AS, Lear G, Bouvier S, Feiler L, Karacs J, Weld RJ
+belonging to the hydrolysis and consequent biodegra-                         (2016) Geobacter-dominated biofilms used as ampero-
+dation of suspended slowly biodegradable organics.                           metric BOD sensors. Biochem Eng J 109:88–95
+Thus, not only quantitive analysis of domestic                         Do MH, Ngo HH, Guo W, Chang SW, Nguyen DD, Liu Y,
+                                                                             Varjani S, Kumar M (2020) Microbial fuel cell-based
+wastewaters can be carried out with the developed                            biosensor for online monitoring wastewater quality: a
+method, but possibly the determination of soluble                            critical review. Sci Total Environ. https://doi.org/10.1016/
+readily biodegradable and suspended slowly                                   j.scitotenv.2019.135612
+biodegradable substrate ratio as well. Further research                Gao Y, Yin F, Ma W, Wang S, Liu Y, Liu H (2020) Rapid
+                                                                             detection of biodegradable organic matter in polluted water
+is required in this matter.                                                  with microbial fuel cell sensor: method of partial
+                                                                             coulombic yield. Bioelectrochemistry. https://doi.org/10.
+Acknowledgements The valuable work of Noémi Petrovai,                       1016/j.bioelechem.2020.107488
+Rebeka Sipos and Gábor Kovács BSc students is highly                 Henze M, Gujer W, Mino T, van Loosedrecht M (2015) Acti-
+acknowledged. The research was supported by the Higher                       vated Sludge Models ASM1, ASM2, ASM2d and ASM3.
+Education Excellence Program (FIKP) of the Ministry of                       IWA Publishing, London
+Human Capacities (EMMI) within the frame of Biotechnology              How SW, Sin JH, Wong SYY, Lim BP, Aris AM, Ngoh GC,
+research area at Budapest University of Technology and                       Shoji T, Curtis TP, Chua ASM (2020) Characterization of
+Economics (BME FIKP-BIO) and by the New National                             slowly-biodegradable organic compounds and hydrolysis
+Excellence Program of the Ministry for Innovation and                        kinetics in tropical wastewater for biological nitrogen
+Technology (ÚNKP-19-3).                                                     removal. Water Sci Technol 81:71–80
+                                                                       Liu Y, Tuo AX, Jin XJ, Li XZ, Liu H (2018) Quantifying
+Supporting information Supplementary Table 1—Compo-                          biodegradable organic matter in polluted water on the basis
+sition of the domestic and brewery wastewater samples mea-                   of coulombic yield. Talanta 176:485–491
+sured in the MFC sensors (CODD = dissolved COD; BODin =                Logan BE (2008) Microbial fuel cells. Wiley, Hoboken, NJ
+amount of BOD5 (in mg) injected to the anode chamber of the            Lóránt B, Gyalai-Korpos M, Goryanin I, Tardy GM (2019)
+cells).                                                                      Single chamber air–cathode microbial fuel cells as
+   Supplementary Table 2—Data and analysis of the linear                     biosensors for determination of biodegradable organics.
+regression parameters of the Q vs. BOD5 correlation for real                 Biotechnol Lett 41:555–563
+wastewaters.                                                           Mamais D, Jenkins D, Prrr P (1993) A rapid physical-chemical
+                                                                             method for the determination of readily biodegradable
+Funding Open access funding provided by Budapest                             soluble COD in municipal wastewater. Water Res
+University of Technology and Economics.                                      27:195–197
+                                                                       Modin O, Wilén BM (2012) A novel bioelectrochemical BOD
+Open Access This article is licensed under a Creative                        sensor operating with voltage input. Water Res
+Commons Attribution 4.0 International License, which                         46:6113–6120
+permits use, sharing, adaptation, distribution and reproduction        Oh S, Min B, Logan BE (2004) Cathode performance as a factor
+in any medium or format, as long as you give appropriate credit              in electricity generation in microbial fuel cells. Environ Sci
+to the original author(s) and the source, provide a link to the              Technol 38:4900–4904
+Creative Commons licence, and indicate if changes were made.           Rabaey K, Verstraete W (2005) Microbial fuel cells: novel
+The images or other third party material in this article are                 biotechnology for energy generation. Trends Biotechnol
+included in the article’s Creative Commons licence, unless                   23:291–298
+indicated otherwise in a credit line to the material. If material is
+
+
+                                                                                                                              123
+454                                                                                       Biotechnol Lett (2021) 43:445–454
+
+Rieger L, Takács I, Villez K, Siegrist H, Lessard P, Vanrol-        of biochemical oxygen demand using low-cost activated
+    leghem PA, Comeau Y (2010) Data reconciliation for               carbon as cathode catalyst. Environ Technol 39:3228–3237
+    wastewater treatment plant simulation studies-planning for   Yang H, Zhou M, Liu M, Yang W, Gu T (2015) Microbial fuel
+    high-quality data and typical sources of errors. Water           cells for biosensor applications. Biotechnol Lett
+    Environ Res 82:426–433                                           37:2357–2364
+Spurr MWA, Yu EH, Scott K, Head IM (2018) Extending the
+    dynamic range of biochemical oxygen demand sensing
+                                                                 Publisher’s Note Springer Nature remains neutral with
+    with multi-stage microbial fuel cells. Environ Sci Water
+                                                                 regard to jurisdictional claims in published maps and
+    Res 4:2029–2040
+                                                                 institutional affiliations.
+Wang Y, Liu X, Wang M, Zhang P, Zong Y, Zhang Q (2018) A
+    single-chamber microbial fuel cell for rapid determination
+
+
+
+
+123
+

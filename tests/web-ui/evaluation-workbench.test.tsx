@@ -182,6 +182,23 @@ describe('workspace presenters', () => {
       expect(modelingHtml).toContain('1 modeled series share this unit');
       expect(modelingHtml).toContain('Modeled outputs');
 
+      const explorerHtml = renderToStaticMarkup(
+        React.createElement(EvaluationModelingTab, {
+          evaluation: workspace.evaluation,
+        }),
+      );
+
+      expect(explorerHtml).toContain('Cell and process explorer');
+      expect(explorerHtml).toContain(
+        'Interactive MFC, MEC and electrochemical biosensor process diagram',
+      );
+      expect(explorerHtml).toContain('This run:');
+      expect(explorerHtml).toContain('Losses and balances');
+      expect(explorerHtml).toContain('Model limits');
+      expect(explorerHtml).toContain(
+        'A selectable reactor diagram links anode',
+      );
+
       const failedModelingHtml = renderToStaticMarkup(
         React.createElement(EvaluationModelingTab, {
           evaluation: {

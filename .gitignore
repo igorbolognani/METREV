@@ -2,6 +2,9 @@ node_modules/
 .venv/
 .turbo/
 .next/
+site-dist/
+.sites-source/
+node-compile-cache/
 coverage/
 dist/
 .serena/project.local.yml

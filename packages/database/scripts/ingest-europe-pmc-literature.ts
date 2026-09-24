@@ -12,7 +12,6 @@ import {
   optionValue,
   parseScriptOptions,
   persistNormalizedEntries,
-  summarizeNormalizedEntries,
 } from './external-ingestion-shared.mjs';
 import { loadWorkspaceEnv } from './load-workspace-env.mjs';
 
@@ -66,6 +65,26 @@ export async function runEuropePmcIngestion(overrides = {}) {
     throw new Error(
       'INGEST_QUERY or --query is required for Europe PMC ingestion.',
     );
+  }
+
+  if (dryRun) {
+    const output = {
+      sourceType: 'EUROPE_PMC',
+      query,
+      dryRun: true,
+      mode: 'offline_request_plan',
+      endpoint: 'https://www.ebi.ac.uk/europepmc/webservices/rest/search',
+      requestLimit: limit,
+      pageSize,
+      maxPages,
+      initialCursor,
+      contactConfigured: Boolean(email),
+      providerCalled: false,
+      databaseAccessed: false,
+      recordsFetched: null,
+    };
+    console.log(JSON.stringify(output, null, 2));
+    return output;
   }
 
   const startedAt = new Date();
@@ -131,21 +150,6 @@ export async function runEuropePmcIngestion(overrides = {}) {
   }
 
   const entries = deduplicateEntries(normalizedEntries).slice(0, limit);
-
-  if (dryRun) {
-    const summary = summarizeNormalizedEntries(entries);
-    const output = {
-      sourceType: 'EUROPE_PMC',
-      query,
-      dryRun: true,
-      recordsFetched,
-      pagesProcessed,
-      nextCursor,
-      ...summary,
-    };
-    console.log(JSON.stringify(output, null, 2));
-    return output;
-  }
 
   const prisma = getPrismaClient();
   const run = await prisma.ingestionRun.create({
