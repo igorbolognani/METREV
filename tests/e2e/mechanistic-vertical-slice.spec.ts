@@ -32,7 +32,7 @@ const scenarios: VerticalSliceScenario[] = [
     id: 'mfc-wastewater',
     presetLabel: 'MFC wastewater model inputs',
     reportLabels: ['COD removal', 'Gross MFC power'],
-    comparisonKey: 'gross_power_w',
+    comparisonKey: 'gross_electrical_output_energy_j',
     changedValue: 'mfc-load',
   },
   {
@@ -43,21 +43,21 @@ const scenarios: VerticalSliceScenario[] = [
       'MEC hydrogen captured',
       'MEC cell electrical input energy',
     ],
-    comparisonKey: 'mec_cell_electrical_input_w',
+    comparisonKey: 'mec_cell_electrical_input_energy_j',
     changedValue: 'mec-voltage',
   },
   {
     id: 'biosensor-standalone',
     presetLabel: 'Standalone wastewater biosensor',
     reportLabels: ['bod biosensor signal', 'bod detection status'],
-    comparisonKey: 'biosensor_signal_current_a',
+    comparisonKey: 'biosensor_signal_to_noise_ratio',
     changedValue: 'sensor-concentration',
   },
   {
     id: 'biosensor-mfc',
     presetLabel: 'MFC-integrated wastewater biosensor',
     reportLabels: ['Gross MFC power', 'bod biosensor signal'],
-    comparisonKey: 'biosensor_signal_current_a',
+    comparisonKey: 'biosensor_signal_to_noise_ratio',
     changedValue: 'sensor-concentration',
   },
   {
@@ -68,7 +68,7 @@ const scenarios: VerticalSliceScenario[] = [
       'MEC hydrogen captured',
       'bod biosensor signal',
     ],
-    comparisonKey: 'biosensor_signal_current_a',
+    comparisonKey: 'biosensor_signal_to_noise_ratio',
     changedValue: 'sensor-concentration',
   },
 ];
@@ -156,7 +156,7 @@ function makeComparisonInput(
   const changed = structuredClone(raw);
 
   if (scenario.changedValue === 'mfc-load') {
-    changed.mechanistic_model!.electrochemistry!.external_load_ohm!.value = 120;
+    changed.mechanistic_model!.electrochemistry!.external_load_ohm!.value = 500;
   } else if (scenario.changedValue === 'mec-voltage') {
     changed.mechanistic_model!.electrochemistry!.applied_voltage_v!.value = 1.35;
   } else {
