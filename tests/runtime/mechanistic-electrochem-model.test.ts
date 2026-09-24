@@ -249,6 +249,23 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(nextGap).toBeLessThan(initialGap);
   });
 
+  it('solves wastewater MFC outputs without requiring an optional biosensor', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('completed');
+    expect(valueFor(result, 'cod_removal_pct')).toEqual(expect.any(Number));
+    expect(valueFor(result, 'gross_power_w') as number).toBeGreaterThan(0);
+    expect(valueFor(result, 'biosensor_signal_current_a')).toBeNull();
+    expect(
+      result.derived_observations.every(
+        (observation) => observation.source_kind === 'modeled',
+      ),
+    ).toBe(true);
+  });
+
   it('lowers integrated biosensor confidence when sensor inputs are assumptions', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     const markSourceKind = (
@@ -594,4 +611,80 @@ describe('coupled electrochemical mechanistic model', () => {
       'biosensor.analytical_performance.selectivity_pct.value must be in [0, 100]',
     );
   });
+
+  it.each(['standalone', 'mfc_integrated', 'mec_integrated'] as const)(
+    'blocks $0 biosensor inputs when required fields, units, or ranges are invalid',
+    (deploymentMode) => {
+      const makeCase = () => {
+        const raw = structuredClone(fixture) as RawCaseInput;
+        const sensor = raw.stack_blocks!.sensors_and_analytics!.biosensor!;
+        sensor.deployment_mode = deploymentMode;
+
+        if (deploymentMode === 'standalone') {
+          delete raw.mechanistic_model;
+          raw.technology_family = 'electrochemical_biosensor';
+          raw.primary_objective = 'biosensing';
+          sensor.power_source = 'external';
+        } else if (deploymentMode === 'mec_integrated') {
+          raw.technology_family = 'microbial_electrolysis_cell';
+          raw.mechanistic_model!.system_type = 'MEC';
+          delete raw.mechanistic_model!.electrochemistry.external_load_ohm;
+          raw.mechanistic_model!.electrochemistry.cathode_reaction =
+            'hydrogen_evolution';
+          raw.mechanistic_model!.electrochemistry.applied_voltage_v = {
+            value: 1.2,
+            unit: 'V',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://coupled-mfc-biosensor-v1',
+          };
+          raw.mechanistic_model!.electrochemistry.hydrogen_faraday_efficiency =
+            {
+              value: 0.7,
+              unit: '1',
+              source_kind: 'test_fixture',
+              source_ref: 'test-fixture://coupled-mfc-biosensor-v1',
+            };
+          raw.mechanistic_model!.electrochemistry.hydrogen_capture_fraction = {
+            value: 0.8,
+            unit: '1',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://coupled-mfc-biosensor-v1',
+          };
+          sensor.power_source = 'mec_power_bus';
+          sensor.power_available_w = {
+            value: 2,
+            unit: 'W',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://coupled-mfc-biosensor-v1',
+          };
+        }
+
+        return raw;
+      };
+
+      const missing = makeCase();
+      delete missing.stack_blocks!.sensors_and_analytics!.biosensor!
+        .concentration;
+      const missingResult = evaluate(missing);
+      expect(missingResult.status).toBe('insufficient_data');
+      expect(valueFor(missingResult, 'biosensor_signal_current_a')).toBeNull();
+
+      const incompatibleUnit = makeCase();
+      incompatibleUnit.stack_blocks!.sensors_and_analytics!.biosensor!.concentration!.unit =
+        'g/L';
+      const unitResult = evaluate(incompatibleUnit);
+      expect(unitResult.status).toBe('insufficient_data');
+      expect(unitResult.failure_detail?.missing_inputs).toContain(
+        'biosensor.concentration.unit (expected mg/L)',
+      );
+
+      const outOfRange = makeCase();
+      outOfRange.stack_blocks!.sensors_and_analytics!.biosensor!.concentration!.value = 101;
+      const rangeResult = evaluate(outOfRange);
+      expect(rangeResult.status).toBe('insufficient_data');
+      expect(rangeResult.failure_detail?.missing_inputs).toContain(
+        'biosensor.concentration is outside the calibration range',
+      );
+    },
+  );
 });

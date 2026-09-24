@@ -1437,8 +1437,30 @@ describe('api runtime flow', () => {
       }),
       sections: expect.objectContaining({
         stack_diagnosis: expect.any(Object),
+        modeling: expect.objectContaining({
+          status: 'completed',
+          model_version: 'coupled-0d-dae-v1',
+          derived_observations: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'gross_power_w',
+              source_kind: 'modeled',
+            }),
+            expect.objectContaining({
+              key: 'biosensor_signal_current_a',
+              source_kind: 'modeled',
+            }),
+          ]),
+        }),
       }),
     });
+    expect(
+      reportResponse
+        .json()
+        .sections.modeling.derived_observations.every(
+          (observation: { source_kind: string }) =>
+            observation.source_kind === 'modeled',
+        ),
+    ).toBe(true);
 
     const jsonExportResponse = await app.inject({
       method: 'GET',
@@ -1472,6 +1494,68 @@ describe('api runtime flow', () => {
       '015.0.0',
     );
     expect(csvExportResponse.body).toContain('section,label,primary_value');
+
+    await app.close();
+  });
+
+  it('persists insufficient model input and keeps the printable report explicit', async () => {
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      sessionResolver: testSessionResolver,
+    });
+    const payload = {
+      ...fixture,
+      case_id: 'CASE-INSUFFICIENT-MODEL',
+      mechanistic_model: undefined,
+    };
+
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/cases/evaluate',
+      headers: {
+        'content-type': 'application/json',
+        cookie: sessionCookie('analyst-session'),
+      },
+      payload,
+    });
+
+    expect(createResponse.statusCode).toBe(201);
+    const created = evaluationResponseSchema.parse(createResponse.json());
+    expect(created.simulation_enrichment?.status).toBe('insufficient_data');
+    expect(
+      created.simulation_enrichment?.derived_observations.some(
+        (observation) => observation.source_kind === 'modeled',
+      ),
+    ).toBe(false);
+
+    const reloadedResponse = await app.inject({
+      method: 'GET',
+      url: `/api/evaluations/${created.evaluation_id}`,
+      headers: { cookie: sessionCookie('viewer-session') },
+    });
+    expect(reloadedResponse.statusCode).toBe(200);
+    expect(
+      evaluationResponseSchema.parse(reloadedResponse.json())
+        .simulation_enrichment?.status,
+    ).toBe('insufficient_data');
+
+    const reportResponse = await app.inject({
+      method: 'GET',
+      url: `/api/workspace/evaluations/${created.evaluation_id}/report`,
+      headers: { cookie: sessionCookie('viewer-session') },
+    });
+    expect(reportResponse.statusCode).toBe(200);
+    expect(reportResponse.json().sections.modeling).toMatchObject({
+      status: 'insufficient_data',
+      derived_observations: [],
+    });
+    expect(reportResponse.json().sections.modeling.failure_detail).toEqual(
+      expect.objectContaining({
+        missing_inputs: expect.arrayContaining([
+          expect.stringContaining('mechanistic_model'),
+        ]),
+      }),
+    );
 
     await app.close();
   });

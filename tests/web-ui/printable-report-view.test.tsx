@@ -26,6 +26,9 @@ describe('printable report view', () => {
       expect(reportHtml).toContain('Report');
       expect(reportHtml).toContain('Audit');
       expect(reportHtml).toContain('Stack diagnosis');
+      expect(reportHtml).toContain('Modeled outputs');
+      expect(reportHtml).toContain('modeled solver outputs');
+      expect(reportHtml).toContain('uncalibrated, lumped');
       expect(reportHtml).toContain('Action shortlist');
       expect(reportHtml).toContain('Qualified candidates');
       expect(reportHtml).not.toContain('report-conversation-drawer');
