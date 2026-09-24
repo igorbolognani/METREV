@@ -78,22 +78,28 @@ test('runs all five solver modes and navigates modeled SVG sections in Chromium'
     );
 
     await sections.getByRole('button', { name: 'Process and outputs' }).click();
-    const anode = svg.getByRole('button', { name: /Anode component/ });
+    const anode = svg.locator(
+      'g[role="button"][aria-label^="Anode component"]',
+    );
+    await expect(anode).toHaveAttribute('tabindex', '0');
     await anode.focus();
     await anode.press('Enter');
     await expect(svg).toContainText('The anode balance couples');
 
     if (item.mode === 'MEC') {
-      const hydrogen = svg.getByRole('button', {
-        name: /Hydrogen product handling/,
-      });
+      const hydrogen = svg.locator(
+        'g[role="button"][aria-label^="Hydrogen product handling"]',
+      );
+      await expect(hydrogen).toHaveAttribute('tabindex', '0');
       await hydrogen.focus();
       await hydrogen.press('Enter');
       await expect(svg).toContainText('MEC gross Faradaic H₂');
     }
 
     if (item.hasSensor && item.id !== 'biosensor_standalone') {
-      await svg.getByRole('button', { name: /Integrated biosensor/ }).click();
+      await svg
+        .locator('g[role="button"][aria-label^="Integrated biosensor"]')
+        .click();
       await expect(svg).toContainText(
         'supplied static amperometric calibration',
       );
