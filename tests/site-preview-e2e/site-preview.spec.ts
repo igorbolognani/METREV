@@ -111,6 +111,7 @@ test('runs all five solver modes and navigates modeled SVG sections in Chromium'
     if (item.hasSensor && item.id !== 'biosensor_standalone') {
       await svg
         .locator('g[role="button"][aria-label^="Integrated biosensor"]')
+        .locator('rect')
         .click();
       await expect(svg).toContainText(
         'supplied static amperometric calibration',
