@@ -79,21 +79,21 @@ funnel_stages:
 
 primary_metrics_by_objective:
   wastewater_treatment:
-    - power_density_w_m2
-    - mec_electrical_input_density_w_m2
-    - net_power_density_w_m2
-    - cod_removal_pct
-    - coulombic_efficiency_pct
-    - internal_resistance_ohm
-    - effluent_cod_kg_m3
-    - current_density_a_m2
+    MFC:
+      - contaminant_removal_efficiency
+      - current_density
+      - power_density
+      - coulombic_efficiency
+    MEC:
+      - contaminant_removal_efficiency
+      - current_density
+      - energy_input
   biosensing:
-    - biosensor_signal_current_a
-    - biosensor_lod
-    - biosensor_loq
-    - biosensor_response_time_s
-    - biosensor_recovery_time_s
-    - biosensor_drift_a_per_day
-    - biosensor_repeatability_cv_pct
-    - biosensor_accuracy_pct
-    - biosensor_selectivity_pct
+    BIOSENSOR:
+      - biosensor_sensitivity
+      - biosensor_lod_loq
+      - biosensor_interference
+
+secondary_metrics_by_system:
+  MEC:
+    - hydrogen_production

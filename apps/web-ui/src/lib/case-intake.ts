@@ -1880,6 +1880,13 @@ export function buildCaseInputFromFormValues(
 
   applyParameterStateToPayload(rawInput, values);
 
+  const modelDraft = readJsonObject(values.mechanisticModelJson);
+  if (modelDraft) {
+    rawInput.mechanistic_model = modelDraft as NonNullable<
+      RawCaseInput['mechanistic_model']
+    >;
+  }
+
   const wastewaterQuality = readJsonObject(values.wastewaterQualityJson);
   if (wastewaterQuality) {
     rawInput.feed_and_operation = {
@@ -1894,13 +1901,6 @@ export function buildCaseInputFromFormValues(
       wastewaterQuality,
       values.technologyFamily,
     );
-  }
-
-  const modelDraft = readJsonObject(values.mechanisticModelJson);
-  if (modelDraft) {
-    rawInput.mechanistic_model = modelDraft as NonNullable<
-      RawCaseInput['mechanistic_model']
-    >;
   }
 
   const biosensorDraft = readJsonObject(values.biosensorConfigurationJson);

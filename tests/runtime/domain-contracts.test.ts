@@ -1,11 +1,15 @@
 import fixture from '../fixtures/raw-case-input.json';
 
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   activeTechnologyFamilyValues,
   canonicalOutputSections,
   createRawInputFromDomainTemplate,
+  domainRootPath,
+  loadYamlFile,
   loadContractInputDefinition,
   loadContractOutputDefinition,
   loadEvidenceDiscoveryPolicy,
@@ -21,6 +25,11 @@ import {
   runtimeReferenceOnlyFiles,
   runtimeValidationReferenceFiles,
 } from '@metrev/domain-contracts';
+
+type EvidenceAuditPolicyProjection = {
+  primary_metrics_by_objective: Record<string, Record<string, string[]>>;
+  secondary_metrics_by_system: Record<string, string[]>;
+};
 
 describe('domain-contract runtime alignment', () => {
   it('keeps active taxonomy narrow and isolates historic read compatibility', () => {
@@ -292,6 +301,20 @@ describe('domain-contract runtime alignment', () => {
         'decision_ready',
         'benchmark_aggregated',
       ]),
+    );
+  });
+
+  it('keeps the domain evidence-audit vocabulary aligned with the executed contract policy', () => {
+    const contractPolicy = loadEvidenceQualityAuditPolicy();
+    const domainPolicy = loadYamlFile<EvidenceAuditPolicyProjection>(
+      resolve(domainRootPath, 'rules/evidence-quality-audit.yml'),
+    );
+
+    expect(domainPolicy.primary_metrics_by_objective).toEqual(
+      contractPolicy.primary_metrics_by_objective,
+    );
+    expect(domainPolicy.secondary_metrics_by_system).toEqual(
+      contractPolicy.secondary_metrics_by_system,
     );
   });
 });
