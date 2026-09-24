@@ -231,6 +231,7 @@ export function buildReportConversationGrounding(input: {
     selected_section: input.selectedSection ?? null,
     used_sections: [
       'stack_diagnosis',
+      'modeling',
       'prioritized_improvements',
       'impact_map',
       'supplier_shortlist',
@@ -311,7 +312,7 @@ function buildReportConversationBoundedSummary(input: {
   grounding: ReportConversationGrounding;
   report: PrintableEvaluationReportResponse;
 }): ReportConversationBoundedContextSummary {
-  const simulation = input.evaluation.simulation_enrichment;
+  const simulation = input.report.sections.modeling;
 
   return {
     normalizedCase: {

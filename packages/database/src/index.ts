@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
+  buildReportModelingSection,
   caseHistoryResponseSchema,
   evaluationClaimUsageSchema,
   evaluationListResponseSchema,
@@ -1146,6 +1147,7 @@ function buildWorkspaceSnapshots(evaluation: EvaluationResponse): Array<{
         ...basePayload,
         current_stack_diagnosis:
           evaluation.decision_output.current_stack_diagnosis,
+        modeling: buildReportModelingSection(evaluation.simulation_enrichment),
         prioritized_improvement_options:
           evaluation.decision_output.prioritized_improvement_options,
         impact_map: evaluation.decision_output.impact_map,

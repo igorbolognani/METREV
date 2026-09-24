@@ -34,6 +34,7 @@ import type {
   WorkspaceTone,
 } from '@metrev/domain-contracts';
 import {
+  buildReportModelingSection,
   caseHistoryWorkspaceResponseSchema,
   dashboardWorkspaceResponseSchema,
   evaluationComparisonResponseSchema,
@@ -2194,6 +2195,9 @@ export function buildPrintableEvaluationReport(input: {
       'Stack diagnosis, prioritized improvements, impact map, roadmap, and audit-visible assumptions.',
     sections: {
       stack_diagnosis: input.evaluation.decision_output.current_stack_diagnosis,
+      modeling: buildReportModelingSection(
+        input.evaluation.simulation_enrichment,
+      ),
       prioritized_improvements:
         input.evaluation.decision_output.prioritized_improvement_options,
       impact_map: input.evaluation.decision_output.impact_map,

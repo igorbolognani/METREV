@@ -10,6 +10,7 @@ import type {
 } from '@metrev/domain-contracts';
 
 import { ParameterStateAuditCard } from '@/components/parameter-state-audit-card';
+import { PrintableReportModelingSection } from '@/components/printable-report-modeling';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -513,6 +514,10 @@ export function PrintableReportWorkspaceView({
                 </ul>
               </WorkspaceDataCard>
             </WorkspaceSection>
+
+            <PrintableReportModelingSection
+              modeling={report.sections.modeling}
+            />
 
             <div className="workspace-split-grid">
               <WorkspaceSection

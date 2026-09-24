@@ -896,6 +896,16 @@ export const simulationEnrichmentSchema = z.object({
   failure_detail: flexibleObjectSchema.optional(),
 });
 
+export const reportModelingSectionSchema = simulationEnrichmentSchema.pick({
+  status: true,
+  model_version: true,
+  derived_observations: true,
+  assumptions: true,
+  confidence: true,
+  provenance: true,
+  failure_detail: true,
+});
+
 export const evidenceDecisionContextSystemTypeSchema = z.enum([
   'MFC',
   'MEC',
@@ -1865,6 +1875,7 @@ export const printableEvaluationReportResponseSchema = z.object({
   subtitle: z.string().min(1),
   sections: z.object({
     stack_diagnosis: currentStackDiagnosisSchema,
+    modeling: reportModelingSectionSchema.nullable().default(null),
     prioritized_improvements: z.array(recommendationRecordSchema),
     impact_map: z.array(impactMapEntrySchema),
     supplier_shortlist: z.array(supplierShortlistEntrySchema),
@@ -2338,6 +2349,7 @@ export type SimulationConfidence = z.infer<typeof simulationConfidenceSchema>;
 export type SimulationProvenance = z.infer<typeof simulationProvenanceSchema>;
 export type SimulationSummary = z.infer<typeof simulationSummarySchema>;
 export type SimulationEnrichment = z.infer<typeof simulationEnrichmentSchema>;
+export type ReportModelingSection = z.infer<typeof reportModelingSectionSchema>;
 export type ExternalEvidenceReviewStatus = z.infer<
   typeof externalEvidenceReviewStatusSchema
 >;
