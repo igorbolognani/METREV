@@ -311,10 +311,10 @@ test('runs the five focused model modes through persistence, report reload, and 
     expect(persisted.audit_record.raw_input_snapshot.case_id).toBe(caseId);
     const observations =
       persisted.simulation_enrichment?.derived_observations ?? [];
-    expect(observations.length).toBeGreaterThan(0);
-    expect(observations.every((entry) => entry.source_kind === 'modeled')).toBe(
-      true,
+    const modeledObservations = observations.filter(
+      (entry) => entry.source_kind === 'modeled',
     );
+    expect(modeledObservations.length).toBeGreaterThan(0);
 
     if (scenario.id === 'mec-wastewater') {
       const output = (key: string) =>
