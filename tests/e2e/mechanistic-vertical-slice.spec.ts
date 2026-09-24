@@ -388,7 +388,11 @@ test('runs the five focused model modes through persistence, report reload, and 
       `/evaluations/${evaluationId}/compare/${baseline.evaluation_id}`,
     );
     await expect(
-      page.getByRole('heading', { name: new RegExp(`${caseId} comparison`) }),
+      page.getByRole('heading', {
+        level: 1,
+        name: `${caseId} comparison`,
+        exact: true,
+      }),
     ).toBeVisible();
   }
 });
