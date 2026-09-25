@@ -24,25 +24,6 @@ function readJson(repoRoot, relativePath) {
       error: `Invalid JSON in ${relativePath}: ${error.message}`,
     };
   }
-
-  try {
-    const resolvedRoot = realpathSync(repoRoot);
-    const resolvedArtifact = realpathSync(absolutePath);
-    if (
-      resolvedArtifact !== resolvedRoot &&
-      !resolvedArtifact.startsWith(`${resolvedRoot}${sep}`)
-    ) {
-      throw new Error(`Artifact resolves outside the repository: ${localPath}`);
-    }
-  } catch (error) {
-    return {
-      candidate_id: record.candidate_id,
-      file_name: artifact.file_name ?? null,
-      status: 'FAIL',
-      reason: error.message,
-      local_path: localPath,
-    };
-  }
 }
 
 function resolveRepositoryPath(repoRoot, relativePath) {
@@ -92,6 +73,27 @@ function inspectArtifact(repoRoot, record, artifact) {
       mime_type: artifact.mime_type ?? null,
       status: 'FAIL',
       reason: 'Registered local artifact is missing.',
+      local_path: localPath,
+    };
+  }
+
+  try {
+    const resolvedRoot = realpathSync(repoRoot);
+    const resolvedArtifact = realpathSync(absolutePath);
+    if (
+      resolvedArtifact !== resolvedRoot &&
+      !resolvedArtifact.startsWith(`${resolvedRoot}${sep}`)
+    ) {
+      throw new Error(`Artifact resolves outside the repository: ${localPath}`);
+    }
+  } catch (error) {
+    return {
+      candidate_id: record.candidate_id,
+      file_name: artifact.file_name ?? null,
+      extraction_status: artifact.extraction_status ?? 'not_recorded',
+      mime_type: artifact.mime_type ?? null,
+      status: 'FAIL',
+      reason: error.message,
       local_path: localPath,
     };
   }
@@ -550,10 +552,21 @@ export function buildAuditExplain(repoRoot) {
       .filter((artifact) => artifact.local_path)
       .map((artifact) => artifact.candidate_id),
   );
+  const localArtifactsByCandidate = new Map();
+  for (const artifact of inputs.artifacts.filter(
+    (candidateArtifact) => candidateArtifact.local_path,
+  )) {
+    const candidateArtifacts =
+      localArtifactsByCandidate.get(artifact.candidate_id) ?? [];
+    candidateArtifacts.push(artifact);
+    localArtifactsByCandidate.set(artifact.candidate_id, candidateArtifacts);
+  }
   const integrityCandidates = new Set(
-    inputs.artifacts
-      .filter((artifact) => artifact.status === 'PASS')
-      .map((artifact) => artifact.candidate_id),
+    [...localArtifactsByCandidate.entries()]
+      .filter(([, candidateArtifacts]) =>
+        candidateArtifacts.every((artifact) => artifact.status === 'PASS'),
+      )
+      .map(([candidateId]) => candidateId),
   );
   const stages = [
     { stage: 'candidate_source_record', records: records.length },
@@ -818,7 +831,7 @@ function safeDatabaseTarget(databaseUrl) {
 async function readDatabaseSnapshot(databaseUrl) {
   const databasePackagePath = resolve(
     dirname(fileURLToPath(import.meta.url)),
-    '../packages/database/package.json',
+    '../../packages/database/package.json',
   );
   const require = createRequire(databasePackagePath);
   const { Client } = require('pg');
