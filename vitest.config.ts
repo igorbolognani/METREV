@@ -11,6 +11,12 @@ export default defineConfig({
       '@metrev/domain-contracts': fileURLToPath(
         new URL('./packages/domain-contracts/src/index.ts', import.meta.url),
       ),
+      '@metrev/electrochem-models/model-catalog': fileURLToPath(
+        new URL(
+          './packages/electrochem-models/src/model-catalog.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/electrochem-models': fileURLToPath(
         new URL('./packages/electrochem-models/src/index.ts', import.meta.url),
       ),

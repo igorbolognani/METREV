@@ -202,19 +202,42 @@ describe('external ingestion shared helpers', () => {
     expect(entry?.catalogItem.evidenceType).toBe('literature_evidence');
   });
 
-  it('keeps the active curated manifest empty until claims have reviewed sources', () => {
+  it('loads the curated source register while keeping every claim pending review', () => {
     const manifest = loadCuratedManifestRecords(
       '../../packages/database/data/curated-bigdata-manifest.json',
       import.meta.url,
     );
 
     expect(manifest.shardCount).toBe(0);
-    expect(manifest.records).toEqual([]);
+    expect(manifest.records).toHaveLength(10);
     expect(manifest.manifest).toMatchObject({
-      snapshotType: 'empty_until_source_review',
-      recordCount: 0,
-      claimCount: 0,
+      snapshotType: 'curated_pending_human_review',
+      recordCount: 10,
+      claimCount: 10,
+      supplierDocumentCount: 0,
+      curationPolicy: { automaticAcceptance: false },
     });
+
+    const normalized = manifest.records.map((record) =>
+      normalizeCuratedManifestRecord(
+        record,
+        '2026-09-25T00:00:00.000Z',
+        'manifest.json',
+        { autoAcceptTrustedCorpus: false },
+      ),
+    );
+
+    expect(normalized.every(Boolean)).toBe(true);
+    expect(
+      new Set(normalized.map((entry) => entry?.sourceRecord.doi)).size,
+    ).toBe(10);
+    for (const entry of normalized) {
+      expect(entry?.catalogItem.reviewStatus).toBe('PENDING');
+      expect(entry?.catalogItem.reviewRequired).toBe(true);
+      expect(entry?.catalogItem.acceptedAt).toBeNull();
+      expect(entry?.claims).toHaveLength(1);
+      expect(entry?.claims[0].review?.status).toBe('PENDING');
+    }
   });
 
   it('extracts heuristic claims from abstract sentences', () => {

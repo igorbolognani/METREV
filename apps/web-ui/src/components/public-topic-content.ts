@@ -798,7 +798,7 @@ export const PUBLIC_TOPIC_PAGES: PublicTopicConfig[] = [
   },
   {
     slug: 'impact',
-    navLabel: 'Results',
+    navLabel: 'Impact',
     accentTone: 'violet',
     routeMarker: 'Results map',
     cardTitle:

@@ -1,10 +1,540 @@
 {
   "version": 3,
-  "name": "metrev-empty-curated-manifest",
-  "snapshotType": "empty_until_source_review",
-  "recordCount": 0,
-  "claimCount": 0,
+  "name": "metrev-curated-bioelectrochemical-evidence-candidates",
+  "snapshotType": "curated_pending_human_review",
+  "recordCount": 10,
+  "claimCount": 10,
   "supplierDocumentCount": 0,
   "shards": [],
-  "records": []
+  "curationPolicy": {
+    "status": "candidate_register_only",
+    "retrievedAt": "2026-09-25",
+    "automaticAcceptance": false,
+    "journalRanking": {
+      "status": "not_assessed",
+      "policy": "Never infer journal or article strata from impact factor, publisher, reputation, or LLM output. Record a classification only with scheme, level, evaluation area, cycle, ISSN or DOI, retrieval date, and an official scheme source. Journal classification is not article-level evidence quality."
+    },
+    "claimReview": "Every included claim is a candidate for a second human review against the linked article and locator. None is accepted for decision support."
+  },
+  "records": [
+    {
+      "sourceKey": "doi:10.1016/j.biortech.2010.06.156",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Butler-Volmer-Monod model for describing bio-anode polarization curves",
+      "doi": "10.1016/j.biortech.2010.06.156",
+      "sourceUrl": "https://doi.org/10.1016/j.biortech.2010.06.156",
+      "publisher": "Elsevier",
+      "journal": "Bioresource Technology",
+      "authors": ["Hamelers", "ter Heijne", "Stein", "Rozendal", "Buisman"],
+      "language": "en",
+      "accessStatus": "CLOSED",
+      "summary": "The authors formulate bio-anode kinetics by coupling enzyme-kinetic substrate conversion with Butler-Volmer electron transfer. This is a candidate formulation reference, not calibration or validation of METREV.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added bibliographic candidate; study applicability and the quoted abstract locator require independent human review before use.",
+      "applicabilityScope": {
+        "system": "MFC bio-anode",
+        "role": "kinetic model formulation",
+        "transferability": "not_assessed"
+      },
+      "payload": {
+        "studyRole": "model_formulation",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The paper formulates bio-anode kinetics by combining an enzyme-kinetic representation of biochemical conversion with Butler-Volmer electron-transfer kinetics.",
+          "claimType": "METHOD",
+          "sourceLocator": "Abstract; DOI record",
+          "sourceSnippet": "A kinetic model of the bio-anode was developed based on a simple representation of the underlying biochemical conversions.",
+          "confidence": 0.72,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate summary; independently verify the complete abstract and the parameter assumptions. This paper does not validate METREV."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1016/j.jpowsour.2009.06.101",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Modelling and simulation of two-chamber microbial fuel cell",
+      "doi": "10.1016/j.jpowsour.2009.06.101",
+      "sourceUrl": "https://doi.org/10.1016/j.jpowsour.2009.06.101",
+      "publisher": "Elsevier",
+      "journal": "Journal of Power Sources",
+      "authors": ["Zeng", "Choo", "Kim", "Wu"],
+      "language": "en",
+      "accessStatus": "CLOSED",
+      "summary": "A two-chamber MFC model combines biochemical reactions, Butler-Volmer expressions, and mass/charge balances to represent steady and dynamic behaviour in the study's setup.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added bibliographic candidate; scope, equations, and any experimental comparison require independent human review before use.",
+      "applicabilityScope": {
+        "system": "two-chamber MFC",
+        "role": "dynamic model structure",
+        "transferability": "not_assessed"
+      },
+      "payload": {
+        "studyRole": "model_formulation",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The study describes a two-chamber MFC model that combines biochemical reactions, Butler-Volmer expressions, and mass and charge balances for steady and dynamic behaviour.",
+          "claimType": "METHOD",
+          "sourceLocator": "Abstract; DOI record",
+          "sourceSnippet": "A MFC model based on a two-chamber configuration is developed that simulates both steady and dynamic behaviour.",
+          "confidence": 0.74,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate summary; independently verify the full paper and model comparison conditions. This paper does not validate METREV."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1021/es104268g",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Multi-Population Model of a Microbial Electrolysis Cell",
+      "doi": "10.1021/es104268g",
+      "sourceUrl": "https://doi.org/10.1021/es104268g",
+      "publisher": "American Chemical Society",
+      "journal": "Environmental Science & Technology",
+      "language": "en",
+      "accessStatus": "CLOSED",
+      "summary": "The paper presents a dynamic MEC model with multiple microbial populations. Its reported conditions and validation boundary must be checked before translating the structure to another case.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added bibliographic candidate; author list and study conditions require independent human verification.",
+      "applicabilityScope": {
+        "system": "MEC",
+        "role": "multi-population model structure",
+        "transferability": "not_assessed"
+      },
+      "payload": {
+        "studyRole": "model_formulation",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The article presents a dynamic microbial electrolysis cell model with multiple microbial populations.",
+          "claimType": "METHOD",
+          "sourceLocator": "Abstract; DOI record",
+          "sourceSnippet": "This work presents a multi-population dynamic model of a microbial electrolysis cell (MEC).",
+          "confidence": 0.72,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate abstract claim; verify model structure, calibration data, and independent validation before treating reported performance as predictive evidence."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1128/AEM.01760-09",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Hydrogen production by Geobacter species and a mixed consortium in a microbial electrolysis cell",
+      "doi": "10.1128/AEM.01760-09",
+      "sourceUrl": "https://doi.org/10.1128/AEM.01760-09",
+      "publisher": "American Society for Microbiology",
+      "journal": "Applied and Environmental Microbiology",
+      "authors": ["Call", "Wagner", "Logan"],
+      "language": "en",
+      "accessStatus": "GREEN",
+      "summary": "The study compares hydrogen production and recovery for Geobacter species and a mixed consortium in MECs; recovered product depends on microbial and electrical operating conditions.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added candidate checked against the journal and PubMed records; quantitative operating details remain to be independently reviewed.",
+      "applicabilityScope": {
+        "system": "MEC",
+        "role": "microbial comparison and hydrogen recovery",
+        "transferability": "condition_specific"
+      },
+      "payload": {
+        "studyRole": "experimental_comparison",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The study compares hydrogen production and recovery in MECs using hydrogen-utilizing and non-hydrogen-utilizing Geobacter species and a mixed consortium.",
+          "claimType": "APPLICABILITY",
+          "sourceLocator": "Abstract; DOI record",
+          "sourceSnippet": "A hydrogen utilizing exoelectrogenic bacterium (Geobacter sulfurreducens) was compared to both a nonhydrogen oxidizer (Geobacter metallireducens).",
+          "confidence": 0.78,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Correct publication metadata: Call, Wagner and Logan (2009), AEM 75(24), 7579–7587. Keep gross production and gas recovery distinct; independently verify before decision use."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1007/s10529-020-03050-5",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Microbial fuel cell biosensor for the determination of biochemical oxygen demand of wastewater samples containing readily and slowly biodegradable organics",
+      "doi": "10.1007/s10529-020-03050-5",
+      "sourceUrl": "https://doi.org/10.1007/s10529-020-03050-5",
+      "publisher": "Springer Nature",
+      "journal": "Biotechnology Letters",
+      "authors": [
+        "Tardy",
+        "Lóránt",
+        "Gyalai-Korpos",
+        "Bakos",
+        "Simpson",
+        "Goryanin"
+      ],
+      "language": "en",
+      "license": "CC BY 4.0",
+      "accessStatus": "GREEN",
+      "summary": "The authors test a single-chamber air-cathode MFC as a BOD biosensor on real wastewater containing slowly biodegradable and suspended organic matter, using integrated charge and voltage response.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added candidate checked against PubMed, PMC, and the publisher page; confirm license/version and reported error conditions before use.",
+      "applicabilityScope": {
+        "system": "MFC biosensor",
+        "role": "BOD method and real-wastewater assessment",
+        "transferability": "assay_specific"
+      },
+      "payload": {
+        "studyRole": "sensor_method",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The study applies single-chamber air-cathode MFCs to BOD measurement in real wastewater with suspended or slowly biodegradable organic content.",
+          "claimType": "APPLICABILITY",
+          "sourceLocator": "Abstract; PubMed record PMID 33245467",
+          "sourceSnippet": "Single-chamber air cathode microbial fuel cells were applied as biosensors for biochemical oxygen demand measurement of real wastewaters.",
+          "confidence": 0.8,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate abstract claim; preserve the batch assay, integrated charge, sample preparation, and reference BOD method before judging transfer to another sensor."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.3389/fenrg.2019.00091",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "On Site Evaluation of a Tubular Microbial Fuel Cell Using an Anion Exchange Membrane for Sewage Water Treatment",
+      "doi": "10.3389/fenrg.2019.00091",
+      "sourceUrl": "https://doi.org/10.3389/fenrg.2019.00091",
+      "publisher": "Frontiers Media",
+      "journal": "Frontiers in Energy Research",
+      "authors": ["Sugioka", "Yoshida", "Iida"],
+      "language": "en",
+      "license": "CC BY 4.0",
+      "accessStatus": "GOLD",
+      "publishedAt": "2019-09-06T00:00:00.000Z",
+      "summary": "The study evaluates a tubular AEM MFC in sewage-water treatment onsite. Geometry and module-position observations are architectural evidence, not validation of a spatial METREV model.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added candidate checked against the Frontiers article page; details and issue date should be confirmed during human review.",
+      "applicabilityScope": {
+        "system": "tubular MFC",
+        "role": "onsite architecture and operation",
+        "transferability": "site_specific"
+      },
+      "payload": {
+        "studyRole": "field_configuration",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The paper evaluates a tubular anion-exchange-membrane MFC configuration for sewage-water treatment under onsite conditions.",
+          "claimType": "ARCHITECTURE",
+          "sourceLocator": "Abstract; article DOI",
+          "sourceSnippet": "This study evaluated the performance of a tubular microbial fuel cell.",
+          "confidence": 0.77,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate architecture claim; check module geometry, HRT, load, and vertical-position observations. Does not validate METREV or support extrapolation to a 0D stack."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1038/s41545-024-00350-5",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Resilience of anodic biofilm in microbial fuel cell biosensor for BOD monitoring of urban wastewater",
+      "doi": "10.1038/s41545-024-00350-5",
+      "sourceUrl": "https://doi.org/10.1038/s41545-024-00350-5",
+      "publisher": "Springer Nature",
+      "journal": "npj Clean Water",
+      "authors": [
+        "Salvian",
+        "Farkas",
+        "Ramirez-Moreno",
+        "Torruella-Salas",
+        "Berná",
+        "Avignone-Rossa",
+        "Varcoe",
+        "Esteve-Núñez",
+        "Gadkari"
+      ],
+      "language": "en",
+      "license": "CC BY 4.0",
+      "accessStatus": "GOLD",
+      "publishedAt": "2024-06-28T00:00:00.000Z",
+      "summary": "The study uses MFC biosensors to assess BOD in complex artificial and untreated urban wastewater, making matrix and biofilm adaptation relevant when assessing transferability.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added candidate checked against Nature and institutional records; methods, matrix, and the scope of the biofilm-resilience result require human review.",
+      "applicabilityScope": {
+        "system": "MFC biosensor",
+        "role": "urban wastewater and biofilm response",
+        "transferability": "matrix_specific"
+      },
+      "payload": {
+        "studyRole": "sensor_matrix_study",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The study assesses MFC-based BOD biosensors in complex artificial wastewater and untreated urban wastewater.",
+          "claimType": "APPLICABILITY",
+          "sourceLocator": "Abstract; article DOI",
+          "sourceSnippet": "3D-printed MFC-based biosensors were employed to assess the BOD of sterile complex artificial wastewater and untreated urban wastewater.",
+          "confidence": 0.79,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate abstract claim; verify biofilm history, sample pairing, reference method, and whether results generalize beyond the reported matrices."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1016/j.bios.2021.113392",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "No re-calibration required? Stability of a bioelectrochemical sensor for biodegradable organic matter over 800 days",
+      "doi": "10.1016/j.bios.2021.113392",
+      "sourceUrl": "https://doi.org/10.1016/j.bios.2021.113392",
+      "publisher": "Elsevier",
+      "journal": "Biosensors and Bioelectronics",
+      "authors": ["Spurr", "Yu", "Scott", "Head"],
+      "language": "en",
+      "accessStatus": "GREEN",
+      "summary": "The work assesses calibration stability during more than 800 days of MFC-sensor operation and conditions the no-recalibration interpretation on regular maximum-current normalization.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Curator-added candidate checked against PubMed and the paper record; the calibration protocol and scope require independent human review.",
+      "applicabilityScope": {
+        "system": "MFC biosensor",
+        "role": "long-term calibration stability",
+        "transferability": "protocol_specific"
+      },
+      "payload": {
+        "studyRole": "longitudinal_sensor_study",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The authors studied batch- and flow-mode MFC sensor calibration over more than 800 days and tied the no-recalibration result to regular maximum-current normalization.",
+          "claimType": "CONDITION",
+          "sourceLocator": "Abstract; DOI record",
+          "sourceSnippet": "The aim of this study was to determine the stability of MFC sensor calibrations under fixed conditions over long-term operation.",
+          "confidence": 0.78,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate abstract claim; preserve the normalization and operating-condition caveats. Do not generalize a headline claim to other assays or field cases."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1016/j.jenvman.2018.03.007",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Domestic wastewater treatment and power generation in continuous flow air-cathode stacked microbial fuel cell: Effect of series and parallel configuration",
+      "doi": "10.1016/j.jenvman.2018.03.007",
+      "sourceUrl": "https://doi.org/10.1016/j.jenvman.2018.03.007",
+      "publisher": "Elsevier",
+      "journal": "Journal of Environmental Management",
+      "authors": [
+        "Estrada-Arriaga",
+        "Hernández-Romano",
+        "García-Sánchez",
+        "Guillén Garcés",
+        "Bahena-Bahena",
+        "Guadarrama-Pérez",
+        "Moeller Chavez"
+      ],
+      "language": "en",
+      "accessStatus": "CLOSED",
+      "summary": "The study compares individual, series, and parallel connection of 40 air-cathode MFC units treating domestic wastewater in continuous flow. It documents an architecture and condition-specific outcomes; it does not establish a universally best topology or validate METREV.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Bibliographic metadata and abstract checked against PubMed (PMID 29529583). The full study design, operating conditions, and transferability require independent human review.",
+      "applicabilityScope": {
+        "system": "continuous-flow air-cathode MFC stack",
+        "role": "series/parallel architecture and domestic-wastewater operation",
+        "transferability": "condition_specific"
+      },
+      "payload": {
+        "studyRole": "stack_experiment",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "Under the reported continuous-flow domestic-wastewater setup with 40 air-cathode MFC units, the study compares unconnected, series, and parallel configurations.",
+          "claimType": "ARCHITECTURE",
+          "sourceLocator": "Abstract; PubMed PMID 29529583",
+          "sourceSnippet": "A continuous flow stack consisting of 40 individual air-cathode MFC units",
+          "confidence": 0.82,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate architecture claim; verify hydraulic/electrical coupling, wastewater conditions, and scale before transferring the reported outcomes. No topology is assumed universally optimal."
+        }
+      ]
+    },
+    {
+      "sourceKey": "doi:10.1016/j.bioelechem.2009.04.009",
+      "sourceType": "CURATED_MANIFEST",
+      "sourceCategory": "scholarly_work",
+      "title": "Model based evaluation of the effect of pH and electrode geometry on microbial fuel cell performance",
+      "doi": "10.1016/j.bioelechem.2009.04.009",
+      "sourceUrl": "https://doi.org/10.1016/j.bioelechem.2009.04.009",
+      "publisher": "Elsevier",
+      "journal": "Bioelectrochemistry",
+      "authors": ["Picioreanu", "van Loosdrecht", "Curtis", "Scott"],
+      "language": "en",
+      "accessStatus": "CLOSED",
+      "summary": "The model couples time-dependent anodic-liquid balances to a two-dimensional biofilm and resolves spatial pH and solute behavior. It is a reference for a research-only spatial profile, not evidence that METREV implements or validates a spatial solver.",
+      "evidenceType": "literature_evidence",
+      "strengthLevel": "moderate",
+      "reviewStatus": "PENDING",
+      "provenanceNote": "Bibliographic metadata and abstract checked against PubMed (PMID 19523880). The spatial formulation, scope, and implementation implications require independent human review.",
+      "applicabilityScope": {
+        "system": "MFC with two-dimensional biofilm/electrode formulation",
+        "role": "spatial model architecture and pH/speciation",
+        "transferability": "not_assessed"
+      },
+      "payload": {
+        "studyRole": "model_formulation",
+        "metrevImplementationEvidence": false,
+        "journalRanking": {
+          "status": "not_assessed",
+          "scheme": null,
+          "level": null,
+          "evaluationArea": null,
+          "cycle": null,
+          "issn": null,
+          "retrievedAt": null,
+          "officialSource": null
+        }
+      },
+      "claims": [
+        {
+          "content": "The proposed MFC model couples time-dependent anodic-liquid balances to a two-dimensional biofilm model and calculates spatial pH and solute behavior.",
+          "claimType": "METHOD",
+          "sourceLocator": "Abstract; PubMed PMID 19523880",
+          "sourceSnippet": "a micro-scale individual-based two-dimensional biofilm model",
+          "confidence": 0.84,
+          "extractionMethod": "MANUAL",
+          "reviewStatus": "PENDING",
+          "analystNote": "Candidate formulation claim. Keep the spatial model separate from METREV’s lumped 0D solver; verify equations, boundary conditions, and reported tests before any implementation work."
+        }
+      ]
+    }
+  ]
 }

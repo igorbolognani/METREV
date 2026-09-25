@@ -6,6 +6,7 @@ import type {
   ExternalEvidenceCatalogItemSummary,
   ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
+import { BIOELECTROCHEMICAL_MODEL_PROFILES } from '@metrev/electrochem-models/model-catalog';
 
 import type {
   AdvancedInputJsonField,
@@ -42,6 +43,57 @@ function renderSummaryChips(values: string[], emptyMessage: string) {
   );
 }
 
+function readJsonField(value: string, field: string): string {
+  if (!value.trim()) return '';
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return '';
+    const candidate = (parsed as Record<string, unknown>)[field];
+    return typeof candidate === 'string' ? candidate : '';
+  } catch {
+    return '';
+  }
+}
+
+function isEditableJsonObject(value: string): boolean {
+  if (!value.trim()) return true;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Boolean(
+      parsed && typeof parsed === 'object' && !Array.isArray(parsed),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function writeJsonField(
+  value: string,
+  field: string,
+  nextValue: string,
+): string | null {
+  let parsed: Record<string, unknown> = {};
+  if (value.trim()) {
+    try {
+      const candidate = JSON.parse(value) as unknown;
+      if (
+        !candidate ||
+        typeof candidate !== 'object' ||
+        Array.isArray(candidate)
+      ) {
+        return null;
+      }
+      parsed = candidate as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  if (nextValue) parsed[field] = nextValue;
+  else delete parsed[field];
+  return Object.keys(parsed).length ? JSON.stringify(parsed, null, 2) : '';
+}
+
 export interface CaseFormReviewSubmitStepProps {
   advancedInputErrors: Partial<Record<AdvancedInputJsonField, string>>;
   activePreset: CaseIntakePreset | undefined;
@@ -76,6 +128,32 @@ export function CaseFormReviewSubmitStep({
   const painPoints = splitCommaSeparated(formValues.painPoints);
   const preferredSuppliers = splitCommaSeparated(formValues.preferredSuppliers);
   const currentSuppliers = splitCommaSeparated(formValues.currentSuppliers);
+  const processSystem =
+    formValues.technologyFamily === 'microbial_fuel_cell'
+      ? 'MFC'
+      : formValues.technologyFamily === 'microbial_electrolysis_cell'
+        ? 'MEC'
+        : null;
+  const processProfiles = BIOELECTROCHEMICAL_MODEL_PROFILES.filter(
+    (profile) => processSystem && profile.system === processSystem,
+  );
+  const sensorProfiles = BIOELECTROCHEMICAL_MODEL_PROFILES.filter(
+    (profile) => profile.system === 'biosensor',
+  );
+  const selectedModelProfile = readJsonField(
+    formValues.mechanisticModelJson,
+    'model_profile_id',
+  );
+  const selectedSensorProfile = readJsonField(
+    formValues.biosensorConfigurationJson,
+    'configuration_profile_id',
+  );
+  const modelInputIsEditable = isEditableJsonObject(
+    formValues.mechanisticModelJson,
+  );
+  const sensorInputIsEditable = isEditableJsonObject(
+    formValues.biosensorConfigurationJson,
+  );
   const researchEvidenceTitles =
     researchDecisionInput?.evidence_records.map((entry) => entry.title) ?? [];
 
@@ -163,6 +241,102 @@ export function CaseFormReviewSubmitStep({
           reference. Partial inputs stay visible and return an insufficient-data
           result.
         </p>
+        <section
+          className="case-form-model-profiles"
+          aria-label="Model profile selectors"
+        >
+          <div>
+            <h4>Executable reactor profile</h4>
+            <label className="case-form-model-profiles__field">
+              {processSystem
+                ? `${processSystem} process profile`
+                : 'MFC/MEC process profile'}
+              <select
+                aria-label="MFC/MEC process profile"
+                disabled={!processSystem || !modelInputIsEditable}
+                onChange={(event) => {
+                  const updated = writeJsonField(
+                    formValues.mechanisticModelJson,
+                    'model_profile_id',
+                    event.target.value,
+                  );
+                  if (updated !== null)
+                    onFieldChange('mechanisticModelJson', updated);
+                }}
+                value={selectedModelProfile}
+              >
+                <option value="">Choose a profile</option>
+                {processProfiles
+                  .filter((profile) => profile.status === 'executable')
+                  .map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <p className="muted">
+              Selecting a profile only records its supported boundary. It does
+              not fill model parameters; missing sources or measurements still
+              block execution.
+            </p>
+            <ul className="case-form-model-profiles__catalog">
+              {processProfiles.map((profile) => (
+                <li key={profile.id}>
+                  <strong>{profile.title}</strong>
+                  <span>
+                    {profile.status === 'executable'
+                      ? 'Executable · coupled 0D model'
+                      : 'Research profile · not executable'}
+                  </span>
+                  <p>{profile.limitations[0]}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4>Biosensor deployment profile</h4>
+            <label className="case-form-model-profiles__field">
+              Amperometric calibration profile
+              <select
+                aria-label="Biosensor calibration profile"
+                disabled={!sensorInputIsEditable}
+                onChange={(event) => {
+                  const updated = writeJsonField(
+                    formValues.biosensorConfigurationJson,
+                    'configuration_profile_id',
+                    event.target.value,
+                  );
+                  if (updated !== null)
+                    onFieldChange('biosensorConfigurationJson', updated);
+                }}
+                value={selectedSensorProfile}
+              >
+                <option value="">Choose a profile</option>
+                {sensorProfiles
+                  .filter((profile) => profile.status === 'executable')
+                  .map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <ul className="case-form-model-profiles__catalog">
+              {sensorProfiles.map((profile) => (
+                <li key={profile.id}>
+                  <strong>{profile.title}</strong>
+                  <span>
+                    {profile.status === 'executable'
+                      ? 'Executable · static calibrated signal'
+                      : 'Research profile · not executable'}
+                  </span>
+                  <p>{profile.limitations[0]}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
         <div className="workspace-form-grid">
           <Textarea
             className="workspace-form-field--wide"

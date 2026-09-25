@@ -5,7 +5,7 @@ scope:
   wastewater_role: dynamic COD treatment and bioelectrochemical energy or hydrogen conversion
   biosensor_role: standalone, MFC-integrated, and MEC-integrated amperometric response
   spatial_dimension: 0D_lumped
-  reactor_assumption: continuous_stirred_tank_anode_and_mixed_cathode_with_attached_electroactive_biomass
+  reactor_assumption: lumped_well_mixed_two_compartment_with_profile_selected_continuous_or_closed_batch_boundary
   thermal_assumption: isothermal_fixed_boundary_temperature
   solver: explicit_RK4_for_differential_states_with_algebraic_electrochemical_current
   maximum_integration_steps: 2000
@@ -24,25 +24,73 @@ scientific_basis:
       doi: 10.1016/j.jpowsour.2009.06.101
       supports:
         [dynamic mass and charge balance coupling, MFC load and polarization]
+    - id: estrada-arriaga-2018-stacked-mfc
+      citation: Estrada-Arriaga et al. Domestic wastewater treatment and power generation in continuous flow air-cathode stacked microbial fuel cell. Journal of Environmental Management 214, 232-241 (2018).
+      doi: 10.1016/j.jenvman.2018.03.007
+      supports:
+        [
+          a 40-unit continuous-flow air-cathode MFC stack treating domestic wastewater,
+          the need to model series/parallel topology and its condition-specific electrical and treatment effects,
+        ]
+    - id: picioreanu-2010-spatial-mfc-biofilm
+      citation: Picioreanu et al. Model based evaluation of the effect of pH and electrode geometry on microbial fuel cell performance. Bioelectrochemistry 78(1), 8-24 (2010).
+      doi: 10.1016/j.bioelechem.2009.04.009
+      supports:
+        [
+          coupling of time-dependent anode liquid balances with a spatial two-dimensional biofilm model,
+          spatial pH and solute calculations beyond a lumped 0D state representation,
+        ]
     - id: pinto-2011-unified-mfc-mec-model
       citation: Pinto et al. A unified model for electricity and hydrogen production in microbial electrochemical cells. IFAC Proceedings Volumes 44(1), 6084-6089 (2011).
       doi: 10.3182/20110828-6-IT-1002.01636
       supports:
         [shared anode kinetics with distinct MFC and MEC cathodic boundaries]
-    - id: call-2010-mec-hydrogen-faradaic-balance
-      citation: Call and Logan. Hydrogen Production by Geobacter Species and a Mixed Consortium in a Microbial Electrolysis Cell. Applied and Environmental Microbiology 76(6), 1742-1747 (2010).
+    - id: call-2009-mec-hydrogen-faradaic-balance
+      citation: Call, Wagner and Logan. Hydrogen Production by Geobacter Species and a Mixed Consortium in a Microbial Electrolysis Cell. Applied and Environmental Microbiology 75(24), 7579-7587 (2009).
       doi: 10.1128/AEM.01760-09
       supports:
         [
-          MEC hydrogen rate from current and Faraday balance,
-          coulombic efficiency,
+          hydrogen recovery and coulombic efficiency are distinct measured outcomes,
+          mixed-culture hydrogen recycling and methane formation can affect recovery,
         ]
-    - id: wardman-2021-bioelectrochemical-sensor-stability
+    - id: multi-population-mec-validation
+      citation: Multi-Population Model of a Microbial Electrolysis Cell. Environmental Science & Technology 45(11), 5039-5046 (2011).
+      doi: 10.1021/es104268g
+      supports:
+        [
+          a multi-population dynamic alternative to single-population kinetics,
+          independent validation reported for its stated continuous-flow acetate or synthetic-wastewater conditions,
+        ]
+    - id: spurr-2021-bioelectrochemical-sensor-stability
       citation: Spurr et al. No re-calibration required? Stability of a bioelectrochemical sensor for biodegradable organic matter over 800 days. Biosensors and Bioelectronics 190, 113392 (2021).
       doi: 10.1016/j.bios.2021.113392
       supports:
         [
-          MFC-integrated organic-load sensor calibration and long-term drift as validation fields,
+          MFC-integrated organic-load sensor calibration and long-term drift as validation fields under the reported operating conditions,
+        ]
+    - id: tardy-2021-mfc-bod-charge-sensor
+      citation: Tardy et al. Microbial fuel cell biosensor for the determination of biochemical oxygen demand of wastewater samples containing readily and slowly biodegradable organics. Biotechnology Letters 43, 445-454 (2021).
+      doi: 10.1007/s10529-020-03050-5
+      supports:
+        [
+          a dynamic single-chamber air-cathode MFC method using voltage and integrated charge for BOD5,
+          this protocol is not equivalent to the static amperometric calibration model,
+        ]
+    - id: salvian-2024-real-wastewater-mfc-biosensor
+      citation: Salvian et al. Resilience of anodic biofilm in microbial fuel cell biosensor for BOD monitoring of urban wastewater. npj Clean Water 7, 53 (2024).
+      doi: 10.1038/s41545-024-00350-5
+      supports:
+        [
+          matrix-specific response and biofilm adaptation are relevant biosensor validation variables,
+          single-chamber air-cathode configuration and non-sterile wastewater exposure,
+        ]
+    - id: sugioka-2019-tubular-mfc-sewage
+      citation: Sugioka, Yoshida and Iida. On Site Evaluation of a Tubular Microbial Fuel Cell Using an Anion Exchange Membrane for Sewage Water Treatment. Frontiers in Energy Research 7, 91 (2019).
+      doi: 10.3389/fenrg.2019.00091
+      supports:
+        [
+          tubular module architecture and continuous wastewater operating conditions,
+          leakage and depth-dependent behavior that the current lumped model cannot resolve,
         ]
 
 state_variables:
@@ -93,6 +141,14 @@ required_parameter_source_fields:
   rule: A missing source reference, dimensional mismatch, or absent boundary-condition parameter blocks execution. Defaults and assumptions must be explicitly typed and reduce confidence.
 
 input_parameters:
+  model_profile_id:
+    unit: '1'
+    required_when: a named configuration is selected
+    rule: If omitted, preserve legacy coupled-0d-dae-v1 behavior. If present, it must identify a profile marked executable and agree with technology family and flow boundary; research-only profiles are blocked from execution.
+  biosensor.configuration_profile_id:
+    unit: '1'
+    required_when: a named biosensor deployment is selected
+    rule: If present, it must be executable, amperometric, and match deployment_mode; the live-biofilm BOD research profile is not the static calibration model.
   geometry.anode_chamber_volume_m3: { unit: m3, required_when: always }
   geometry.cathode_chamber_volume_m3: { unit: m3, required_when: always }
   geometry.anode_area_m2: { unit: m2, required_when: always }
@@ -107,7 +163,10 @@ input_parameters:
   materials.cathode_electroactive_area_factor:
     { unit: '1', required_when: always }
   materials.biofilm_electroactive_fraction: { unit: '1', required_when: always }
-  operation.flow_m3_s: { unit: m3/s, required_when: always }
+  operation.flow_m3_s:
+    unit: m3/s
+    required_when: always
+    rule: Positive for continuous-mixed profiles; exactly zero only for an executable batch profile.
   operation.influent_cod_kg_m3: { unit: kgCOD/m3, required_when: always }
   operation.temperature_k: { unit: K, required_when: always }
   operation.influent_ph: { unit: pH, required_when: always }
@@ -198,6 +257,45 @@ not_yet_modeled:
   - nitrogen-species balances, alkalinity speciation, gas crossover and gas-transfer losses
   - thermal dynamics, dynamic ionic strength, membrane fouling, and multi-phase fluid flow
   - joint or probabilistic uncertainty propagation, parameter fitting, and posterior prediction
+
+configuration_catalog:
+  executable_profiles:
+    - id: mfc-two-chamber-cstr-0d
+      system: MFC
+      flow_boundary: positive flow_m3_s
+      model: coupled-0d-dae-v1
+    - id: mfc-two-chamber-batch-0d
+      system: MFC
+      flow_boundary: flow_m3_s equals zero
+      model: coupled-0d-dae-v1
+    - id: mec-two-chamber-cstr-0d
+      system: MEC
+      flow_boundary: positive flow_m3_s
+      model: coupled-0d-dae-v1
+    - id: mec-two-chamber-batch-0d
+      system: MEC
+      flow_boundary: flow_m3_s equals zero
+      model: coupled-0d-dae-v1
+  executable_sensor_profiles:
+    - id: biosensor-standalone-amperometric
+      deployment_mode: standalone
+    - id: biosensor-mfc-integrated-amperometric
+      deployment_mode: mfc_integrated
+    - id: biosensor-mec-integrated-amperometric
+      deployment_mode: mec_integrated
+  research_profiles_only:
+    - mfc-single-chamber-air-cathode
+    - mfc-tubular-membrane-wastewater
+    - mfc-stacked-series-parallel
+    - mfc-spatial-biofilm-electrode
+    - mec-multipopulation-dynamic
+    - mec-membraneless-gas-managed
+    - biosensor-mfc-integrated-bod
+  selection_rule: Research profiles organize literature and missing model capabilities. They are not runnable until the numerical formulation, parameter contract, test fixtures, and verification are implemented.
+
+journal_ranking_policy:
+  rule: A1-A4 is not a universal international ranking. If storing historical CAPES Qualis Periódicos, record the scheme, journal-vs-article object, evaluation area, cycle, journal ISSN, retrieval date, and official source. For CAPES 2025-2028, the object is the article, assessment procedures are area-specific, and strata can extend from A1 to A8. Never infer a classification from prestige, quartile, or an LLM; journal/article classification does not establish claim applicability or model validity.
+  current_source_review: Peer-reviewed article records remain pending until a human reviewer verifies the exact source, claim locator, study design, applicability, and license.
 
 sensitivity_analysis:
   method: one_at_a_time_reported_uncertainty_v1

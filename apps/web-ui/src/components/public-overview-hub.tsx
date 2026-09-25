@@ -39,7 +39,11 @@ export function PublicOverviewHub() {
 
       <section className="public-route-hub__topics" id="public-topic-rail">
         <div className="public-route-hub__topics-copy">
-          <h2>Linear Public Infographic</h2>
+          <h2>Six learning chapters</h2>
+          <p>
+            Open a chapter for a detailed, source-linked explanation and
+            interactive scientific diagrams.
+          </p>
         </div>
 
         <PublicLandingInfographic />

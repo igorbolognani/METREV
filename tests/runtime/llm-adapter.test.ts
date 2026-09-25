@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-    DecisionOutput,
-    EvidenceDecisionContext,
-    ResearchColumnDefinition,
-    ResearchPaperMetadata,
+  DecisionOutput,
+  EvidenceDecisionContext,
+  ResearchColumnDefinition,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { rawCaseInputSchema } from '@metrev/domain-contracts';
 
 import {
-    generateCanonicalEvidenceMeasurementCandidates,
-    generateEvidenceAssistantBrief,
-    generateNarrative,
-    generateReportConversationAnswer,
-    generateStructuredResearchExtraction,
-    type ReportConversationContextPackage,
+  generateCanonicalEvidenceMeasurementCandidates,
+  generateEvidenceAssistantBrief,
+  generateNarrative,
+  generateReportConversationAnswer,
+  generateStructuredResearchExtraction,
+  type ReportConversationContextPackage,
 } from '../../packages/llm-adapter/src/index';
 import rawFixture from '../fixtures/raw-case-input.json';
 
@@ -23,6 +23,8 @@ const originalModel = process.env.METREV_LLM_MODEL;
 const originalBaseUrl = process.env.METREV_LLM_BASE_URL;
 const originalApiKey = process.env.METREV_LLM_API_KEY;
 const originalOllamaApiKey = process.env.OLLAMA_API_KEY;
+const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
+const originalReasoningEffort = process.env.METREV_LLM_REASONING_EFFORT;
 const originalTimeout = process.env.METREV_LLM_TIMEOUT_MS;
 
 function buildDecisionOutput(): DecisionOutput {
@@ -356,6 +358,18 @@ afterEach(() => {
     delete process.env.OLLAMA_API_KEY;
   } else {
     process.env.OLLAMA_API_KEY = originalOllamaApiKey;
+  }
+
+  if (originalOpenAiApiKey === undefined) {
+    delete process.env.OPENAI_API_KEY;
+  } else {
+    process.env.OPENAI_API_KEY = originalOpenAiApiKey;
+  }
+
+  if (originalReasoningEffort === undefined) {
+    delete process.env.METREV_LLM_REASONING_EFFORT;
+  } else {
+    process.env.METREV_LLM_REASONING_EFFORT = originalReasoningEffort;
   }
 
   if (originalTimeout === undefined) {
@@ -759,13 +773,21 @@ describe('llm adapter', () => {
     });
   });
 
-  it('falls back to the deterministic stub narrative when openai mode is requested', async () => {
+  it('uses the Responses API with GPT-6 in explicitly configured OpenAI mode', async () => {
     process.env.METREV_LLM_MODE = 'openai';
-    process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
+    process.env.METREV_LLM_MODEL = 'gpt-6-sol';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
+    process.env.METREV_LLM_REASONING_EFFORT = 'high';
 
-    const fetchMock = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ output_text: 'GPT-6 grounded narrative.' }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const rawInput = rawCaseInputSchema.parse(rawFixture);
@@ -774,30 +796,78 @@ describe('llm adapter', () => {
       decisionOutput: buildDecisionOutput(),
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example-openai.test/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          authorization: 'Bearer test-key',
+        }),
+      }),
+    );
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body),
+    ) as {
+      model: string;
+      reasoning: { effort: string };
+      store: boolean;
+      input: Array<{ role: string; content: string }>;
+    };
+    expect(requestBody).toMatchObject({
+      model: 'gpt-6-sol',
+      reasoning: { effort: 'high' },
+      store: false,
+    });
+    expect(requestBody.input[0].content).toContain(
+      'Use only the supplied deterministic output',
+    );
     expect(result).toEqual({
-      narrative: expect.stringContaining('Case CASE-001'),
+      narrative: 'GPT-6 grounded narrative.',
       narrativeMetadata: expect.objectContaining({
-        mode: 'stub',
-        provider: 'internal',
-        model: 'deterministic-summary',
-        status: 'fallback',
-        fallback_used: true,
-        prompt_version: 'stub-v1',
+        mode: 'openai',
+        provider: 'openai',
+        model: 'gpt-6-sol',
+        status: 'generated',
+        fallback_used: false,
+        prompt_version: 'openai-case-v1',
       }),
     });
-    expect(result.narrativeMetadata.error_message).toContain(
-      'Unsupported METREV_LLM_MODE "openai" requested',
-    );
   });
 
-  it('does not call a remote provider for structured extraction when openai mode is requested', async () => {
+  it('filters OpenAI extraction spans against the supplied source and source id', async () => {
     process.env.METREV_LLM_MODE = 'openai';
-    process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
+    process.env.METREV_LLM_MODEL = 'gpt-6-sol';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
 
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            answer: 'A candidate observation.',
+            confidence: 'high',
+            evidence_trace: [
+              {
+                source: 'abstract',
+                source_document_id: 'fabricated-source-id',
+                text_span: 'Scale-up durability remains unresolved.',
+                source_locator: 'abstract:1',
+                page_number: 1,
+              },
+              {
+                source: 'abstract',
+                source_document_id: 'source-001',
+                text_span: 'invented sentence not in source',
+                source_locator: 'abstract:2',
+                page_number: 2,
+              },
+            ],
+            missing_fields: [],
+          }),
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await generateStructuredResearchExtraction({
@@ -807,7 +877,58 @@ describe('llm adapter', () => {
         'Scale-up durability remains unresolved. Conductivity sensitivity is also unresolved.',
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result).toBeNull();
+  });
+
+  it('returns only exact source spans tied to the requested source document', async () => {
+    process.env.METREV_LLM_MODE = 'openai';
+    process.env.METREV_LLM_MODEL = 'gpt-6-sol';
+    process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
+    process.env.METREV_LLM_API_KEY = 'test-key';
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            answer: 'The paper describes a durability gap.',
+            confidence: 'medium',
+            evidence_trace: [
+              {
+                source: 'abstract',
+                source_document_id: 'source-001',
+                text_span: 'Scale-up durability remains unresolved.',
+                source_locator: 'abstract:1',
+                page_number: 1,
+              },
+            ],
+            missing_fields: ['independent validation dataset'],
+          }),
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateStructuredResearchExtraction({
+      column: buildResearchColumn(),
+      paper: buildResearchPaper(),
+      sourceText:
+        'Scale-up durability remains unresolved. Conductivity sensitivity is also unresolved.',
+    });
+
+    expect(result).toMatchObject({
+      answer: 'The paper describes a durability gap.',
+      evidenceTrace: [
+        expect.objectContaining({
+          source_document_id: 'source-001',
+          text_span: 'Scale-up durability remains unresolved.',
+        }),
+      ],
+      metadata: expect.objectContaining({
+        provider: 'openai',
+        model: 'gpt-6-sol',
+      }),
+    });
   });
 });

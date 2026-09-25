@@ -14,6 +14,8 @@ import {
   mechanisticModelInputSchema,
 } from '@metrev/domain-contracts';
 
+import { getBioelectrochemicalModelProfile } from './model-catalog';
+
 const FARADAY = 96485.33212;
 const GAS_CONSTANT = 8.314462618;
 const OXYGEN_MOLAR_MASS_KG_MOL = 0.031998;
@@ -210,7 +212,6 @@ function collectInputIssues(input: MechanisticModelInput): string[] {
     'materials.anode_electroactive_area_factor',
     'materials.cathode_electroactive_area_factor',
     'operation.temperature_k',
-    'operation.flow_m3_s',
     'operation.duration_s',
     'operation.time_step_s',
     'biology.max_specific_cod_uptake_kg_cod_kg_biomass_s',
@@ -246,6 +247,21 @@ function collectInputIssues(input: MechanisticModelInput): string[] {
     if (candidate && candidate.value <= 0) {
       issues.push(`mechanistic_model.${path}.value must be > 0`);
     }
+  }
+
+  const flow = parameter(input, 'operation.flow_m3_s');
+  const selectedProfile = input.model_profile_id
+    ? getBioelectrochemicalModelProfile(input.model_profile_id)
+    : undefined;
+  const permitsBatch =
+    selectedProfile?.status === 'executable' &&
+    selectedProfile.operatingRegime === 'batch';
+  if (flow && flow.value < 0) {
+    issues.push('mechanistic_model.operation.flow_m3_s.value must be >= 0');
+  } else if (flow?.value === 0 && !permitsBatch) {
+    issues.push(
+      'mechanistic_model.operation.flow_m3_s.value must be > 0 unless an executable batch model profile is selected',
+    );
   }
 
   for (const path of [
@@ -915,6 +931,29 @@ function observation(input: {
 
 function biosensorIssues(sensor: BiosensorConfiguration): string[] {
   const issues: string[] = [];
+  if (sensor.configuration_profile_id) {
+    const profile = getBioelectrochemicalModelProfile(
+      sensor.configuration_profile_id,
+    );
+
+    if (!profile) {
+      issues.push(
+        `biosensor.configuration_profile_id is unknown: ${sensor.configuration_profile_id}`,
+      );
+    } else if (profile.system !== 'biosensor') {
+      issues.push(
+        `biosensor.configuration_profile_id=${profile.id} is not a biosensor profile`,
+      );
+    } else if (profile.status !== 'executable') {
+      issues.push(
+        `biosensor.configuration_profile_id=${profile.id} is a research profile only; ${profile.limitations[0]}`,
+      );
+    } else if (profile.deploymentMode !== sensor.deployment_mode) {
+      issues.push(
+        `biosensor.configuration_profile_id=${profile.id} requires deployment_mode=${profile.deploymentMode}`,
+      );
+    }
+  }
   if (sensor.transduction_mode !== 'amperometric') {
     issues.push(
       `stack_blocks.sensors_and_analytics.biosensor.transduction_mode=${sensor.transduction_mode} (current executable sensor model supports amperometric calibration only)`,
@@ -1723,6 +1762,32 @@ function simulateMechanisticCaseCore(
   const model = modelResult.data;
 
   const issues = collectInputIssues(model);
+  if (model.model_profile_id) {
+    const profile = getBioelectrochemicalModelProfile(model.model_profile_id);
+
+    if (!profile) {
+      issues.push(
+        `mechanistic_model.model_profile_id is unknown: ${model.model_profile_id}`,
+      );
+    } else if (profile.status !== 'executable') {
+      issues.push(
+        `mechanistic_model.model_profile_id=${profile.id} is a research profile only; ${profile.limitations[0]}`,
+      );
+    } else if (profile.system !== model.system_type) {
+      issues.push(
+        `mechanistic_model.model_profile_id=${profile.id} requires system_type=${profile.system}`,
+      );
+    } else {
+      const isBatch = model.operation.flow_m3_s.value === 0;
+      const profileRequiresBatch = profile.operatingRegime === 'batch';
+
+      if (profileRequiresBatch !== isBatch) {
+        issues.push(
+          `mechanistic_model.model_profile_id=${profile.id} is inconsistent with flow_m3_s=${model.operation.flow_m3_s.value}; batch profiles require zero flow and continuous-mixed profiles require positive flow`,
+        );
+      }
+    }
+  }
   if (
     model.system_type !==
     (normalizedCase.technology_family === 'microbial_fuel_cell' ? 'MFC' : 'MEC')
@@ -1795,6 +1860,9 @@ function simulateMechanisticCaseCore(
           Math.min(100, ((influentCod - final.state.cod) / influentCod) * 100),
         )
       : 0;
+  const isBatchProfile =
+    getBioelectrochemicalModelProfile(model.model_profile_id ?? '')
+      ?.operatingRegime === 'batch';
   const electricalDensity =
     model.system_type === 'MFC'
       ? (final.rates.current ** 2 *
@@ -2017,15 +2085,19 @@ function simulateMechanisticCaseCore(
       value: codRemoval,
       unit: '%',
       confidence: confidenceLevel,
-      note: 'Calculated from the simulated continuous-flow anode COD balance at the final integration time.',
+      note: isBatchProfile
+        ? 'Calculated from initial and final modeled soluble COD inventory in a closed batch run; this is not a continuous effluent removal metric.'
+        : 'Calculated from the simulated continuous-flow anode COD balance at the final integration time.',
     }),
     observation({
       key: 'effluent_cod_kg_m3',
-      label: 'Effluent COD',
+      label: isBatchProfile ? 'Final batch COD' : 'Effluent COD',
       value: final.state.cod,
       unit: 'kgCOD/m3',
       confidence: confidenceLevel,
-      note: 'Final state of the simulated continuous-flow COD balance.',
+      note: isBatchProfile
+        ? 'Final soluble COD concentration in the modeled batch inventory; not a sampled effluent concentration.'
+        : 'Final state of the simulated continuous-flow COD balance.',
     }),
     observation({
       key: 'ph_anode_final',

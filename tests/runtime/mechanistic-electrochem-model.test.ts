@@ -218,6 +218,9 @@ describe('coupled electrochemical mechanistic model', () => {
 
   it('solves a source-referenced MFC case and an MFC-integrated biosensor', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
+    raw.mechanistic_model!.model_profile_id = 'mfc-two-chamber-cstr-0d';
+    raw.stack_blocks!.sensors_and_analytics!.biosensor!.configuration_profile_id =
+      'biosensor-mfc-integrated-amperometric';
     const result = evaluate(raw);
     const currentDensity = valueFor(result, 'current_density_a_m2');
     const codRemoval = valueFor(result, 'cod_removal_pct');
@@ -316,6 +319,105 @@ describe('coupled electrochemical mechanistic model', () => {
     );
   });
 
+  it('executes a closed batch profile and rejects mismatched or research-only profiles', () => {
+    const batchRaw = structuredClone(fixture) as RawCaseInput;
+    delete batchRaw.stack_blocks!.sensors_and_analytics!.biosensor;
+    batchRaw.mechanistic_model!.model_profile_id = 'mfc-two-chamber-batch-0d';
+    batchRaw.mechanistic_model!.operation.flow_m3_s.value = 0;
+
+    const batch = evaluate(batchRaw);
+    expect(batch.status).toBe('completed');
+    expect(valueFor(batch, 'cod_influent_mass_kg')).toBe(0);
+    expect(valueFor(batch, 'cod_effluent_mass_kg')).toBe(0);
+    expect(valueFor(batch, 'cod_removal_pct') as number).toBeGreaterThan(0);
+    expect(
+      valueFor(batch, 'cod_mass_balance_residual_kg') as number,
+    ).toBeCloseTo(0, 12);
+    expect(
+      batch.derived_observations.find((item) => item.key === 'cod_removal_pct')
+        ?.provenance_note,
+    ).toContain('closed batch run');
+
+    const mismatched = structuredClone(batchRaw) as RawCaseInput;
+    mismatched.mechanistic_model!.operation.flow_m3_s.value = 1e-9;
+    const mismatchResult = evaluate(mismatched);
+    expect(mismatchResult.status).toBe('insufficient_data');
+    expect(mismatchResult.failure_detail?.missing_inputs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('is inconsistent with flow_m3_s'),
+      ]),
+    );
+
+    const unsupported = structuredClone(fixture) as RawCaseInput;
+    unsupported.mechanistic_model!.model_profile_id =
+      'mfc-single-chamber-air-cathode';
+    delete unsupported.stack_blocks!.sensors_and_analytics!.biosensor;
+    const unsupportedResult = evaluate(unsupported);
+    expect(unsupportedResult.status).toBe('insufficient_data');
+    expect(unsupportedResult.failure_detail?.missing_inputs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('is a research profile only'),
+      ]),
+    );
+  });
+
+  it('reduces MFC trajectory step-size error when halving the RK4 timestep', () => {
+    const runWithStep = (timeStepSeconds: number) => {
+      const raw = structuredClone(fixture) as RawCaseInput;
+      delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
+      raw.mechanistic_model!.model_profile_id = 'mfc-two-chamber-cstr-0d';
+      raw.mechanistic_model!.operation.time_step_s.value = timeStepSeconds;
+      return evaluate(raw);
+    };
+
+    const coarse = runWithStep(3600);
+    const medium = runWithStep(1800);
+    const fine = runWithStep(900);
+    const finalCod = (result: ReturnType<typeof evaluate>) =>
+      result.series
+        .find((entry) => entry.y_axis.key === 'cod_kg_m3')!
+        .points.at(-1)!.y;
+
+    expect(coarse.status).toBe('completed');
+    expect(medium.status).toBe('completed');
+    expect(fine.status).toBe('completed');
+    expect(Math.abs(finalCod(medium) - finalCod(fine))).toBeLessThan(
+      Math.abs(finalCod(coarse) - finalCod(medium)),
+    );
+    for (const result of [coarse, medium, fine]) {
+      expect(
+        valueFor(result, 'cod_mass_balance_residual_kg') as number,
+      ).toBeCloseTo(0, 12);
+    }
+  });
+
+  it('keeps dynamic MFC BOD sensing research-only and accepts the static calibration profile', () => {
+    const integrated = structuredClone(fixture) as RawCaseInput;
+    integrated.stack_blocks!.sensors_and_analytics!.biosensor!.configuration_profile_id =
+      'biosensor-mfc-integrated-bod';
+    const researchResult = evaluate(integrated);
+    expect(researchResult.status).toBe('insufficient_data');
+    expect(researchResult.failure_detail?.missing_inputs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('is a research profile only'),
+      ]),
+    );
+
+    const standalone = structuredClone(fixture) as RawCaseInput;
+    delete standalone.mechanistic_model;
+    standalone.technology_family = 'electrochemical_biosensor';
+    standalone.primary_objective = 'biosensing';
+    const sensor = standalone.stack_blocks!.sensors_and_analytics!.biosensor!;
+    sensor.deployment_mode = 'standalone';
+    sensor.power_source = 'external';
+    sensor.configuration_profile_id = 'biosensor-standalone-amperometric';
+    const executableResult = evaluate(standalone);
+    expect(executableResult.status).toBe('completed');
+    expect(valueFor(executableResult, 'biosensor_detection_status')).toBe(
+      'quantifiable',
+    );
+  });
+
   it('damps a cathode-to-anode pH gradient through inter-chamber exchange', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     const model = raw.mechanistic_model!;
@@ -386,6 +488,7 @@ describe('coupled electrochemical mechanistic model', () => {
     const mecRaw = structuredClone(fixture) as RawCaseInput;
     mecRaw.technology_family = 'microbial_electrolysis_cell';
     mecRaw.mechanistic_model!.system_type = 'MEC';
+    mecRaw.mechanistic_model!.model_profile_id = 'mec-two-chamber-cstr-0d';
     delete mecRaw.mechanistic_model!.electrochemistry.external_load_ohm;
     mecRaw.mechanistic_model!.electrochemistry.cathode_reaction =
       'hydrogen_evolution';
@@ -432,6 +535,24 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(
       mec.derived_observations.every((item) => item.source_kind === 'modeled'),
     ).toBe(true);
+
+    const mecBatchRaw = structuredClone(mecRaw) as RawCaseInput;
+    mecBatchRaw.mechanistic_model!.model_profile_id =
+      'mec-two-chamber-batch-0d';
+    mecBatchRaw.mechanistic_model!.operation.flow_m3_s.value = 0;
+    const mecBatch = evaluate(mecBatchRaw);
+    expect(mecBatch.status).toBe('completed');
+    expect(
+      valueFor(mecBatch, 'mec_cell_electrical_input_energy_j') as number,
+    ).toBeGreaterThan(0);
+    expect(
+      valueFor(mecBatch, 'hydrogen_gross_production_mol') as number,
+    ).toBeGreaterThan(0);
+    expect(
+      valueFor(mecBatch, 'hydrogen_captured_production_mol') as number,
+    ).toBeLessThan(
+      valueFor(mecBatch, 'hydrogen_gross_production_mol') as number,
+    );
   });
 
   it('lowers integrated biosensor confidence when sensor inputs are assumptions', () => {
@@ -741,7 +862,7 @@ describe('coupled electrochemical mechanistic model', () => {
     const zeroFlowResult = evaluate(zeroFlow);
     expect(zeroFlowResult.status).toBe('insufficient_data');
     expect(zeroFlowResult.failure_detail?.missing_inputs).toContain(
-      'mechanistic_model.operation.flow_m3_s.value must be > 0',
+      'mechanistic_model.operation.flow_m3_s.value must be > 0 unless an executable batch model profile is selected',
     );
 
     const negativeDecay = structuredClone(fixture) as RawCaseInput;

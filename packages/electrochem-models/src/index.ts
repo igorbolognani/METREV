@@ -18,6 +18,17 @@ export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 
 export { simulateMechanisticCase };
 export type { MechanisticRun };
+export {
+  BIOELECTROCHEMICAL_MODEL_PROFILES,
+  EXECUTABLE_MODEL_PROFILE_IDS,
+  getBioelectrochemicalModelProfile,
+} from './model-catalog';
+export type {
+  BioelectrochemicalModelProfile,
+  ModelOperatingRegime,
+  ModelProfileStatus,
+  ModelSystem,
+} from './model-catalog';
 export { assessExperimentalComparison } from './experimental-comparison';
 
 const ruleInputSignalKeys = new Set([

@@ -181,7 +181,12 @@ export const externalEvidenceSourceStateSchema = z.enum([
   'reviewed',
 ]);
 
-export const narrativeModeSchema = z.enum(['disabled', 'stub', 'ollama']);
+export const narrativeModeSchema = z.enum([
+  'disabled',
+  'stub',
+  'ollama',
+  'openai',
+]);
 
 export const narrativeStatusSchema = z.enum([
   'disabled',
@@ -496,6 +501,8 @@ const modelParameter = scientificModelParameterSchema;
  */
 export const mechanisticModelInputSchema = z.object({
   model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
+  /** Optional named scenario profile; old saved cases remain readable. */
+  model_profile_id: z.string().trim().min(1).optional(),
   system_type: z.enum(['MFC', 'MEC']),
   geometry: z.object({
     anode_chamber_volume_m3: modelParameter,
@@ -569,6 +576,7 @@ export const mechanisticModelInputSchema = z.object({
 /** Draft input shape supports incremental entry; the solver validates the full shape before execution. */
 export const mechanisticModelDraftInputSchema = z.object({
   model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
+  model_profile_id: z.string().trim().min(1).optional(),
   system_type: z.enum(['MFC', 'MEC']),
   geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(),
   materials: mechanisticModelInputSchema.shape.materials.partial().optional(),
@@ -580,6 +588,8 @@ export const mechanisticModelDraftInputSchema = z.object({
 });
 
 export const biosensorConfigurationSchema = z.object({
+  /** Optional named deployment profile; existing cases remain compatible. */
+  configuration_profile_id: z.string().trim().min(1).optional(),
   deployment_mode: z.enum(['standalone', 'mfc_integrated', 'mec_integrated']),
   power_source: z.enum(['external', 'mfc_harvested', 'mec_power_bus']),
   analyte_id: z.string().trim().min(1),

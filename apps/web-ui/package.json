@@ -24,6 +24,7 @@
     "@metrev/database": "workspace:*",
     "@metrev/design-system": "workspace:*",
     "@metrev/domain-contracts": "workspace:*",
+    "@metrev/electrochem-models": "workspace:*",
     "@metrev/telemetry": "workspace:*",
     "@tanstack/react-query": "^5.75.2",
     "cmdk": "^1.0.0",

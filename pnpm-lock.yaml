@@ -145,6 +145,9 @@ importers:
       '@metrev/domain-contracts':
         specifier: workspace:*
         version: link:../../packages/domain-contracts
+      '@metrev/electrochem-models':
+        specifier: workspace:*
+        version: link:../../packages/electrochem-models
       '@metrev/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
