@@ -1,6 +1,6 @@
 export interface ReconciliationEntry {
   concern: string;
-  domain_source: string;
+  domain_source?: string;
   contract_source: string;
   runtime_path: string;
   ui_surface: string;
@@ -114,6 +114,15 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     ui_surface: 'apps/web-ui/src/app/admin/page.tsx',
     note: 'Discovery and acquisition may stage upstream evidence candidates but must not bypass review, canonicalization, or admissibility gates.',
   },
+  {
+    concern: 'experimental_comparison',
+    contract_source:
+      'bioelectro-copilot-contracts/contracts/evaluation/experimental-comparison.schema.yaml#/$defs/ComparisonRequest | #/$defs/ComparisonResult',
+    runtime_path:
+      'packages/domain-contracts/src/experimental-validation.ts#experimentalComparisonRequestSchema | #experimentalComparisonResultSchema',
+    ui_surface: 'not currently exposed in the UI',
+    note: 'The portable JSON Schema defines request and result payloads; runtime Zod schemas must remain aligned. A computed residual is not a validation or calibration conclusion.',
+  },
 ];
 
 export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
@@ -198,6 +207,15 @@ export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
     runtime_consumer:
       'packages/domain-contracts/src/loaders.ts#loadEvidenceDiscoveryPolicy',
     note: 'Evidence discovery query and acquisition policies are loaded from the hardened contract boundary.',
+  },
+  {
+    concern: 'contract_experimental_comparison_schema',
+    file_path:
+      'bioelectro-copilot-contracts/contracts/evaluation/experimental-comparison.schema.yaml',
+    authority_role: 'validation_reference',
+    runtime_consumer:
+      'packages/domain-contracts/src/loaders.ts#loadExperimentalComparisonContract',
+    note: 'Portable request and result schemas are checked against the Zod runtime validators and this reconciliation matrix.',
   },
   {
     concern: 'contract_output_definition',

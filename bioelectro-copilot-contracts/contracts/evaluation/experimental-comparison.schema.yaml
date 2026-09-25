@@ -1,0 +1,239 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:metrev:contracts:evaluation:experimental-comparison:1.0.0
+title: METREV independent experimental comparison
+description: >-
+  Portable request and result contract for reporting an exact-unit, exact-condition
+  residual between a model prediction and an independently reviewed observation.
+  A residual is not a validation, calibration, or pass/fail conclusion.
+x-contract-version: 1.0.0
+x-canonical-owner: bioelectro-copilot-contracts/contracts/evaluation/experimental-comparison.schema.yaml
+$ref: '#/$defs/ComparisonRequest'
+$defs:
+  ComparisonCoordinate:
+    type: object
+    additionalProperties: false
+    required: [axis_key, value, unit]
+    properties:
+      axis_key:
+        type: string
+        minLength: 1
+      value:
+        type: number
+      unit:
+        type: string
+        minLength: 1
+
+  ModeledPrediction:
+    type: object
+    additionalProperties: false
+    required:
+      - metric_key
+      - value
+      - unit
+      - source_kind
+      - model_version
+      - model_run_ref
+      - source_ref
+    properties:
+      metric_key:
+        type: string
+        minLength: 1
+      value:
+        type: number
+      unit:
+        type: string
+        minLength: 1
+      source_kind:
+        const: modeled
+      model_version:
+        type: string
+        minLength: 1
+      model_run_ref:
+        type: string
+        minLength: 1
+      source_ref:
+        type: string
+        minLength: 1
+      coordinate:
+        $ref: '#/$defs/ComparisonCoordinate'
+
+  ExperimentalObservation:
+    type: object
+    additionalProperties: false
+    required:
+      - observation_id
+      - metric_key
+      - value
+      - unit
+      - source_kind
+      - source_ref
+      - review_status
+      - dataset_role
+      - condition_match_status
+    properties:
+      observation_id:
+        type: string
+        minLength: 1
+      metric_key:
+        type: string
+        minLength: 1
+      value:
+        type: number
+      unit:
+        type: string
+        minLength: 1
+      source_kind:
+        enum: [measured, literature, default, assumption, test_fixture]
+      source_ref:
+        type: string
+        minLength: 1
+      review_status:
+        enum: [pending, approved, rejected]
+      reviewed_by:
+        type: string
+        minLength: 1
+      reviewed_at:
+        type: string
+        format: date-time
+      dataset_role:
+        enum:
+          - independent_validation
+          - calibration
+          - training
+          - test_fixture
+          - unknown
+      condition_match_status:
+        enum: [matched, partial, mismatch, unknown]
+      condition_match_note:
+        type: string
+        minLength: 1
+      coordinate:
+        $ref: '#/$defs/ComparisonCoordinate'
+    allOf:
+      - if:
+          properties:
+            review_status:
+              const: approved
+          required: [review_status]
+        then:
+          required: [reviewed_by, reviewed_at]
+      - if:
+          properties:
+            condition_match_status:
+              const: matched
+          required: [condition_match_status]
+        then:
+          required: [condition_match_note]
+
+  ComparisonRequest:
+    type: object
+    additionalProperties: false
+    required: [prediction, observation]
+    properties:
+      prediction:
+        $ref: '#/$defs/ModeledPrediction'
+      observation:
+        $ref: '#/$defs/ExperimentalObservation'
+
+  ComparisonReasonCode:
+    type: string
+    enum:
+      - invalid_request
+      - invalid_prediction
+      - invalid_observation
+      - observation_not_experimental
+      - test_fixture_data
+      - observation_review_pending
+      - observation_review_rejected
+      - dataset_not_independent
+      - conditions_not_matched
+      - metric_key_mismatch
+      - unit_mismatch
+      - coordinate_presence_mismatch
+      - coordinate_mismatch
+      - non_finite_residual
+
+  BlockedResult:
+    type: object
+    additionalProperties: false
+    required: [status, reason_codes, assessment_status]
+    properties:
+      status:
+        const: blocked
+      reason_codes:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/$defs/ComparisonReasonCode'
+      assessment_status:
+        const: not_assessed
+
+  ResidualResult:
+    type: object
+    additionalProperties: false
+    required:
+      - status
+      - reason_codes
+      - assessment_status
+      - model_version
+      - model_run_ref
+      - prediction_source_ref
+      - observation_id
+      - observation_source_ref
+      - metric_key
+      - unit
+      - predicted_value
+      - observed_value
+      - signed_residual
+      - absolute_error
+      - interpretation
+    properties:
+      status:
+        const: residual_computed
+      reason_codes:
+        type: array
+        maxItems: 0
+        items:
+          $ref: '#/$defs/ComparisonReasonCode'
+      assessment_status:
+        const: not_assessed
+      model_version:
+        type: string
+        minLength: 1
+      model_run_ref:
+        type: string
+        minLength: 1
+      prediction_source_ref:
+        type: string
+        minLength: 1
+      observation_id:
+        type: string
+        minLength: 1
+      observation_source_ref:
+        type: string
+        minLength: 1
+      metric_key:
+        type: string
+        minLength: 1
+      unit:
+        type: string
+        minLength: 1
+      predicted_value:
+        type: number
+      observed_value:
+        type: number
+      signed_residual:
+        type: number
+      absolute_error:
+        type: number
+        minimum: 0
+      coordinate:
+        $ref: '#/$defs/ComparisonCoordinate'
+      interpretation:
+        type: string
+        minLength: 1
+
+  ComparisonResult:
+    oneOf:
+      - $ref: '#/$defs/BlockedResult'
+      - $ref: '#/$defs/ResidualResult'
