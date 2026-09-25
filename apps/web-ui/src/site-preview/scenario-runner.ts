@@ -58,7 +58,16 @@ export function prepareSiteScenarioRun(input: {
   const hasSensor = input.scenarioId.includes('biosensor');
 
   if (hasWastewaterCell) {
-    if (input.codUnit === 'mgBOD/L') {
+    if (
+      input.codUnit !== 'kgCOD/m3' &&
+      input.codUnit !== 'mgCOD/L' &&
+      input.codUnit !== 'gCOD/m3' &&
+      input.codUnit !== 'mgBOD/L'
+    ) {
+      missingInputs.push(
+        `Unsupported COD unit: ${String(input.codUnit)}. Select kgCOD/m3, gCOD/m3, or mgCOD/L.`,
+      );
+    } else if (input.codUnit === 'mgBOD/L') {
       missingInputs.push(
         'COD cannot be supplied in a BOD unit; select a COD unit or provide COD data.',
       );
@@ -69,12 +78,7 @@ export function prepareSiteScenarioRun(input: {
       } else if (!nextCase.mechanistic_model?.operation?.influent_cod_kg_m3) {
         missingInputs.push('mechanistic_model.operation.influent_cod_kg_m3');
       } else {
-        const multiplier =
-          input.codUnit === 'kgCOD/m3'
-            ? 1
-            : input.codUnit === 'mgCOD/L'
-              ? 1e-3
-              : 1e-3;
+        const multiplier = input.codUnit === 'kgCOD/m3' ? 1 : 1e-3;
         nextCase.mechanistic_model.operation.influent_cod_kg_m3 =
           assignAssumption(
             nextCase.mechanistic_model.operation.influent_cod_kg_m3,
@@ -89,29 +93,15 @@ export function prepareSiteScenarioRun(input: {
     const enteredPh = parseNonnegative(input.phValue, 'Influent pH');
     const operation = nextCase.mechanistic_model?.operation;
     const influentPh = operation?.influent_ph;
-    const initialAnodePh = operation?.initial_ph_anode;
-    const initialCathodePh = operation?.initial_ph_cathode;
     if (typeof enteredPh === 'string') {
       missingInputs.push(enteredPh);
     } else if (enteredPh > 14) {
       missingInputs.push('Influent pH must be between 0 and 14.');
-    } else if (
-      !operation ||
-      !influentPh ||
-      !initialAnodePh ||
-      !initialCathodePh
-    ) {
+    } else if (!operation || !influentPh) {
       missingInputs.push('mechanistic_model.operation.influent_ph');
     } else {
       operation.influent_ph = assignAssumption(influentPh, enteredPh);
-      operation.initial_ph_anode = assignAssumption(initialAnodePh, enteredPh);
-      operation.initial_ph_cathode = assignAssumption(
-        initialCathodePh,
-        enteredPh,
-      );
-      enteredAssumptions.push(
-        `Influent and initial chamber pH set to ${enteredPh}.`,
-      );
+      enteredAssumptions.push(`Influent pH entered as ${enteredPh}.`);
     }
   }
 
