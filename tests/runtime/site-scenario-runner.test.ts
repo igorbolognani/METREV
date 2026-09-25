@@ -27,9 +27,14 @@ function biosensorFixture() {
 
 describe('Sites simulation input preparation', () => {
   it('converts COD units and records edited values as assumptions', () => {
+    const fixture = wastewaterFixture();
+    const initialAnodePh =
+      fixture.mechanistic_model?.operation.initial_ph_anode.value;
+    const initialCathodePh =
+      fixture.mechanistic_model?.operation.initial_ph_cathode.value;
     const prepared = prepareSiteScenarioRun({
       scenarioId: 'mfc_wastewater',
-      normalizedCase: wastewaterFixture(),
+      normalizedCase: fixture,
       codValue: '800',
       codUnit: 'mgCOD/L',
       phValue: '7.5',
@@ -49,6 +54,14 @@ describe('Sites simulation input preparation', () => {
     expect(
       prepared.normalizedCase.mechanistic_model?.operation.influent_ph.value,
     ).toBe(7.5);
+    expect(
+      prepared.normalizedCase.mechanistic_model?.operation.initial_ph_anode
+        .value,
+    ).toBe(initialAnodePh);
+    expect(
+      prepared.normalizedCase.mechanistic_model?.operation.initial_ph_cathode
+        .value,
+    ).toBe(initialCathodePh);
     expect(prepared.enteredAssumptions).toHaveLength(2);
   });
 
@@ -69,11 +82,23 @@ describe('Sites simulation input preparation', () => {
       phValue: '7',
       biosensorConcentration: '',
     });
+    const unknownUnit = prepareSiteScenarioRun({
+      scenarioId: 'mfc_wastewater',
+      normalizedCase: wastewaterFixture(),
+      codValue: '500',
+      codUnit: 'ppm' as never,
+      phValue: '7',
+      biosensorConcentration: '',
+    });
 
     expect(missing.status).toBe('insufficient_data');
     expect(incompatible.status).toBe('insufficient_data');
+    expect(unknownUnit.status).toBe('insufficient_data');
     if (incompatible.status === 'insufficient_data') {
       expect(incompatible.missingInputs[0]).toContain('BOD unit');
+    }
+    if (unknownUnit.status === 'insufficient_data') {
+      expect(unknownUnit.missingInputs[0]).toContain('Unsupported COD unit');
     }
   });
 
