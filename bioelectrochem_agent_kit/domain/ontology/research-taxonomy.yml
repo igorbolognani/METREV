@@ -12,6 +12,8 @@ scope:
       - paper
       - review
       - thesis_or_dissertation
+    research_data:
+      - dataset
     intellectual_property:
       - patent
     technical_documentation:
@@ -194,5 +196,5 @@ rules:
   - Metadata quality and evidence veracity are distinct review dimensions and both must remain audit-visible.
   - Warehouse eligibility sweeps may mark active sources only when sources are full-access, traceable, and explicitly in MFC, MEC, electrochemical-biosensor, or in-scope wastewater applications.
   - Eligibility filtering must preserve excluded source records and reason buckets for audit instead of deleting source rows.
-  - Papers, reviews, patents, datasheets, manuals, SOPs, supplier documents, case studies, market reports, and regulatory reports must remain typed source documents; only decision-ready evidence can cross into decision inputs.
+  - Papers, reviews, datasets, patents, datasheets, manuals, SOPs, supplier documents, case studies, market reports, and regulatory reports must remain typed source documents; only decision-ready evidence can cross into decision inputs.
   - Component profiles must not hide defaults: missing material, geometry, surface, loading, biology, and operating fields stay visible in missing_fields.

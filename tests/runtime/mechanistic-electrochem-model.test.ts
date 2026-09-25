@@ -266,6 +266,74 @@ describe('coupled electrochemical mechanistic model', () => {
     ).toBe(true);
   });
 
+  it('accounts for modeled COD, biomass, polarization, and boundary residuals', () => {
+    const mfcRaw = structuredClone(fixture) as RawCaseInput;
+    delete mfcRaw.stack_blocks!.sensors_and_analytics!.biosensor;
+    const mfc = evaluate(mfcRaw);
+    const mfcValue = (key: string) => valueFor(mfc, key) as number;
+
+    expect(mfc.status).toBe('completed');
+    expect(mfcValue('cod_mass_balance_residual_kg')).toBeCloseTo(0, 12);
+    expect(mfcValue('biomass_mass_balance_residual_kg')).toBeCloseTo(0, 12);
+    expect(mfcValue('electrochemical_reversible_potential_work_j')).toBeCloseTo(
+      mfcValue('gross_electrical_output_energy_j') +
+        mfcValue('activation_polarization_work_j') +
+        mfcValue('ohmic_polarization_work_j') +
+        mfcValue('electrochemical_boundary_residual_energy_j'),
+      10,
+    );
+
+    const mecRaw = structuredClone(fixture) as RawCaseInput;
+    mecRaw.technology_family = 'microbial_electrolysis_cell';
+    mecRaw.mechanistic_model!.system_type = 'MEC';
+    delete mecRaw.mechanistic_model!.electrochemistry.external_load_ohm;
+    mecRaw.mechanistic_model!.electrochemistry.cathode_reaction =
+      'hydrogen_evolution';
+    mecRaw.mechanistic_model!.electrochemistry.applied_voltage_v = {
+      value: 1.2,
+      unit: 'V',
+      source_kind: 'test_fixture',
+      source_ref: 'test-fixture://mec-loss-accounting',
+    };
+    mecRaw.mechanistic_model!.electrochemistry.hydrogen_faraday_efficiency = {
+      value: 0.7,
+      unit: '1',
+      source_kind: 'test_fixture',
+      source_ref: 'test-fixture://mec-loss-accounting',
+    };
+    mecRaw.mechanistic_model!.electrochemistry.hydrogen_capture_fraction = {
+      value: 0.8,
+      unit: '1',
+      source_kind: 'test_fixture',
+      source_ref: 'test-fixture://mec-loss-accounting',
+    };
+    delete mecRaw.stack_blocks!.sensors_and_analytics!.biosensor;
+    const mec = evaluate(mecRaw);
+    const mecValue = (key: string) => valueFor(mec, key) as number;
+
+    expect(mec.status).toBe('completed');
+    expect(mecValue('cod_mass_balance_residual_kg')).toBeCloseTo(0, 12);
+    expect(mecValue('biomass_mass_balance_residual_kg')).toBeCloseTo(0, 12);
+    expect(mecValue('mec_cell_electrical_input_energy_j')).toBeCloseTo(
+      mecValue('electrochemical_reversible_potential_work_j') +
+        mecValue('activation_polarization_work_j') +
+        mecValue('ohmic_polarization_work_j') +
+        mecValue('electrochemical_boundary_residual_energy_j'),
+      8,
+    );
+    expect(mecValue('hydrogen_gross_production_mol')).toBeCloseTo(
+      mecValue('hydrogen_captured_production_mol') +
+        mecValue('hydrogen_uncaptured_production_mol'),
+      14,
+    );
+    expect(
+      mfc.derived_observations.every((item) => item.source_kind === 'modeled'),
+    ).toBe(true);
+    expect(
+      mec.derived_observations.every((item) => item.source_kind === 'modeled'),
+    ).toBe(true);
+  });
+
   it('lowers integrated biosensor confidence when sensor inputs are assumptions', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     const markSourceKind = (

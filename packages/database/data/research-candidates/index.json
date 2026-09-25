@@ -1,0 +1,1170 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-09-24",
+  "purpose": "Traceable candidate sources for analyst review; this index is not the curated corpus and is not eligible for decision inputs.",
+  "counts": {
+    "candidate_records": 8,
+    "records_with_local_artifacts": 2,
+    "records_metadata_only": 6,
+    "human_review_complete": 0,
+    "decision_eligible": 0
+  },
+  "records": [
+    {
+      "candidate_id": "cora-dataset-10.34810-DATA2866",
+      "document_type": "dataset",
+      "source_type": "research_data_repository",
+      "title": "Replication data for Towards the implementation of a more economical catalyst for hydrogen production in microbial electrolysis cells",
+      "doi": "10.34810/DATA2866",
+      "source_url": "https://doi.org/10.34810/DATA2866",
+      "repository_url": "https://dataverse.csuc.cat/dataset.xhtml?persistentId=doi:10.34810/DATA2866",
+      "publisher": "CORA.Repositori de Dades de Recerca (CSUC Dataverse)",
+      "publication_year": 2026,
+      "published_at": "2026-03-20",
+      "authors": [
+        "Pilar Sánchez-Peña",
+        "Carminna Ottone",
+        "Germán Aroca",
+        "Juan Antonio Baeza",
+        "Albert Guisasola",
+        "David Gabriel",
+        "Mireia Baeza"
+      ],
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "public_files_downloaded",
+      "data_collection_period": {
+        "start": "2021-11-01",
+        "end": "2022-02-28",
+        "timezone": null
+      },
+      "geographic_context": "Cerdanyola del Vallès (Bellaterra), Barcelona, Spain",
+      "technology_scope": [
+        "MEC",
+        "electrode_materials",
+        "electrochemical_characterization"
+      ],
+      "application_context": "Experimental catalyst/electrode characterization in acetate mineral medium; not wastewater treatment evidence.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "review_notes": [
+        "Readme describes a 35 mL MEC with graphite-brush anode, carbon-felt or carbon-cloth cathodes, nitrogen purge, sodium acetate at 1.5 g/L, initial pH 7.5, conductivity 13 mS/cm, ambient temperature and pressure, and a 10 ohm external monitoring resistor.",
+        "Files include current-density time series, EIS and LSV; source locators are Dataverse file IDs and worksheet/cell references still need analyst extraction.",
+        "The data do not report wastewater COD, captured hydrogen yield, full hydrogen gas balance, or biosensor response/LOD/LOQ. Those absences are explicit and must not be imputed.",
+        "The linked publication is DOI 10.12688/openreseurope.22256.1; link is retained for source reconciliation, not treated as a separate reviewed record.",
+        "A first-pass file audit verified all four locally registered SHA-256 digests. The current-density sheet has 3,673 finite time coordinates over 0–25.5 days; one of six traces lacks 504 values. LSV README-vs-sheet shape and EIS formula conversion findings are preserved in artifact_review and remain unresolved for analyst review."
+      ],
+      "artifacts": [
+        {
+          "file_name": "README-source.txt",
+          "original_file_name": "Readme.txt",
+          "dataverse_file_id": "435320",
+          "mime_type": "text/plain",
+          "file_size_bytes": 15751,
+          "sha256": "7d4965c6fbd7c5b8cd56ec3d917cc5b1deea25ae6b2c4392b55561279303a4e0",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/README-source.txt",
+          "extraction_method": "source-provided README preserved verbatim",
+          "extraction_status": "source_metadata_preserved",
+          "source_locator": "Dataverse dataset DOI 10.34810/DATA2866, file id 435320"
+        },
+        {
+          "file_name": "current-density-alloys.ods",
+          "original_file_name": "Current density_Alloys.ods",
+          "dataverse_file_id": "393148",
+          "mime_type": "application/vnd.oasis.opendocument.spreadsheet",
+          "file_size_bytes": 218178,
+          "sha256": "940b8ba42266774077cc488c19f1700e9fec921fa00b9d3ed7f8790830993996",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/current-density-alloys.ods",
+          "extraction_method": "none; original ODS preserved",
+          "extraction_status": "needs_table_and_unit_review",
+          "source_locator": "Dataverse dataset DOI 10.34810/DATA2866, file id 393148"
+        },
+        {
+          "file_name": "eis-catalyst-electrodes.ods",
+          "original_file_name": "EIS_Catalysts_Electrodes.ods",
+          "dataverse_file_id": "393126",
+          "mime_type": "application/vnd.oasis.opendocument.spreadsheet",
+          "file_size_bytes": 14814,
+          "sha256": "2ae4220f58c02fb7f29a882281c3006990bf6cffd75f9395ee5f14f6f12ca1f3",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/eis-catalyst-electrodes.ods",
+          "extraction_method": "none; original ODS preserved",
+          "extraction_status": "needs_table_and_unit_review",
+          "source_locator": "Dataverse dataset DOI 10.34810/DATA2866, file id 393126"
+        },
+        {
+          "file_name": "lsv-catalysts-carbon-cloth.ods",
+          "original_file_name": "LSV_Catalysts_CarbonCloth.ods",
+          "dataverse_file_id": "393142",
+          "mime_type": "application/vnd.oasis.opendocument.spreadsheet",
+          "file_size_bytes": 196418,
+          "sha256": "22116a643f43ef981835550c04a9fac14341420bd7a0da751c6e9d1539f98256",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/lsv-catalysts-carbon-cloth.ods",
+          "extraction_method": "none; original ODS preserved",
+          "extraction_status": "needs_table_and_unit_review",
+          "source_locator": "Dataverse dataset DOI 10.34810/DATA2866, file id 393142"
+        }
+      ],
+      "missing_data_reasons": {
+        "wastewater_quality": "Not applicable to this acetate/mineral-medium catalyst experiment; no COD/BOD/TSS record is present.",
+        "hydrogen_output": "The deposited files describe current/EIS/LSV but do not provide a reconciled gross-versus-captured H2 gas balance.",
+        "biosensor": "No biosensor calibration, analytical range, LOD/LOQ, selectivity, drift, or matrix-recovery data are included.",
+        "quality_assurance": "The source README states that no quality-assurance procedures were applicable; independent calibration/validation is not documented there."
+      },
+      "artifact_review": {
+        "review_type": "first_pass_descriptive_artifact_review",
+        "review_date": "2026-09-24",
+        "method": "Original ODS files were preserved. LibreOffice was used for a temporary inspection conversion. Statistics below use only rows with a finite time coordinate; no padded rows were treated as observations. No transformed workbook was added to the repository.",
+        "current_density_time_series": {
+          "source_file": "current-density-alloys.ods",
+          "source_file_id": "393148",
+          "worksheet": "Hoja1",
+          "time_unit": "day",
+          "current_density_unit": "mA/cm^2",
+          "valid_time_rows": 3673,
+          "time_span_days": {
+            "min": 0,
+            "max": 25.5
+          },
+          "median_time_step_days": 0.0069,
+          "approximate_interval_minutes": 9.94,
+          "series": [
+            {
+              "label": "Cloth Ni85Mo15",
+              "n": 3673,
+              "missing_values": 0,
+              "mean": 0.156205,
+              "median": 0.0792,
+              "min": -0.0461,
+              "max": 0.4808
+            },
+            {
+              "label": "Felt Ni85Mo15",
+              "n": 3673,
+              "missing_values": 0,
+              "mean": 0.196578,
+              "median": 0.0874,
+              "min": -0.005714,
+              "max": 0.4677
+            },
+            {
+              "label": "Cloth Ni76Fe16Mo8",
+              "n": 3169,
+              "missing_values": 504,
+              "mean": 0.224464,
+              "median": 0.0463,
+              "min": -0.2023,
+              "max": 0.8679
+            },
+            {
+              "label": "Felt Ni76Fe16Mo8",
+              "n": 3673,
+              "missing_values": 0,
+              "mean": 0.185054,
+              "median": 0.0334,
+              "min": -0.0334,
+              "max": 0.8207
+            },
+            {
+              "label": "Cloth Ni64Fe18Mo18",
+              "n": 3673,
+              "missing_values": 0,
+              "mean": 0.239413,
+              "median": 0.0509,
+              "min": -0.2759,
+              "max": 1.0027
+            },
+            {
+              "label": "Felt Ni64Fe18Mo18",
+              "n": 3673,
+              "missing_values": 0,
+              "mean": 0.269593,
+              "median": 0.04,
+              "min": -0.0301,
+              "max": 1.1489
+            }
+          ],
+          "interpretation": "Per-trace descriptive summaries only. These repeated observations are not independent replicates and must not be used to rank catalysts or validate the wastewater solver."
+        },
+        "lsv_file": {
+          "source_file": "lsv-catalysts-carbon-cloth.ods",
+          "source_file_id": "393142",
+          "source_readme_says": "3001 rows x 12 columns",
+          "temporary_conversion_exposed": "3002 worksheet rows including header, one shared potential column and six current traces",
+          "reported_potential_unit": "V vs Ag/AgCl",
+          "reported_intensity_unit": "A",
+          "review_finding": "README dimensional metadata and converted column layout do not agree; preserve original and reconcile the native sheet before extracting curves. No electrode-area normalization or wastewater conditions are registered."
+        },
+        "eis_file": {
+          "source_file": "eis-catalyst-electrodes.ods",
+          "source_file_id": "393126",
+          "worksheet_dimensions": "40 rows x 16 columns",
+          "reported_axes": "Re(Z) and -Im(Z), both ohms",
+          "review_finding": "Temporary LibreOffice conversion returned #NAME? in eight secondary impedance columns. This is a conversion/formula interoperability issue to resolve against the original ODS before numeric use; no EIS fit parameters were extracted."
+        },
+        "cross_file_limitations": [
+          "The README repeats some cloth-series descriptions under the wrong catalyst names; the worksheet headers were retained as displayed and the text discrepancy remains for human review.",
+          "The experiment uses acetate mineral medium in a small MEC catalyst study, not wastewater treatment.",
+          "No reconciled gross/captured hydrogen gas measurement, gas recovery, COD/BOD/TSS dataset or independent replicate dataset is present.",
+          "Negative signed current-density values were preserved; no polarity correction or imputation was applied."
+        ]
+      }
+    },
+    {
+      "candidate_id": "article-10.1007-s10529-020-03050-5",
+      "document_type": "paper",
+      "source_type": "institutional_repository",
+      "title": "Microbial fuel cell biosensor for the determination of biochemical oxygen demand of wastewater samples containing readily and slowly biodegradable organics",
+      "doi": "10.1007/s10529-020-03050-5",
+      "source_url": "https://doi.org/10.1007/s10529-020-03050-5",
+      "repository_url": "https://www.research.ed.ac.uk/en/publications/microbial-fuel-cell-biosensor-for-the-determination-of-biochemica/",
+      "full_text_url": "https://www.pure.ed.ac.uk/ws/portalfiles/portal/211419935/Microbial_fuel_cell_TARDY_DOA15112020_VOR_CC_BY.pdf",
+      "publisher": "Biotechnology Letters; institutional copy hosted by the University of Edinburgh",
+      "publication_year": 2021,
+      "authors": [
+        "Gábor Márk Tardy",
+        "Bálint Lóránt",
+        "Miklós Gyalai-Korpos",
+        "Vince Bakos",
+        "David Simpson",
+        "Igor Goryanin"
+      ],
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "open_full_text_downloaded",
+      "technology_scope": ["MFC", "electrochemical_biosensor", "wastewater"],
+      "application_context": "MFC-integrated BOD5 sensing using voltage and integrated charge; its dynamic microbial sensing protocol is not equivalent to the static amperometric biosensor model currently implemented.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "artifacts": [
+        {
+          "file_name": "tardy-2021-mfc-bod-biosensor.pdf",
+          "mime_type": "application/pdf",
+          "file_size_bytes": 2314255,
+          "page_count": 11,
+          "sha256": "fc620c0cf25cc2c4b4b300f1aa0a1255222af3bf8d325873d8fa88e9dc6b115d",
+          "local_path": "packages/database/data/research-candidates/10.1007-s10529-020-03050-5/tardy-2021-mfc-bod-biosensor.pdf",
+          "extraction_method": "Poppler pdftotext -layout; original PDF retained",
+          "extraction_status": "layout_text_extracted_claims_not_reviewed",
+          "source_locator": "DOI 10.1007/s10529-020-03050-5, version of record PDF"
+        },
+        {
+          "file_name": "tardy-2021-mfc-bod-biosensor.extracted.txt",
+          "mime_type": "text/plain",
+          "file_size_bytes": 47911,
+          "sha256": "c214fab04104c2dd53eccc447be6dab144428d3fd7c2934406cfb815fcd2416f",
+          "local_path": "packages/database/data/research-candidates/10.1007-s10529-020-03050-5/tardy-2021-mfc-bod-biosensor.extracted.txt",
+          "extraction_method": "Poppler pdftotext -layout; page separators retained",
+          "extraction_status": "text_only_pending_table_check",
+          "derived_from_sha256": "fc620c0cf25cc2c4b4b300f1aa0a1255222af3bf8d325873d8fa88e9dc6b115d",
+          "source_locator": "Printed pages 445-454; digital PDF pages 1-11"
+        }
+      ],
+      "extracted_claim_candidates": [
+        {
+          "claim_id": "tardy2021-real-wastewater-bod5-ranges",
+          "metric_key": "wastewater.bod5_sample_range",
+          "sample_context": "Pre-clarified domestic wastewater and brewery wastewater used in the MFC sensor study",
+          "original_value": {
+            "domestic": {
+              "min": 80,
+              "max": 320
+            },
+            "brewery": {
+              "min": 59,
+              "max": 660
+            }
+          },
+          "original_unit": "mg BOD5/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Table 1, printed p. 448; PDF p. 2",
+          "source_kind": "literature",
+          "evidence_role": "external_observation_reported_in_literature",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "BOD5 is not COD; do not substitute this range for COD input or wastewater data from a METREV case."
+        },
+        {
+          "claim_id": "tardy2021-real-wastewater-bod5-regression-r2",
+          "metric_key": "biosensor.real_wastewater_q_vs_bod5_r2_lower_bound",
+          "sample_context": "Combined domestic and brewery wastewater calibration using integrated charge Q versus BOD5",
+          "original_value": {
+            "lower_bound_exclusive": 0.985
+          },
+          "original_unit": "1",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Abstract, printed p. 445; Results and Discussion, printed pp. 451-453",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_calibration_fit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Aggregate fit statistic only; raw calibration pairs and independent holdout measurements are not included in this local artifact."
+        },
+        {
+          "claim_id": "tardy2021-real-wastewater-bod5-relative-error",
+          "metric_key": "biosensor.real_wastewater_bod5_relative_error_upper_bound",
+          "sample_context": "MFC-derived BOD concentration compared with standard respirometric BOD5 measurements",
+          "original_value": {
+            "upper_bound_exclusive_pct": 10
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Abstract, printed p. 445; Results and Discussion, printed p. 452",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_comparison_error",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Published average is not an independent METREV validation result; per-sample values and evaluation protocol must be reviewed."
+        },
+        {
+          "claim_id": "tardy2021-real-wastewater-bod5-reported-lod",
+          "metric_key": "biosensor.real_wastewater_reported_detection_limit",
+          "sample_context": "Integrated MFC BOD5 measurement using a 0.02 V signal cutoff",
+          "original_value": {
+            "approximate": 20
+          },
+          "original_unit": "mg BOD5/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results and Discussion, printed p. 452; cutoff-method qualification applies",
+          "source_kind": "literature",
+          "evidence_role": "author_reported_method_specific_detection_limit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "This is protocol-specific biological MFC sensing, not a measured LOD for the standalone electrochemical amperometric sensor model."
+        },
+        {
+          "claim_id": "tardy2021-real-wastewater-bod5-response-time",
+          "metric_key": "biosensor.real_wastewater_measurement_duration",
+          "sample_context": "Real domestic and brewery wastewater MFC biosensor measurements",
+          "original_value": {
+            "min": 0.5,
+            "max": 4
+          },
+          "original_unit": "days",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Abstract, printed p. 445; Results and Discussion, printed p. 452",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_measurement_duration",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The range depends on sample composition and the specific batch-charge protocol; it does not parameterize response_time_s for the current static sensor equation."
+        }
+      ],
+      "missing_data_reasons": {
+        "raw_timeseries": "The accessible article PDF reports plotted curves and aggregate metrics; local raw voltage/current/BOD5 series were not obtained.",
+        "cod": "The main-table ranges are BOD5, not COD; supplementary wastewater chemistry tables require separate retrieval and review.",
+        "standalone_electrochemical_sensor": "The MFC biofilm acts as the biological sensing element; this is not standalone electrode-receptor chemistry.",
+        "independent_validation": "The authors compare against standard BOD5 measurements, but the locally extracted summary does not include per-sample holdout rows for a METREV benchmark."
+      },
+      "review_notes": [
+        "The local CC BY version-of-record PDF was checked. It reports 11 pre-clarified domestic and 10 brewery wastewater samples measured across three MFCs, a unified real-wastewater Q-vs-BOD5 R² > 0.985, average relative difference below 10%, a study-specific approximate detection floor near 20 mg BOD5/L, and 0.5–4 day measurement duration. The paper reports aggregate study performance, not a sample-level holdout set. Its living air-cathode MFC charge/voltage assay is not the current static amperometric biosensor model."
+      ]
+    },
+    {
+      "candidate_id": "mendeley-dataset-10.17632-gydpxvj8gp.1",
+      "document_type": "dataset",
+      "source_type": "research_data_repository",
+      "title": "Microbial fuel cell data set",
+      "doi": "10.17632/gydpxvj8gp.1",
+      "source_url": "https://doi.org/10.17632/gydpxvj8gp.1",
+      "repository_url": "https://data.mendeley.com/datasets/gydpxvj8gp/1",
+      "publisher": "Mendeley Data",
+      "publication_year": 2021,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "public_record_files_not_retrieved",
+      "technology_scope": ["MFC", "brewery_wastewater"],
+      "application_context": "Experimental brewery-waste MFC dataset with COD and electrical performance; cathode electron acceptors are 0.4-0.6 M permanganate or ferricyanide, outside the solver's current oxygen-reduction boundary.",
+      "candidate_status": "needs_artifact_retrieval_and_human_review",
+      "eligible_for_decision": false,
+      "reported_measures": [
+        "wastewater physicochemical properties",
+        "COD removal",
+        "voltage",
+        "current density",
+        "power density",
+        "coulombic efficiency"
+      ],
+      "reported_method": "Voltage logged every 12 hours for 20 days; triplicate measurements; COD measured with HACH DR900; polarization curves use an external resistance series.",
+      "artifacts": [],
+      "missing_data_reasons": {
+        "local_artifacts": "The repository record and CC BY 4.0 license were checked, but the file package was not downloaded into this snapshot.",
+        "model_compatibility": "The source's chemical electron acceptors are not interchangeable with the model's MFC oxygen cathode."
+      },
+      "review_notes": [
+        "The public record describes experimental brewery-waste MFC measurements (COD and electrical outputs) under 0.4–0.6 M KMnO4 or ferricyanide catholytes and triplicate summary reporting. CC BY 4.0 is recorded, but source files were not retrieved locally. The chemical cathode boundary differs from METREV oxygen reduction, so this cannot be directly compared to current solver outputs."
+      ]
+    },
+    {
+      "candidate_id": "mendeley-dataset-10.17632-tsx67ywc9p.2",
+      "document_type": "dataset",
+      "source_type": "research_data_repository",
+      "title": "Original data for Optimization: High Stability and Efficiency for Decentralized Wastewater Treatment",
+      "doi": "10.17632/tsx67ywc9p.2",
+      "source_url": "https://doi.org/10.17632/tsx67ywc9p.2",
+      "repository_url": "https://data.mendeley.com/datasets/tsx67ywc9p/2",
+      "publisher": "Mendeley Data",
+      "publication_year": 2026,
+      "published_at": "2026-05-18",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "public_record_files_not_retrieved",
+      "technology_scope": [
+        "MFC",
+        "wastewater",
+        "optimization",
+        "operational_stability"
+      ],
+      "application_context": "Experimental salt-bridge MFC using synthetic wastewater; reports electrochemistry, COD, nutrients, sequencing, and qPCR. Its 50 mM KMnO4 catholyte differs from the model's oxygen-reduction cathode.",
+      "candidate_status": "needs_artifact_retrieval_and_human_review",
+      "eligible_for_decision": false,
+      "reported_configuration": "250 mL dual chambers, 5 mm KCl-agar salt bridge or Nafion control, carbon-felt electrodes, 30 ± 1 °C, pH 7.0 ± 0.1, n=3.",
+      "reported_measures": [
+        "COD",
+        "TN",
+        "NH4-N",
+        "NO2-N",
+        "NO3-N",
+        "CV",
+        "EIS",
+        "power density",
+        "microbial sequencing",
+        "qPCR"
+      ],
+      "artifacts": [],
+      "missing_data_reasons": {
+        "local_artifacts": "The repository record and CC BY 4.0 license were checked, but original files were not downloaded into this snapshot.",
+        "model_compatibility": "The source's cathode electron acceptor is permanganate; oxygen-cathode predictions cannot be directly compared without resolving the reaction boundary."
+      },
+      "review_notes": [
+        "The version-2 record describes 250 mL dual-chamber MFCs, synthetic wastewater with COD 300–500 mg/L, triplicate tests and 50 mM KMnO4 catholyte; it reports mean ± SD. CC BY 4.0 is recorded, but files were not retrieved locally. It is a distinct configuration, not independent evidence from the v1 record, and its cathode chemistry is outside the current oxygen-reduction boundary."
+      ]
+    },
+    {
+      "candidate_id": "article-10.3389-fenrg-2019-00091",
+      "document_type": "paper",
+      "source_type": "open_access_journal",
+      "title": "On Site Evaluation of a Tubular Microbial Fuel Cell Using an Anion Exchange Membrane for Sewage Water Treatment",
+      "doi": "10.3389/fenrg.2019.00091",
+      "source_url": "https://doi.org/10.3389/fenrg.2019.00091",
+      "repository_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2019.00091/full",
+      "full_text_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2019.00091/full",
+      "publisher": "Frontiers in Energy Research",
+      "publication_year": 2019,
+      "authors": ["Mari Sugioka", "Naoko Yoshida", "Kazuki Iida"],
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "open_full_text_public_not_archived_locally",
+      "technology_scope": [
+        "MFC",
+        "wastewater",
+        "air_cathode",
+        "anion_exchange_membrane",
+        "field_operation"
+      ],
+      "application_context": "On-site tubular MFC treatment of sewage with a central air chamber and anion-exchange separator. This is a strong real-wastewater configuration candidate; the model's current oxygen boundary does not resolve the tubular geometry or depth-dependent leakage.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "related_dataset_doi": "10.3389/fenrg.2019.00091.s001",
+      "review_notes": [
+        "Publisher abstract reports 1.3–5.7 Wh m^-3 MFC electricity production across two modules and reduced bottom-module output associated with water leakage into the air cathode.",
+        "The chemostat treatment comparison reports COD removal, BOD removal, volumetric current recovery, coulombic efficiency, external resistance, and HRT; these are literature-reported aggregated results, not independent METREV validation rows.",
+        "The article's data availability statement says raw data are available from the authors upon request. A linked CC BY 4.0 Figshare supplementary data sheet is registered separately but is not locally archived in this snapshot.",
+        "Table 1/2 display COD 450→210 mg/L for R3H12 and 450→370 mg/L for R27H12. Recomputed removals are 53.33% and 17.78%, respectively. At R27H12, 0.19 kWh/kg-COD × 0.08 kg-COD/m³ gives 0.0152 kWh/m³, whereas Table 2 displays 0.01; the difference remains an open reconciliation item. R3H12 gives 0.002064 versus displayed 0.002 kWh/m³. The paper identifies bottom-cell air-cathode water leakage and aeration energy as material loss/energy pathways, neither represented as full spatial physical losses by METREV."
+      ],
+      "artifacts": [],
+      "extracted_claim_candidates": [
+        {
+          "claim_id": "sugioka2019-module-electricity-range",
+          "metric_key": "electrical.module_electricity_production_range",
+          "sample_context": "Two on-site tubular MFC modules treating sewage water",
+          "original_value": {
+            "min": 1.3,
+            "max": 5.7
+          },
+          "original_unit": "Wh m^-3 MFC",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_field_electricity_output",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Aggregated module range lacks local module-level current, voltage, duration, and wastewater time series."
+        },
+        {
+          "claim_id": "sugioka2019-cod-removal",
+          "metric_key": "wastewater.cod_removal_fraction",
+          "sample_context": "Sewage wastewater in a chemostat connected to an on-site MFC module; 3 ohm load, 12 h HRT for the reported best removal configuration",
+          "original_value": {
+            "mean_pct": 54,
+            "standard_deviation_pct": 14
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_wastewater_treatment_result",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Influent and effluent COD sample-level measurements, variance definition, and replicate records are not present in this candidate record."
+        },
+        {
+          "claim_id": "sugioka2019-bod-removal",
+          "metric_key": "wastewater.bod_removal_fraction",
+          "sample_context": "Sewage wastewater in a chemostat connected to an on-site MFC module; 3 ohm load and 12 h HRT",
+          "original_value": {
+            "mean_pct": 37,
+            "standard_deviation_pct": 17
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_wastewater_treatment_result",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "BOD method, paired sample rows, and variance definition need extraction from the full methods/results before comparison."
+        },
+        {
+          "claim_id": "sugioka2019-current-recovery",
+          "metric_key": "electrical.current_recovery_density",
+          "sample_context": "Sewage wastewater; 3 ohm load and 12 h HRT",
+          "original_value": {
+            "mean": 3.8,
+            "standard_deviation": 2.0
+          },
+          "original_unit": "A m^-3",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_volumetric_current",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The reactor and electrode normalization basis must be confirmed from methods before comparison to modeled current density."
+        },
+        {
+          "claim_id": "sugioka2019-coulombic-efficiency",
+          "metric_key": "electrical.coulombic_efficiency",
+          "sample_context": "Sewage wastewater; 3 ohm load and 12 h HRT",
+          "original_value": {
+            "mean_pct": 15,
+            "standard_deviation_pct": 7.5
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_coulombic_efficiency",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The calculation basis and its relationship to measured COD removal need table-level review."
+        },
+        {
+          "claim_id": "sugioka2019-air-cathode-water-leakage",
+          "metric_key": "losses.air_cathode_water_leakage",
+          "sample_context": "Bottom units at 60–90 cm in vertically assembled sewage-channel module",
+          "original_value": {
+            "reported": true,
+            "direction": "reduced_electricity_production"
+          },
+          "original_unit": null,
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Publisher abstract; article DOI 10.3389/fenrg.2019.00091",
+          "source_kind": "literature",
+          "evidence_role": "author_attributed_operational_loss_mechanism",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The paper attributes a depth-specific decline to water leakage into the air cathode but does not give a local numerical leakage flux or a directly comparable loss term in the METREV model."
+        }
+      ],
+      "missing_data_reasons": {
+        "raw_timeseries": "The paper states that raw data can be requested from the authors; no sample-level data file is locally registered.",
+        "model_boundary": "The module uses tubular, depth-separated air-chamber geometry and anion-exchange membrane; the current 0D model does not resolve axial position or cathode flooding.",
+        "independent_validation": "Reported aggregate study outcomes have not been extracted into a benchmark or independently checked against the METREV model."
+      },
+      "review_calculations": [
+        {
+          "comparison_id": "sugioka-r3h12-cod-removal-recalculation",
+          "method": "(450-210)/450*100",
+          "calculated_value": 53.3333,
+          "unit": "%",
+          "reported_value": 54,
+          "reported_plus_minus": 14,
+          "reported_unit": "%",
+          "assessment": "Arithmetic from the displayed influent/effluent COD agrees with the reported aggregate within its stated spread; this is an internal paper consistency check, not a METREV prediction."
+        },
+        {
+          "comparison_id": "sugioka-r27h12-cod-removal-recalculation",
+          "method": "(450-370)/450*100",
+          "calculated_value": 17.7778,
+          "unit": "%",
+          "reported_value": 17,
+          "reported_plus_minus": 6.4,
+          "reported_unit": "%",
+          "assessment": "Arithmetic from the displayed influent/effluent COD agrees with the reported aggregate within its stated spread; this is an internal paper consistency check, not a METREV prediction."
+        },
+        {
+          "comparison_id": "sugioka-r3h12-energy-recovery-recalculation",
+          "method": "0.0086 kWh/kg-COD * (450-210) mg/L * 0.001 kg-COD/m^3 per mg-COD/L",
+          "calculated_value": 0.002064,
+          "unit": "kWh/m^3",
+          "table_value": 0.002,
+          "assessment": "Close at the displayed precision; the published aggregate values do not supply raw rows."
+        },
+        {
+          "comparison_id": "sugioka-r27h12-energy-recovery-recalculation",
+          "method": "0.19 kWh/kg-COD * (450-370) mg/L * 0.001 kg-COD/m^3 per mg-COD/L",
+          "calculated_value": 0.0152,
+          "unit": "kWh/m^3",
+          "table_value": 0.01,
+          "assessment": "Unresolved difference: multiplication of displayed means gives 0.0152 kWh/m^3 while Table 2 reports 0.01. Do not reconcile by changing units or rounding without the underlying source data."
+        },
+        {
+          "comparison_id": "sugioka-aeration-energy-reduction-r3h12",
+          "method": "((-0.27)-(-0.12))/0.27*100",
+          "calculated_value": 55.5556,
+          "unit": "%",
+          "reported_value": 55,
+          "assessment": "Consistent to rounding with the paper-reported 55% reduction; this is a study energy-balance comparison."
+        },
+        {
+          "comparison_id": "sugioka-aeration-energy-reduction-r27h12",
+          "method": "((-0.27)-(-0.21))/0.27*100",
+          "calculated_value": 22.2222,
+          "unit": "%",
+          "reported_value": 23,
+          "assessment": "Close to the paper-reported 23%; the displayed totals are rounded."
+        }
+      ]
+    },
+    {
+      "candidate_id": "dataset-10.3389-fenrg-2019-00091-s001",
+      "document_type": "dataset",
+      "source_type": "research_data_repository",
+      "title": "Data Sheet 1: On Site Evaluation of a Tubular Microbial Fuel Cell Using an Anion Exchange Membrane for Sewage Water Treatment",
+      "doi": "10.3389/fenrg.2019.00091.s001",
+      "source_url": "https://doi.org/10.3389/fenrg.2019.00091.s001",
+      "repository_url": "https://figshare.com/articles/dataset/Data_Sheet_1_On_Site_Evaluation_of_a_Tubular_Microbial_Fuel_Cell_Using_an_Anion_Exchange_Membrane_for_Sewage_Water_Treatment_docx/9778127/1",
+      "publisher": "Frontiers in Energy Research Figshare",
+      "publication_year": 2019,
+      "authors": ["Mari Sugioka", "Naoko Yoshida", "Kazuki Iida"],
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "public_supplementary_file_not_retrieved",
+      "technology_scope": [
+        "MFC",
+        "wastewater",
+        "air_cathode",
+        "anion_exchange_membrane"
+      ],
+      "application_context": "Publisher-linked supplementary data sheet for the on-site tubular MFC sewage study; retained as a distinct dataset source, not counted as a second independent experiment.",
+      "candidate_status": "needs_artifact_retrieval_and_human_review",
+      "eligible_for_decision": false,
+      "related_publication_doi": "10.3389/fenrg.2019.00091",
+      "reported_artifact": {
+        "file_name": "Data_Sheet_1_OnSiteEvaluationofaTubularMicrobialFuelCellUsinganAnionExchangeMembraneforSewageWaterTreatment.docx",
+        "reported_size": "346.76 kB"
+      },
+      "artifacts": [],
+      "missing_data_reasons": {
+        "local_artifact": "The public CC BY 4.0 Figshare record and file were identified, but the file was not retrieved into this local snapshot.",
+        "raw_data": "The companion data sheet must be checked to determine whether it contains source tables or raw time-series; the paper says raw data are available from authors on request."
+      },
+      "review_notes": [
+        "The linked 346.76 kB CC BY 4.0 supplementary DOCX is one companion item from the same Sugioka study, not an independent experimental run. It was not retrieved locally; the article separately says raw data are available from the authors on request, so this supplement must not be described as a raw measurement time series."
+      ]
+    },
+    {
+      "candidate_id": "article-10.1038-s41545-024-00350-5",
+      "document_type": "paper",
+      "source_type": "open_access_journal",
+      "title": "Resilience of anodic biofilm in microbial fuel cell biosensor for BOD monitoring of urban wastewater",
+      "doi": "10.1038/s41545-024-00350-5",
+      "source_url": "https://doi.org/10.1038/s41545-024-00350-5",
+      "repository_url": "https://www.nature.com/articles/s41545-024-00350-5",
+      "publisher": "npj Clean Water",
+      "publication_year": 2024,
+      "published_at": "2024-06-28",
+      "authors": [
+        "Anna Salvian",
+        "Daniel Farkas",
+        "Marina Ramirez-Moreno",
+        "Daniela Torruella-Salas",
+        "Antonio Berná",
+        "Claudio Avignone-Rossa",
+        "John R. Varcoe",
+        "Abraham Esteve-Nuñez",
+        "Siddharth Gadkari"
+      ],
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-24",
+      "access_status": "open_full_text_public_not_archived_locally",
+      "technology_scope": [
+        "MFC",
+        "electrochemical_biosensor",
+        "wastewater",
+        "biofilm_adaptation"
+      ],
+      "application_context": "MFC-biofilm BOD sensor studied with synthetic and real urban wastewater and biological replicates. It is a dynamic microbial sensing method, not the current static amperometric electrode-receptor sensor model.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "reported_raw_data_access": "Authors state that datasets are available on request; no raw measurement files were locally retrieved.",
+      "review_notes": [
+        "Publisher full text and supplementary PDF are open under CC BY 4.0. Results report three MFC replicates for the calibration comparison and provide method-specific aggregate performance metrics.",
+        "Results report RWW BOD dynamic range, LOD, sensitivity, response time, and signal changes during biofilm adaptation. These are candidate literature values only.",
+        "The biological MFC sensor, BOD endpoint, batch response peak and substrate-dependent biofilm behavior do not parameterize the current static electrochemical biosensor model directly.",
+        "The article explicitly reports 170 mg BOD/L as the RWW linear dynamic range, but 177 ± 7 mg BOD/L as the maximum measured undiluted RWW feed; it separately reports a 170 ± 6 mA/m² current density. These three quantities are not interchangeable. Its sensitivity equation confirms area normalization. Figure 1 current outputs are mean ± SEM over three MFC replicates and BOD concentrations are mean ± SD; Figure 2 polarization summaries are mean ± SEM over two MFCs. The main text does not define the ± statistic for every sensitivity/LOD/response aggregate, so those were left unspecified. RWW/SWW ratios and the SWW adaptation discrepancy are recorded in review_calculations. Raw data/code remain available from authors on request."
+      ],
+      "artifacts": [],
+      "extracted_claim_candidates": [
+        {
+          "claim_id": "salvian2024-rww-bod-dynamic-range",
+          "metric_key": "biosensor.real_wastewater_bod_dynamic_range_upper_bound",
+          "sample_context": "Real urban wastewater (RWW) MFC-biosensor calibration",
+          "original_value": {
+            "upper_bound": 170
+          },
+          "original_unit": "mg BOD/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Fig. 1c; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_biosensor_dynamic_range",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The range is BOD for a live MFC biofilm sensor, not a concentration range calibrated for METREV's static amperometric sensor."
+        },
+        {
+          "claim_id": "salvian2024-rww-bod-lod",
+          "metric_key": "biosensor.real_wastewater_bod_lod",
+          "sample_context": "Real urban wastewater MFC-biosensor calibration",
+          "original_value": {
+            "mean": 44,
+            "reported_plus_minus": 7
+          },
+          "original_unit": "mg BOD/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Eq. 4; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_method_specific_detection_limit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The study-specific LOD is calculated for a living MFC BOD biofilm sensor; it is not the LOD of METREV static amperometric sensors, and the ± statistic for this aggregate is not specified in the cited main-text passage.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-rww-bod-sensitivity",
+          "metric_key": "biosensor.real_wastewater_bod_sensitivity",
+          "sample_context": "Real urban wastewater MFC-biosensor calibration",
+          "original_value": {
+            "mean": 0.78,
+            "reported_plus_minus": 0.13
+          },
+          "original_unit": "mA L mg^-1 m^-2",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_sensor_sensitivity",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Equation 5 confirms area-normalized sensitivity, but this living MFC-biofilm BOD assay does not parameterize METREV static amperometric calibration; raw replicate values and ± statistic are not supplied in the local candidate.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-rww-bod-response-time",
+          "metric_key": "biosensor.real_wastewater_bod_response_time",
+          "sample_context": "Real urban wastewater MFC-biosensor batch response",
+          "original_value": {
+            "mean": 4.7,
+            "reported_plus_minus": 0.4
+          },
+          "original_unit": "h",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Supplementary Table 2; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_sensor_response_time",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Time to peak after feed replacement belongs to a living MFC batch response; it is not a static calibration response-time parameter, and the ± statistic is not specified for this aggregate.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-rww-power-density-adaptation",
+          "metric_key": "biosensor.real_wastewater_power_density_by_adaptation_day",
+          "sample_context": "Real urban wastewater MFC biosensor after substrate adaptation",
+          "original_value": {
+            "day_4_mean": 16,
+            "day_4_standard_error_of_mean": 1,
+            "day_36_mean": 23,
+            "day_36_standard_error_of_mean": 6
+          },
+          "original_unit": "mW/m2",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, electrochemical analyses; Fig. 2; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_biosensor_mfc_power_density",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "These power-density values are explicitly reported as mean ± SEM for two MFC replicates after substrate adaptation; they describe an MFC biosensor configuration, not standalone sensor consumption or a METREV model prediction.",
+          "uncertainty_type": "standard_error_of_mean"
+        },
+        {
+          "claim_id": "salvian2024-rww-current-adaptation-change",
+          "metric_key": "biosensor.real_wastewater_current_adaptation_change",
+          "sample_context": "Real urban wastewater at maintained BOD feed concentration over biofilm adaptation",
+          "original_value": {
+            "day_4_mean_mA_m2": 94,
+            "day_36_mean_mA_m2": 105,
+            "reported_approximate_change_pct": 12,
+            "time_days": {
+              "start": 4,
+              "end": 36
+            },
+            "day_4_standard_error_of_mean_mA_m2": 8,
+            "day_36_standard_error_of_mean_mA_m2": 11
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, electrochemical analyses; article DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_biosensor_signal_variation",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The paper reports about 12% adaptation for RWW; arithmetic on the rounded means is 11.70%. This is a living MFC polarization-curve outcome, not a prediction from the current solver.",
+          "uncertainty_type": "standard_error_of_mean"
+        },
+        {
+          "claim_id": "salvian2024-sww-bod-dynamic-range",
+          "metric_key": "biosensor.synthetic_wastewater_bod_dynamic_range_upper_bound",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor calibration",
+          "original_value": {
+            "upper_bound": 200
+          },
+          "original_unit": "mg BOD/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Fig. 1c; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_biosensor_dynamic_range",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The source reports aggregate values across MFC biosensor replicates. This living biofilm BOD response is not the METREV static amperometric sensor calibration; raw replicate values are not locally available and the claim remains pending human review."
+        },
+        {
+          "claim_id": "salvian2024-rww-bod-calibration-r2",
+          "metric_key": "biosensor.real_wastewater_bod_calibration_r_squared",
+          "sample_context": "Real urban wastewater (RWW) MFC-biosensor calibration",
+          "original_value": {
+            "r_squared": 0.91
+          },
+          "original_unit": "1",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Fig. 1c; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_calibration_fit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "R² is a fit over the study data for three MFC replicates, not an independent holdout or METREV predictive-accuracy statistic."
+        },
+        {
+          "claim_id": "salvian2024-sww-bod-calibration-r2",
+          "metric_key": "biosensor.synthetic_wastewater_bod_calibration_r_squared",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor calibration",
+          "original_value": {
+            "r_squared": 0.95
+          },
+          "original_unit": "1",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Fig. 1c; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_calibration_fit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "R² is a fit over the study data for three MFC replicates, not an independent holdout or METREV predictive-accuracy statistic."
+        },
+        {
+          "claim_id": "salvian2024-sww-bod-sensitivity",
+          "metric_key": "biosensor.synthetic_wastewater_bod_sensitivity",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor calibration",
+          "original_value": {
+            "mean": 0.64,
+            "reported_plus_minus": 0.1
+          },
+          "original_unit": "mA L mg^-1 m^-2",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_sensor_sensitivity",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The source reports aggregate values across MFC biosensor replicates. This living biofilm BOD response is not the METREV static amperometric sensor calibration; raw replicate values are not locally available and the claim remains pending human review.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-sww-bod-lod",
+          "metric_key": "biosensor.synthetic_wastewater_bod_lod",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor calibration",
+          "original_value": {
+            "mean": 49,
+            "reported_plus_minus": 8
+          },
+          "original_unit": "mg BOD/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Eq. 3; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_method_specific_detection_limit",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The source reports aggregate values across MFC biosensor replicates. This living biofilm BOD response is not the METREV static amperometric sensor calibration; raw replicate values are not locally available and the claim remains pending human review.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-sww-bod-response-time",
+          "metric_key": "biosensor.synthetic_wastewater_bod_response_time",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor batch response",
+          "original_value": {
+            "mean": 11.1,
+            "reported_plus_minus": 0.9
+          },
+          "original_unit": "h",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Biosensing properties; Supplementary Table 2; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_sensor_response_time",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The source reports aggregate values across MFC biosensor replicates. This living biofilm BOD response is not the METREV static amperometric sensor calibration; raw replicate values are not locally available and the claim remains pending human review.",
+          "uncertainty_type": "not_specified_for_this_aggregate_in_the_article_text"
+        },
+        {
+          "claim_id": "salvian2024-rww-bod-maximum-tested-feed",
+          "metric_key": "wastewater.real_wastewater_maximum_bod_tested",
+          "sample_context": "Undiluted real urban wastewater (RWW); maximum concentration of the source sample tested",
+          "original_value": {
+            "mean": 177,
+            "standard_deviation": 7
+          },
+          "original_unit": "mg BOD/L",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Materials and Methods, BOD measurement; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_wastewater_test_concentration",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "This is the measured maximum feed concentration, not the sensor linear dynamic-range limit of 170 mg/L. The local candidate lacks the raw sample records and remains pending analyst review.",
+          "uncertainty_type": "standard_deviation"
+        },
+        {
+          "claim_id": "salvian2024-sww-current-adaptation-change",
+          "metric_key": "biosensor.synthetic_wastewater_current_adaptation_change",
+          "sample_context": "Synthetic wastewater (SWW) MFC-biosensor polarization curve at the reported constant feed BOD",
+          "original_value": {
+            "day_4_mean_mA_m2": 186,
+            "day_36_mean_mA_m2": 218,
+            "reported_approximate_change_pct": 15,
+            "time_days": {
+              "start": 4,
+              "end": 36
+            },
+            "day_4_standard_error_of_mean_mA_m2": 25,
+            "day_36_standard_error_of_mean_mA_m2": 23
+          },
+          "original_unit": "%",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Electrochemical analyses; Fig. 2; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_mfc_biosensor_adaptation",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "The paper reports around 15%, while arithmetic from the displayed rounded means 186 and 218 mA/m² gives 17.20%; unrounded values are needed to reconcile. This is not a METREV prediction.",
+          "uncertainty_type": "standard_error_of_mean"
+        },
+        {
+          "claim_id": "salvian2024-sww-power-density-adaptation",
+          "metric_key": "biosensor.synthetic_wastewater_power_density_by_adaptation_day",
+          "sample_context": "Synthetic wastewater (SWW) MFC biosensor after substrate adaptation",
+          "original_value": {
+            "day_4_mean": 59,
+            "day_4_standard_error_of_mean": 1,
+            "day_36_mean": 87,
+            "day_36_standard_error_of_mean": 3
+          },
+          "original_unit": "mW/m2",
+          "normalized_value": null,
+          "normalized_unit": null,
+          "normalization_rule_id": null,
+          "source_locator": "Results, Electrochemical analyses; Fig. 2; DOI 10.1038/s41545-024-00350-5",
+          "source_kind": "literature",
+          "evidence_role": "externally_reported_biosensor_mfc_power_density",
+          "review_status": "needs_analyst_review",
+          "eligible_for_decision": false,
+          "missing_reason": "Explicitly reported as mean ± SEM for two MFC replicates; a study-specific MFC polarization result, not a standalone sensor energy budget or METREV prediction.",
+          "uncertainty_type": "standard_error_of_mean"
+        }
+      ],
+      "missing_data_reasons": {
+        "raw_timeseries": "The article says data are available from the corresponding author on request; the supplementary PDF is not a raw sensor dataset.",
+        "measurement_endpoint": "The study uses BOD and a living MFC biofilm rather than an isolated electrochemical recognition layer.",
+        "independent_validation": "These published metrics have not been applied as a METREV benchmark and are not external validation of its solver."
+      },
+      "review_calculations": [
+        {
+          "comparison_id": "salvian-linear-range-rww-to-sww",
+          "method": "170 / 200",
+          "calculated_value": 0.85,
+          "unit": "ratio",
+          "assessment": "RWW reported upper linear range is 15% lower than SWW; article values remain source-reported, not a cross-study model test."
+        },
+        {
+          "comparison_id": "salvian-sensitivity-rww-to-sww",
+          "method": "0.78 / 0.64",
+          "calculated_value": 1.21875,
+          "unit": "ratio",
+          "assessment": "RWW sensitivity is 21.875% higher using reported means; uncertainty statistics for these ± aggregates were not assigned."
+        },
+        {
+          "comparison_id": "salvian-lod-rww-to-sww",
+          "method": "44 / 49",
+          "calculated_value": 0.897959,
+          "unit": "ratio",
+          "assessment": "RWW reported LOD mean is 10.204% lower using study aggregates; not a METREV LOD."
+        },
+        {
+          "comparison_id": "salvian-response-time-rww-to-sww",
+          "method": "4.7 / 11.1",
+          "calculated_value": 0.423423,
+          "unit": "ratio",
+          "assessment": "RWW response time is 57.658% shorter by reported means; endpoint is time to current peak after feed replacement."
+        },
+        {
+          "comparison_id": "salvian-rww-current-adaptation-recalculation",
+          "method": "(105-94)/94*100",
+          "calculated_value": 11.7021,
+          "unit": "%",
+          "reported_approximate_value": 12,
+          "assessment": "Matches the paper-reported approximate 12% using rounded means."
+        },
+        {
+          "comparison_id": "salvian-sww-current-adaptation-recalculation",
+          "method": "(218-186)/186*100",
+          "calculated_value": 17.2043,
+          "unit": "%",
+          "reported_approximate_value": 15,
+          "assessment": "Rounded means do not reproduce the reported approximate 15%; retain discrepancy for source-data review."
+        },
+        {
+          "comparison_id": "salvian-rww-power-adaptation-recalculation",
+          "method": "(23-16)/16*100",
+          "calculated_value": 43.75,
+          "unit": "%",
+          "assessment": "Within-study descriptive change from reported means, not an experimental replication."
+        },
+        {
+          "comparison_id": "salvian-sww-power-adaptation-recalculation",
+          "method": "(87-59)/59*100",
+          "calculated_value": 47.4576,
+          "unit": "%",
+          "assessment": "Within-study descriptive change from reported means, not an experimental replication."
+        }
+      ]
+    },
+    {
+      "candidate_id": "patent-CN115159662A",
+      "document_type": "patent",
+      "source_type": "patent_registry_metadata",
+      "title": "A microbial fuel cell with unpowered oxygenation of cathode and method of using the same",
+      "patent_identifier": "CN115159662A",
+      "source_url": "https://patents.google.com/patent/CN115159662A/en",
+      "official_search_url": "https://worldwide.espacenet.com/",
+      "publisher": "China National Intellectual Property Administration (public patent publication indexed by Google Patents)",
+      "publication_year": 2022,
+      "license": "not_assessed",
+      "rights_status": "Public patent metadata candidate only; no patent text or figure copied into local files; reuse rights for source document not assessed.",
+      "access_checked_at": "2026-09-24",
+      "access_status": "public_patent_record_metadata_only",
+      "technology_scope": [
+        "MFC",
+        "wastewater",
+        "cathode_oxygenation",
+        "system_configuration"
+      ],
+      "application_context": "Patent candidate describing passive/unpowered cathode oxygenation. It may inform configuration and design vocabulary but is not peer-reviewed evidence or independent experimental validation.",
+      "candidate_status": "needs_patent_family_and_legal_status_review",
+      "eligible_for_decision": false,
+      "artifacts": [],
+      "review_notes": [
+        "Keep patent claims separate from measured study outcomes and from legal status conclusions.",
+        "Use Espacenet/EPO family and legal-status records for formal reconciliation before relying on this patent metadata.",
+        "This record is a patent-design metadata candidate about unpowered cathode oxygenation, not a peer-reviewed empirical dataset. No performance measurements, open data license, or legal-status/family verification through an authoritative patent register are established in this batch; do not treat patent assertions or third-party status summaries as operating evidence."
+      ],
+      "missing_data_reasons": {
+        "patent_family": "Family members and current legal status have not been reconciled in an official patent register.",
+        "experimental_evidence": "A patent publication is a candidate design description, not evidence of peer-reviewed performance or independent replication.",
+        "reuse_rights": "Patent text is not treated as an open-license artifact and was not locally copied."
+      }
+    }
+  ],
+  "first_pass_screening": {
+    "performed_at": "2026-09-24",
+    "scope": "All 8 records, source metadata and available primary full text, all 6 locally registered artifacts, and linked dataset/supplement records.",
+    "method": "Read-only source review, SHA-256 recheck of locally preserved artifacts, descriptive statistics from the finite-time CORA series, and arithmetic checks on aggregate values printed in Sugioka 2019 and Salvian 2024.",
+    "human_review_status": "pending",
+    "decision_eligible_records": 0,
+    "solver_external_validation": "not performed; no source in this batch supplies a matched, raw, compatible benchmark for the current METREV model boundary.",
+    "curated_manifest_changed": false
+  }
+}

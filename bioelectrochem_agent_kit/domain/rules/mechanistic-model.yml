@@ -80,8 +80,11 @@ algebraic_couplings:
   - cathode_transport: oxygen mass-transfer-limited current coupled to dissolved oxygen inventory
   - MFC_boundary: load-line intersection of reversible voltage, electrode polarization, ohmic loss, and external load
   - MEC_boundary: applied voltage minus reversible voltage, polarization, and ohmic loss; H2 production uses 2 F per mole H2 and separately reports Faradaic yield and gas capture
-  - supply_limit_closure: when substrate/electron or cathode oxygen transfer limits current below the electrical boundary solution, report the residual voltage loss needed to close the load-line/voltage balance
+  - supply_limit_closure: when substrate/electron or cathode oxygen transfer caps current, expose the remaining load-line or applied-voltage residual as an algebraic closure residual; it is not assigned to a measured physical loss pathway
   - proton_balance: 1 mol proton per mole electron, chamber buffer capacity, and explicit transfer coefficient
+  - loss_accounting: separately integrate anode and cathode activation polarization work, ohmic polarization work, auxiliary demand, and any stated biosensor demand; electrical-equivalent polarization work is not calorimetric heat
+  - mass_accounting: integrate influent COD, effluent COD, modeled COD uptake, biomass growth, decay, washout, and numerical closure residuals using the same RK4 stage evaluations as the state solver
+  - hydrogen_accounting: retain MEC gross Faradaic hydrogen, captured hydrogen, and their modeled difference as separate outputs; do not infer leak, crossover, dissolved gas, or collection mechanisms from that difference
 
 required_parameter_source_fields:
   fields: [value, unit, source_kind, source_ref]

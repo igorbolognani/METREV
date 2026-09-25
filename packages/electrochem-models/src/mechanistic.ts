@@ -47,6 +47,9 @@ interface Rates {
   current: number;
   cellVoltage: number;
   ohmicResistance: number;
+  anodeActivationOverpotentialV: number;
+  cathodeActivationOverpotentialV: number;
+  ohmicVoltageDropV: number;
   supplyLimitationVoltageLoss: number;
 }
 
@@ -55,22 +58,58 @@ interface Point {
   state: State;
   rates: Rates;
   cellElectricalEnergyJ: number;
+  reversiblePotentialEnergyJ: number;
+  anodeActivationWorkJ: number;
+  cathodeActivationWorkJ: number;
+  ohmicPolarizationWorkJ: number;
+  boundaryResidualEnergyJ: number;
+  codInfluentMassKg: number;
+  codEffluentMassKg: number;
+  codBiodegradedMassKg: number;
+  biomassGrowthKg: number;
+  biomassDecayKg: number;
+  biomassWashoutKg: number;
   hydrogenGrossMol: number;
   hydrogenCapturedMol: number;
+  hydrogenUncapturedMol: number;
 }
 
 interface ReactorRun {
   points: Point[];
   cellElectricalEnergyJ: number;
+  reversiblePotentialEnergyJ: number;
+  anodeActivationWorkJ: number;
+  cathodeActivationWorkJ: number;
+  ohmicPolarizationWorkJ: number;
+  boundaryResidualEnergyJ: number;
+  codInfluentMassKg: number;
+  codEffluentMassKg: number;
+  codBiodegradedMassKg: number;
+  biomassGrowthKg: number;
+  biomassDecayKg: number;
+  biomassWashoutKg: number;
   hydrogenGrossMol: number;
   hydrogenCapturedMol: number;
+  hydrogenUncapturedMol: number;
 }
 
 interface ReactorStep {
   state: State;
   cellElectricalEnergyJ: number;
+  reversiblePotentialEnergyJ: number;
+  anodeActivationWorkJ: number;
+  cathodeActivationWorkJ: number;
+  ohmicPolarizationWorkJ: number;
+  boundaryResidualEnergyJ: number;
+  codInfluentMassKg: number;
+  codEffluentMassKg: number;
+  codBiodegradedMassKg: number;
+  biomassGrowthKg: number;
+  biomassDecayKg: number;
+  biomassWashoutKg: number;
   hydrogenGrossMol: number;
   hydrogenCapturedMol: number;
+  hydrogenUncapturedMol: number;
 }
 
 const modelDefinition = loadMechanisticModelDefinition();
@@ -410,7 +449,7 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
     'electrochemistry.reversible_cell_voltage_v',
   );
 
-  const polarization = (current: number) => {
+  const polarizationComponents = (current: number) => {
     const anodeOverpotential = inverseButlerVolmer(
       current / anodeArea,
       anodeExchange,
@@ -423,8 +462,16 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
       cathodeAlpha,
       temperature,
     );
-    return anodeOverpotential + cathodeOverpotential + current * resistance;
+    const ohmicVoltageDrop = current * resistance;
+    return {
+      anodeOverpotential,
+      cathodeOverpotential,
+      ohmicVoltageDrop,
+      total: anodeOverpotential + cathodeOverpotential + ohmicVoltageDrop,
+    };
   };
+  const polarization = (current: number) =>
+    polarizationComponents(current).total;
 
   let current = 0;
   if (currentCeiling > 0) {
@@ -466,9 +513,10 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
     }
   }
 
+  const finalPolarization = polarizationComponents(current);
   const kineticCellVoltage = Math.max(
     0,
-    reversibleVoltage - polarization(current),
+    reversibleVoltage - finalPolarization.total,
   );
   const cellVoltage =
     input.system_type === 'MFC'
@@ -485,6 +533,9 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
     current,
     cellVoltage,
     ohmicResistance: resistance,
+    anodeActivationOverpotentialV: finalPolarization.anodeOverpotential,
+    cathodeActivationOverpotentialV: finalPolarization.cathodeOverpotential,
+    ohmicVoltageDropV: finalPolarization.ohmicVoltageDrop,
     supplyLimitationVoltageLoss,
   };
 }
@@ -564,14 +615,19 @@ function electricalPowerW(input: MechanisticModelInput, rates: Rates): number {
 function hydrogenProductionMolS(
   input: MechanisticModelInput,
   rates: Rates,
-): { gross: number; captured: number } {
-  if (input.system_type !== 'MEC') return { gross: 0, captured: 0 };
+): { gross: number; captured: number; uncaptured: number } {
+  if (input.system_type !== 'MEC') {
+    return { gross: 0, captured: 0, uncaptured: 0 };
+  }
   const gross =
     (rates.current * p(input, 'electrochemistry.hydrogen_faraday_efficiency')) /
     (2 * FARADAY);
+  const captured =
+    gross * p(input, 'electrochemistry.hydrogen_capture_fraction');
   return {
     gross,
-    captured: gross * p(input, 'electrochemistry.hydrogen_capture_fraction'),
+    captured,
+    uncaptured: gross - captured,
   };
 }
 
@@ -614,6 +670,28 @@ function rk4Step(
   const hydrogen4 = hydrogenProductionMolS(input, r4);
   const integrateRate = (v1: number, v2: number, v3: number, v4: number) =>
     (step / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
+  const flow = p(input, 'operation.flow_m3_s');
+  const influentCod = p(input, 'operation.influent_cod_kg_m3');
+  const anodeVolume = p(input, 'geometry.anode_chamber_volume_m3');
+  const biomassYield = p(input, 'biology.biomass_yield_kg_biomass_kg_cod');
+  const biomassDecayRate = p(input, 'biology.decay_rate_s_inv');
+  const biomassWashoutRate = p(input, 'operation.biomass_washout_rate_s_inv');
+  const massRates = (stageState: State, stageRates: Rates) => ({
+    codInfluent: flow * influentCod,
+    codEffluent: flow * stageState.cod,
+    codBiodegraded: stageRates.uptake * anodeVolume,
+    biomassGrowth: biomassYield * stageRates.uptake * anodeVolume,
+    biomassDecay: biomassDecayRate * stageState.biomass * anodeVolume,
+    biomassWashout: biomassWashoutRate * stageState.biomass * anodeVolume,
+  });
+  const mass1 = massRates(y1, r1);
+  const mass2 = massRates(y2, r2);
+  const mass3 = massRates(y3, r3);
+  const mass4 = massRates(y4, r4);
+  const reversibleVoltage = p(
+    input,
+    'electrochemistry.reversible_cell_voltage_v',
+  );
 
   return {
     state: safeState(result),
@@ -622,6 +700,72 @@ function rk4Step(
       electricalPowerW(input, r2),
       electricalPowerW(input, r3),
       electricalPowerW(input, r4),
+    ),
+    reversiblePotentialEnergyJ: integrateRate(
+      r1.current * reversibleVoltage,
+      r2.current * reversibleVoltage,
+      r3.current * reversibleVoltage,
+      r4.current * reversibleVoltage,
+    ),
+    anodeActivationWorkJ: integrateRate(
+      r1.current * r1.anodeActivationOverpotentialV,
+      r2.current * r2.anodeActivationOverpotentialV,
+      r3.current * r3.anodeActivationOverpotentialV,
+      r4.current * r4.anodeActivationOverpotentialV,
+    ),
+    cathodeActivationWorkJ: integrateRate(
+      r1.current * r1.cathodeActivationOverpotentialV,
+      r2.current * r2.cathodeActivationOverpotentialV,
+      r3.current * r3.cathodeActivationOverpotentialV,
+      r4.current * r4.cathodeActivationOverpotentialV,
+    ),
+    ohmicPolarizationWorkJ: integrateRate(
+      r1.current * r1.ohmicVoltageDropV,
+      r2.current * r2.ohmicVoltageDropV,
+      r3.current * r3.ohmicVoltageDropV,
+      r4.current * r4.ohmicVoltageDropV,
+    ),
+    boundaryResidualEnergyJ: integrateRate(
+      r1.current * r1.supplyLimitationVoltageLoss,
+      r2.current * r2.supplyLimitationVoltageLoss,
+      r3.current * r3.supplyLimitationVoltageLoss,
+      r4.current * r4.supplyLimitationVoltageLoss,
+    ),
+    codInfluentMassKg: integrateRate(
+      mass1.codInfluent,
+      mass2.codInfluent,
+      mass3.codInfluent,
+      mass4.codInfluent,
+    ),
+    codEffluentMassKg: integrateRate(
+      mass1.codEffluent,
+      mass2.codEffluent,
+      mass3.codEffluent,
+      mass4.codEffluent,
+    ),
+    codBiodegradedMassKg: integrateRate(
+      mass1.codBiodegraded,
+      mass2.codBiodegraded,
+      mass3.codBiodegraded,
+      mass4.codBiodegraded,
+    ),
+    biomassGrowthKg: integrateRate(
+      mass1.biomassGrowth,
+      mass2.biomassGrowth,
+      mass3.biomassGrowth,
+      mass4.biomassGrowth,
+    ),
+    biomassDecayKg: integrateRate(
+      mass1.biomassDecay,
+      mass2.biomassDecay,
+      mass3.biomassDecay,
+      mass4.biomassDecay,
+    ),
+    biomassWashoutKg: integrateRate(
+      mass1.biomassWashout,
+      mass2.biomassWashout,
+      mass3.biomassWashout,
+      mass4.biomassWashout,
     ),
     hydrogenGrossMol: integrateRate(
       hydrogen1.gross,
@@ -635,6 +779,12 @@ function rk4Step(
       hydrogen3.captured,
       hydrogen4.captured,
     ),
+    hydrogenUncapturedMol: integrateRate(
+      hydrogen1.uncaptured,
+      hydrogen2.uncaptured,
+      hydrogen3.uncaptured,
+      hydrogen4.uncaptured,
+    ),
   };
 }
 
@@ -643,7 +793,7 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
   const requestedStep = p(input, 'operation.time_step_s');
   const count = Math.ceil(duration / requestedStep);
   const step = duration / count;
-  let state: State = {
+  const initialState: State = {
     cod: p(input, 'operation.initial_cod_kg_m3'),
     biomass: p(input, 'operation.initial_biomass_kg_m3'),
     oxygen:
@@ -653,10 +803,23 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
     phAnode: p(input, 'operation.initial_ph_anode'),
     phCathode: p(input, 'operation.initial_ph_cathode'),
   };
+  let state: State = { ...initialState };
   const points: Point[] = [];
   let cellElectricalEnergyJ = 0;
+  let reversiblePotentialEnergyJ = 0;
+  let anodeActivationWorkJ = 0;
+  let cathodeActivationWorkJ = 0;
+  let ohmicPolarizationWorkJ = 0;
+  let boundaryResidualEnergyJ = 0;
+  let codInfluentMassKg = 0;
+  let codEffluentMassKg = 0;
+  let codBiodegradedMassKg = 0;
+  let biomassGrowthKg = 0;
+  let biomassDecayKg = 0;
+  let biomassWashoutKg = 0;
   let hydrogenGrossMol = 0;
   let hydrogenCapturedMol = 0;
+  let hydrogenUncapturedMol = 0;
   const stride = Math.max(1, Math.ceil(count / MAX_SERIES_POINTS));
 
   for (let index = 0; index <= count; index += 1) {
@@ -666,23 +829,59 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
         state: { ...state },
         rates: ratesFor(input, state),
         cellElectricalEnergyJ,
+        reversiblePotentialEnergyJ,
+        anodeActivationWorkJ,
+        cathodeActivationWorkJ,
+        ohmicPolarizationWorkJ,
+        boundaryResidualEnergyJ,
+        codInfluentMassKg,
+        codEffluentMassKg,
+        codBiodegradedMassKg,
+        biomassGrowthKg,
+        biomassDecayKg,
+        biomassWashoutKg,
         hydrogenGrossMol,
         hydrogenCapturedMol,
+        hydrogenUncapturedMol,
       });
     }
     if (index < count) {
       const interval = rk4Step(input, state, step);
       cellElectricalEnergyJ += interval.cellElectricalEnergyJ;
+      reversiblePotentialEnergyJ += interval.reversiblePotentialEnergyJ;
+      anodeActivationWorkJ += interval.anodeActivationWorkJ;
+      cathodeActivationWorkJ += interval.cathodeActivationWorkJ;
+      ohmicPolarizationWorkJ += interval.ohmicPolarizationWorkJ;
+      boundaryResidualEnergyJ += interval.boundaryResidualEnergyJ;
+      codInfluentMassKg += interval.codInfluentMassKg;
+      codEffluentMassKg += interval.codEffluentMassKg;
+      codBiodegradedMassKg += interval.codBiodegradedMassKg;
+      biomassGrowthKg += interval.biomassGrowthKg;
+      biomassDecayKg += interval.biomassDecayKg;
+      biomassWashoutKg += interval.biomassWashoutKg;
       hydrogenGrossMol += interval.hydrogenGrossMol;
       hydrogenCapturedMol += interval.hydrogenCapturedMol;
+      hydrogenUncapturedMol += interval.hydrogenUncapturedMol;
       state = interval.state;
     }
   }
   return {
     points,
     cellElectricalEnergyJ,
+    reversiblePotentialEnergyJ,
+    anodeActivationWorkJ,
+    cathodeActivationWorkJ,
+    ohmicPolarizationWorkJ,
+    boundaryResidualEnergyJ,
+    codInfluentMassKg,
+    codEffluentMassKg,
+    codBiodegradedMassKg,
+    biomassGrowthKg,
+    biomassDecayKg,
+    biomassWashoutKg,
     hydrogenGrossMol,
     hydrogenCapturedMol,
+    hydrogenUncapturedMol,
   };
 }
 
@@ -1027,10 +1226,87 @@ function seriesFor(
       read: (point: Point) => point.rates.cellVoltage,
     },
     {
+      key: 'anode_activation_overpotential_v',
+      label: 'Modeled anode activation overpotential',
+      unit: 'V',
+      read: (point: Point) => point.rates.anodeActivationOverpotentialV,
+    },
+    {
+      key: 'cathode_activation_overpotential_v',
+      label: 'Modeled cathode activation overpotential',
+      unit: 'V',
+      read: (point: Point) => point.rates.cathodeActivationOverpotentialV,
+    },
+    {
+      key: 'ohmic_voltage_drop_v',
+      label: 'Modeled ohmic voltage drop',
+      unit: 'V',
+      read: (point: Point) => point.rates.ohmicVoltageDropV,
+    },
+    {
       key: 'supply_limitation_voltage_loss_v',
-      label: 'Supply-limitation voltage residual',
+      label: 'Current-limit voltage closure residual',
       unit: 'V',
       read: (point: Point) => point.rates.supplyLimitationVoltageLoss,
+    },
+    {
+      key: 'cod_influent_cumulative_kg',
+      label: 'Modeled cumulative influent COD mass',
+      unit: 'kgCOD',
+      read: (point: Point) => point.codInfluentMassKg,
+    },
+    {
+      key: 'cod_effluent_cumulative_kg',
+      label: 'Modeled cumulative effluent COD mass',
+      unit: 'kgCOD',
+      read: (point: Point) => point.codEffluentMassKg,
+    },
+    {
+      key: 'cod_biodegraded_cumulative_kg',
+      label: 'Modeled cumulative biodegraded COD mass',
+      unit: 'kgCOD',
+      read: (point: Point) => point.codBiodegradedMassKg,
+    },
+    {
+      key: 'cod_mass_balance_residual_kg',
+      label: 'Modeled COD mass-balance residual',
+      unit: 'kgCOD',
+      read: (point: Point) =>
+        point.codInfluentMassKg -
+        point.codEffluentMassKg -
+        point.codBiodegradedMassKg -
+        p(input, 'geometry.anode_chamber_volume_m3') *
+          (point.state.cod - points[0].state.cod),
+    },
+    {
+      key: 'biomass_mass_balance_residual_kg',
+      label: 'Modeled biomass mass-balance residual',
+      unit: 'kgVSS',
+      read: (point: Point) =>
+        point.biomassGrowthKg -
+        point.biomassDecayKg -
+        point.biomassWashoutKg -
+        p(input, 'geometry.anode_chamber_volume_m3') *
+          (point.state.biomass - points[0].state.biomass),
+    },
+    {
+      key: 'activation_polarization_work_j',
+      label: 'Modeled electrode activation polarization work',
+      unit: 'J',
+      read: (point: Point) =>
+        point.anodeActivationWorkJ + point.cathodeActivationWorkJ,
+    },
+    {
+      key: 'ohmic_polarization_work_j',
+      label: 'Modeled ohmic polarization work',
+      unit: 'J',
+      read: (point: Point) => point.ohmicPolarizationWorkJ,
+    },
+    {
+      key: 'electrochemical_boundary_residual_energy_j',
+      label: 'Modeled boundary-closure residual energy equivalent',
+      unit: 'J',
+      read: (point: Point) => point.boundaryResidualEnergyJ,
     },
     ...(input.system_type === 'MFC'
       ? [
@@ -1059,6 +1335,12 @@ function seriesFor(
             label: 'MEC hydrogen captured',
             unit: 'mol',
             read: (point: Point) => point.hydrogenCapturedMol,
+          },
+          {
+            key: 'hydrogen_uncaptured_production_mol',
+            label: 'Modeled MEC hydrogen not captured',
+            unit: 'mol',
+            read: (point: Point) => point.hydrogenUncapturedMol,
           },
         ]),
   ];
@@ -1228,6 +1510,21 @@ export function simulateMechanisticCase(
   const points = reactorRun.points;
   const initial = points[0];
   const final = points[points.length - 1];
+  const anodeVolume = p(model, 'geometry.anode_chamber_volume_m3');
+  const codAccumulationMassKg =
+    anodeVolume * (final.state.cod - initial.state.cod);
+  const codMassBalanceResidualKg =
+    reactorRun.codInfluentMassKg -
+    reactorRun.codEffluentMassKg -
+    reactorRun.codBiodegradedMassKg -
+    codAccumulationMassKg;
+  const biomassAccumulationKg =
+    anodeVolume * (final.state.biomass - initial.state.biomass);
+  const biomassMassBalanceResidualKg =
+    reactorRun.biomassGrowthKg -
+    reactorRun.biomassDecayKg -
+    reactorRun.biomassWashoutKg -
+    biomassAccumulationKg;
   const anodeArea = p(model, 'geometry.anode_area_m2');
   const influentCod = p(model, 'operation.influent_cod_kg_m3');
   const codRemoval =
@@ -1255,6 +1552,10 @@ export function simulateMechanisticCase(
       ? null
       : hydrogenGrossMolPerSecond *
         p(model, 'electrochemistry.hydrogen_capture_fraction');
+  const hydrogenUncapturedMolPerSecond =
+    hydrogenGrossMolPerSecond === null || hydrogenCapturedMolPerSecond === null
+      ? null
+      : hydrogenGrossMolPerSecond - hydrogenCapturedMolPerSecond;
   const grossElectricalPowerW =
     model.system_type === 'MFC'
       ? final.rates.current ** 2 *
@@ -1304,11 +1605,150 @@ export function simulateMechanisticCase(
     }),
     observation({
       key: 'supply_limitation_voltage_loss_v',
-      label: 'Supply-limitation voltage residual',
+      label: 'Current-limit voltage closure residual',
       value: final.rates.supplyLimitationVoltageLoss,
       unit: 'V',
       confidence: confidenceLevel,
       note: 'Algebraic residual needed to close the MFC load line or MEC applied-voltage balance when the current is capped by electron supply or cathode oxygen transfer. This is a modeled residual, not a separately measured loss.',
+    }),
+    observation({
+      key: 'anode_activation_overpotential_v',
+      label: 'Modeled anode activation overpotential',
+      value: final.rates.anodeActivationOverpotentialV,
+      unit: 'V',
+      confidence: confidenceLevel,
+      note: 'Final-state Butler-Volmer overpotential for the anode; calculated from the supplied exchange-current and area parameters.',
+    }),
+    observation({
+      key: 'cathode_activation_overpotential_v',
+      label: 'Modeled cathode activation overpotential',
+      value: final.rates.cathodeActivationOverpotentialV,
+      unit: 'V',
+      confidence: confidenceLevel,
+      note: 'Final-state Butler-Volmer overpotential for the active MFC or MEC cathode reaction.',
+    }),
+    observation({
+      key: 'ohmic_voltage_drop_v',
+      label: 'Modeled ohmic voltage drop',
+      value: final.rates.ohmicVoltageDropV,
+      unit: 'V',
+      confidence: confidenceLevel,
+      note: 'Final-state current multiplied by modeled electrolyte, separator, and contact resistance.',
+    }),
+    observation({
+      key: 'cod_influent_mass_kg',
+      label: 'Integrated modeled influent COD mass',
+      value: reactorRun.codInfluentMassKg,
+      unit: 'kgCOD',
+      confidence: confidenceLevel,
+      note: 'Influent COD concentration times flow, integrated over the modeled duration.',
+    }),
+    observation({
+      key: 'cod_effluent_mass_kg',
+      label: 'Integrated modeled effluent COD mass',
+      value: reactorRun.codEffluentMassKg,
+      unit: 'kgCOD',
+      confidence: confidenceLevel,
+      note: 'Simulated anode COD concentration times flow, integrated over the modeled duration.',
+    }),
+    observation({
+      key: 'cod_biodegraded_mass_kg',
+      label: 'Integrated modeled biodegraded COD mass',
+      value: reactorRun.codBiodegradedMassKg,
+      unit: 'kgCOD',
+      confidence: confidenceLevel,
+      note: 'Monod COD uptake rate times anode volume, integrated using the same RK4 stages as the state solver.',
+    }),
+    observation({
+      key: 'cod_accumulation_mass_kg',
+      label: 'Modeled COD accumulation change',
+      value: codAccumulationMassKg,
+      unit: 'kgCOD',
+      confidence: confidenceLevel,
+      note: 'Anode volume times final-minus-initial soluble COD concentration.',
+    }),
+    observation({
+      key: 'cod_mass_balance_residual_kg',
+      label: 'Modeled COD mass-balance residual',
+      value: codMassBalanceResidualKg,
+      unit: 'kgCOD',
+      confidence: confidenceLevel,
+      note: 'Influent minus effluent minus modeled uptake minus COD accumulation; this numerical closure residual is not an experimental error estimate.',
+    }),
+    observation({
+      key: 'biomass_growth_mass_kg',
+      label: 'Integrated modeled biomass growth',
+      value: reactorRun.biomassGrowthKg,
+      unit: 'kgVSS',
+      confidence: confidenceLevel,
+      note: 'Biomass yield times modeled COD uptake, integrated over the modeled duration.',
+    }),
+    observation({
+      key: 'biomass_decay_loss_kg',
+      label: 'Integrated modeled biomass decay loss',
+      value: reactorRun.biomassDecayKg,
+      unit: 'kgVSS',
+      confidence: confidenceLevel,
+      note: 'First-order biomass decay term from the supplied decay-rate parameter; not a measured solids-loss quantity.',
+    }),
+    observation({
+      key: 'biomass_washout_loss_kg',
+      label: 'Integrated modeled biomass washout loss',
+      value: reactorRun.biomassWashoutKg,
+      unit: 'kgVSS',
+      confidence: confidenceLevel,
+      note: 'Explicit first-order washout term from the supplied operation boundary; not a measured solids-loss quantity.',
+    }),
+    observation({
+      key: 'biomass_accumulation_change_kg',
+      label: 'Modeled biomass accumulation change',
+      value: biomassAccumulationKg,
+      unit: 'kgVSS',
+      confidence: confidenceLevel,
+      note: 'Anode volume times final-minus-initial electroactive biomass concentration.',
+    }),
+    observation({
+      key: 'biomass_mass_balance_residual_kg',
+      label: 'Modeled biomass mass-balance residual',
+      value: biomassMassBalanceResidualKg,
+      unit: 'kgVSS',
+      confidence: confidenceLevel,
+      note: 'Growth minus decay minus washout minus biomass accumulation; this numerical closure residual is not an experimental error estimate.',
+    }),
+    observation({
+      key: 'electrochemical_reversible_potential_work_j',
+      label:
+        'Integrated modeled reversible-potential work at simulated current',
+      value: reactorRun.reversiblePotentialEnergyJ,
+      unit: 'J',
+      confidence: confidenceLevel,
+      note: 'Integral of simulated current times the supplied reversible cell voltage; this is a model bookkeeping term, not a thermodynamic system-efficiency measurement.',
+    }),
+    observation({
+      key: 'activation_polarization_work_j',
+      label: 'Integrated modeled electrode activation-polarization work',
+      value:
+        reactorRun.anodeActivationWorkJ + reactorRun.cathodeActivationWorkJ,
+      unit: 'J',
+      confidence: confidenceLevel,
+      note: 'Integral of current times both electrode Butler-Volmer overpotentials; electrical-equivalent polarization work, not measured heat.',
+    }),
+    observation({
+      key: 'ohmic_polarization_work_j',
+      label: 'Integrated modeled ohmic polarization work',
+      value: reactorRun.ohmicPolarizationWorkJ,
+      unit: 'J',
+      confidence: confidenceLevel,
+      note: 'Integral of current squared times modeled internal resistance; electrical-equivalent work, not calorimetric heat measurement.',
+    }),
+    observation({
+      key: 'electrochemical_boundary_residual_energy_j',
+      label:
+        'Integrated modeled electrochemical boundary-residual energy equivalent',
+      value: reactorRun.boundaryResidualEnergyJ,
+      unit: 'J',
+      confidence: confidenceLevel,
+      note: 'Integral of current times the remaining load-line or applied-voltage residual. It identifies voltage not closed by this model boundary; it is not assigned to a physical loss pathway.',
     }),
     observation({
       key: 'cod_removal_pct',
@@ -1469,7 +1909,8 @@ export function simulateMechanisticCase(
   }
   if (
     hydrogenGrossMolPerSecond !== null &&
-    hydrogenCapturedMolPerSecond !== null
+    hydrogenCapturedMolPerSecond !== null &&
+    hydrogenUncapturedMolPerSecond !== null
   ) {
     observations.push(
       observation({
@@ -1489,6 +1930,14 @@ export function simulateMechanisticCase(
         note: 'Gross Faradaic hydrogen rate multiplied by source-referenced hydrogen capture fraction.',
       }),
       observation({
+        key: 'hydrogen_uncaptured_production_mol_s',
+        label: 'Modeled gross MEC hydrogen not captured rate',
+        value: hydrogenUncapturedMolPerSecond,
+        unit: 'mol/s',
+        confidence: confidenceLevel,
+        note: 'Gross Faradaic hydrogen rate minus the source-referenced captured fraction; the model does not resolve gas crossover or leak mechanisms.',
+      }),
+      observation({
         key: 'hydrogen_gross_production_mol',
         label: 'Gross MEC hydrogen produced',
         value: reactorRun.hydrogenGrossMol,
@@ -1503,6 +1952,14 @@ export function simulateMechanisticCase(
         unit: 'mol',
         confidence: confidenceLevel,
         note: 'Time-integrated gross Faradaic hydrogen multiplied by source-referenced capture fraction.',
+      }),
+      observation({
+        key: 'hydrogen_uncaptured_production_mol',
+        label: 'Modeled gross MEC hydrogen not captured',
+        value: reactorRun.hydrogenUncapturedMol,
+        unit: 'mol',
+        confidence: confidenceLevel,
+        note: 'Gross modeled Faradaic hydrogen minus modeled captured hydrogen. The model does not separate leakage, crossover, dissolution, or collection failures.',
       }),
     );
   }

@@ -173,6 +173,12 @@ jobs:
         env:
           METREV_SKIP_LOCAL_SMOKE: '1'
 
+      - name: Build browser simulation preview
+        run: pnpm run build:site-preview
+
+      - name: Verify interactive simulation preview in Chromium
+        run: pnpm run test:site-preview:e2e
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7

@@ -91,6 +91,7 @@ export const researchTechnologyClassSchema = z.preprocess((value) => {
 export const researchDocumentTypeSchema = z.enum([
   'paper',
   'review',
+  'dataset',
   'patent',
   'datasheet',
   'manual_sop',

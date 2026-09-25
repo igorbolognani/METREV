@@ -8,6 +8,7 @@ import {
   SimulationHeatmapChart,
   SimulationMultiLineChart,
 } from '@/components/charts/simulation-multi-line-chart';
+import { SimulationSvgExplorer } from '@/components/evaluation/simulation-svg-explorer';
 import { Badge } from '@/components/ui/badge';
 import { SignalBadge } from '@/components/workbench/signal-badge';
 import {
@@ -91,6 +92,10 @@ export function EvaluationModelingTab({
             </DisclosurePanel>
           ) : null}
         </div>
+      ) : null}
+
+      {simulation.status === 'completed' ? (
+        <SimulationSvgExplorer simulation={simulation} />
       ) : null}
 
       {lineSeriesGroups.map((group) => (

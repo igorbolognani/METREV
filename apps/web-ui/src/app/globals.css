@@ -8010,3 +8010,108 @@ textarea {
     background: var(--panel-elevated);
   }
 }
+
+.simulation-svg-explorer {
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.simulation-svg-explorer__header,
+.simulation-svg-explorer__controls,
+.simulation-svg-explorer__button-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.simulation-svg-explorer__header {
+  flex-wrap: wrap;
+}
+
+.simulation-svg-explorer__header h3 {
+  margin: 0.4rem 0;
+}
+
+.simulation-svg-explorer__header p,
+.simulation-svg-explorer__footnote {
+  color: var(--muted);
+  margin: 0;
+}
+
+.simulation-svg-explorer__run-mode {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.simulation-svg-explorer__controls {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.simulation-svg-explorer__button-group {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.simulation-svg-explorer__button {
+  min-height: 38px;
+  border: 1px solid var(--surface-border-default);
+  border-radius: 999px;
+  background: var(--surface-panel-strong);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.simulation-svg-explorer__button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.simulation-svg-explorer__button:focus-visible,
+.simulation-svg-explorer__svg-button:focus-visible {
+  outline: 3px solid #bc7c13;
+  outline-offset: 3px;
+}
+
+.simulation-svg-explorer__canvas-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--surface-border-default);
+  border-radius: var(--radius-md);
+  background: #f5f7fa;
+  overscroll-behavior-inline: contain;
+}
+
+.simulation-svg-explorer__canvas {
+  display: block;
+  width: 100%;
+  min-width: 860px;
+  height: auto;
+}
+
+.simulation-svg-explorer__svg-button {
+  cursor: pointer;
+}
+
+.simulation-svg-explorer__footnote {
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .simulation-svg-explorer__controls {
+    align-items: stretch;
+  }
+
+  .simulation-svg-explorer__button-group {
+    width: 100%;
+  }
+
+  .simulation-svg-explorer__button {
+    flex: 1 1 auto;
+  }
+}

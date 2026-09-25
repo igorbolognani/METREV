@@ -19,6 +19,9 @@ import {
   runScientificEvidenceIngestion,
   shouldTreatProviderHttpFailureAsExhaustedCursor,
 } from '../../packages/database/scripts/ingest-scientific-evidence';
+import { runCrossrefIngestion } from '../../packages/database/scripts/ingest-crossref-literature';
+import { runEuropePmcIngestion } from '../../packages/database/scripts/ingest-europe-pmc-literature';
+import { runOpenAlexIngestion } from '../../packages/database/scripts/ingest-openalex-literature';
 
 describe('external ingestion shared helpers', () => {
   it('parses CLI options with values and flags', () => {
@@ -34,6 +37,65 @@ describe('external ingestion shared helpers', () => {
     expect(optionNumber(options, 'limit', 0)).toBe(25);
     expect(optionNumber(options, 'pageSize', 0)).toBe(10);
     expect(optionFlag(options, 'dryRun', false)).toBe(true);
+  });
+
+  it('keeps per-provider dry-runs offline and read-only', async () => {
+    const networkMock = vi.fn(() => {
+      throw new Error('dry-run attempted a provider request');
+    });
+    const fetchDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'fetch',
+    );
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: networkMock,
+      writable: true,
+    });
+    const output = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const plans = await Promise.all([
+        runOpenAlexIngestion({
+          query: 'MFC wastewater COD',
+          dryRun: true,
+          limit: 10,
+          pageSize: 5,
+          maxPages: 2,
+        }),
+        runCrossrefIngestion({
+          query: 'MFC wastewater COD',
+          dryRun: true,
+          limit: 10,
+          pageSize: 5,
+          maxPages: 2,
+        }),
+        runEuropePmcIngestion({
+          query: 'MFC wastewater COD',
+          dryRun: true,
+          limit: 10,
+          pageSize: 5,
+          maxPages: 2,
+        }),
+      ]);
+
+      expect(networkMock).not.toHaveBeenCalled();
+      expect(plans.map((plan) => plan.mode)).toEqual([
+        'offline_request_plan',
+        'offline_request_plan',
+        'offline_request_plan',
+      ]);
+      expect(plans.every((plan) => plan.providerCalled === false)).toBe(true);
+      expect(plans.every((plan) => plan.databaseAccessed === false)).toBe(true);
+      expect(plans.every((plan) => plan.recordsFetched === null)).toBe(true);
+    } finally {
+      output.mockRestore();
+      if (fetchDescriptor) {
+        Object.defineProperty(globalThis, 'fetch', fetchDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'fetch');
+      }
+    }
   });
 
   it('normalizes Europe PMC results with claims and access status', () => {
