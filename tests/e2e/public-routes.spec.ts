@@ -1,3 +1,6 @@
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { devices, expect, test } from '@playwright/test';
 
 interface PublicTopicRouteExpectation {
@@ -58,6 +61,10 @@ const mobileViewportUse = {
   isMobile: pixel5.isMobile,
   hasTouch: pixel5.hasTouch,
 };
+const desktopCaptureDirectory = resolve(
+  process.cwd(),
+  'visual-review/public-pages',
+);
 
 async function openPublicRoute(
   page: import('@playwright/test').Page,
@@ -207,8 +214,9 @@ test.describe('public routes - desktop structure', () => {
       const initialExplanation = await explanation.innerText();
       await page.getByTestId('public-article-diagram-node-2').first().click();
       await expect(explanation).not.toHaveText(initialExplanation);
+      mkdirSync(desktopCaptureDirectory, { recursive: true });
       await page.screenshot({
-        path: `test-results/desktop-${route.slug}.png`,
+        path: resolve(desktopCaptureDirectory, `desktop-${route.slug}.png`),
         fullPage: true,
         animations: 'disabled',
       });
