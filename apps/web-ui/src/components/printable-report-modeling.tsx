@@ -5,6 +5,7 @@ import * as React from 'react';
 import type { PrintableEvaluationReportResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
+import { SimulationSensitivityDetails } from '@/components/evaluation/simulation-sensitivity-details';
 import {
   WorkspaceDataCard,
   WorkspaceEmptyState,
@@ -78,8 +79,9 @@ export function PrintableReportModelingSection({
         <p>
           These values are modeled solver outputs, not measurements or
           independent observations. The model is an uncalibrated, lumped,
-          isothermal 0D baseline; its confidence score is a fixed heuristic and
-          parameter uncertainty is not propagated.
+          isothermal 0D baseline. Its confidence score is a fixed heuristic. Any
+          sensitivity scenarios change one input at a time and are not combined
+          prediction intervals.
         </p>
 
         {modeling.status === 'completed' ? (
@@ -127,6 +129,9 @@ export function PrintableReportModelingSection({
         {modeling.provenance.note ? (
           <p className="muted">{modeling.provenance.note}</p>
         ) : null}
+        <SimulationSensitivityDetails
+          analysis={modeling.sensitivity_analysis}
+        />
         {modeling.assumptions.length > 0 ? (
           <details>
             <summary>Model assumptions and limits</summary>

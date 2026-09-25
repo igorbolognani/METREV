@@ -4,6 +4,7 @@ import type {
   DerivedObservation,
   MechanisticModelInput,
   NormalizedCaseInput,
+  SimulationSensitivityAnalysis,
   SimulationSeries,
   ScientificModelParameter,
 } from '@metrev/domain-contracts';
@@ -28,6 +29,7 @@ export interface MechanisticRun {
   inputSnapshot: Record<string, unknown>;
   observations: DerivedObservation[];
   series: SimulationSeries[];
+  sensitivityAnalysis?: SimulationSensitivityAnalysis;
   assumptions: string[];
   sourceRefs: string[];
   confidenceScore: number;
@@ -905,7 +907,7 @@ function observation(input: {
     provenance_note: input.note,
     assumptions: [
       'Lumped, isothermal, well-mixed reactor; temperature and influent are fixed boundary conditions.',
-      'Model uncertainty inputs are retained but not propagated through an ensemble solver.',
+      'One-at-a-time perturbations use supplied uncertainty magnitudes when available; they are not a joint prediction interval.',
     ],
     missing_dependencies: [],
   };
@@ -1375,7 +1377,266 @@ function failedRun(missingInputs: string[], note: string): MechanisticRun {
   };
 }
 
-export function simulateMechanisticCase(
+interface ReportedUncertaintyCandidate {
+  parameterPath: string;
+  value: number;
+  uncertainty: number;
+  unit: string;
+  sourceKind: SimulationSensitivityAnalysis['effects'][number]['source_kind'];
+  sourceRef: string;
+}
+
+const MAX_SENSITIVITY_PARAMETERS = 16;
+const SENSITIVITY_INTERPRETATION =
+  'Each eligible input is changed separately to nominal minus and plus its reported uncertainty magnitude. These deterministic scenarios do not assign a probability distribution, combine parameter uncertainties, or form a prediction interval.';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isScientificParameterRecord(
+  value: Record<string, unknown>,
+): value is Record<string, unknown> & {
+  value: number;
+  unit: string;
+  source_kind: string;
+  source_ref: string;
+} {
+  return (
+    typeof value.value === 'number' &&
+    typeof value.unit === 'string' &&
+    typeof value.source_kind === 'string' &&
+    typeof value.source_ref === 'string'
+  );
+}
+
+function collectReportedUncertaintyCandidates(input: NormalizedCaseInput): {
+  candidates: ReportedUncertaintyCandidate[];
+  skipped: Array<{ parameter_path: string; reason: string }>;
+} {
+  const candidates: ReportedUncertaintyCandidate[] = [];
+  const skipped: Array<{ parameter_path: string; reason: string }> = [];
+  const roots: Array<[string, unknown]> = [
+    ['mechanistic_model', input.mechanistic_model],
+    [
+      'stack_blocks.sensors_and_analytics.biosensor',
+      input.stack_blocks.sensors_and_analytics.biosensor,
+    ],
+  ];
+
+  const visit = (value: unknown, path: string) => {
+    if (!isRecord(value)) return;
+    if (isScientificParameterRecord(value)) {
+      if (value.uncertainty !== undefined) {
+        if (
+          typeof value.uncertainty !== 'number' ||
+          !Number.isFinite(value.uncertainty) ||
+          value.uncertainty <= 0
+        ) {
+          skipped.push({
+            parameter_path: path,
+            reason:
+              'A positive finite reported uncertainty magnitude is required for a perturbation scenario.',
+          });
+        } else if (value.uncertainty_unit !== value.unit) {
+          skipped.push({
+            parameter_path: path,
+            reason:
+              'The uncertainty unit is missing or differs from the parameter unit.',
+          });
+        } else {
+          candidates.push({
+            parameterPath: path,
+            value: value.value,
+            uncertainty: value.uncertainty,
+            unit: value.unit,
+            sourceKind:
+              value.source_kind as ReportedUncertaintyCandidate['sourceKind'],
+            sourceRef: value.source_ref,
+          });
+        }
+      }
+      return;
+    }
+
+    for (const [key, nested] of Object.entries(value)) {
+      visit(nested, `${path}.${key}`);
+    }
+  };
+
+  for (const [path, root] of roots) visit(root, path);
+  candidates.sort((left, right) =>
+    left.parameterPath.localeCompare(right.parameterPath),
+  );
+
+  if (candidates.length > MAX_SENSITIVITY_PARAMETERS) {
+    for (const candidate of candidates.slice(MAX_SENSITIVITY_PARAMETERS)) {
+      skipped.push({
+        parameter_path: candidate.parameterPath,
+        reason: `The per-run sensitivity limit is ${MAX_SENSITIVITY_PARAMETERS} parameters.`,
+      });
+    }
+    candidates.length = MAX_SENSITIVITY_PARAMETERS;
+  }
+
+  return { candidates, skipped };
+}
+
+function setParameterValue(
+  input: NormalizedCaseInput,
+  parameterPath: string,
+  value: number,
+): NormalizedCaseInput | undefined {
+  const cloned = structuredClone(input) as unknown as Record<string, unknown>;
+  const segments = parameterPath.split('.');
+  const leafKey = segments.pop();
+  if (!leafKey) return undefined;
+
+  let current = cloned;
+  for (const segment of segments) {
+    const next = current[segment];
+    if (!isRecord(next)) return undefined;
+    current = next;
+  }
+
+  const parameter = current[leafKey];
+  if (!isRecord(parameter)) return undefined;
+  parameter.value = value;
+  return cloned as unknown as NormalizedCaseInput;
+}
+
+function numericObservationMap(
+  run: MechanisticRun,
+): Map<string, { label: string; unit: string | null; value: number }> {
+  return new Map(
+    run.observations.flatMap((item) =>
+      typeof item.value === 'number'
+        ? [
+            [
+              item.key,
+              { label: item.label, unit: item.unit, value: item.value },
+            ],
+          ]
+        : [],
+    ),
+  );
+}
+
+function buildSensitivityAnalysis(
+  input: NormalizedCaseInput,
+  nominalRun: MechanisticRun,
+): SimulationSensitivityAnalysis {
+  const { candidates, skipped } = collectReportedUncertaintyCandidates(input);
+  if (candidates.length === 0) {
+    return {
+      method: 'one_at_a_time_reported_uncertainty_v1',
+      status: 'not_available',
+      interpretation: SENSITIVITY_INTERPRETATION,
+      evaluated_parameter_count: 0,
+      skipped_parameters: skipped,
+      effects: [],
+    };
+  }
+
+  const nominalObservations = numericObservationMap(nominalRun);
+  const effects: SimulationSensitivityAnalysis['effects'] = candidates.map(
+    (candidate) => {
+      const lowerInputValue = candidate.value - candidate.uncertainty;
+      const upperInputValue = candidate.value + candidate.uncertainty;
+      const lowerInput = setParameterValue(
+        input,
+        candidate.parameterPath,
+        lowerInputValue,
+      );
+      const upperInput = setParameterValue(
+        input,
+        candidate.parameterPath,
+        upperInputValue,
+      );
+      const lowerRun = lowerInput
+        ? simulateMechanisticCaseCore(lowerInput)
+        : failedRun(
+            [candidate.parameterPath],
+            'The lower perturbation could not be applied to the input snapshot.',
+          );
+      const upperRun = upperInput
+        ? simulateMechanisticCaseCore(upperInput)
+        : failedRun(
+            [candidate.parameterPath],
+            'The upper perturbation could not be applied to the input snapshot.',
+          );
+      const lowerObservations = numericObservationMap(lowerRun);
+      const upperObservations = numericObservationMap(upperRun);
+      const metrics = [...nominalObservations.entries()].map(
+        ([key, nominal]) => {
+          const lowerValue = lowerObservations.get(key)?.value ?? null;
+          const upperValue = upperObservations.get(key)?.value ?? null;
+          return {
+            key,
+            label: nominal.label,
+            unit: nominal.unit,
+            nominal_value: nominal.value,
+            lower_input_value: lowerValue,
+            upper_input_value: upperValue,
+            lower_change_from_nominal:
+              lowerValue === null ? null : lowerValue - nominal.value,
+            upper_change_from_nominal:
+              upperValue === null ? null : upperValue - nominal.value,
+          };
+        },
+      );
+      const lowerCompleted = lowerRun.status === 'completed';
+      const upperCompleted = upperRun.status === 'completed';
+
+      return {
+        parameter_path: candidate.parameterPath,
+        source_kind: candidate.sourceKind,
+        source_ref: candidate.sourceRef,
+        unit: candidate.unit,
+        nominal_value: candidate.value,
+        reported_uncertainty: candidate.uncertainty,
+        status:
+          lowerCompleted && upperCompleted
+            ? 'completed'
+            : lowerCompleted || upperCompleted
+              ? 'partial'
+              : 'blocked',
+        lower_input_scenario: {
+          status: lowerRun.status,
+          input_value: lowerInputValue,
+          missing_inputs: lowerRun.missingInputs,
+          ...(lowerRun.status === 'insufficient_data'
+            ? { note: lowerRun.note }
+            : {}),
+        },
+        upper_input_scenario: {
+          status: upperRun.status,
+          input_value: upperInputValue,
+          missing_inputs: upperRun.missingInputs,
+          ...(upperRun.status === 'insufficient_data'
+            ? { note: upperRun.note }
+            : {}),
+        },
+        metrics,
+      };
+    },
+  );
+  const hasIncompleteEffects = effects.some(
+    (effect) => effect.status !== 'completed',
+  );
+
+  return {
+    method: 'one_at_a_time_reported_uncertainty_v1',
+    status:
+      skipped.length > 0 || hasIncompleteEffects ? 'partial' : 'completed',
+    interpretation: SENSITIVITY_INTERPRETATION,
+    evaluated_parameter_count: effects.length,
+    skipped_parameters: skipped,
+    effects,
+  };
+}
+
+function simulateMechanisticCaseCore(
   normalizedCase: NormalizedCaseInput,
 ): MechanisticRun {
   const sensorDraft = normalizedCase.stack_blocks.sensors_and_analytics
@@ -2058,7 +2319,7 @@ export function simulateMechanisticCase(
       'Current is algebraically coupled to Butler–Volmer charge transfer, electrolyte/separator resistance, electron supply and cathode oxygen transport.',
       'Anode/cathode pH is coupled through current-driven proton balance and an explicit inter-chamber transfer coefficient.',
       'Spatial biofilm gradients, multipopulation ecology, nitrogen species, alkalinity speciation, gas transfer losses and thermal dynamics are outside this first executable 0D model.',
-      'Parameter uncertainties are captured in the input contract but are not yet propagated through an ensemble or posterior model.',
+      'Supplied uncertainty magnitudes are tested one parameter at a time; the scenarios do not combine uncertainties or produce a probabilistic interval.',
     ],
     sourceRefs: allRefs,
     confidenceScore,
@@ -2164,6 +2425,26 @@ function simulateStandaloneBiosensor(
     sourceRefs: sourceRefsFor(sensor),
     confidenceScore: score,
     confidenceLevel: 'low',
+  };
+}
+
+export function simulateMechanisticCase(
+  normalizedCase: NormalizedCaseInput,
+): MechanisticRun {
+  const run = simulateMechanisticCaseCore(normalizedCase);
+  if (run.status !== 'completed') return run;
+
+  const sensitivityAnalysis = buildSensitivityAnalysis(normalizedCase, run);
+  const hasSensitivityWork =
+    sensitivityAnalysis.evaluated_parameter_count > 0 ||
+    sensitivityAnalysis.skipped_parameters.length > 0;
+
+  return {
+    ...run,
+    sensitivityAnalysis,
+    assumptions: hasSensitivityWork
+      ? [...run.assumptions, sensitivityAnalysis.interpretation]
+      : run.assumptions,
   };
 }
 

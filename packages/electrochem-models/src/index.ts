@@ -114,6 +114,7 @@ function toEnrichment(run: MechanisticRun): SimulationEnrichment {
     input_snapshot: run.inputSnapshot,
     derived_observations: run.observations,
     series: run.series,
+    sensitivity_analysis: run.sensitivityAnalysis,
     assumptions: run.assumptions,
     confidence: {
       level: run.confidenceLevel,
@@ -121,7 +122,7 @@ function toEnrichment(run: MechanisticRun): SimulationEnrichment {
       drivers: [
         `${run.sourceRefs.length} source references are attached directly to model inputs.`,
         'Mechanistic values are computed from mass balances and electrochemical charge transfer, not technology-wide performance targets.',
-        'Uncertainty fields are retained but not yet propagated through an ensemble or Bayesian calibration.',
+        'Supplied uncertainties are tested one input at a time; no joint distribution or prediction interval is calculated.',
       ],
     },
     provenance: {

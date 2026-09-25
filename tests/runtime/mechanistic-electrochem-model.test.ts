@@ -55,6 +55,106 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(valueFor(result, 'cod_removal_pct')).toBeNull();
   });
 
+  it('runs deterministic one-at-a-time scenarios for supplied input uncertainty', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    const influentCod = raw.mechanistic_model!.operation
+      .influent_cod_kg_m3! as {
+      value: number;
+      unit: string;
+      uncertainty?: number;
+      uncertainty_unit?: string;
+    };
+    influentCod.uncertainty = 0.01;
+    influentCod.uncertainty_unit = influentCod.unit;
+
+    const result = evaluate(raw);
+    const analysis = result.sensitivity_analysis;
+
+    expect(result.status).toBe('completed');
+    expect(analysis?.method).toBe('one_at_a_time_reported_uncertainty_v1');
+    expect(analysis?.status).toBe('completed');
+    expect(analysis?.evaluated_parameter_count).toBe(1);
+    const effect = analysis?.effects[0];
+    expect(effect).toMatchObject({
+      parameter_path: 'mechanistic_model.operation.influent_cod_kg_m3',
+      source_kind: 'test_fixture',
+      source_ref: 'test-fixture://coupled-mfc-biosensor-v1',
+      unit: 'kgCOD/m3',
+      nominal_value: 0.8,
+      reported_uncertainty: 0.01,
+      status: 'completed',
+    });
+    expect(effect?.lower_input_scenario.input_value).toBeCloseTo(0.79, 12);
+    expect(effect?.upper_input_scenario.input_value).toBeCloseTo(0.81, 12);
+    const codRemoval = effect?.metrics.find(
+      (metric) => metric.key === 'cod_removal_pct',
+    );
+    expect(codRemoval?.lower_input_value).not.toBeNull();
+    expect(codRemoval?.upper_input_value).not.toBeNull();
+    expect(codRemoval?.lower_change_from_nominal).not.toBe(0);
+    expect(analysis?.interpretation).toContain(
+      'do not assign a probability distribution',
+    );
+  });
+
+  it('does not infer or silently clip an uncertainty scenario outside the input domain', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    const influentCod = raw.mechanistic_model!.operation
+      .influent_cod_kg_m3! as {
+      value: number;
+      unit: string;
+      uncertainty?: number;
+      uncertainty_unit?: string;
+    };
+    influentCod.uncertainty = 1;
+    influentCod.uncertainty_unit = influentCod.unit;
+
+    const result = evaluate(raw);
+    const effect = result.sensitivity_analysis?.effects[0];
+
+    expect(result.status).toBe('completed');
+    expect(result.sensitivity_analysis?.status).toBe('partial');
+    expect(effect?.status).toBe('partial');
+    expect(effect?.lower_input_scenario.input_value).toBeCloseTo(-0.2, 12);
+    expect(effect?.lower_input_scenario.status).toBe('insufficient_data');
+    expect(effect?.upper_input_scenario.status).toBe('completed');
+    expect(
+      effect?.metrics.find((metric) => metric.key === 'cod_removal_pct')
+        ?.lower_input_value,
+    ).toBeNull();
+  });
+
+  it('requires uncertainty units to match the parameter unit', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    const influentCod = raw.mechanistic_model!.operation
+      .influent_cod_kg_m3! as {
+      value: number;
+      unit: string;
+      uncertainty?: number;
+      uncertainty_unit?: string;
+    };
+    influentCod.uncertainty = 0.1;
+    influentCod.uncertainty_unit = 'mgCOD/L';
+
+    const result = rawCaseInputSchema.safeParse(raw);
+
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error('Expected the invalid input to fail.');
+    expect(result.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: [
+            'mechanistic_model',
+            'operation',
+            'influent_cod_kg_m3',
+            'uncertainty_unit',
+          ],
+          message: 'uncertainty_unit must match the parameter unit',
+        }),
+      ]),
+    );
+  });
+
   it('returns a structured insufficient-data result for incremental model drafts', () => {
     const raw = {
       ...fixture,
