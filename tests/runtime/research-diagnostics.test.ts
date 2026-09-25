@@ -37,7 +37,8 @@ describe('local research diagnostics', () => {
       )?.status,
     ).toBe('PASS');
     expect(corpus.totals.candidate_source_records).toBe(8);
-    expect(corpus.totals.curated_source_records).toBe(0);
+    expect(corpus.totals.curated_source_records).toBe(10);
+    expect(corpus.totals.curated_claims).toBe(10);
     expect(corpus.totals.source_artifacts_registered).toBe(6);
     expect(corpus.totals.source_artifacts_hash_verified).toBe(6);
     expect(corpus.totals.candidate_claims).toBe(26);

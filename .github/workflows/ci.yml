@@ -179,6 +179,14 @@ jobs:
       - name: Verify interactive simulation preview in Chromium
         run: pnpm run test:site-preview:e2e
 
+      - name: Upload public page desktop captures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: public-page-desktop-captures
+          path: visual-review/public-pages/
+          if-no-files-found: warn
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7

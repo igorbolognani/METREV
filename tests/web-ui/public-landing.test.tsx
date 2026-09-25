@@ -41,7 +41,10 @@ describe('public landing page', () => {
     expect(html).toContain('/learn/comparison');
     expect(html).toContain('/learn/impact');
     expect(html).toContain('/learn/metrev');
-    expect(html).toContain('Linear Public Infographic');
+    expect(html).toContain('Six learning chapters');
+    expect(html).toContain(
+      'Open a chapter for a detailed, source-linked explanation and interactive scientific diagrams.',
+    );
     expect(html).toContain(
       'Follow the same decision path METREV uses in practice:',
     );

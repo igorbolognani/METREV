@@ -274,13 +274,38 @@ describe('research runtime extractor', () => {
     );
   });
 
-  it('falls back to deterministic extraction for llm_extracted research columns when openai mode is requested', async () => {
+  it('uses GPT-6 extraction for llm_extracted research columns and retains exact source provenance', async () => {
     process.env.METREV_LLM_MODE = 'openai';
-    process.env.METREV_LLM_MODEL = 'gpt-4o-mini';
+    process.env.METREV_LLM_MODEL = 'gpt-6-sol';
     process.env.METREV_LLM_BASE_URL = 'https://example-openai.test/v1';
     process.env.METREV_LLM_API_KEY = 'test-key';
 
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            answer: {
+              gaps: [
+                'Long-duration fouling evidence remains limited.',
+                'Scale-up durability remains unresolved.',
+              ],
+            },
+            confidence: 'low',
+            evidence_trace: [
+              {
+                source: 'full_text',
+                source_document_id: 'fixture-source-incomplete-001',
+                text_span: 'Scale-up durability remains unresolved.',
+                source_locator: 'html:https://example.org/full-text',
+                page_number: null,
+              },
+            ],
+            missing_fields: ['independent validation dataset'],
+          }),
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const column = findDefaultResearchColumn('research_gaps');
@@ -313,25 +338,38 @@ describe('research runtime extractor', () => {
     });
 
     expect(result.status).toBe('valid');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example-openai.test/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"model":"gpt-6-sol"'),
+      }),
+    );
     expect(result.answer).toEqual(
       expect.objectContaining({
         gaps: expect.arrayContaining([
           'Scale-up durability remains unresolved.',
         ]),
-        confidence: 'low',
       }),
     );
+    expect(result.evidence_trace).toEqual([
+      expect.objectContaining({
+        source_document_id: paper.source_document_id,
+        text_span: 'Scale-up durability remains unresolved.',
+      }),
+    ]);
     expect(result.normalized_payload).toEqual(
       expect.objectContaining({
         full_text: expect.objectContaining({
           source: 'html',
         }),
+        llm_runtime: expect.objectContaining({
+          provider: 'openai',
+          model: 'gpt-6-sol',
+        }),
       }),
     );
-    expect(
-      (result.normalized_payload as { llm_runtime?: unknown }).llm_runtime,
-    ).toBeUndefined();
   });
 
   it('uses hydrated full text to improve data and metadata readiness extraction when abstracts are incomplete', async () => {

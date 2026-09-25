@@ -1,11 +1,12 @@
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { devices, expect, test } from '@playwright/test';
 
 interface PublicTopicRouteExpectation {
   slug: string;
   path: string;
   heading: string;
-  firstDialogTitle: string;
-  firstDialogSnippet: string;
   nextLinkText: string;
 }
 
@@ -15,18 +16,12 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/problem',
     heading:
       'See the full operating pressure around a bioelectrochemical decision.',
-    firstDialogTitle: 'Influent chemistry',
-    firstDialogSnippet:
-      'Conductivity, COD strength, salts, inhibitors, and pH can either stabilize the electroactive pathway',
     nextLinkText: 'Next: Technology',
   },
   {
     slug: 'technology',
     path: '/learn/technology',
     heading: 'Model wastewater MFCs, MECs, and electrochemical biosensors.',
-    firstDialogTitle: 'MFC',
-    firstDialogSnippet:
-      'Microbial fuel cells couple treatment with direct current generation',
     nextLinkText: 'Next: Stack',
   },
   {
@@ -34,28 +29,19 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/stack',
     heading:
       'See the system the way METREV evaluates it: one explicit stack at a time.',
-    firstDialogTitle: 'Reactor',
-    firstDialogSnippet:
-      'Architecture fixes residence time distribution, hydraulic path, footprint',
     nextLinkText: 'Next: Comparison',
   },
   {
     slug: 'comparison',
     path: '/learn/comparison',
     heading: 'Compare MFC and MEC wastewater cases with matched evidence.',
-    firstDialogTitle: 'Conventional treatment',
-    firstDialogSnippet:
-      'Activated sludge and other mature treatment trains may provide context when the case owner selects them',
-    nextLinkText: 'Next: Results',
+    nextLinkText: 'Next: Impact',
   },
   {
     slug: 'impact',
     path: '/learn/impact',
     heading:
       'Read modeled and measured system results on their stated boundaries.',
-    firstDialogTitle: 'Water quality',
-    firstDialogSnippet:
-      'Effluent quality, contaminant removal, and process visibility describe the wastewater treatment outcome',
     nextLinkText: 'Next: METREV',
   },
   {
@@ -63,9 +49,6 @@ const publicTopicRoutes: PublicTopicRouteExpectation[] = [
     path: '/learn/metrev',
     heading:
       'Understand how METREV models wastewater systems and reports the evidence.',
-    firstDialogTitle: 'Configure stack',
-    firstDialogSnippet:
-      'The workflow begins with explicit reactor, electrodes, separator, biology, auxiliaries',
     nextLinkText: 'Open workspace',
   },
 ];
@@ -78,6 +61,10 @@ const mobileViewportUse = {
   isMobile: pixel5.isMobile,
   hasTouch: pixel5.hasTouch,
 };
+const desktopCaptureDirectory = resolve(
+  process.cwd(),
+  'visual-review/public-pages',
+);
 
 async function openPublicRoute(
   page: import('@playwright/test').Page,
@@ -149,8 +136,7 @@ test.describe('public routes - desktop structure', () => {
     await page.getByTestId('public-landing-board-problem').click();
     await expect(
       page.getByRole('heading', {
-        name:
-          'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.',
+        name: 'Map wastewater, MFC/MEC, and biosensor constraints before choosing a system.',
       }),
     ).toBeVisible();
     await expect(
@@ -164,8 +150,8 @@ test.describe('public routes - desktop structure', () => {
     await expect(page.getByText('What METREV checks')).toBeVisible();
     await expect(page.getByText('METREV takeaway')).toBeVisible();
     await expect(
-      page.getByRole('link', { name: 'Open full page' }),
-    ).toHaveCount(0);
+      page.getByRole('link', { name: 'Read the full chapter' }),
+    ).toHaveAttribute('href', '/learn/problem');
 
     const landingDialogBounds = await page
       .locator('.public-board-dialog-shell')
@@ -192,7 +178,7 @@ test.describe('public routes - desktop structure', () => {
   });
 
   for (const route of publicTopicRoutes) {
-    test(`${route.slug} page renders an explainable infographic`, async ({
+    test(`${route.slug} page renders a long-form chapter and explorable SVGs`, async ({
       page,
     }) => {
       await openPublicRoute(page, route.path);
@@ -203,25 +189,37 @@ test.describe('public routes - desktop structure', () => {
       await expect(
         page.getByTestId(`public-topic-${route.slug}`),
       ).toBeVisible();
-      await expect(page.getByTestId('public-topic-infographic')).toBeVisible();
       await expect(
-        page.locator(`[data-testid^="public-topic-board-${route.slug}-"]`),
-      ).toHaveCount(6);
-
-      await page.getByTestId(`public-topic-board-${route.slug}-1`).click();
-      const dialog = page.locator('.public-board-dialog-shell');
-      await expect(
-        page.getByRole('heading', { name: route.firstDialogTitle }),
+        page.getByRole('navigation', { name: 'On this page' }),
       ).toBeVisible();
-      await expect(dialog.getByText(route.firstDialogSnippet)).toBeVisible();
-      await expect(page.getByText('System function')).toBeVisible();
-      await expect(page.getByText('What METREV checks')).toBeVisible();
-      await expect(page.getByText('METREV takeaway')).toBeVisible();
-      await page.getByRole('button', { name: 'Close' }).click();
-
+      const sectionCount = await page
+        .getByTestId('public-article-section')
+        .count();
+      expect(sectionCount).toBeGreaterThanOrEqual(5);
+      await expect(page.locator('.public-article-diagram')).toHaveCount(
+        sectionCount,
+      );
+      await expect(
+        page.getByRole('heading', {
+          name: 'Sources, scope, and review status',
+        }),
+      ).toBeVisible();
       await expect(
         page.getByRole('link', { name: route.nextLinkText }),
       ).toBeVisible();
+
+      const explanation = page
+        .locator('.public-article-figure__explanation')
+        .first();
+      const initialExplanation = await explanation.innerText();
+      await page.getByTestId('public-article-diagram-node-2').first().click();
+      await expect(explanation).not.toHaveText(initialExplanation);
+      mkdirSync(desktopCaptureDirectory, { recursive: true });
+      await page.screenshot({
+        path: resolve(desktopCaptureDirectory, `desktop-${route.slug}.png`),
+        fullPage: true,
+        animations: 'disabled',
+      });
     });
   }
 });
@@ -244,7 +242,7 @@ test.describe('public routes - mobile views', () => {
   });
 
   for (const route of publicTopicRoutes) {
-    test(`${route.slug} route exposes its active infographic on mobile`, async ({
+    test(`${route.slug} route exposes its chapter and table of contents on mobile`, async ({
       page,
     }) => {
       await openPublicRoute(page, route.path);
@@ -254,7 +252,12 @@ test.describe('public routes - mobile views', () => {
       await expect(
         page.getByTestId(`public-topic-${route.slug}`),
       ).toBeVisible();
-      await expect(page.getByTestId('public-topic-infographic')).toBeVisible();
+      await expect(
+        page.getByRole('navigation', { name: 'On this page' }),
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('public-article-section').first(),
+      ).toBeVisible();
     });
   }
 });

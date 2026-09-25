@@ -51,7 +51,7 @@ describe('METREV bootstrap and automation', () => {
       'uncertainty',
       '20 queries',
       '480 before duplicates',
-      'zero records',
+      'ten source records and ten claims, all pending human review',
     ]) {
       expect(readme).toContain(term);
     }

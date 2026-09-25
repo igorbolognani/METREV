@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 
 import type {
   PublicDialogContent,
@@ -13,6 +14,7 @@ import type {
 import {
   PUBLIC_TOPIC_PAGES,
   getPublicPanelDialog,
+  getPublicTopicHref,
   getPublicTopicLandingDialog,
 } from '@/components/public-topic-content';
 import { Dialog } from '@/components/ui/dialog';
@@ -1030,7 +1032,13 @@ function LandingReferenceIcon({ slug }: { slug: PublicTopicSlug }) {
   );
 }
 
-function PublicDialogBody({ dialog }: { dialog: PublicDialogContent }) {
+function PublicDialogBody({
+  dialog,
+  slug,
+}: {
+  dialog: PublicDialogContent;
+  slug?: PublicTopicSlug;
+}) {
   return (
     <div className="public-board-dialog">
       <p className="public-board-dialog__lead">{dialog.lead}</p>
@@ -1049,6 +1057,14 @@ function PublicDialogBody({ dialog }: { dialog: PublicDialogContent }) {
         <span>METREV takeaway</span>
         <p>{dialog.takeaway}</p>
       </article>
+      {slug ? (
+        <Link
+          className="public-board-dialog__chapter-link"
+          href={getPublicTopicHref(slug)}
+        >
+          Read the full chapter <span aria-hidden="true">↗</span>
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -1373,7 +1389,7 @@ function PublicInteractiveBoard({
         </button>
       }
     >
-      <PublicDialogBody dialog={item.dialog} />
+      <PublicDialogBody dialog={item.dialog} slug={item.slug} />
     </Dialog>
   );
 }

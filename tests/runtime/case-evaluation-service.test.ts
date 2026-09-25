@@ -20,6 +20,8 @@ const actor: SessionActor = {
 };
 
 const originalLlmMode = process.env.METREV_LLM_MODE;
+const originalMetrevLlmApiKey = process.env.METREV_LLM_API_KEY;
+const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
 
 describe('case evaluation service', () => {
   const repository = new MemoryEvaluationRepository();
@@ -29,6 +31,18 @@ describe('case evaluation service', () => {
       delete process.env.METREV_LLM_MODE;
     } else {
       process.env.METREV_LLM_MODE = originalLlmMode;
+    }
+
+    if (originalMetrevLlmApiKey === undefined) {
+      delete process.env.METREV_LLM_API_KEY;
+    } else {
+      process.env.METREV_LLM_API_KEY = originalMetrevLlmApiKey;
+    }
+
+    if (originalOpenAiApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalOpenAiApiKey;
     }
 
     await repository.disconnect();
@@ -127,8 +141,10 @@ describe('case evaluation service', () => {
     ).toBe('skipped');
   });
 
-  it('falls back to the deterministic stub narrative when openai mode is requested', async () => {
+  it('falls back to the deterministic stub narrative when openai has no configured key', async () => {
     process.env.METREV_LLM_MODE = 'openai';
+    delete process.env.METREV_LLM_API_KEY;
+    delete process.env.OPENAI_API_KEY;
 
     const logger = {
       warn: vi.fn(),
@@ -151,7 +167,7 @@ describe('case evaluation service', () => {
       fallback_used: true,
     });
     expect(evaluation.narrative_metadata.error_message).toContain(
-      'Unsupported METREV_LLM_MODE "openai" requested',
+      'OpenAI mode requires METREV_LLM_API_KEY or OPENAI_API_KEY',
     );
   });
 });
