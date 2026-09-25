@@ -10,6 +10,7 @@ CONTRACTS_ROOT = REPO_ROOT / "bioelectro-copilot-contracts" / "contracts"
 ONTOLOGY_ROOT = CONTRACTS_ROOT / "ontology"
 RULES_ROOT = CONTRACTS_ROOT / "rules"
 RESEARCH_CONTRACTS_ROOT = CONTRACTS_ROOT / "research"
+EVALUATION_CONTRACTS_ROOT = CONTRACTS_ROOT / "evaluation"
 DOMAIN_ONTOLOGY_ROOT = REPO_ROOT / "bioelectrochem_agent_kit" / "domain" / "ontology"
 DOMAIN_RULES_ROOT = REPO_ROOT / "bioelectrochem_agent_kit" / "domain" / "rules"
 
@@ -328,6 +329,37 @@ def test_research_contract_pack_declares_core_boundaries() -> None:
 
     existing_files = {path.name for path in RESEARCH_CONTRACTS_ROOT.glob("*.yaml")}
     assert required_files.issubset(existing_files)
+
+
+def test_experimental_comparison_contract_is_a_versioned_portable_json_schema() -> None:
+    comparison_contract = _load_yaml(
+        EVALUATION_CONTRACTS_ROOT / "experimental-comparison.schema.yaml"
+    )
+
+    assert comparison_contract["$schema"] == (
+        "https://json-schema.org/draft/2020-12/schema"
+    )
+    assert comparison_contract["$id"].startswith("urn:metrev:")
+    assert comparison_contract["x-contract-version"] == "1.0.0"
+    assert comparison_contract["$ref"] == "#/$defs/ComparisonRequest"
+
+    definitions = comparison_contract["$defs"]
+    assert {
+        "ComparisonCoordinate",
+        "ModeledPrediction",
+        "ExperimentalObservation",
+        "ComparisonRequest",
+        "ComparisonReasonCode",
+        "BlockedResult",
+        "ResidualResult",
+        "ComparisonResult",
+    } <= set(definitions)
+    assert definitions["ExperimentalObservation"]["additionalProperties"] is False
+    assert definitions["ComparisonRequest"]["additionalProperties"] is False
+    assert definitions["ComparisonResult"]["oneOf"] == [
+        {"$ref": "#/$defs/BlockedResult"},
+        {"$ref": "#/$defs/ResidualResult"},
+    ]
 
 
 def test_research_taxonomy_and_contracts_align_on_active_surface_eligibility() -> None:

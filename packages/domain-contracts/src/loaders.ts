@@ -207,6 +207,33 @@ export interface ContractEvidenceDiscoveryPolicy {
   batch_policy: Record<string, unknown>;
 }
 
+export interface ContractJsonSchema {
+  $ref?: string;
+  $defs?: Record<string, ContractJsonSchema>;
+  type?: string;
+  properties?: Record<string, ContractJsonSchema>;
+  required?: string[];
+  enum?: string[];
+  const?: unknown;
+  items?: ContractJsonSchema;
+  oneOf?: ContractJsonSchema[];
+  allOf?: ContractJsonSchema[];
+  additionalProperties?: boolean;
+  minimum?: number;
+  minLength?: number;
+  minItems?: number;
+  maxItems?: number;
+  format?: string;
+  [extension: string]: unknown;
+}
+
+export interface ContractExperimentalComparisonDefinition extends ContractJsonSchema {
+  $schema: string;
+  $id: string;
+  'x-contract-version': string;
+  $defs: Record<string, ContractJsonSchema>;
+}
+
 export function loadYamlFile<T>(filePath: string): T {
   return yaml.load(readFileSync(filePath, 'utf8')) as T;
 }
@@ -292,6 +319,15 @@ export function loadEvidenceQualityAuditPolicy(): ContractEvidenceQualityAuditPo
 export function loadEvidenceDiscoveryPolicy(): ContractEvidenceDiscoveryPolicy {
   return loadYamlFile<ContractEvidenceDiscoveryPolicy>(
     resolve(contractsRootPath, 'rules/evidence_discovery.yaml'),
+  );
+}
+
+export function loadExperimentalComparisonContract(): ContractExperimentalComparisonDefinition {
+  return loadYamlFile<ContractExperimentalComparisonDefinition>(
+    resolve(
+      contractsRootPath,
+      'evaluation/experimental-comparison.schema.yaml',
+    ),
   );
 }
 
