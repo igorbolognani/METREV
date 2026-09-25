@@ -38,6 +38,8 @@ Every scientific parameter must carry a value, unit, source kind (`measured`, `l
 
 All solver observations and series are marked as modeled outputs. MFC electrical output, auxiliary demand, and sensor demand have separate boundaries. MEC electrical input is not generation; gross and captured hydrogen are separate Faraday-based outputs. The displayed confidence score is a fixed heuristic, not a probability or a calibration result. Sensitivity scenarios are deterministic input perturbations, not independent validation or uncertainty propagation.
 
+The experimental comparison helper computes a residual only when an observation is marked approved with reviewer/time metadata, assigned to an independent validation dataset, and manually assessed as condition-matched with the same metric key, unit, and coordinate. It checks those supplied assertions; it does not authenticate the reviewer or independently verify the source. It does not convert units, choose acceptance thresholds, or return a pass/fail or validation conclusion. Candidate evidence, assumptions/defaults, test fixtures, calibration/training data, and incomplete condition matches are blocked.
+
 The solver permits at most 2,000 integration steps and emits at most 200 points per series. Plots must compare like units; sampled curves are model output, not experimental observations. A validation test passing proves the tested contract or numerical invariant only, not agreement with an independent experiment.
 
 ## Inputs and results

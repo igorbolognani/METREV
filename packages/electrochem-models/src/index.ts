@@ -18,6 +18,7 @@ export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 
 export { simulateMechanisticCase };
 export type { MechanisticRun };
+export { assessExperimentalComparison } from './experimental-comparison';
 
 const ruleInputSignalKeys = new Set([
   'current_density_a_m2',

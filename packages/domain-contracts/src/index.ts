@@ -1,4 +1,5 @@
 export * from './agent-pipeline';
+export * from './experimental-validation';
 export * from './loaders';
 export * from './normalize';
 export * from './paths';
