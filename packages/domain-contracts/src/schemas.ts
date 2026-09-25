@@ -398,23 +398,57 @@ export const technologyContextSchema = flexibleObjectSchema.extend({
   membrane_presence: z.string().optional(),
 });
 
-export const scientificModelParameterSchema = z.object({
-  value: z.number().finite(),
-  unit: z.string().trim().min(1),
-  source_kind: z.enum([
-    'measured',
-    'literature',
-    'default',
-    'assumption',
-    'test_fixture',
-  ]),
-  source_ref: z.string().trim().min(1),
-  original_value: z.number().finite().optional(),
-  original_unit: z.string().trim().min(1).optional(),
-  normalization_rule_id: z.string().trim().min(1).optional(),
-  uncertainty: z.number().nonnegative().optional(),
-  uncertainty_unit: z.string().trim().min(1).optional(),
-});
+export const scientificModelParameterSchema = z
+  .object({
+    value: z.number().finite(),
+    unit: z.string().trim().min(1),
+    source_kind: z.enum([
+      'measured',
+      'literature',
+      'default',
+      'assumption',
+      'test_fixture',
+    ]),
+    source_ref: z.string().trim().min(1),
+    original_value: z.number().finite().optional(),
+    original_unit: z.string().trim().min(1).optional(),
+    normalization_rule_id: z.string().trim().min(1).optional(),
+    uncertainty: z.number().finite().nonnegative().optional(),
+    uncertainty_unit: z.string().trim().min(1).optional(),
+  })
+  .superRefine((parameter, context) => {
+    if (
+      parameter.uncertainty !== undefined &&
+      parameter.uncertainty_unit === undefined
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['uncertainty_unit'],
+        message: 'uncertainty_unit is required when uncertainty is supplied',
+      });
+    }
+    if (
+      parameter.uncertainty === undefined &&
+      parameter.uncertainty_unit !== undefined
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['uncertainty'],
+        message: 'uncertainty is required when uncertainty_unit is supplied',
+      });
+    }
+    if (
+      parameter.uncertainty !== undefined &&
+      parameter.uncertainty_unit !== undefined &&
+      parameter.uncertainty_unit !== parameter.unit
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['uncertainty_unit'],
+        message: 'uncertainty_unit must match the parameter unit',
+      });
+    }
+  });
 
 export const feedAndOperationSchema = flexibleObjectSchema.extend({
   influent_type: z.string().optional(),
@@ -861,6 +895,59 @@ export const simulationSeriesSchema = z.object({
   provenance_note: z.string().min(1),
 });
 
+export const simulationSensitivityMetricSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().nullable(),
+  nominal_value: z.number().finite(),
+  lower_input_value: z.number().finite().nullable(),
+  upper_input_value: z.number().finite().nullable(),
+  lower_change_from_nominal: z.number().finite().nullable(),
+  upper_change_from_nominal: z.number().finite().nullable(),
+});
+
+export const simulationSensitivityScenarioSchema = z.object({
+  status: z.enum(['completed', 'insufficient_data']),
+  input_value: z.number().finite(),
+  missing_inputs: z.array(z.string()).default([]),
+  note: z.string().optional(),
+});
+
+export const simulationSensitivityEffectSchema = z.object({
+  parameter_path: z.string().min(1),
+  source_kind: z.enum([
+    'measured',
+    'literature',
+    'default',
+    'assumption',
+    'test_fixture',
+  ]),
+  source_ref: z.string().min(1),
+  unit: z.string().min(1),
+  nominal_value: z.number().finite(),
+  reported_uncertainty: z.number().finite().nonnegative(),
+  status: z.enum(['completed', 'partial', 'blocked']),
+  lower_input_scenario: simulationSensitivityScenarioSchema,
+  upper_input_scenario: simulationSensitivityScenarioSchema,
+  metrics: z.array(simulationSensitivityMetricSchema).default([]),
+});
+
+export const simulationSensitivityAnalysisSchema = z.object({
+  method: z.literal('one_at_a_time_reported_uncertainty_v1'),
+  status: z.enum(['completed', 'partial', 'not_available']),
+  interpretation: z.string().min(1),
+  evaluated_parameter_count: z.number().int().nonnegative(),
+  skipped_parameters: z
+    .array(
+      z.object({
+        parameter_path: z.string().min(1),
+        reason: z.string().min(1),
+      }),
+    )
+    .default([]),
+  effects: z.array(simulationSensitivityEffectSchema).default([]),
+});
+
 export const simulationConfidenceSchema = z.object({
   level: confidenceLevelSchema,
   score: z.number().min(0).max(100),
@@ -890,6 +977,7 @@ export const simulationEnrichmentSchema = z.object({
   input_snapshot: flexibleObjectSchema.default({}),
   derived_observations: z.array(derivedObservationSchema).default([]),
   series: z.array(simulationSeriesSchema).default([]),
+  sensitivity_analysis: simulationSensitivityAnalysisSchema.optional(),
   assumptions: z.array(z.string()).default([]),
   confidence: simulationConfidenceSchema,
   provenance: simulationProvenanceSchema,
@@ -900,6 +988,7 @@ export const reportModelingSectionSchema = simulationEnrichmentSchema.pick({
   status: true,
   model_version: true,
   derived_observations: true,
+  sensitivity_analysis: true,
   assumptions: true,
   confidence: true,
   provenance: true,
@@ -2345,6 +2434,18 @@ export type SimulationAxis = z.infer<typeof simulationAxisSchema>;
 export type SimulationSeriesPoint = z.infer<typeof simulationSeriesPointSchema>;
 export type DerivedObservation = z.infer<typeof derivedObservationSchema>;
 export type SimulationSeries = z.infer<typeof simulationSeriesSchema>;
+export type SimulationSensitivityMetric = z.infer<
+  typeof simulationSensitivityMetricSchema
+>;
+export type SimulationSensitivityScenario = z.infer<
+  typeof simulationSensitivityScenarioSchema
+>;
+export type SimulationSensitivityEffect = z.infer<
+  typeof simulationSensitivityEffectSchema
+>;
+export type SimulationSensitivityAnalysis = z.infer<
+  typeof simulationSensitivityAnalysisSchema
+>;
 export type SimulationConfidence = z.infer<typeof simulationConfidenceSchema>;
 export type SimulationProvenance = z.infer<typeof simulationProvenanceSchema>;
 export type SimulationSummary = z.infer<typeof simulationSummarySchema>;

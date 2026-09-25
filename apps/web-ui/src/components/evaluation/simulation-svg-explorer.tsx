@@ -4,6 +4,8 @@ import type { EvaluationResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 import { useMemo, useState, type KeyboardEvent } from 'react';
 
+import { SimulationSensitivityDetails } from '@/components/evaluation/simulation-sensitivity-details';
+
 void React;
 
 type Simulation = NonNullable<EvaluationResponse['simulation_enrichment']>;
@@ -220,7 +222,8 @@ export function SimulationSvgExplorer({
           <h3 id="simulation-svg-title">Cell and process explorer</h3>
           <p>
             Select a boundary or component in the diagram, then move through
-            process, loss accounting, sensor outputs and model limits.
+            process, loss accounting, sensor outputs and model limits. Reported
+            input uncertainties are summarized below as separate scenarios.
           </p>
         </div>
         <span className="simulation-svg-explorer__run-mode">
@@ -886,7 +889,7 @@ export function SimulationSvgExplorer({
                 • No external validation implied by this run
               </text>
               <text x="855" y="318">
-                • No propagated parameter uncertainty
+                • No combined or probabilistic uncertainty propagation
               </text>
               <text x="855" y="350">
                 • No membrane fouling or gas crossover model
@@ -1037,6 +1040,11 @@ export function SimulationSvgExplorer({
             ? `Showing ${actualMode === 'biosensor' ? 'biosensor' : actualMode} data from this evaluation. ${section === 'losses' ? 'Residuals and electrical-equivalent work are model diagnostics, not measured loss mechanisms.' : ''}`
             : `The ${selectedMode} diagram is conceptual for this view; this evaluation has no ${selectedMode} result attached.`}
       </p>
+      {outputsMatchMode ? (
+        <SimulationSensitivityDetails
+          analysis={simulation.sensitivity_analysis}
+        />
+      ) : null}
     </section>
   );
 }

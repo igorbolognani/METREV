@@ -197,7 +197,13 @@ not_yet_modeled:
   - multiple competing microbial guilds and detailed metabolic pathways
   - nitrogen-species balances, alkalinity speciation, gas crossover and gas-transfer losses
   - thermal dynamics, dynamic ionic strength, membrane fouling, and multi-phase fluid flow
-  - stochastic uncertainty propagation, parameter fitting, and posterior prediction
+  - joint or probabilistic uncertainty propagation, parameter fitting, and posterior prediction
+
+sensitivity_analysis:
+  method: one_at_a_time_reported_uncertainty_v1
+  perturbation: nominal_minus_and_plus_reported_uncertainty_magnitude
+  interpretation: Deterministic scenario response only; no probability distribution, joint uncertainty, or prediction interval is inferred.
+  maximum_parameters_per_run: 16
 
 data_policy:
   evidence_role: Literature/data warehouse may supply candidate parameter values only when units and source locators are retained.
