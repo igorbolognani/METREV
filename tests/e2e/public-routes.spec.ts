@@ -160,6 +160,7 @@ test.describe('public routes - desktop structure', () => {
   });
 
   test('overview hub exposes the six public lenses', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto('/');
 
     await expect(page.getByTestId('public-overview-hub')).toBeVisible();
@@ -259,12 +260,20 @@ test.describe('public routes - desktop structure', () => {
     ).toBeVisible();
 
     await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.locator('.public-board-dialog-shell')).toBeHidden();
+    mkdirSync(desktopCaptureDirectory, { recursive: true });
+    await page.screenshot({
+      path: resolve(desktopCaptureDirectory, 'desktop-overview.png'),
+      fullPage: true,
+      animations: 'disabled',
+    });
   });
 
   for (const route of publicTopicRoutes) {
     test(`${route.slug} page renders a long-form chapter and explorable SVGs`, async ({
       page,
     }) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
       await openPublicRoute(page, route.path);
 
       await expect(

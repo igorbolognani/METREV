@@ -127,7 +127,11 @@ function SelectField({
   return (
     <label className="modeling-workbench__field">
       <span>{label}</span>
-      <select onChange={(event) => onChange(event.target.value)} value={value}>
+      <select
+        aria-label={label}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue || 'unspecified'} value={optionValue}>
             {optionLabel}
