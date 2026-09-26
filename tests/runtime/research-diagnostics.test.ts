@@ -36,7 +36,7 @@ describe('local research diagnostics', () => {
         (check) => check.label === 'candidate-registry-and-provenance',
       )?.status,
     ).toBe('PASS');
-    expect(corpus.totals.candidate_source_records).toBe(8);
+    expect(corpus.totals.candidate_source_records).toBe(12);
     expect(corpus.totals.curated_source_records).toBe(10);
     expect(corpus.totals.curated_claims).toBe(10);
     expect(corpus.totals.source_artifacts_registered).toBe(6);
