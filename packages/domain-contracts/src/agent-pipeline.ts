@@ -117,6 +117,16 @@ export function buildBioelectroAgentPipelineTrace(input: {
         });
       }
 
+      if (simulationEnrichment.status === 'not_implemented') {
+        return agentPipelineStageSchema.parse({
+          ...stage,
+          status: 'degraded',
+          notes: [
+            'The selected research model has no executable solver yet; model implementation is separate from case-data readiness.',
+          ],
+        });
+      }
+
       if (simulationEnrichment.status === 'failed') {
         return agentPipelineStageSchema.parse({
           ...stage,

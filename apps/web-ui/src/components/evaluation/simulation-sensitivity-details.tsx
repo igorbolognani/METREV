@@ -14,8 +14,11 @@ function formatNumber(value: number | null, unit: string | null) {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
-function scenarioStatusLabel(status: 'completed' | 'insufficient_data') {
-  return status === 'completed' ? 'Modeled' : 'Blocked';
+function scenarioStatusLabel(
+  status: 'completed' | 'insufficient_data' | 'not_implemented',
+) {
+  if (status === 'completed') return 'Modeled';
+  return status === 'not_implemented' ? 'Solver not implemented' : 'Blocked';
 }
 
 export function SimulationSensitivityDetails({
@@ -110,14 +113,16 @@ export function SimulationSensitivityDetails({
               </tbody>
             </table>
           </div>
-          {effect.lower_input_scenario.status === 'insufficient_data' ? (
+          {effect.lower_input_scenario.status !== 'completed' ? (
             <p className="muted">
-              Lower-input scenario blocked: {effect.lower_input_scenario.note}
+              Lower-input scenario unavailable:{' '}
+              {effect.lower_input_scenario.note}
             </p>
           ) : null}
-          {effect.upper_input_scenario.status === 'insufficient_data' ? (
+          {effect.upper_input_scenario.status !== 'completed' ? (
             <p className="muted">
-              Upper-input scenario blocked: {effect.upper_input_scenario.note}
+              Upper-input scenario unavailable:{' '}
+              {effect.upper_input_scenario.note}
             </p>
           ) : null}
           <p className="muted">

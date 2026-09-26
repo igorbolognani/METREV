@@ -299,9 +299,9 @@ describe('coupled electrochemical mechanistic model', () => {
 
     const result = evaluate(raw);
 
-    expect(result.status).toBe('insufficient_data');
+    expect(result.status).toBe('not_implemented');
     expect(result.series).toHaveLength(0);
-    expect(result.failure_detail?.missing_inputs).toEqual(
+    expect(result.failure_detail?.model_blockers).toEqual(
       expect.arrayContaining([
         expect.stringContaining('is a research profile only'),
         expect.stringContaining('operational_biology.biofilm_thickness_m'),
@@ -480,8 +480,8 @@ describe('coupled electrochemical mechanistic model', () => {
       'mfc-single-chamber-air-cathode';
     delete unsupported.stack_blocks!.sensors_and_analytics!.biosensor;
     const unsupportedResult = evaluate(unsupported);
-    expect(unsupportedResult.status).toBe('insufficient_data');
-    expect(unsupportedResult.failure_detail?.missing_inputs).toEqual(
+    expect(unsupportedResult.status).toBe('not_implemented');
+    expect(unsupportedResult.failure_detail?.model_blockers).toEqual(
       expect.arrayContaining([
         expect.stringContaining('is a research profile only'),
       ]),
@@ -523,8 +523,8 @@ describe('coupled electrochemical mechanistic model', () => {
     integrated.stack_blocks!.sensors_and_analytics!.biosensor!.configuration_profile_id =
       'biosensor-mfc-integrated-bod';
     const researchResult = evaluate(integrated);
-    expect(researchResult.status).toBe('insufficient_data');
-    expect(researchResult.failure_detail?.missing_inputs).toEqual(
+    expect(researchResult.status).toBe('not_implemented');
+    expect(researchResult.failure_detail?.model_blockers).toEqual(
       expect.arrayContaining([
         expect.stringContaining('is a research profile only'),
       ]),

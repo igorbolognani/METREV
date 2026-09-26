@@ -101,6 +101,7 @@ function emptyEnrichment(input: {
 
 function unavailableObservations(
   missingInputs: string[],
+  status: 'insufficient_data' | 'not_implemented',
 ): DerivedObservation[] {
   return [
     ['current_density_a_m2', 'Current density'],
@@ -118,7 +119,9 @@ function unavailableObservations(
     confidence_level: 'low' as ConfidenceLevel,
     decision_relevance: 'informational',
     provenance_note:
-      'No output was fabricated; the coupled model requires the missing source-referenced inputs.',
+      status === 'not_implemented'
+        ? 'No output was fabricated; the selected research profile has no executable solver in METREV yet.'
+        : 'No output was fabricated; the coupled model requires the missing source-referenced inputs.',
     assumptions: [],
     missing_dependencies: missingInputs,
   }));
@@ -126,14 +129,21 @@ function unavailableObservations(
 
 function toEnrichment(run: MechanisticRun): SimulationEnrichment {
   if (run.status !== 'completed') {
+    const failureDetail =
+      run.status === 'not_implemented'
+        ? { model_blockers: run.missingInputs }
+        : { missing_inputs: run.missingInputs };
     return {
       ...emptyEnrichment({
-        status: 'insufficient_data',
+        status: run.status,
         note: run.note,
-        failureDetail: { missing_inputs: run.missingInputs },
+        failureDetail,
       }),
       input_snapshot: run.inputSnapshot,
-      derived_observations: unavailableObservations(run.missingInputs),
+      derived_observations: unavailableObservations(
+        run.missingInputs,
+        run.status,
+      ),
     };
   }
 

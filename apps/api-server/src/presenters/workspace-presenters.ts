@@ -346,6 +346,8 @@ function modelingScore(
       return 100;
     case 'insufficient_data':
       return 45;
+    case 'not_implemented':
+      return 10;
     case 'failed':
       return 20;
     case 'disabled':

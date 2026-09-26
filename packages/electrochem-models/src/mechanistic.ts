@@ -29,7 +29,7 @@ const MAX_INTEGRATION_STEPS = 2000;
 const MAX_SERIES_POINTS = 200;
 
 export interface MechanisticRun {
-  status: 'completed' | 'insufficient_data';
+  status: 'completed' | 'insufficient_data' | 'not_implemented';
   missingInputs: string[];
   note: string;
   inputSnapshot: Record<string, unknown>;
@@ -1572,9 +1572,13 @@ function seriesFor(
   }));
 }
 
-function failedRun(missingInputs: string[], note: string): MechanisticRun {
+function failedRun(
+  missingInputs: string[],
+  note: string,
+  status: 'insufficient_data' | 'not_implemented' = 'insufficient_data',
+): MechanisticRun {
   return {
-    status: 'insufficient_data',
+    status,
     missingInputs,
     note,
     inputSnapshot: {},
@@ -1921,9 +1925,17 @@ function simulateMechanisticCaseCore(
     componentParameters,
   );
   if (fidelityIssues.length > 0) {
+    const fidelityProfile = normalizedCase.mechanistic_model?.model_fidelity_id
+      ? getModelFidelityProfile(
+          normalizedCase.mechanistic_model.model_fidelity_id,
+        )
+      : undefined;
     return failedRun(
       fidelityIssues,
       'The requested model fidelity is catalogued for research but is not executable in METREV.',
+      fidelityProfile?.status === 'research_profile_only'
+        ? 'not_implemented'
+        : 'insufficient_data',
     );
   }
 
@@ -1954,6 +1966,7 @@ function simulateMechanisticCaseCore(
   const model = modelResult.data;
 
   const issues = collectInputIssues(model);
+  let selectedProfileNotImplemented = false;
   if (model.model_profile_id) {
     const profile = getBioelectrochemicalModelProfile(model.model_profile_id);
 
@@ -1962,6 +1975,7 @@ function simulateMechanisticCaseCore(
         `mechanistic_model.model_profile_id is unknown: ${model.model_profile_id}`,
       );
     } else if (profile.status !== 'executable') {
+      selectedProfileNotImplemented = true;
       issues.push(
         `mechanistic_model.model_profile_id=${profile.id} is a research profile only; ${profile.limitations[0]}`,
       );
@@ -1990,6 +2004,13 @@ function simulateMechanisticCaseCore(
     issues.push(...sensorIssues);
   }
   if (sensor) {
+    if (
+      sensor.configuration_profile_id &&
+      getBioelectrochemicalModelProfile(sensor.configuration_profile_id)
+        ?.status === 'research_profile_only'
+    ) {
+      selectedProfileNotImplemented = true;
+    }
     issues.push(...biosensorIssues(sensor));
     if (
       (model.system_type === 'MFC' &&
@@ -2021,6 +2042,7 @@ function simulateMechanisticCaseCore(
     return failedRun(
       issues,
       'Mechanistic execution requires complete, unit-consistent, source-referenced inputs.',
+      selectedProfileNotImplemented ? 'not_implemented' : 'insufficient_data',
     );
   }
 

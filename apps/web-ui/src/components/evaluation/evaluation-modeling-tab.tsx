@@ -81,12 +81,22 @@ export function EvaluationModelingTab({
       {simulation.status !== 'completed' ? (
         <div className="evaluation-callout evaluation-callout--warning">
           <div className="evaluation-callout__header">
-            <strong>Modeling could not complete successfully</strong>
+            <strong>
+              {simulation.status === 'not_implemented'
+                ? 'Selected model is not implemented yet'
+                : 'Modeling could not complete successfully'}
+            </strong>
             <Badge variant="pending">{formatToken(simulation.status)}</Badge>
           </div>
           <p>
-            The modeling stage returned status{' '}
-            <strong>{formatToken(simulation.status)}</strong>.
+            {simulation.status === 'not_implemented' ? (
+              'This status identifies a missing solver implementation, independently of whether the case has complete data.'
+            ) : (
+              <>
+                The modeling stage returned status{' '}
+                <strong>{formatToken(simulation.status)}</strong>.
+              </>
+            )}
           </p>
           {simulation.failure_detail ? (
             <DisclosurePanel title="Model payload">

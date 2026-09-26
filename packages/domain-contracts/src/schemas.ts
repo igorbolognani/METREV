@@ -46,6 +46,7 @@ export const signalSourceKindSchema = z.enum([
 
 export const simulationEnrichmentStatusSchema = z.enum([
   'disabled',
+  'not_implemented',
   'insufficient_data',
   'completed',
   'failed',
@@ -960,7 +961,7 @@ export const simulationSensitivityMetricSchema = z.object({
 });
 
 export const simulationSensitivityScenarioSchema = z.object({
-  status: z.enum(['completed', 'insufficient_data']),
+  status: z.enum(['completed', 'insufficient_data', 'not_implemented']),
   input_value: z.number().finite(),
   missing_inputs: z.array(z.string()).default([]),
   note: z.string().optional(),
