@@ -94,16 +94,18 @@ test.describe('public routes - desktop structure', () => {
       }),
     ).toBeVisible();
 
-    await page.getByLabel('Technology').selectOption('MEC');
+    await page.getByLabel('Technology', { exact: true }).selectOption('MEC');
     await page
-      .getByLabel('Cell / reactor architecture')
+      .getByLabel('Cell / reactor architecture', { exact: true })
       .selectOption('dual-chamber');
-    await page.getByLabel('Anode material').selectOption('carbon felt');
     await page
-      .getByLabel('Cathode catalyst family')
+      .getByLabel('Anode material', { exact: true })
+      .selectOption('carbon felt');
+    await page
+      .getByLabel('Cathode catalyst family', { exact: true })
       .selectOption('activated carbon');
     await page
-      .getByLabel('Membrane / separator')
+      .getByLabel('Membrane / separator', { exact: true })
       .selectOption('cation exchange membrane');
 
     await expect(
@@ -115,7 +117,9 @@ test.describe('public routes - desktop structure', () => {
       }),
     ).toBeVisible();
 
-    await page.getByLabel('Membrane / separator').selectOption('membrane-free');
+    await page
+      .getByLabel('Membrane / separator', { exact: true })
+      .selectOption('membrane-free');
     await expect(
       page.getByRole('button', {
         name: 'Membrane / separator: cation exchange membrane',
@@ -128,7 +132,7 @@ test.describe('public routes - desktop structure', () => {
     ).toBeVisible();
 
     await page
-      .getByLabel('Model fidelity requested')
+      .getByLabel('Model fidelity requested', { exact: true })
       .selectOption('biofilm-1d-direct-transfer-research-v1');
     await expect(page.getByTestId('selected-model-profile')).toContainText(
       'Research profile · not executable',

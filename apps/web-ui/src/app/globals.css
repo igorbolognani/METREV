@@ -8897,7 +8897,7 @@ textarea {
 .stack-assembly__canvas {
   display: block;
   width: 100%;
-  min-width: 510px;
+  min-width: 0;
   height: auto;
 }
 
