@@ -79,7 +79,6 @@ async function captureDesktopPage(
   filename: string,
 ) {
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForFunction(() => window.scrollY === 0);
   mkdirSync(desktopCaptureDirectory, { recursive: true });
   await page.screenshot({
     path: resolve(desktopCaptureDirectory, filename),
