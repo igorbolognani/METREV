@@ -83,6 +83,11 @@ describe('rule engine', () => {
 
     expect(decisionOutputSchema.parse(decisionOutput)).toEqual(decisionOutput);
     expect(
+      decisionOutput.current_stack_diagnosis.block_findings.map(
+        (finding) => finding.block,
+      ),
+    ).not.toContain('component_model_parameters');
+    expect(
       decisionOutput.prioritized_improvement_options.length,
     ).toBeGreaterThan(0);
     expect(

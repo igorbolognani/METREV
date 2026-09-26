@@ -1017,10 +1017,17 @@ export function runCaseEvaluation(
     ? reduceConfidence(baseConfidenceLevel, 1)
     : baseConfidenceLevel;
 
-  const blockFindings = Object.entries(resolvedCase.stack_blocks).map(
-    ([blockName, value]) =>
+  const blockFindings = Object.entries(resolvedCase.stack_blocks)
+    .filter(
+      ([blockName, value]) =>
+        blockName !== 'component_model_parameters' &&
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value),
+    )
+    .map(([blockName, value]) =>
       describeBlock(blockName, value as Record<string, unknown>),
-  );
+    );
 
   const ruleFindings = compatibilityMatches.map((rule) => ({
     block: deriveConcernArea(rule.condition as RuleCondition),
