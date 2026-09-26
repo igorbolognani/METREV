@@ -1,5 +1,6 @@
 import fixture from '../fixtures/raw-case-input.json';
 
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -20,6 +21,8 @@ import {
   primaryObjectiveSchema,
   rawCaseInputSchema,
   runtimeAuthorityDecision,
+  runtimeAuthoritySources,
+  runtimeCanonicalReconciliationMatrix,
   runtimeFutureFacingReferenceFiles,
   runtimeLoadedCanonicalFiles,
   runtimeReferenceOnlyFiles,
@@ -256,7 +259,7 @@ describe('domain-contract runtime alignment', () => {
         'bioelectro-copilot-contracts/contracts/ontology/evidence_schema.yaml',
       ]),
     );
-    expect(runtimeReferenceOnlyFiles).toContain('stack.md');
+    expect(runtimeReferenceOnlyFiles).toEqual([]);
     expect(runtimeFutureFacingReferenceFiles).toEqual(
       expect.arrayContaining([
         'bioelectrochem_agent_kit/domain/ontology/component-graph.yml',
@@ -265,6 +268,32 @@ describe('domain-contract runtime alignment', () => {
         'bioelectro-copilot-contracts/contracts/reports/diagnostic_summary_template.md',
       ]),
     );
+  });
+
+  it('points authority and UI reconciliation references at files in this checkout', () => {
+    for (const entry of runtimeAuthoritySources) {
+      expect(
+        existsSync(resolve(process.cwd(), entry.file_path)),
+        entry.concern,
+      ).toBe(true);
+    }
+    for (const entry of runtimeCanonicalReconciliationMatrix) {
+      for (const target of [
+        entry.domain_source,
+        entry.contract_source,
+        entry.ui_surface,
+      ]) {
+        if (
+          !target ||
+          (!target.startsWith('bioelectro') && !target.startsWith('apps/'))
+        )
+          continue;
+        expect(
+          existsSync(resolve(process.cwd(), target.split('#')[0])),
+          `${entry.concern}: ${target}`,
+        ).toBe(true);
+      }
+    }
   });
 
   it('keeps canonical output sections aligned with the hardened output contract', () => {

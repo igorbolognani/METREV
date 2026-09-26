@@ -50,10 +50,10 @@
       "eligible_for_decision": false,
       "review_notes": [
         "Readme describes a 35 mL MEC with graphite-brush anode, carbon-felt or carbon-cloth cathodes, nitrogen purge, sodium acetate at 1.5 g/L, initial pH 7.5, conductivity 13 mS/cm, ambient temperature and pressure, and a 10 ohm external monitoring resistor.",
-        "Files include current-density time series, EIS and LSV; source locators are Dataverse file IDs and worksheet/cell references still need analyst extraction.",
+        "Files include current-density time series, EIS and LSV; native ODS observations are preserved in three reproducible derived JSON artifacts with worksheet/cell references. Scientific interpretation and eligibility remain pending.",
         "The data do not report wastewater COD, captured hydrogen yield, full hydrogen gas balance, or biosensor response/LOD/LOQ. Those absences are explicit and must not be imputed.",
         "The linked publication is DOI 10.12688/openreseurope.22256.1; link is retained for source reconciliation, not treated as a separate reviewed record.",
-        "A first-pass file audit verified all four locally registered SHA-256 digests. The current-density sheet has 3,673 finite time coordinates over 0–25.5 days; one of six traces lacks 504 values. LSV README-vs-sheet shape and EIS formula conversion findings are preserved in artifact_review and remain unresolved for analyst review."
+        "A first-pass file audit verified all four original SHA-256 digests. The current-density sheet has 3,673 finite time coordinates over 0–25.5 days; one of six traces lacks 504 values. LSV README-vs-sheet shape and EIS formula conversion findings remain unresolved for scientific interpretation. The 2026-09-26 native ODS extraction preserves all observed numeric measurements, including incomplete paired observations, without filling gaps or fitting a model."
       ],
       "artifacts": [
         {
@@ -103,6 +103,36 @@
           "extraction_method": "none; original ODS preserved",
           "extraction_status": "needs_table_and_unit_review",
           "source_locator": "Dataverse dataset DOI 10.34810/DATA2866, file id 393142"
+        },
+        {
+          "file_name": "current-density-complete-series.json",
+          "mime_type": "application/json",
+          "file_size_bytes": 223161,
+          "sha256": "c1cb72a943aba03ca2ff56bf61ea99eefce77a0c3cc04028e3a31ff74c428394",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/current-density-complete-series.json",
+          "extraction_method": "packages/database/scripts/extract-cora-electrochem.py; native ODS values, no interpolation",
+          "extraction_status": "numeric_observations_extracted_pending_scientific_review",
+          "source_locator": "Dataverse DOI 10.34810/DATA2866 file 393148, Hoja1!A1:G3676"
+        },
+        {
+          "file_name": "lsv-complete-series.json",
+          "mime_type": "application/json",
+          "file_size_bytes": 169598,
+          "sha256": "56ad5a52233055b142d1e849a1a93546624b2ca7670ea3c6ff2414ad5c0d3863",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/lsv-complete-series.json",
+          "extraction_method": "packages/database/scripts/extract-cora-electrochem.py; native ODS values, no normalization",
+          "extraction_status": "numeric_observations_extracted_pending_scientific_review",
+          "source_locator": "Dataverse DOI 10.34810/DATA2866 file 393142, Hoja1!A1:G3002"
+        },
+        {
+          "file_name": "eis-observed-pairs.json",
+          "mime_type": "application/json",
+          "file_size_bytes": 7326,
+          "sha256": "6490a8823908426051b308a10298f57e85c6c55c0634fcdd014ebf0c1f23f3d4",
+          "local_path": "packages/database/data/research-candidates/10.34810-DATA2866/eis-observed-pairs.json",
+          "extraction_method": "packages/database/scripts/extract-cora-electrochem.py; raw native ODS numeric pairs, no fitting",
+          "extraction_status": "numeric_observations_extracted_pending_scientific_review",
+          "source_locator": "Dataverse DOI 10.34810/DATA2866 file 393126, Hoja1!A1:P40"
         }
       ],
       "missing_data_reasons": {
@@ -208,6 +238,14 @@
           "No reconciled gross/captured hydrogen gas measurement, gas recovery, COD/BOD/TSS dataset or independent replicate dataset is present.",
           "Negative signed current-density values were preserved; no polarity correction or imputation was applied."
         ]
+      },
+      "numeric_extraction_review": {
+        "date": "2026-09-26",
+        "method": "packages/database/scripts/extract-cora-electrochem.py parses the original ODS ZIP/XML and verifies all three original file digests and worksheet shapes before serializing numeric observations.",
+        "current_density": "Five 3,673-point complete traces and the 3,169 measured pairs of the incomplete sixth trace are preserved; 504 absent values are not imputed and one unpaired numeric cell is excluded with its locator.",
+        "lsv": "Six complete 3,001-point current-versus-potential curves are preserved; the native sheet has one shared potential column and six currents, conflicting with README's twelve-column description.",
+        "eis": "Eight catalyst series preserve 290 real/secondary numeric pairs; the native secondary header displays #NAME?, no frequency axis is supplied, and neither complex impedance interpretation nor circuit fitting is asserted.",
+        "eligibility": "Candidate component-characterization evidence only. No parameter calibration, independent validation, or full-cell simulation comparison is authorized by these measurements."
       }
     },
     {
