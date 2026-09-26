@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 978)
+Total output lines: 32
+
 # METREV working rules
 
 Read `README.md` for the current scope, model boundary, input policy, setup, and checks. Do not create numbered feature specs, plans, ADRs, or parallel workflow documents; keep essential operating guidance here and in the code contracts/tests.
@@ -14,8 +17,9 @@ Read `README.md` for the current scope, model boundary, input policy, setup, and
 
 - Never invent, backfill, or silently default a scientific measurement or parameter.
 - Each scientific parameter must retain `value`, `unit`, `source_kind`, and `source_ref`. Distinguish measured, literature, default, assumption, and test-fixture values; fixtures are test data only.
-- Validate units and ranges at the boundary. Missing critical inputs return `insufficient_data` rather than proxy results.
-- Keep wastewater measurements, model inputs, modeled outputs, and independent observations distinct. Literature search results are candidates, not case measurements.
+- Validate units and ranges at the boundary. Missing critical inputs in a user-case simulation return `insufficient_data` rather than proxy results; that status must not block model implementation, software verification, or reproduction of a published study case.
+- Development runs may use source-traced candidate literature values and observations while human source review is pending. Preserve exact locators, extraction method, units, study conditions, dataset role, and extraction uncertainty; mark compariso…78 tokens truncated…ate for curated evidence, independent validation claims, and decision eligibility.
+- Keep wastewater measurements, model inputs, modeled outputs, development observations, and independent observations distinct. Literature search results are not case measurements; a paper's experimental data can still be a development benchmark when represented as a separate study case.
 - Describe the implemented model as lumped 0D and isothermal. Do not claim spatial resolution, independent calibration, uncertainty propagation, or experimental validation without evidence.
 - MEC electrical input is not generated energy. Report gross and captured hydrogen separately and keep auxiliary/sensor loads explicit.
 - Preserve model and data limits in the UI, API, and reports. A test of an invariant does not establish predictive accuracy.

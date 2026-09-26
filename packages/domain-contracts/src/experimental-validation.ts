@@ -143,6 +143,57 @@ export const experimentalComparisonResultSchema = z.discriminatedUnion(
   ],
 );
 
+/**
+ * A development diagnostic may compare a model with a pending publication
+ * extraction. It is deliberately a different result type from the strict
+ * independent-comparison result so it cannot be mistaken for validation.
+ */
+export const developmentComparisonBlockedResultSchema = z
+  .object({
+    scope: z.literal('model_development'),
+    status: z.literal('blocked'),
+    reason_codes: z.array(experimentalComparisonReasonSchema).min(1),
+    assessment_status: z.literal('not_assessed'),
+  })
+  .strict();
+
+export const developmentComparisonResidualResultSchema = z
+  .object({
+    scope: z.literal('model_development'),
+    status: z.literal('provisional_residual_computed'),
+    reason_codes: z.array(experimentalComparisonReasonSchema).length(0),
+    assessment_status: z.literal('development_only'),
+    source_review_status: z.enum(['pending', 'approved']),
+    dataset_role: z.enum([
+      'independent_validation',
+      'calibration',
+      'training',
+      'unknown',
+    ]),
+    model_version: requiredTextSchema,
+    model_run_ref: requiredTextSchema,
+    prediction_source_ref: requiredTextSchema,
+    observation_id: requiredTextSchema,
+    observation_source_ref: requiredTextSchema,
+    metric_key: requiredTextSchema,
+    unit: requiredTextSchema,
+    predicted_value: z.number().finite(),
+    observed_value: z.number().finite(),
+    signed_residual: z.number().finite(),
+    absolute_error: z.number().finite().nonnegative(),
+    coordinate: experimentalComparisonCoordinateSchema.optional(),
+    interpretation: requiredTextSchema,
+  })
+  .strict();
+
+export const developmentComparisonResultSchema = z.discriminatedUnion(
+  'status',
+  [
+    developmentComparisonBlockedResultSchema,
+    developmentComparisonResidualResultSchema,
+  ],
+);
+
 export type ExperimentalComparisonCoordinate = z.infer<
   typeof experimentalComparisonCoordinateSchema
 >;
@@ -154,4 +205,7 @@ export type ExperimentalComparisonReason = z.infer<
 >;
 export type ExperimentalComparisonResult = z.infer<
   typeof experimentalComparisonResultSchema
+>;
+export type DevelopmentComparisonResult = z.infer<
+  typeof developmentComparisonResultSchema
 >;

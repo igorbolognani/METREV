@@ -123,6 +123,15 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     ui_surface: 'not currently exposed in the UI',
     note: 'The portable JSON Schema defines request and result payloads; runtime Zod schemas must remain aligned. A computed residual is not a validation or calibration conclusion.',
   },
+  {
+    concern: 'experimental_comparison_development',
+    contract_source:
+      'bioelectro-copilot-contracts/contracts/evaluation/experimental-comparison.schema.yaml#/$defs/ComparisonRequest | #/$defs/DevelopmentComparisonResult',
+    runtime_path:
+      'packages/domain-contracts/src/experimental-validation.ts#experimentalComparisonRequestSchema | #developmentComparisonResultSchema',
+    ui_surface: 'not currently exposed in the UI',
+    note: 'Pending source-traced observations may support provisional development residuals; these never establish accepted evidence, calibration, or independent validation.',
+  },
 ];
 
 export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [

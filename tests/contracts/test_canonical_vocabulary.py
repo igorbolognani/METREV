@@ -340,7 +340,7 @@ def test_experimental_comparison_contract_is_a_versioned_portable_json_schema() 
         "https://json-schema.org/draft/2020-12/schema"
     )
     assert comparison_contract["$id"].startswith("urn:metrev:")
-    assert comparison_contract["x-contract-version"] == "1.0.0"
+    assert comparison_contract["x-contract-version"] == "1.1.0"
     assert comparison_contract["$ref"] == "#/$defs/ComparisonRequest"
 
     definitions = comparison_contract["$defs"]
@@ -353,12 +353,19 @@ def test_experimental_comparison_contract_is_a_versioned_portable_json_schema() 
         "BlockedResult",
         "ResidualResult",
         "ComparisonResult",
+        "DevelopmentBlockedResult",
+        "DevelopmentResidualResult",
+        "DevelopmentComparisonResult",
     } <= set(definitions)
     assert definitions["ExperimentalObservation"]["additionalProperties"] is False
     assert definitions["ComparisonRequest"]["additionalProperties"] is False
     assert definitions["ComparisonResult"]["oneOf"] == [
         {"$ref": "#/$defs/BlockedResult"},
         {"$ref": "#/$defs/ResidualResult"},
+    ]
+    assert definitions["DevelopmentComparisonResult"]["oneOf"] == [
+        {"$ref": "#/$defs/DevelopmentBlockedResult"},
+        {"$ref": "#/$defs/DevelopmentResidualResult"},
     ]
 
 

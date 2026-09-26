@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { assessExperimentalComparison } from '@metrev/electrochem-models';
+import {
+  assessExperimentalComparison,
+  compareForModelDevelopment,
+} from '@metrev/electrochem-models';
 
 const validRequest = {
   prediction: {
@@ -214,5 +217,124 @@ describe('experimental comparison assessment', () => {
       status: 'blocked',
       reason_codes: ['non_finite_residual'],
     });
+  });
+});
+
+describe('provisional model-development comparison', () => {
+  it('compares a pending literature observation without claiming validation', () => {
+    const request = {
+      prediction: validRequest.prediction,
+      observation: {
+        ...validRequest.observation,
+        source_kind: 'literature',
+        review_status: 'pending',
+        reviewed_by: undefined,
+        reviewed_at: undefined,
+        dataset_role: 'calibration',
+      },
+    };
+    const result = compareForModelDevelopment(request);
+
+    expect(result).toMatchObject({
+      scope: 'model_development',
+      status: 'provisional_residual_computed',
+      assessment_status: 'development_only',
+      source_review_status: 'pending',
+      dataset_role: 'calibration',
+      signed_residual: 0.25,
+      absolute_error: 0.25,
+    });
+    expect(result).not.toHaveProperty('validation_status');
+    expect(result).not.toHaveProperty('passed');
+    expect(assessExperimentalComparison(request)).toMatchObject({
+      status: 'blocked',
+    });
+  });
+
+  it('keeps unknown or partially matched conditions out of numeric comparison', () => {
+    const result = compareForModelDevelopment({
+      prediction: validRequest.prediction,
+      observation: {
+        ...validRequest.observation,
+        source_kind: 'literature',
+        review_status: 'pending',
+        reviewed_by: undefined,
+        reviewed_at: undefined,
+        dataset_role: 'training',
+        condition_match_status: 'partial',
+        condition_match_note:
+          'Feed and temperature match; electrode area is absent.',
+      },
+    });
+
+    expect(result).toMatchObject({
+      scope: 'model_development',
+      status: 'blocked',
+      reason_codes: ['conditions_not_matched'],
+      assessment_status: 'not_assessed',
+    });
+  });
+
+  it('requires the same metric, exact unit, and exact coordinate', () => {
+    const request = {
+      prediction: validRequest.prediction,
+      observation: {
+        ...validRequest.observation,
+        source_kind: 'literature',
+        review_status: 'pending',
+        reviewed_by: undefined,
+        reviewed_at: undefined,
+        dataset_role: 'training',
+      },
+    };
+
+    expect(
+      compareForModelDevelopment({
+        ...request,
+        observation: { ...request.observation, unit: 'mA' },
+      }),
+    ).toMatchObject({
+      status: 'blocked',
+      reason_codes: ['unit_mismatch'],
+    });
+
+    expect(
+      compareForModelDevelopment({
+        prediction: {
+          ...request.prediction,
+          coordinate: { axis_key: 'time', value: 2, unit: 'day' },
+        },
+        observation: {
+          ...request.observation,
+          coordinate: { axis_key: 'time', value: 2.1, unit: 'day' },
+        },
+      }),
+    ).toMatchObject({
+      status: 'blocked',
+      reason_codes: ['coordinate_mismatch'],
+    });
+  });
+
+  it('blocks rejected sources, assumptions, and fixtures', () => {
+    for (const observation of [
+      {
+        ...validRequest.observation,
+        source_kind: 'literature',
+        review_status: 'rejected',
+      },
+      { ...validRequest.observation, source_kind: 'assumption' },
+      {
+        ...validRequest.observation,
+        source_kind: 'test_fixture',
+        dataset_role: 'test_fixture',
+      },
+    ]) {
+      expect(
+        compareForModelDevelopment({
+          prediction: validRequest.prediction,
+          observation,
+        }),
+      ).toMatchObject({ status: 'blocked' });
+    }
   });
 });

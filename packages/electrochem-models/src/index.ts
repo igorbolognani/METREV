@@ -43,7 +43,10 @@ export type {
   ModelResolutionScale,
   SpatialDimension,
 } from './model-fidelity-catalog';
-export { assessExperimentalComparison } from './experimental-comparison';
+export {
+  assessExperimentalComparison,
+  compareForModelDevelopment,
+} from './experimental-comparison';
 
 const ruleInputSignalKeys = new Set([
   'current_density_a_m2',

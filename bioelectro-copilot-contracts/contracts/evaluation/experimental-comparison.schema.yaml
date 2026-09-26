@@ -1,11 +1,13 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:metrev:contracts:evaluation:experimental-comparison:1.0.0
-title: METREV independent experimental comparison
+$id: urn:metrev:contracts:evaluation:experimental-comparison:1.1.0
+title: METREV experimental comparison and model-development diagnostics
 description: >-
-  Portable request and result contract for reporting an exact-unit, exact-condition
-  residual between a model prediction and an independently reviewed observation.
-  A residual is not a validation, calibration, or pass/fail conclusion.
-x-contract-version: 1.0.0
+  Portable request and result contracts for strict independent comparison and
+  provisional model-development diagnostics. Development diagnostics may use
+  source-traced literature observations pending human review; they are not
+  evidence acceptance, calibration conclusions, independent validation, or a
+  pass/fail assessment.
+x-contract-version: 1.1.0
 x-canonical-owner: bioelectro-copilot-contracts/contracts/evaluation/experimental-comparison.schema.yaml
 $ref: '#/$defs/ComparisonRequest'
 $defs:
@@ -237,3 +239,99 @@ $defs:
     oneOf:
       - $ref: '#/$defs/BlockedResult'
       - $ref: '#/$defs/ResidualResult'
+
+  DevelopmentBlockedResult:
+    type: object
+    additionalProperties: false
+    required: [scope, status, reason_codes, assessment_status]
+    properties:
+      scope:
+        const: model_development
+      status:
+        const: blocked
+      reason_codes:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/$defs/ComparisonReasonCode'
+      assessment_status:
+        const: not_assessed
+
+  DevelopmentResidualResult:
+    type: object
+    additionalProperties: false
+    required:
+      - scope
+      - status
+      - reason_codes
+      - assessment_status
+      - source_review_status
+      - dataset_role
+      - model_version
+      - model_run_ref
+      - prediction_source_ref
+      - observation_id
+      - observation_source_ref
+      - metric_key
+      - unit
+      - predicted_value
+      - observed_value
+      - signed_residual
+      - absolute_error
+      - interpretation
+    properties:
+      scope:
+        const: model_development
+      status:
+        const: provisional_residual_computed
+      reason_codes:
+        type: array
+        maxItems: 0
+        items:
+          $ref: '#/$defs/ComparisonReasonCode'
+      assessment_status:
+        const: development_only
+      source_review_status:
+        enum: [pending, approved]
+      dataset_role:
+        enum: [independent_validation, calibration, training, unknown]
+      model_version:
+        type: string
+        minLength: 1
+      model_run_ref:
+        type: string
+        minLength: 1
+      prediction_source_ref:
+        type: string
+        minLength: 1
+      observation_id:
+        type: string
+        minLength: 1
+      observation_source_ref:
+        type: string
+        minLength: 1
+      metric_key:
+        type: string
+        minLength: 1
+      unit:
+        type: string
+        minLength: 1
+      predicted_value:
+        type: number
+      observed_value:
+        type: number
+      signed_residual:
+        type: number
+      absolute_error:
+        type: number
+        minimum: 0
+      coordinate:
+        $ref: '#/$defs/ComparisonCoordinate'
+      interpretation:
+        type: string
+        minLength: 1
+
+  DevelopmentComparisonResult:
+    oneOf:
+      - $ref: '#/$defs/DevelopmentBlockedResult'
+      - $ref: '#/$defs/DevelopmentResidualResult'

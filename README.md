@@ -40,6 +40,8 @@ All solver observations and series are marked as modeled outputs. MFC electrical
 
 The experimental comparison helper computes a residual only when an observation is marked approved with reviewer/time metadata, assigned to an independent validation dataset, and manually assessed as condition-matched with the same metric key, unit, and coordinate. It checks those supplied assertions; it does not authenticate the reviewer or independently verify the source. It does not convert units, choose acceptance thresholds, or return a pass/fail or validation conclusion. Candidate evidence, assumptions/defaults, test fixtures, calibration/training data, and incomplete condition matches are blocked.
 
+Model development uses a separate provisional comparison path: source-traced literature or measured observations may be compared while source review is pending when the metric, unit, coordinate, and operating-condition match are explicit. The result is tagged `development_only`, carries the source-review and dataset-role state, and cannot be used as accepted evidence or described as independent validation. Human review is not a prerequisite to model formulation, implementation, numerical verification, or these provisional development diagnostics. `insufficient_data` applies to a specific run whose selected model lacks critical inputs; it does not block building or reproducing a model from a published study case.
+
 The solver permits at most 2,000 integration steps and emits at most 200 points per series. Plots must compare like units; sampled curves are model output, not experimental observations. A validation test passing proves the tested contract or numerical invariant only, not agreement with an independent experiment.
 
 ## Inputs and results

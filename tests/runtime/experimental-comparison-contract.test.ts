@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  developmentComparisonBlockedResultSchema,
+  developmentComparisonResidualResultSchema,
   experimentalComparisonBlockedResultSchema,
   experimentalComparisonCoordinateSchema,
   experimentalComparisonReasonSchema,
@@ -59,13 +61,17 @@ describe('experimental comparison contract reconciliation', () => {
       'https://json-schema.org/draft/2020-12/schema',
     );
     expect(contract.$id).toBe(
-      'urn:metrev:contracts:evaluation:experimental-comparison:1.0.0',
+      'urn:metrev:contracts:evaluation:experimental-comparison:1.1.0',
     );
-    expect(contract['x-contract-version']).toBe('1.0.0');
+    expect(contract['x-contract-version']).toBe('1.1.0');
     expect(contract.$ref).toBe('#/$defs/ComparisonRequest');
     expect(contract.$defs.ComparisonResult.oneOf).toEqual([
       { $ref: '#/$defs/BlockedResult' },
       { $ref: '#/$defs/ResidualResult' },
+    ]);
+    expect(contract.$defs.DevelopmentComparisonResult.oneOf).toEqual([
+      { $ref: '#/$defs/DevelopmentBlockedResult' },
+      { $ref: '#/$defs/DevelopmentResidualResult' },
     ]);
     expect(
       contract.$defs.BlockedResult.properties?.assessment_status.const,
@@ -83,6 +89,8 @@ describe('experimental comparison contract reconciliation', () => {
       ['ComparisonRequest', experimentalComparisonRequestSchema],
       ['BlockedResult', experimentalComparisonBlockedResultSchema],
       ['ResidualResult', experimentalComparisonResidualResultSchema],
+      ['DevelopmentBlockedResult', developmentComparisonBlockedResultSchema],
+      ['DevelopmentResidualResult', developmentComparisonResidualResultSchema],
     ] as const;
 
     for (const [contractName, runtimeSchema] of schemaPairs) {
@@ -133,6 +141,12 @@ describe('experimental comparison contract reconciliation', () => {
     const residualShape = getObjectShape(
       experimentalComparisonResidualResultSchema,
     );
+    const developmentBlockedShape = getObjectShape(
+      developmentComparisonBlockedResultSchema,
+    );
+    const developmentResidualShape = getObjectShape(
+      developmentComparisonResidualResultSchema,
+    );
     const definitions = contract.$defs;
 
     expect(definitions.ModeledPrediction.properties?.source_kind.const).toBe(
@@ -150,6 +164,18 @@ describe('experimental comparison contract reconciliation', () => {
     expect(definitions.ResidualResult.properties?.assessment_status.const).toBe(
       getLiteralValue(residualShape.assessment_status),
     );
+    expect(definitions.DevelopmentBlockedResult.properties?.status.const).toBe(
+      getLiteralValue(developmentBlockedShape.status),
+    );
+    expect(
+      definitions.DevelopmentBlockedResult.properties?.assessment_status.const,
+    ).toBe(getLiteralValue(developmentBlockedShape.assessment_status));
+    expect(definitions.DevelopmentResidualResult.properties?.status.const).toBe(
+      getLiteralValue(developmentResidualShape.status),
+    );
+    expect(
+      definitions.DevelopmentResidualResult.properties?.assessment_status.const,
+    ).toBe(getLiteralValue(developmentResidualShape.assessment_status));
   });
 
   it('records the conditional approval and condition-match requirements', () => {
@@ -184,6 +210,15 @@ describe('experimental comparison contract reconciliation', () => {
       contract_source: `${contractPath}#/$defs/ComparisonRequest | #/$defs/ComparisonResult`,
       runtime_path:
         'packages/domain-contracts/src/experimental-validation.ts#experimentalComparisonRequestSchema | #experimentalComparisonResultSchema',
+    });
+    expect(
+      runtimeCanonicalReconciliationMatrix.find(
+        (entry) => entry.concern === 'experimental_comparison_development',
+      ),
+    ).toMatchObject({
+      contract_source: `${contractPath}#/$defs/ComparisonRequest | #/$defs/DevelopmentComparisonResult`,
+      runtime_path:
+        'packages/domain-contracts/src/experimental-validation.ts#experimentalComparisonRequestSchema | #developmentComparisonResultSchema',
     });
   });
 });
