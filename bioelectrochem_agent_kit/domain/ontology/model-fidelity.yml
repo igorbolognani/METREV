@@ -1,0 +1,656 @@
+version: 1
+scope: MFC, MEC, wastewater treatment, and electrochemical biosensing; research profiles describe requirements and do not imply an implemented solver.
+axes:
+  spatial_dimension:
+    0: Lumped states with no spatial coordinate; time dependence may still be resolved.
+    1: One declared spatial coordinate and corresponding boundary conditions.
+    2: Two declared spatial coordinates; geometry and transport directions must be stated.
+    3: Three declared spatial coordinates; 4D denotes 3D space evolving in time.
+  scales:
+    macro: Reactor, chamber, module, stack, and process boundaries.
+    micro: Electrode pores, biofilm thickness, and local transport/reaction domains.
+    nano: Catalyst, surface, and interfacial structure; cannot be inferred from bulk material labels.
+  coupling_rule: A multiscale claim requires a documented mapping between resolved domains, effective properties, and boundary fluxes; naming several scales does not provide this mapping.
+  parameter_rule: Every entered quantitative property carries value, unit, source_kind, and source_ref. No catalog value supplies a case parameter.
+  evidence_rule: DOI references support formulation choices only; they do not validate METREV code, furnish defaults, or establish universal applicability.
+fidelities:
+  - id: coupled-0d-dae-v1
+    title: Lumped reactor, transient 0D
+    spatial_dimension: 0
+    temporal: true
+    scales: [macro]
+    status: executable
+    supports:
+      [
+        mixed-flow or closed-batch inventories,
+        COD and electroactive biomass,
+        anode/cathode pH,
+        cathode oxygen transfer,
+        Butler-Volmer charge transfer,
+        electrolyte/separator/contact resistance,
+        MFC load line,
+        MEC applied-voltage and gross/captured hydrogen accounting,
+      ]
+    excludes:
+      [
+        spatial gradients,
+        biofilm thickness,
+        pore transport,
+        thermal fields,
+        multiphase gas flow,
+        stack networks,
+        calibration,
+        probabilistic uncertainty,
+      ]
+    required_model_groups:
+      [geometry, materials, operation, biology, electrochemistry]
+    required_component_parameters: []
+    required_spatial_inputs: []
+    references:
+      [
+        10.1016/j.biortech.2010.06.156,
+        10.1016/j.jpowsour.2009.06.101,
+        10.3182/20110828-6-IT-1002.01636,
+      ]
+  - id: biofilm-1d-direct-transfer-research-v1
+    title: Biofilm depth and direct electron transfer, 1D micro
+    spatial_dimension: 1
+    temporal: true
+    scales: [micro]
+    status: research_profile_only
+    coordinates: [biofilm_depth]
+    phenomena:
+      [
+        substrate_and_ion_diffusion,
+        biomass_growth_and_decay,
+        local_pH,
+        biofilm_electron_conduction,
+        cell_to_matrix_transfer,
+        electrode_charge_transfer,
+      ]
+    required_model_groups:
+      [
+        anode_geometry,
+        biofilm_transport,
+        biofilm_kinetics,
+        electron_transfer,
+        electrode_boundary,
+        electrolyte_boundary,
+        mesh_and_convergence,
+      ]
+    required_component_parameters:
+      [
+        operational_biology.biofilm_thickness_m,
+        operational_biology.effective_substrate_diffusivity_m2_s,
+        operational_biology.biofilm_conductivity_s_m,
+        anode_biofilm_support.porosity,
+        anode_biofilm_support.specific_surface_area_m2_m3,
+      ]
+    required_spatial_inputs:
+      [
+        biofilm-depth coordinate and physical thickness,
+        'substrate, ion, and potential boundary conditions at liquid and electrode interfaces',
+        'mesh element count, refinement study, and residual convergence criterion',
+      ]
+    references:
+      [
+        10.1002/bit.21533,
+        10.1016/j.watres.2007.04.009,
+        10.1016/j.bioelechem.2015.03.010,
+      ]
+    limitations:
+      [
+        A measured bulk conductivity or anode area is not a substitute for local conductivity,
+        thickness,
+        porosity,
+        or boundary fluxes.,
+      ]
+  - id: biofilm-2d-electrode-research-v1
+    title: Coupled liquid and spatial biofilm, 2D macro-micro
+    spatial_dimension: 2
+    temporal: true
+    scales: [macro, micro]
+    status: research_profile_only
+    coordinates: [electrode_plane, biofilm_depth]
+    phenomena:
+      [
+        liquid_convection,
+        substrate_and_ion_transport,
+        charge_balance,
+        pH_gradient,
+        spatial_biomass,
+        local_current_distribution,
+      ]
+    required_model_groups:
+      [
+        reactor_geometry,
+        flow_boundary,
+        electrode_geometry,
+        biofilm_geometry,
+        species_transport,
+        ionic_migration,
+        kinetics,
+        charge_transfer,
+        boundary_conditions,
+        mesh_and_convergence,
+      ]
+    required_component_parameters:
+      [
+        reactor_architecture.reactor_length_m,
+        reactor_architecture.reactor_width_m,
+        anode_biofilm_support.thickness_m,
+        anode_biofilm_support.porosity,
+        operational_biology.effective_substrate_diffusivity_m2_s,
+        operational_biology.biofilm_conductivity_s_m,
+      ]
+    required_spatial_inputs:
+      [
+        two declared coordinates and resolved phase geometry,
+        'inlet, outlet, electrode, and liquid/biofilm interface conditions',
+        'mesh count, mesh-refinement comparison, and nonlinear convergence criteria',
+      ]
+    references: [10.1016/j.bioelechem.2009.04.009, 10.1016/j.watres.2007.04.009]
+    limitations:
+      [
+        Published 2D formulations make explicit assumptions about microbial guilds,
+        electron-transfer mechanism,
+        gas,
+        pH,
+        and supporting electrolyte; these assumptions are case-specific.,
+      ]
+  - id: cell-3d-multiphysics-research-v1
+    title: Cell-scale coupled transport and electric fields, 3D macro-micro
+    spatial_dimension: 3
+    temporal: true
+    scales: [macro, micro]
+    status: research_profile_only
+    coordinates: [reactor_length, reactor_width, reactor_height]
+    phenomena:
+      [
+        hydrodynamics,
+        convection_diffusion,
+        ionic_and_electronic_charge,
+        biofilm_growth,
+        local_electrochemical_kinetics,
+        gas_or_species_boundary_when_applicable,
+      ]
+    required_model_groups:
+      [
+        three_dimensional_geometry,
+        inlet_outlet_and_wall_boundaries,
+        fluid_properties,
+        species_properties,
+        electrode_and_biofilm_fields,
+        electrochemical_kinetics,
+        material_fields,
+        mesh_independence,
+        solver_convergence,
+        independent_comparison,
+      ]
+    required_component_parameters:
+      [
+        reactor_architecture.reactor_length_m,
+        reactor_architecture.reactor_width_m,
+        reactor_architecture.reactor_height_m,
+        reactor_architecture.electrode_gap_m,
+        reactor_architecture.liquid_flow_m3_s,
+        anode_biofilm_support.solid_conductivity_s_m,
+        anode_biofilm_support.porosity,
+        cathode_catalyst_support.effective_diffusivity_m2_s,
+        membrane_or_separator.ionic_conductivity_s_m,
+        operational_biology.effective_substrate_diffusivity_m2_s,
+      ]
+    required_spatial_inputs:
+      [
+        three declared spatial coordinates and fluid/solid/biofilm domain geometry,
+        'inlet, outlet, wall, electrode, and product boundary conditions',
+        'mesh independence, solver convergence, and condition-matched comparison observations',
+      ]
+    references:
+      [
+        10.1016/j.bej.2020.107714,
+        10.1016/j.jece.2021.105476,
+        10.1016/j.camwa.2019.11.019,
+        10.1016/j.jpowsour.2020.229432,
+      ]
+    limitations:
+      [
+        3D is spatial resolution,
+        not a level of predictive accuracy. Mesh,
+        boundary conditions,
+        constitutive laws,
+        solver verification,
+        and condition-matched observations remain required.,
+      ]
+  - id: stack-network-macro-research-v1
+    title: Cell network and stack manifolds, macro
+    spatial_dimension: 0
+    temporal: true
+    scales: [macro]
+    status: research_profile_only
+    phenomena:
+      [
+        cell_to_cell_electrical_network,
+        series_parallel_topology,
+        manifold_flow_distribution,
+        shunt_paths,
+        auxiliary_loads,
+        unit_variation,
+      ]
+    required_model_groups:
+      [
+        cell_count,
+        electrical_topology,
+        per_cell_parameters,
+        manifold_geometry,
+        flow_distribution,
+        shunt_and_contact_resistance,
+        auxiliaries,
+        module_observations,
+      ]
+    required_component_parameters:
+      [
+        reactor_architecture.cell_count,
+        electrical_interconnect_and_sealing.contact_resistance_ohm,
+        balance_of_plant.recirculation_flow_m3_s,
+        balance_of_plant.auxiliary_power_w,
+      ]
+    required_spatial_inputs:
+      [
+        explicit per-cell electrical and hydraulic connection graph,
+        per-cell parameters or a source-backed distribution model,
+        measured cell and manifold flows plus auxiliary-load accounting,
+      ]
+    references: [10.1016/j.jenvman.2018.03.007, 10.1186/s13068-019-1368-0]
+    limitations:
+      [
+        A stack is a network of cells,
+        not a higher spatial dimension; independent cell connection schemes in experiments must not be relabeled as a single electrical series stack.,
+      ]
+  - id: porous-electrode-micro-3d-research-v1
+    title: Porous electrode and attached biofilm, 3D micro
+    spatial_dimension: 3
+    temporal: true
+    scales: [micro]
+    status: research_profile_only
+    coordinates: [pore_length, pore_width, pore_depth]
+    phenomena:
+      [
+        pore_solution_transport,
+        spatial_biofilm_growth,
+        substrate_limitation,
+        local_electroactivity,
+        effective_porosity_and_tortuosity,
+      ]
+    required_model_groups:
+      [
+        pore_or_fiber_geometry,
+        pore_distribution,
+        porosity,
+        tortuosity,
+        effective_diffusivity,
+        wetting_and_flow,
+        biofilm_properties,
+        local_kinetics,
+        upscaling_map,
+      ]
+    required_component_parameters:
+      [
+        anode_biofilm_support.mean_pore_diameter_m,
+        anode_biofilm_support.porosity,
+        anode_biofilm_support.tortuosity,
+        anode_biofilm_support.specific_surface_area_m2_m3,
+        operational_biology.biofilm_thickness_m,
+        operational_biology.effective_substrate_diffusivity_m2_s,
+        operational_biology.biofilm_conductivity_s_m,
+      ]
+    required_spatial_inputs:
+      [
+        resolved or imaged pore/fiber geometry and wetting state,
+        local flow and species/electron boundary conditions,
+        mesh convergence and documented local-to-electrode upscaling map,
+      ]
+    references:
+      [
+        10.1016/j.scitotenv.2023.165448,
+        10.1021/acsestwater.4c00849,
+        10.1016/j.electacta.2026.148494,
+      ]
+    limitations:
+      [
+        Nominal projected area cannot stand in for pore-scale area or local accessibility; electrode enhancement is not equivalent to a uniform increase in reaction area.,
+      ]
+  - id: electrode-interface-nano-research-v1
+    title: Catalyst and electrode interface, nano
+    spatial_dimension: 0
+    temporal: false
+    scales: [nano]
+    status: research_profile_only
+    phenomena:
+      [
+        surface_composition,
+        active_site_density,
+        catalyst_loading,
+        interfacial_charge_transfer,
+        local_wetting_and_adsorption,
+      ]
+    required_model_groups:
+      [
+        material_identity_and_batch,
+        particle_or_feature_size,
+        electrochemically_active_surface_area,
+        catalyst_loading,
+        interfacial_kinetics,
+        electrolyte_and_reference_electrode,
+        electrochemical_protocol,
+      ]
+    required_component_parameters:
+      [
+        cathode_catalyst_support.catalyst_feature_size_m,
+        cathode_catalyst_support.catalyst_loading_kg_m2,
+        cathode_catalyst_support.electroactive_area_factor,
+        cathode_catalyst_support.exchange_current_density_a_m2,
+        anode_biofilm_support.roughness_factor,
+      ]
+    required_spatial_inputs:
+      [
+        'material identity, synthesis batch, and nano/microstructure measurement method',
+        electrochemically active surface area and reference-electrode protocol,
+        'electrolyte, pH, potential window, and condition-matched kinetic data',
+      ]
+    references:
+      [
+        10.1016/j.electacta.2018.01.118,
+        10.1021/nn402103q,
+        10.1002/elsa.202000002,
+      ]
+    limitations:
+      [
+        These materials studies do not establish a universal nanoscale solver. Bulk material family and fitted exchange-current density do not resolve atomic structure,
+        active sites,
+        adsorption,
+        or a validated nanoscale mechanism.,
+      ]
+component_parameter_groups:
+  reactor_architecture:
+    [
+      anode_chamber_volume_m3,
+      cathode_chamber_volume_m3,
+      reactor_length_m,
+      reactor_width_m,
+      reactor_height_m,
+      electrode_gap_m,
+      liquid_flow_m3_s,
+      pressure_drop_pa,
+      cell_count,
+    ]
+  anode_biofilm_support:
+    [
+      projected_area_m2,
+      electroactive_area_factor,
+      thickness_m,
+      porosity,
+      mean_pore_diameter_m,
+      specific_surface_area_m2_m3,
+      solid_conductivity_s_m,
+      tortuosity,
+      roughness_factor,
+      wetting_contact_angle_deg,
+    ]
+  cathode_catalyst_support:
+    [
+      projected_area_m2,
+      catalyst_loading_kg_m2,
+      electroactive_area_factor,
+      exchange_current_density_a_m2,
+      charge_transfer_coefficient,
+      effective_diffusivity_m2_s,
+      gas_transfer_coefficient_m_s,
+      catalyst_feature_size_m,
+      gas_pressure_pa,
+    ]
+  membrane_or_separator:
+    [
+      membrane_area_m2,
+      thickness_m,
+      ionic_conductivity_s_m,
+      effective_diffusivity_m2_s,
+      porosity,
+      tortuosity,
+      hydraulic_permeability_m2,
+      species_crossover_coefficient_m_s,
+    ]
+  electrical_interconnect_and_sealing:
+    [
+      contact_resistance_ohm,
+      collector_conductivity_s_m,
+      conductive_path_length_m,
+      collector_cross_section_m2,
+      area_specific_contact_resistance_ohm_m2,
+      leakage_rate_m3_s,
+    ]
+  balance_of_plant:
+    [
+      recirculation_flow_m3_s,
+      pump_pressure_rise_pa,
+      pump_efficiency,
+      auxiliary_power_w,
+      gas_capture_fraction,
+      gas_collection_pressure_pa,
+      dosing_flow_m3_s,
+    ]
+  sensors_and_analytics:
+    [
+      working_electrode_area_m2,
+      response_time_s,
+      noise_standard_deviation_a,
+      drift_a_per_day,
+      measurement_interval_s,
+      calibration_r2,
+      replicate_count,
+    ]
+  operational_biology:
+    [
+      biofilm_thickness_m,
+      biomass_density_kg_m3,
+      maximum_specific_cod_uptake_kg_cod_kg_biomass_s,
+      half_saturation_cod_kg_m3,
+      biomass_yield_kg_biomass_kg_cod,
+      decay_rate_s_inv,
+      effective_substrate_diffusivity_m2_s,
+      biofilm_conductivity_s_m,
+      buffer_capacity_mol_m3_ph,
+    ]
+component_parameter_catalog:
+  anode_chamber_volume_m3:
+    { unit: m3, scales: [macro], purpose: compartment inventory }
+  cathode_chamber_volume_m3:
+    { unit: m3, scales: [macro], purpose: compartment inventory }
+  reactor_length_m: { unit: m, scales: [macro], purpose: x-domain geometry }
+  reactor_width_m: { unit: m, scales: [macro], purpose: y-domain geometry }
+  reactor_height_m: { unit: m, scales: [macro], purpose: z-domain geometry }
+  electrode_gap_m: { unit: m, scales: [macro], purpose: ionic path length }
+  liquid_flow_m3_s:
+    { unit: m3/s, scales: [macro], purpose: inlet/outlet boundary }
+  pressure_drop_pa: { unit: Pa, scales: [macro], purpose: hydraulic loss }
+  cell_count: { unit: '1', scales: [macro], purpose: network cardinality }
+  projected_area_m2:
+    { unit: m2, scales: [macro], purpose: projected electrode area }
+  electroactive_area_factor:
+    {
+      unit: '1',
+      scales: [macro, micro],
+      purpose: projected-to-effective area mapping,
+    }
+  thickness_m:
+    { unit: m, scales: [macro, micro], purpose: declared layer thickness }
+  porosity:
+    { unit: '1', scales: [micro], purpose: pore volume fraction, range: [0, 1] }
+  mean_pore_diameter_m:
+    { unit: m, scales: [micro], purpose: pore transport length }
+  specific_surface_area_m2_m3:
+    { unit: m2/m3, scales: [micro], purpose: internal area per porous volume }
+  solid_conductivity_s_m:
+    { unit: S/m, scales: [macro, micro], purpose: solid-phase conduction }
+  tortuosity:
+    {
+      unit: '1',
+      scales: [micro],
+      purpose: effective path correction,
+      minimum: 1,
+    }
+  roughness_factor:
+    {
+      unit: '1',
+      scales: [micro, nano],
+      purpose: measured interface roughness mapping,
+    }
+  wetting_contact_angle_deg:
+    {
+      unit: degree,
+      scales: [micro, nano],
+      purpose: wettability boundary,
+      range: [0, 180],
+    }
+  catalyst_loading_kg_m2:
+    {
+      unit: kg/m2,
+      scales: [micro, nano],
+      purpose: catalyst mass per projected area,
+    }
+  exchange_current_density_a_m2:
+    {
+      unit: A/m2,
+      scales: [macro, micro, nano],
+      purpose: protocol-specific charge-transfer law,
+    }
+  charge_transfer_coefficient:
+    {
+      unit: '1',
+      scales: [macro, micro, nano],
+      purpose: kinetic coefficient,
+      range: [0, 1],
+    }
+  effective_diffusivity_m2_s:
+    {
+      unit: m2/s,
+      scales: [micro],
+      purpose: species-specific effective transport,
+    }
+  gas_transfer_coefficient_m_s:
+    { unit: m/s, scales: [macro, micro], purpose: gas/liquid transfer boundary }
+  catalyst_feature_size_m:
+    { unit: m, scales: [nano], purpose: measured particle or feature size }
+  gas_pressure_pa:
+    { unit: Pa, scales: [macro], purpose: gas-side operating boundary }
+  membrane_area_m2:
+    { unit: m2, scales: [macro], purpose: membrane transport area }
+  ionic_conductivity_s_m:
+    { unit: S/m, scales: [macro, micro], purpose: ionic charge transport }
+  hydraulic_permeability_m2:
+    { unit: m2, scales: [micro], purpose: pressure-driven liquid transport }
+  species_crossover_coefficient_m_s:
+    { unit: m/s, scales: [macro, micro], purpose: species-specific crossover }
+  contact_resistance_ohm:
+    { unit: ohm, scales: [macro], purpose: lumped electrical contact loss }
+  collector_conductivity_s_m:
+    { unit: S/m, scales: [macro], purpose: current-collector solid conduction }
+  conductive_path_length_m:
+    { unit: m, scales: [macro], purpose: current-collector path length }
+  collector_cross_section_m2:
+    { unit: m2, scales: [macro], purpose: current-collector conducting section }
+  area_specific_contact_resistance_ohm_m2:
+    {
+      unit: ohm*m2,
+      scales: [macro, micro],
+      purpose: area-normalized interface resistance,
+    }
+  leakage_rate_m3_s:
+    {
+      unit: m3/s,
+      scales: [macro],
+      purpose: measured leakage boundary with phase stated,
+    }
+  recirculation_flow_m3_s:
+    { unit: m3/s, scales: [macro], purpose: recirculation boundary }
+  pump_pressure_rise_pa: { unit: Pa, scales: [macro], purpose: pump head }
+  pump_efficiency:
+    {
+      unit: '1',
+      scales: [macro],
+      purpose: electrical-to-hydraulic efficiency,
+      range: [0, 1],
+    }
+  auxiliary_power_w:
+    { unit: W, scales: [macro], purpose: explicit external electrical load }
+  gas_capture_fraction:
+    {
+      unit: '1',
+      scales: [macro],
+      purpose: declared product capture boundary,
+      range: [0, 1],
+    }
+  gas_collection_pressure_pa:
+    { unit: Pa, scales: [macro], purpose: product collection boundary }
+  dosing_flow_m3_s:
+    { unit: m3/s, scales: [macro], purpose: chemical addition boundary }
+  working_electrode_area_m2:
+    { unit: m2, scales: [macro, micro], purpose: sensor electrode area }
+  response_time_s:
+    { unit: s, scales: [macro], purpose: sensor response descriptor }
+  noise_standard_deviation_a:
+    { unit: A, scales: [macro], purpose: current measurement noise }
+  drift_a_per_day:
+    { unit: A/day, scales: [macro], purpose: time-dependent signal drift }
+  measurement_interval_s:
+    { unit: s, scales: [macro], purpose: telemetry sampling interval }
+  calibration_r2:
+    { unit: '1', scales: [macro], purpose: calibration fit diagnostic }
+  replicate_count:
+    { unit: '1', scales: [macro], purpose: replicate observation count }
+  biofilm_thickness_m:
+    { unit: m, scales: [micro], purpose: spatial biofilm depth }
+  biomass_density_kg_m3:
+    {
+      unit: kg/m3,
+      scales: [macro, micro],
+      purpose: compartment or local biomass density,
+    }
+  maximum_specific_cod_uptake_kg_cod_kg_biomass_s:
+    {
+      unit: 'kgCOD/(kgVSS*s)',
+      scales: [macro, micro],
+      purpose: population-specific uptake kinetics,
+    }
+  half_saturation_cod_kg_m3:
+    {
+      unit: 'kgCOD/m3',
+      scales: [macro, micro],
+      purpose: population-specific substrate response,
+    }
+  biomass_yield_kg_biomass_kg_cod:
+    {
+      unit: 'kgVSS/kgCOD',
+      scales: [macro, micro],
+      purpose: condition-specific biomass yield,
+    }
+  decay_rate_s_inv:
+    {
+      unit: '1/s',
+      scales: [macro, micro],
+      purpose: population-specific decay rate,
+    }
+  effective_substrate_diffusivity_m2_s:
+    {
+      unit: m2/s,
+      scales: [micro],
+      purpose: substrate-specific biofilm diffusion,
+    }
+  biofilm_conductivity_s_m:
+    { unit: S/m, scales: [micro], purpose: local biofilm electron conduction }
+  buffer_capacity_mol_m3_ph:
+    {
+      unit: 'mol/(m3*pH)',
+      scales: [macro, micro],
+      purpose: declared buffered liquid or biofilm domain,
+    }

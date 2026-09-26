@@ -216,6 +216,51 @@ describe('case intake preset catalog', () => {
     );
   });
 
+  it('serializes the requested spatial fidelity and component parameter provenance', () => {
+    const payload = buildCaseInputFromFormValues(
+      {
+        ...focusedWastewaterMfcPreset.formValues,
+        mechanisticModelJson: JSON.stringify({
+          model_fidelity_id: 'biofilm-1d-direct-transfer-research-v1',
+        }),
+        componentModelParametersJson: JSON.stringify({
+          operational_biology: {
+            biofilm_thickness_m: {
+              value: 0.0002,
+              unit: 'm',
+              source_kind: 'assumption',
+              source_ref: 'design-note:biofilm-thickness',
+            },
+          },
+        }),
+      },
+      focusedWastewaterMfcPreset,
+    );
+
+    expect(payload.mechanistic_model).toMatchObject({
+      system_type: 'MFC',
+      model_fidelity_id: 'biofilm-1d-direct-transfer-research-v1',
+    });
+    expect(payload.stack_blocks?.component_model_parameters).toMatchObject({
+      operational_biology: {
+        biofilm_thickness_m: {
+          value: 0.0002,
+          unit: 'm',
+          source_kind: 'assumption',
+          source_ref: 'design-note:biofilm-thickness',
+        },
+      },
+    });
+    const normalized = normalizeCaseInput(rawCaseInputSchema.parse(payload));
+    expect(
+      normalized.stack_blocks.component_model_parameters?.operational_biology
+        ?.biofilm_thickness_m,
+    ).toMatchObject({
+      value: 0.0002,
+      source_ref: 'design-note:biofilm-thickness',
+    });
+  });
+
   it('rejects malformed advanced JSON before the review-submit step', () => {
     expect(
       validateAdvancedInputJson({

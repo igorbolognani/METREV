@@ -126,6 +126,7 @@ export interface CaseIntakeFormValues {
   evidenceSummary: string;
   evidenceStrength: EvidenceRecordInput['strength_level'];
   mechanisticModelJson: string;
+  componentModelParametersJson: string;
   biosensorConfigurationJson: string;
   wastewaterQualityJson: string;
   parameterModes?: CaseIntakeParameterModeMap;
@@ -197,6 +198,7 @@ export const defaultCaseIntakeFormValues: CaseIntakeFormValues = {
   evidenceSummary: '',
   evidenceStrength: 'moderate',
   mechanisticModelJson: '',
+  componentModelParametersJson: '',
   biosensorConfigurationJson: '',
   wastewaterQualityJson: '',
   parameterModes: {},
@@ -225,19 +227,21 @@ function splitCommaSeparated(value: string): string[] {
 
 export type AdvancedInputJsonField =
   | 'mechanisticModelJson'
+  | 'componentModelParametersJson'
   | 'biosensorConfigurationJson'
   | 'wastewaterQualityJson';
 
 export function validateAdvancedInputJson(
-  values: Pick<CaseIntakeFormValues, AdvancedInputJsonField>,
+  values: Partial<Pick<CaseIntakeFormValues, AdvancedInputJsonField>>,
 ): Partial<Record<AdvancedInputJsonField, string>> {
   const errors: Partial<Record<AdvancedInputJsonField, string>> = {};
   for (const field of [
     'mechanisticModelJson',
+    'componentModelParametersJson',
     'biosensorConfigurationJson',
     'wastewaterQualityJson',
   ] as const) {
-    const text = values[field].trim();
+    const text = (values[field] ?? '').trim();
     if (!text) continue;
     try {
       const parsed: unknown = JSON.parse(text);
@@ -1522,6 +1526,15 @@ export function hydrateCaseIntakeFormValues(
         presetPayload.stack_blocks?.reactor_architecture?.membrane_presence,
       ) ||
       readStringValue(presetPayload.technology_context?.membrane_presence),
+    componentModelParametersJson:
+      normalized.componentModelParametersJson ||
+      (presetPayload.stack_blocks?.component_model_parameters
+        ? JSON.stringify(
+            presetPayload.stack_blocks.component_model_parameters,
+            null,
+            2,
+          )
+        : ''),
     parameterModes,
   };
 }
@@ -1882,9 +1895,31 @@ export function buildCaseInputFromFormValues(
 
   const modelDraft = readJsonObject(values.mechanisticModelJson);
   if (modelDraft) {
-    rawInput.mechanistic_model = modelDraft as NonNullable<
-      RawCaseInput['mechanistic_model']
-    >;
+    const inferredSystemType =
+      values.technologyFamily === 'microbial_fuel_cell'
+        ? 'MFC'
+        : values.technologyFamily === 'microbial_electrolysis_cell'
+          ? 'MEC'
+          : undefined;
+    rawInput.mechanistic_model = {
+      ...rawInput.mechanistic_model,
+      ...modelDraft,
+      ...(!modelDraft.system_type &&
+      !rawInput.mechanistic_model?.system_type &&
+      inferredSystemType
+        ? { system_type: inferredSystemType }
+        : {}),
+    } as NonNullable<RawCaseInput['mechanistic_model']>;
+  }
+
+  const componentModelParameters = readJsonObject(
+    values.componentModelParametersJson,
+  );
+  if (componentModelParameters) {
+    rawInput.stack_blocks = {
+      ...(rawInput.stack_blocks ?? {}),
+      component_model_parameters: componentModelParameters,
+    };
   }
 
   const wastewaterQuality = readJsonObject(values.wastewaterQualityJson);

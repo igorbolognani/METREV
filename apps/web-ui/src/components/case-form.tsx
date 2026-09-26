@@ -16,6 +16,10 @@ import { CaseFormReviewSubmitStep } from '@/components/case-form/case-form-revie
 import { CaseFormStackDetailStep } from '@/components/case-form/case-form-stack-detail-step';
 import { CaseFormStepper } from '@/components/case-form/case-form-stepper';
 import { CaseFormSuppliersEvidenceStep } from '@/components/case-form/case-form-suppliers-evidence-step';
+import {
+  StackAssemblySvg,
+  stackAssemblySelectionFromForm,
+} from '@/components/modeling/stack-assembly-svg';
 import { Collapsible } from '@/components/ui/collapsible';
 import {
   WorkspaceDataCard,
@@ -1016,6 +1020,10 @@ export function CaseForm({ actorRole = 'VIEWER' }: { actorRole?: Role }) {
           </div>
 
           <div className="case-form-wizard-shell__workspace">
+            <StackAssemblySvg
+              onNavigate={setCurrentStep}
+              selection={stackAssemblySelectionFromForm(formValues)}
+            />
             {renderCurrentStep()}
 
             <div className="workspace-submit-row case-form-submit-row">

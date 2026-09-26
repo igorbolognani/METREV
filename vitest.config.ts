@@ -17,6 +17,12 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      '@metrev/electrochem-models/model-fidelity-catalog': fileURLToPath(
+        new URL(
+          './packages/electrochem-models/src/model-fidelity-catalog.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/electrochem-models': fileURLToPath(
         new URL('./packages/electrochem-models/src/index.ts', import.meta.url),
       ),

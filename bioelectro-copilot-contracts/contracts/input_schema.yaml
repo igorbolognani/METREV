@@ -91,6 +91,16 @@ field_groups:
   mechanistic_model:
     model_version: coupled-0d-dae-v1
     systems: [MFC, MEC]
+    model_fidelity_id:
+      values:
+        - coupled-0d-dae-v1
+        - biofilm-1d-direct-transfer-research-v1
+        - biofilm-2d-electrode-research-v1
+        - cell-3d-multiphysics-research-v1
+        - stack-network-macro-research-v1
+        - porous-electrode-micro-3d-research-v1
+        - electrode-interface-nano-research-v1
+      rule: Research-only selections block the 0D solver; they are never silently downgraded.
     parameter_contract:
       { value: number, unit: string, source_kind: string, source_ref: string }
     optional_parameter_fields: [uncertainty, uncertainty_unit]
@@ -133,6 +143,18 @@ field_groups:
         calibration_models: [linear, langmuir, michaelis_menten]
         currently_executable_transduction: amperometric
       operational_biology: object
+    component_model_parameters:
+      groups:
+        - reactor_architecture
+        - anode_biofilm_support
+        - cathode_catalyst_support
+        - membrane_or_separator
+        - electrical_interconnect_and_sealing
+        - balance_of_plant
+        - sensors_and_analytics
+        - operational_biology
+      values: scientific_parameter_contract
+      keys_and_units_owner: bioelectrochem_agent_kit/domain/ontology/model-fidelity.yml
   cross_cutting_layers:
     required_shape:
       technoeconomics: object

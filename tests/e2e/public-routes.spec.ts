@@ -75,6 +75,86 @@ async function openPublicRoute(
 }
 
 test.describe('public routes - desktop structure', () => {
+  test('modeling workbench builds the assembly, toggles components, and records a desktop review capture', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/modeling');
+
+    await expect(page.getByTestId('modeling-workbench')).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: 'Model the configured system at its declared scale.',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('region', {
+        name: 'Interactive fuel-cell stack assembly',
+      }),
+    ).toBeVisible();
+
+    await page.getByLabel('Technology').selectOption('MEC');
+    await page
+      .getByLabel('Cell / reactor architecture')
+      .selectOption('dual-chamber');
+    await page.getByLabel('Anode material').selectOption('carbon felt');
+    await page
+      .getByLabel('Cathode catalyst family')
+      .selectOption('activated carbon');
+    await page
+      .getByLabel('Membrane / separator')
+      .selectOption('cation exchange membrane');
+
+    await expect(
+      page.getByRole('button', { name: 'Anode: carbon felt' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', {
+        name: 'Membrane / separator: cation exchange membrane',
+      }),
+    ).toBeVisible();
+
+    await page.getByLabel('Membrane / separator').selectOption('membrane-free');
+    await expect(
+      page.getByRole('button', {
+        name: 'Membrane / separator: cation exchange membrane',
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        'The separator layer is removed because membrane presence is explicitly set to absent.',
+      ),
+    ).toBeVisible();
+
+    await page
+      .getByLabel('Model fidelity requested')
+      .selectOption('biofilm-1d-direct-transfer-research-v1');
+    await expect(page.getByTestId('selected-model-profile')).toContainText(
+      'Research profile · not executable',
+    );
+    const oneDimensionalProfile = page
+      .locator('.modeling-workbench__fidelity-card')
+      .filter({ hasText: 'biofilm-1d-direct-transfer-research-v1' });
+    await oneDimensionalProfile.locator('summary').click();
+    await expect(
+      oneDimensionalProfile.getByText(
+        'operational_biology.biofilm_thickness_m',
+      ),
+    ).toBeVisible();
+
+    const documentWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth,
+    );
+    expect(documentWidth).toBeLessThanOrEqual(1440);
+    mkdirSync(desktopCaptureDirectory, { recursive: true });
+    await page.screenshot({
+      path: resolve(desktopCaptureDirectory, 'desktop-modeling.png'),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  });
+
   test('overview hub exposes the six public lenses', async ({ page }) => {
     await page.goto('/');
 

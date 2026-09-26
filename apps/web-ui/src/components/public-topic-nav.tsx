@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
 import {
-    PUBLIC_TOPIC_PAGES,
-    getPublicTopicHref,
+  PUBLIC_TOPIC_PAGES,
+  getPublicTopicHref,
 } from '@/components/public-topic-content';
 
 void React;
@@ -36,6 +36,15 @@ export function PublicTopicNav() {
       </Link>
 
       <div className="public-route-nav__tabs">
+        <Link
+          aria-current={normalizedPathname === '/modeling' ? 'page' : undefined}
+          className={
+            normalizedPathname === '/modeling' ? 'is-active' : undefined
+          }
+          href="/modeling"
+        >
+          Modeling
+        </Link>
         {PUBLIC_TOPIC_PAGES.map((topic) => {
           const href = getPublicTopicHref(topic.slug);
           const isActive = normalizedPathname === href;

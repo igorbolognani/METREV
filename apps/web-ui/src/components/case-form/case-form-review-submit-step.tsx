@@ -7,6 +7,10 @@ import type {
   ResearchDecisionIngestionPreview,
 } from '@metrev/domain-contracts';
 import { BIOELECTROCHEMICAL_MODEL_PROFILES } from '@metrev/electrochem-models/model-catalog';
+import {
+  COMPONENT_MODEL_PARAMETER_GROUPS,
+  MODEL_FIDELITY_PROFILES,
+} from '@metrev/electrochem-models/model-fidelity-catalog';
 
 import type {
   AdvancedInputJsonField,
@@ -144,6 +148,10 @@ export function CaseFormReviewSubmitStep({
     formValues.mechanisticModelJson,
     'model_profile_id',
   );
+  const selectedModelFidelity = readJsonField(
+    formValues.mechanisticModelJson,
+    'model_fidelity_id',
+  );
   const selectedSensorProfile = readJsonField(
     formValues.biosensorConfigurationJson,
     'configuration_profile_id',
@@ -243,8 +251,118 @@ export function CaseFormReviewSubmitStep({
         </p>
         <section
           className="case-form-model-profiles"
-          aria-label="Model profile selectors"
+          aria-label="Model fidelity and profile selectors"
         >
+          <div className="case-form-model-profiles__fidelity">
+            <h4>Spatial and scale fidelity</h4>
+            <label className="case-form-model-profiles__field">
+              Requested model fidelity
+              <select
+                aria-label="Requested model fidelity"
+                disabled={!processSystem || !modelInputIsEditable}
+                onChange={(event) => {
+                  const updated = writeJsonField(
+                    formValues.mechanisticModelJson,
+                    'model_fidelity_id',
+                    event.target.value,
+                  );
+                  if (updated !== null)
+                    onFieldChange('mechanisticModelJson', updated);
+                }}
+                value={selectedModelFidelity}
+              >
+                <option value="">
+                  Leave the current 0D behavior unchanged
+                </option>
+                {MODEL_FIDELITY_PROFILES.filter((profile) =>
+                  processSystem
+                    ? profile.systems.includes(processSystem)
+                    : false,
+                ).map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.title} ·{' '}
+                    {profile.status === 'executable'
+                      ? 'executable'
+                      : 'research only'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted">
+              Spatial dimension, temporal resolution, and represented scale are
+              separate choices. Only the lumped 0D solver runs today; selecting
+              another fidelity records the requested model and returns{' '}
+              <em>insufficient data</em> instead of silently using 0D.
+            </p>
+            <ul
+              className="case-form-model-profiles__catalog"
+              aria-label="Model fidelity catalog"
+            >
+              {MODEL_FIDELITY_PROFILES.filter((profile) =>
+                processSystem ? profile.systems.includes(processSystem) : false,
+              ).map((profile) => (
+                <li key={profile.id}>
+                  <details>
+                    <summary>
+                      <strong>{profile.title}</strong>
+                      <span>
+                        {profile.spatialDimension}D spatial ·{' '}
+                        {profile.temporal ? 'transient' : 'steady'} ·{' '}
+                        {profile.scales.join(' + ')} scale ·{' '}
+                        {profile.status === 'executable'
+                          ? 'executable'
+                          : 'research profile only'}
+                      </span>
+                    </summary>
+                    <p>{profile.boundaryNote}</p>
+                    <p>{profile.limitation}</p>
+                    {profile.requiredComponentParameters.length > 0 ? (
+                      <div>
+                        <small>
+                          Required source-backed component properties
+                        </small>
+                        <ul>
+                          {profile.requiredComponentParameters.map((path) => {
+                            const [groupId, parameterId] = path.split('.', 2);
+                            const group = COMPONENT_MODEL_PARAMETER_GROUPS.find(
+                              (entry) => entry.id === groupId,
+                            );
+                            const property = group?.parameters.find(
+                              (entry) => entry.id === parameterId,
+                            );
+                            return (
+                              <li key={path}>
+                                <code>{path}</code>
+                                {property ? ` (${property.unit})` : ''}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {profile.requiredSpatialInputs.length > 0 ? (
+                      <div>
+                        <small>
+                          Additional numerical/experimental prerequisites
+                        </small>
+                        <ul>
+                          {profile.requiredSpatialInputs.map((entry) => (
+                            <li key={entry}>{entry}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {profile.referenceDois.length > 0 ? (
+                      <span>
+                        Formulation references (DOI):{' '}
+                        {profile.referenceDois.join('; ')}
+                      </span>
+                    ) : null}
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </div>
           <div>
             <h4>Executable reactor profile</h4>
             <label className="case-form-model-profiles__field">
@@ -351,6 +469,50 @@ export function CaseFormReviewSubmitStep({
             rows={8}
             value={formValues.mechanisticModelJson}
           />
+          <Textarea
+            className="workspace-form-field--wide"
+            error={advancedInputErrors.componentModelParametersJson}
+            hint="Optional, source-backed quantitative properties by stack block. Every value needs value, catalog unit, source_kind, and source_ref. Property names and expected units are listed below and checked before simulation."
+            label="Component geometry and material properties (JSON)"
+            onChange={(event) =>
+              onFieldChange('componentModelParametersJson', event.target.value)
+            }
+            placeholder={'{\n  "anode_biofilm_support": {}\n}'}
+            rows={8}
+            value={formValues.componentModelParametersJson}
+          />
+          <p className="muted workspace-form-field--wide">
+            Each property entry has the shape{' '}
+            <code>{'{ value, unit, source_kind, source_ref }'}</code>; supply
+            values from your own measurement, cited source, or explicit
+            assumption.
+          </p>
+          <details className="case-form-component-parameter-catalog">
+            <summary>
+              Browse the component property catalog (
+              {COMPONENT_MODEL_PARAMETER_GROUPS.length} stack blocks)
+            </summary>
+            <p className="muted">
+              Catalog entries describe fields and units; they are not
+              recommendations, defaults, or measured values.
+            </p>
+            {COMPONENT_MODEL_PARAMETER_GROUPS.map((group) => (
+              <details key={group.id}>
+                <summary>
+                  {group.title} · {group.parameters.length} properties
+                </summary>
+                <ul>
+                  {group.parameters.map((parameter) => (
+                    <li key={parameter.id}>
+                      <code>{parameter.id}</code> · {parameter.unit} ·{' '}
+                      {parameter.scales.join(' + ')} scale ·{' '}
+                      {parameter.spatialRole}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </details>
           <Textarea
             className="workspace-form-field--wide"
             error={advancedInputErrors.biosensorConfigurationJson}

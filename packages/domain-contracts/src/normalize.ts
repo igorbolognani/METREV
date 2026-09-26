@@ -10,6 +10,7 @@ import {
 
 import { loadContractDefaultsPolicy, loadDomainCaseTemplate } from './loaders';
 import {
+  componentModelParametersSchema,
   evidenceRecordSchema,
   normalizedCaseInputSchema,
   primaryObjectiveSchema,
@@ -731,6 +732,9 @@ export function normalizeCaseInput(input: RawCaseInput): NormalizedCaseInput {
           rawBiologyBlock.startup_note,
         ) ?? 'unknown',
     }),
+    component_model_parameters: componentModelParametersSchema
+      .optional()
+      .parse(rawStackBlocks.component_model_parameters),
   };
 
   const normalizedTrl = normalizeTrl(

@@ -15,6 +15,10 @@ import {
 } from '@metrev/domain-contracts';
 
 import { getBioelectrochemicalModelProfile } from './model-catalog';
+import {
+  getComponentModelParameterGroup,
+  getModelFidelityProfile,
+} from './model-fidelity-catalog';
 
 const FARADAY = 96485.33212;
 const GAS_CONSTANT = 8.314462618;
@@ -1181,6 +1185,173 @@ function biosensorIssues(sensor: BiosensorConfiguration): string[] {
   return [...new Set(issues)];
 }
 
+function componentModelParameterIssues(
+  values: NormalizedCaseInput['stack_blocks']['component_model_parameters'],
+): string[] {
+  const issues: string[] = [];
+  if (!values) return issues;
+
+  for (const [groupId, entries] of Object.entries(values)) {
+    if (!entries) continue;
+    const group = getComponentModelParameterGroup(groupId);
+    if (!group) {
+      issues.push(
+        `stack_blocks.component_model_parameters.${groupId} is not a recognized stack component group`,
+      );
+      continue;
+    }
+    for (const [parameterId, value] of Object.entries(entries)) {
+      const spec = group.parameters.find((entry) => entry.id === parameterId);
+      const path = `stack_blocks.component_model_parameters.${groupId}.${parameterId}`;
+      if (!spec) {
+        issues.push(`${path} is not in the component property catalog`);
+        continue;
+      }
+      if (value.unit !== spec.unit) {
+        issues.push(
+          `${path}.unit must be ${spec.unit}; received ${value.unit}`,
+        );
+      }
+      const numericIssue = getComponentParameterRangeIssue(
+        parameterId,
+        value.value,
+      );
+      if (numericIssue) issues.push(`${path}.value ${numericIssue}`);
+    }
+  }
+
+  return issues;
+}
+
+function getComponentParameterRangeIssue(
+  parameterId: string,
+  value: number,
+): string | undefined {
+  if (
+    [
+      'anode_chamber_volume_m3',
+      'cathode_chamber_volume_m3',
+      'reactor_length_m',
+      'reactor_width_m',
+      'reactor_height_m',
+      'electrode_gap_m',
+      'projected_area_m2',
+      'electroactive_area_factor',
+      'thickness_m',
+      'mean_pore_diameter_m',
+      'specific_surface_area_m2_m3',
+      'solid_conductivity_s_m',
+      'catalyst_loading_kg_m2',
+      'exchange_current_density_a_m2',
+      'effective_diffusivity_m2_s',
+      'gas_transfer_coefficient_m_s',
+      'catalyst_feature_size_m',
+      'membrane_area_m2',
+      'ionic_conductivity_s_m',
+      'hydraulic_permeability_m2',
+      'collector_conductivity_s_m',
+      'collector_cross_section_m2',
+      'area_specific_contact_resistance_ohm_m2',
+      'working_electrode_area_m2',
+      'response_time_s',
+      'measurement_interval_s',
+      'replicate_count',
+      'biofilm_thickness_m',
+      'biomass_density_kg_m3',
+      'maximum_specific_cod_uptake_kg_cod_kg_biomass_s',
+      'half_saturation_cod_kg_m3',
+      'biomass_yield_kg_biomass_kg_cod',
+      'effective_substrate_diffusivity_m2_s',
+      'biofilm_conductivity_s_m',
+    ].includes(parameterId) &&
+    value <= 0
+  ) {
+    return 'must be greater than zero';
+  }
+  if (
+    [
+      'liquid_flow_m3_s',
+      'pressure_drop_pa',
+      'gas_pressure_pa',
+      'contact_resistance_ohm',
+      'leakage_rate_m3_s',
+      'recirculation_flow_m3_s',
+      'pump_pressure_rise_pa',
+      'auxiliary_power_w',
+      'gas_collection_pressure_pa',
+      'dosing_flow_m3_s',
+      'noise_standard_deviation_a',
+      'buffer_capacity_mol_m3_ph',
+    ].includes(parameterId) &&
+    value < 0
+  ) {
+    return 'must be nonnegative';
+  }
+  if (
+    ['porosity', 'pump_efficiency', 'gas_capture_fraction'].includes(
+      parameterId,
+    ) &&
+    (value < 0 || value > 1)
+  ) {
+    return 'must be between 0 and 1';
+  }
+  if (
+    parameterId === 'charge_transfer_coefficient' &&
+    (value <= 0 || value >= 1)
+  ) {
+    return 'must be greater than 0 and less than 1';
+  }
+  if (parameterId === 'tortuosity' && value < 1) {
+    return 'must be at least 1';
+  }
+  if (parameterId === 'cell_count' && (!Number.isInteger(value) || value < 1)) {
+    return 'must be a positive integer';
+  }
+  if (
+    parameterId === 'wetting_contact_angle_deg' &&
+    (value < 0 || value > 180)
+  ) {
+    return 'must be between 0 and 180 degrees';
+  }
+  if (parameterId === 'calibration_r2' && (value < 0 || value > 1)) {
+    return 'must be between 0 and 1';
+  }
+  return undefined;
+}
+
+function modelFidelityIssues(
+  model: Pick<MechanisticModelInput, 'model_fidelity_id'> | undefined,
+  componentParameters: NormalizedCaseInput['stack_blocks']['component_model_parameters'],
+): string[] {
+  const fidelityId = model?.model_fidelity_id;
+  if (!fidelityId) return [];
+
+  const profile = getModelFidelityProfile(fidelityId);
+  if (!profile) {
+    return [`mechanistic_model.model_fidelity_id is unknown: ${fidelityId}`];
+  }
+  if (profile.status === 'executable') return [];
+
+  const issues = [
+    `mechanistic_model.model_fidelity_id=${profile.id} is a research profile only; METREV does not execute this spatial/scale formulation.`,
+  ];
+  for (const requiredPath of profile.requiredComponentParameters) {
+    const [groupId, parameterId] = requiredPath.split('.', 2);
+    const componentGroup = componentParameters?.[groupId] as
+      | Record<string, unknown>
+      | undefined;
+    if (!componentGroup?.[parameterId]) {
+      issues.push(
+        `stack_blocks.component_model_parameters.${requiredPath} is required by the selected research profile`,
+      );
+    }
+  }
+  for (const requiredInput of profile.requiredSpatialInputs) {
+    issues.push(`research profile prerequisite: ${requiredInput}`);
+  }
+  return issues;
+}
+
 function biosensorCurrent(sensor: BiosensorConfiguration): number {
   const concentration = sensor.concentration.value;
   if (sensor.calibration.model === 'linear') {
@@ -1678,6 +1849,16 @@ function buildSensitivityAnalysis(
 function simulateMechanisticCaseCore(
   normalizedCase: NormalizedCaseInput,
 ): MechanisticRun {
+  const componentParameters =
+    normalizedCase.stack_blocks.component_model_parameters;
+  const componentIssues = componentModelParameterIssues(componentParameters);
+  if (componentIssues.length > 0) {
+    return failedRun(
+      componentIssues,
+      'Component model parameters must use catalogued properties, compatible units, and explicit provenance.',
+    );
+  }
+
   const sensorDraft = normalizedCase.stack_blocks.sensors_and_analytics
     .biosensor as BiosensorConfigurationDraft | undefined;
   const sensorResult = sensorDraft
@@ -1732,6 +1913,17 @@ function simulateMechanisticCaseCore(
     return failedRun(
       ['technology_family must be explicitly supplied before model execution'],
       'The system type came from a template default and cannot select a mechanistic model.',
+    );
+  }
+
+  const fidelityIssues = modelFidelityIssues(
+    normalizedCase.mechanistic_model,
+    componentParameters,
+  );
+  if (fidelityIssues.length > 0) {
+    return failedRun(
+      fidelityIssues,
+      'The requested model fidelity is catalogued for research but is not executable in METREV.',
     );
   }
 

@@ -495,6 +495,29 @@ export const feedAndOperationSchema = flexibleObjectSchema.extend({
 
 const modelParameter = scientificModelParameterSchema;
 
+const componentModelParameterGroup = z
+  .record(z.string().trim().min(1), modelParameter)
+  .optional();
+
+/**
+ * Extra scale-resolved component properties. Keys are checked against the
+ * domain catalog by the modeling runtime; each numerical value is provenance
+ * complete even when the selected fidelity cannot yet execute it.
+ */
+export const componentModelParametersSchema = z
+  .object({
+    reactor_architecture: componentModelParameterGroup,
+    anode_biofilm_support: componentModelParameterGroup,
+    cathode_catalyst_support: componentModelParameterGroup,
+    membrane_or_separator: componentModelParameterGroup,
+    electrical_interconnect_and_sealing: componentModelParameterGroup,
+    balance_of_plant: componentModelParameterGroup,
+    sensors_and_analytics: componentModelParameterGroup,
+    operational_biology: componentModelParameterGroup,
+  })
+  .partial()
+  .passthrough();
+
 /**
  * Isothermal 0D coupled reactor input for an MFC or MEC.
  * Quantities use SI units and carry their evidence reference at the point of use.
@@ -503,6 +526,18 @@ export const mechanisticModelInputSchema = z.object({
   model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
   /** Optional named scenario profile; old saved cases remain readable. */
   model_profile_id: z.string().trim().min(1).optional(),
+  /** Requested spatial/time fidelity. Only coupled-0d-dae-v1 is executable today. */
+  model_fidelity_id: z
+    .enum([
+      'coupled-0d-dae-v1',
+      'biofilm-1d-direct-transfer-research-v1',
+      'biofilm-2d-electrode-research-v1',
+      'cell-3d-multiphysics-research-v1',
+      'stack-network-macro-research-v1',
+      'porous-electrode-micro-3d-research-v1',
+      'electrode-interface-nano-research-v1',
+    ])
+    .optional(),
   system_type: z.enum(['MFC', 'MEC']),
   geometry: z.object({
     anode_chamber_volume_m3: modelParameter,
@@ -577,6 +612,7 @@ export const mechanisticModelInputSchema = z.object({
 export const mechanisticModelDraftInputSchema = z.object({
   model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
   model_profile_id: z.string().trim().min(1).optional(),
+  model_fidelity_id: mechanisticModelInputSchema.shape.model_fidelity_id,
   system_type: z.enum(['MFC', 'MEC']),
   geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(),
   materials: mechanisticModelInputSchema.shape.materials.partial().optional(),
@@ -715,6 +751,7 @@ export const stackBlocksSchema = z.object({
   balance_of_plant: balanceOfPlantSchema.default({}),
   sensors_and_analytics: sensorsAndAnalyticsSchema.default({}),
   operational_biology: operationalBiologySchema.default({}),
+  component_model_parameters: componentModelParametersSchema.optional(),
 });
 
 const technoeconomicsLayerSchema = flexibleObjectSchema.extend({
@@ -750,6 +787,12 @@ export const crossCuttingLayersSchema = z.object({
   risk_and_maturity: riskAndMaturityLayerSchema.default({}),
 });
 
+const rawStackBlocksSchema = z
+  .object({
+    component_model_parameters: componentModelParametersSchema.optional(),
+  })
+  .catchall(flexibleObjectSchema);
+
 export const rawCaseInputSchema = z.object({
   case_id: z.string().optional(),
   case_metadata: flexibleObjectSchema.optional(),
@@ -760,7 +803,7 @@ export const rawCaseInputSchema = z.object({
   technology_context: technologyContextSchema.optional(),
   feed_and_operation: feedAndOperationSchema.optional(),
   mechanistic_model: mechanisticModelDraftInputSchema.optional(),
-  stack_blocks: z.object({}).catchall(flexibleObjectSchema).optional(),
+  stack_blocks: rawStackBlocksSchema.optional(),
   cross_cutting_layers: crossCuttingLayersSchema.partial().optional(),
   measured_metrics: z.record(z.string(), z.unknown()).optional(),
   evidence_refs: z.array(z.string()).optional(),

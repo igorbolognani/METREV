@@ -9,6 +9,10 @@ import {
   SimulationMultiLineChart,
 } from '@/components/charts/simulation-multi-line-chart';
 import { SimulationSvgExplorer } from '@/components/evaluation/simulation-svg-explorer';
+import {
+  StackAssemblySvg,
+  stackAssemblySelectionFromRawInput,
+} from '@/components/modeling/stack-assembly-svg';
 import { Badge } from '@/components/ui/badge';
 import { SignalBadge } from '@/components/workbench/signal-badge';
 import {
@@ -97,6 +101,14 @@ export function EvaluationModelingTab({
       {simulation.status === 'completed' ? (
         <SimulationSvgExplorer simulation={simulation} />
       ) : null}
+
+      <StackAssemblySvg
+        selection={stackAssemblySelectionFromRawInput(
+          evaluation.audit_record.raw_input_snapshot,
+        )}
+        simulation={simulation}
+        presentation="modeled_run"
+      />
 
       {lineSeriesGroups.map((group) => (
         <ChartPanel

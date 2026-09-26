@@ -23,12 +23,26 @@ export {
   EXECUTABLE_MODEL_PROFILE_IDS,
   getBioelectrochemicalModelProfile,
 } from './model-catalog';
+export {
+  COMPONENT_MODEL_PARAMETER_GROUPS,
+  MODEL_FIDELITY_PROFILES,
+  getComponentModelParameterGroup,
+  getModelFidelityProfile,
+} from './model-fidelity-catalog';
 export type {
   BioelectrochemicalModelProfile,
   ModelOperatingRegime,
   ModelProfileStatus,
   ModelSystem,
 } from './model-catalog';
+export type {
+  ComponentModelGroupSpec,
+  ComponentModelParameterSpec,
+  ModelFidelityProfile,
+  ModelFidelityStatus,
+  ModelResolutionScale,
+  SpatialDimension,
+} from './model-fidelity-catalog';
 export { assessExperimentalComparison } from './experimental-comparison';
 
 const ruleInputSignalKeys = new Set([

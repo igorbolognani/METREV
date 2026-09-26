@@ -184,6 +184,133 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(valueFor(result, 'power_density_w_m2')).toBeNull();
   });
 
+  it('keeps scale-resolved component parameters source-backed without applying them to the 0D equations', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    raw.stack_blocks = {
+      ...raw.stack_blocks,
+      component_model_parameters: {
+        anode_biofilm_support: {
+          porosity: {
+            value: 0.72,
+            unit: '1',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://anode-porosity',
+          },
+        },
+      },
+    };
+
+    const normalized = normalizeCaseInput(rawCaseInputSchema.parse(raw));
+    const result = evaluate(raw);
+    const baseline = evaluate(fixture as RawCaseInput);
+
+    expect(normalized.stack_blocks.component_model_parameters).toMatchObject({
+      anode_biofilm_support: {
+        porosity: {
+          value: 0.72,
+          unit: '1',
+          source_kind: 'test_fixture',
+          source_ref: 'test-fixture://anode-porosity',
+        },
+      },
+    });
+    expect(result.status).toBe('completed');
+    expect(valueFor(result, 'current_density_a_m2')).toBe(
+      valueFor(baseline, 'current_density_a_m2'),
+    );
+  });
+
+  it.each([
+    {
+      name: 'catalog unit mismatch',
+      parameter: { value: 0.5, unit: 'percent' },
+      groupId: 'anode_biofilm_support',
+      parameterId: 'porosity',
+      expected: 'unit must be 1; received percent',
+    },
+    {
+      name: 'out-of-range porosity',
+      parameter: { value: 1.2, unit: '1' },
+      groupId: 'anode_biofilm_support',
+      parameterId: 'porosity',
+      expected: 'value must be between 0 and 1',
+    },
+    {
+      name: 'out-of-range calibration fit diagnostic',
+      parameter: { value: 1.2, unit: '1' },
+      groupId: 'sensors_and_analytics',
+      parameterId: 'calibration_r2',
+      expected: 'value must be between 0 and 1',
+    },
+    {
+      name: 'negative contact resistance',
+      parameter: { value: -0.1, unit: 'ohm' },
+      groupId: 'electrical_interconnect_and_sealing',
+      parameterId: 'contact_resistance_ohm',
+      expected: 'value must be nonnegative',
+    },
+  ])(
+    'blocks component parameters with $name',
+    ({ parameter, expected, groupId, parameterId }) => {
+      const raw = structuredClone(fixture) as RawCaseInput;
+      raw.stack_blocks = {
+        ...raw.stack_blocks,
+        component_model_parameters: {
+          [groupId]: {
+            [parameterId]: {
+              ...parameter,
+              source_kind: 'test_fixture',
+              source_ref: 'test-fixture://invalid-component-property',
+            },
+          },
+        },
+      };
+
+      const result = evaluate(raw);
+
+      expect(result.status).toBe('insufficient_data');
+      expect(result.failure_detail?.missing_inputs).toContain(
+        `stack_blocks.component_model_parameters.${groupId}.${parameterId}.${expected}`,
+      );
+    },
+  );
+
+  it('preserves and rejects unknown component groups rather than silently dropping them', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    raw.stack_blocks = {
+      ...raw.stack_blocks,
+      component_model_parameters: {
+        experimental_subsystem: { undeclared: { value: 1 } },
+      },
+    };
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('insufficient_data');
+    expect(result.failure_detail?.missing_inputs).toContain(
+      'stack_blocks.component_model_parameters.experimental_subsystem is not a recognized stack component group',
+    );
+  });
+
+  it('does not downgrade a requested spatial biofilm model to the executable 0D solver', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    raw.mechanistic_model!.model_fidelity_id =
+      'biofilm-1d-direct-transfer-research-v1';
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('insufficient_data');
+    expect(result.series).toHaveLength(0);
+    expect(result.failure_detail?.missing_inputs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('is a research profile only'),
+        expect.stringContaining('operational_biology.biofilm_thickness_m'),
+        expect.stringContaining('residual convergence criterion'),
+      ]),
+    );
+    expect(valueFor(result, 'current_density_a_m2')).toBeNull();
+  });
+
   it('does not run an MFC or MEC model for a legacy or unclassified family', () => {
     for (const technologyFamily of [
       'microbial_electrochemical_technology',

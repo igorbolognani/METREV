@@ -5,6 +5,7 @@ scope:
   wastewater_role: dynamic COD treatment and bioelectrochemical energy or hydrogen conversion
   biosensor_role: standalone, MFC-integrated, and MEC-integrated amperometric response
   spatial_dimension: 0D_lumped
+  executable_fidelity_id: coupled-0d-dae-v1
   reactor_assumption: lumped_well_mixed_two_compartment_with_profile_selected_continuous_or_closed_batch_boundary
   thermal_assumption: isothermal_fixed_boundary_temperature
   solver: explicit_RK4_for_differential_states_with_algebraic_electrochemical_current
@@ -145,6 +146,22 @@ input_parameters:
     unit: '1'
     required_when: a named configuration is selected
     rule: If omitted, preserve legacy coupled-0d-dae-v1 behavior. If present, it must identify a profile marked executable and agree with technology family and flow boundary; research-only profiles are blocked from execution.
+  model_fidelity_id:
+    unit: '1'
+    required_when: a non-default dimensional or scale formulation is explicitly requested
+    rule: Only coupled-0d-dae-v1 is executable. A 1D, 2D, 3D, stack-network, pore-scale, or nano-informed research selection returns insufficient_data and is never silently run through the 0D solver.
+  component_model_parameters:
+    required_when: a component-specific scale-resolved property is supplied or requested by a research profile
+    parameter_contract:
+      {
+        value: number,
+        unit: catalog-defined,
+        source_kind: [measured, literature, default, assumption, test_fixture],
+        source_ref: required,
+      }
+    catalog: bioelectrochem_agent_kit/domain/ontology/model-fidelity.yml#component_parameter_groups
+    serialization_path: stack_blocks.component_model_parameters
+    rule: The property ID and unit must match the component catalog. Properties remain design inputs and are not passed into the 0D equations unless an executable equation explicitly consumes them.
   biosensor.configuration_profile_id:
     unit: '1'
     required_when: a named biosensor deployment is selected
@@ -257,6 +274,22 @@ not_yet_modeled:
   - nitrogen-species balances, alkalinity speciation, gas crossover and gas-transfer losses
   - thermal dynamics, dynamic ionic strength, membrane fouling, and multi-phase fluid flow
   - joint or probabilistic uncertainty propagation, parameter fitting, and posterior prediction
+
+fidelity_selection_policy:
+  catalog: bioelectrochem_agent_kit/domain/ontology/model-fidelity.yml
+  axes:
+    spatial_dimensions: [0, 1, 2, 3]
+    resolution_scales: [macro, micro, nano]
+    temporal_resolution_is_separate_from_spatial_dimension: true
+  executable: [coupled-0d-dae-v1]
+  research_only:
+    - biofilm-1d-direct-transfer-research-v1
+    - biofilm-2d-electrode-research-v1
+    - cell-3d-multiphysics-research-v1
+    - stack-network-macro-research-v1
+    - porous-electrode-micro-3d-research-v1
+    - electrode-interface-nano-research-v1
+  rule: A multiscale profile must declare geometry, local properties, transport/reaction laws, boundary conditions, numerical verification, a scale-transfer map, and condition-matched independent observations before execution is offered. Catalogued literature supports model-form requirements only and does not validate METREV.
 
 configuration_catalog:
   executable_profiles:
