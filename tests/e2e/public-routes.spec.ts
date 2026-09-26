@@ -74,6 +74,20 @@ async function openPublicRoute(
   await expect(page.getByTestId('public-topic-nav')).toBeVisible();
 }
 
+async function captureDesktopPage(
+  page: import('@playwright/test').Page,
+  filename: string,
+) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForFunction(() => window.scrollY === 0);
+  mkdirSync(desktopCaptureDirectory, { recursive: true });
+  await page.screenshot({
+    path: resolve(desktopCaptureDirectory, filename),
+    fullPage: true,
+    animations: 'disabled',
+  });
+}
+
 test.describe('public routes - desktop structure', () => {
   test('modeling workbench builds the assembly, toggles components, and records a desktop review capture', async ({
     page,
@@ -151,12 +165,7 @@ test.describe('public routes - desktop structure', () => {
       () => document.documentElement.scrollWidth,
     );
     expect(documentWidth).toBeLessThanOrEqual(1440);
-    mkdirSync(desktopCaptureDirectory, { recursive: true });
-    await page.screenshot({
-      path: resolve(desktopCaptureDirectory, 'desktop-modeling.png'),
-      fullPage: true,
-      animations: 'disabled',
-    });
+    await captureDesktopPage(page, 'desktop-modeling.png');
   });
 
   test('overview hub exposes the six public lenses', async ({ page }) => {
@@ -261,12 +270,7 @@ test.describe('public routes - desktop structure', () => {
 
     await page.getByRole('button', { name: 'Close' }).click();
     await expect(page.locator('.public-board-dialog-shell')).toBeHidden();
-    mkdirSync(desktopCaptureDirectory, { recursive: true });
-    await page.screenshot({
-      path: resolve(desktopCaptureDirectory, 'desktop-overview.png'),
-      fullPage: true,
-      animations: 'disabled',
-    });
+    await captureDesktopPage(page, 'desktop-overview.png');
   });
 
   for (const route of publicTopicRoutes) {
@@ -307,12 +311,7 @@ test.describe('public routes - desktop structure', () => {
       const initialExplanation = await explanation.innerText();
       await page.getByTestId('public-article-diagram-node-2').first().click();
       await expect(explanation).not.toHaveText(initialExplanation);
-      mkdirSync(desktopCaptureDirectory, { recursive: true });
-      await page.screenshot({
-        path: resolve(desktopCaptureDirectory, `desktop-${route.slug}.png`),
-        fullPage: true,
-        animations: 'disabled',
-      });
+      await captureDesktopPage(page, `desktop-${route.slug}.png`);
     });
   }
 });
