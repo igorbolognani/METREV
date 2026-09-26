@@ -19,6 +19,23 @@ export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 export { simulateMechanisticCase };
 export type { MechanisticRun };
 export {
+  GATTI_2017_SOURCE,
+  GATTI_2017_PARAMETER_EVIDENCE,
+  GATTI_2017_MEAN_PARAMETERS,
+  GATTI_2017_FITTED_INTERVALS,
+  gattiParameterEvidence,
+  gattiFittedIntervalEvidence,
+  initialGattiBiofilmState,
+  simulateGattiBiofilm,
+  sweepGattiFittedIntervals,
+} from './biofilm-1d-gatti';
+export type {
+  GattiBiofilmParameters,
+  GattiBiofilmState,
+  GattiBiofilmObservation,
+  GattiLoadSegment,
+} from './biofilm-1d-gatti';
+export {
   BIOELECTROCHEMICAL_MODEL_PROFILES,
   EXECUTABLE_MODEL_PROFILE_IDS,
   getBioelectrochemicalModelProfile,
