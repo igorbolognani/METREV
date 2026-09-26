@@ -18,6 +18,14 @@ export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 
 export { simulateMechanisticCase };
 export type { MechanisticRun };
+export { POROUS_ANODE_1D_SOURCES, solvePorousAnode1d } from './porous-anode-1d';
+export type {
+  SourcedSpatialValue,
+  PorousAnodeCell,
+  PorousAnodeInput,
+  PorousAnodeCellResult,
+  PorousAnodeResult,
+} from './porous-anode-1d';
 export {
   GATTI_2017_SOURCE,
   GATTI_2017_PARAMETER_EVIDENCE,

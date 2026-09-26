@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-24",
+  "snapshot_date": "2026-09-26",
   "purpose": "Traceable candidate sources for analyst review; this index is not the curated corpus and is not eligible for decision inputs.",
   "counts": {
-    "candidate_records": 8,
+    "candidate_records": 11,
     "records_with_local_artifacts": 2,
-    "records_metadata_only": 6,
+    "records_metadata_only": 9,
     "human_review_complete": 0,
     "decision_eligible": 0
   },
@@ -1121,6 +1121,211 @@
           "assessment": "Within-study descriptive change from reported means, not an experimental replication."
         }
       ]
+    },
+    {
+      "candidate_id": "article-10.1051-e3sconf-202233408005",
+      "document_type": "paper",
+      "source_type": "publisher_and_institutional_repository",
+      "title": "Modelling Miniature Microbial Fuel Cells with Three-dimensional Anodes",
+      "doi": "10.1051/e3sconf/202233408005",
+      "source_url": "https://doi.org/10.1051/e3sconf/202233408005",
+      "repository_url": "https://iris.unica.it/handle/11584/358480",
+      "publication_year": 2022,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-26",
+      "access_status": "open_primary_full_text_read_online_no_local_artifact",
+      "technology_scope": [
+        "MFC",
+        "porous_anode",
+        "membrane",
+        "3d_reaction_transport"
+      ],
+      "application_context": "Three continuous-flow air-cathode miniature MFC geometries; formulation source, not a measured METREV validation set.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "artifacts": [],
+      "extracted_design_values": [
+        {
+          "key": "anode_dimensions_MFCS",
+          "value": [0.5, 0.5, 3],
+          "unit": "cm",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1051/e3sconf/202233408005",
+          "source_locator": "Mathematical model, paragraph after Fig. 1, MFCS",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "MFCS; ordered dimensions as printed, no axis assignment inferred",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "anode_dimensions_MFCM",
+          "value": [0.5, 0.5, 5],
+          "unit": "cm",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1051/e3sconf/202233408005",
+          "source_locator": "Mathematical model, paragraph after Fig. 1, MFCM",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "MFCM; ordered dimensions as printed, no axis assignment inferred",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "anode_dimensions_MFCL",
+          "value": [0.5, 1, 5],
+          "unit": "cm",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1051/e3sconf/202233408005",
+          "source_locator": "Mathematical model, paragraph after Fig. 1, MFCL",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "MFCL; ordered dimensions as printed, no axis assignment inferred",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "illustrative_flow_rate",
+          "value": 0.1,
+          "unit": "cm3/min",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1051/e3sconf/202233408005",
+          "source_locator": "Fig. 2 caption and Model simulations and discussion",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "One illustrated flow case for all three geometries",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        }
+      ],
+      "review_notes": [
+        "Equations 5, 7, 9, 16 and 19 identify porosity, effective diffusivity, reaction source, electron generation and potential field by domain.",
+        "The paper explicitly assumes biofilm growth does not change anode porosity; this is a model assumption, not a measured invariant.",
+        "The 1D METREV solver is a reduced representative-volume approximation, not a reproduction of this 3D study."
+      ],
+      "missing_data_reasons": {
+        "porous_properties": "The inspected paper refers the full parameter set to earlier studies; no compatible electrode-specific porosity, tortuosity and electroactive internal area were transcribed here.",
+        "validation": "No raw matched time series or boundary potential field has been extracted for an independent solver comparison."
+      }
+    },
+    {
+      "candidate_id": "article-10.1007-s40095-017-0249-1",
+      "document_type": "paper",
+      "source_type": "publisher_primary_full_text",
+      "title": "A biofilm model of microbial fuel cells for engineering applications",
+      "doi": "10.1007/s40095-017-0249-1",
+      "source_url": "https://doi.org/10.1007/s40095-017-0249-1",
+      "publication_year": 2017,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-26",
+      "access_status": "open_primary_full_text_read_online_no_local_artifact",
+      "technology_scope": [
+        "MFC",
+        "biofilm",
+        "anode",
+        "membrane",
+        "reaction_transport"
+      ],
+      "application_context": "Two-chamber acetate-fed laboratory MFC used for fitted reduced 1D biofilm model.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "artifacts": [],
+      "extracted_design_values": [
+        {
+          "key": "anode_total_area",
+          "value": 0.00688,
+          "unit": "m2",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1007/s40095-017-0249-1",
+          "source_locator": "Materials and methods, Construction",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "Graphite-block electrode network, 4 by 4 blocks",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "membrane_area",
+          "value": 0.0028,
+          "unit": "m2",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1007/s40095-017-0249-1",
+          "source_locator": "Materials and methods, Construction",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "Nafion separator in the same two-chamber cell",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "anode_chamber_volume",
+          "value": 0.2,
+          "unit": "L",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1007/s40095-017-0249-1",
+          "source_locator": "Materials and methods, Construction",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "Two chambers with equal volume",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        },
+        {
+          "key": "acetate_feed_concentration",
+          "value": 0.5,
+          "unit": "g/L",
+          "source_kind": "literature",
+          "source_ref": "https://doi.org/10.1007/s40095-017-0249-1",
+          "source_locator": "Materials and methods, Medium and inoculum source",
+          "extraction_method": "primary_paper_text_transcription",
+          "review_status": "pending",
+          "study_condition": "Sodium acetate feed solution, not COD or molar acetate",
+          "dataset_role": "model_development",
+          "extraction_uncertainty": "not_reported"
+        }
+      ],
+      "review_notes": [
+        "The Gatti 1D solver has separate Table 2 fitted-parameter trace in its code module. This study does not specify a porous-electrode specific internal area suitable for the Casula-style volume model.",
+        "Do not treat the published membrane area as membrane conductivity or infer membrane resistance without thickness and transport properties."
+      ],
+      "missing_data_reasons": {
+        "porous_electrode": "Projected/anode area is not the internal biofilm-accessible area per electrode volume.",
+        "membrane": "Membrane area is reported, but the properties required for an independent ionic-resistance calculation are not supplied in the extracted study case."
+      }
+    },
+    {
+      "candidate_id": "article-10.1016-j.jpowsour.2024.236143",
+      "document_type": "paper",
+      "source_type": "publisher_metadata_and_abstract",
+      "title": "Modelling and EIS characterization of a tubular microbial fuel cell with slip-casted ceramic membrane",
+      "doi": "10.1016/j.jpowsour.2024.236143",
+      "source_url": "https://doi.org/10.1016/j.jpowsour.2024.236143",
+      "repository_url": "https://iris.unica.it/handle/11584/447405",
+      "publication_year": 2025,
+      "license": "not_assessed",
+      "rights_status": "Institutional manuscript was located, but full-text retrieval returned an access error during this session; redistribution rights not verified.",
+      "access_checked_at": "2026-09-26",
+      "access_status": "publisher_equation_excerpt_only_full_text_unavailable",
+      "technology_scope": [
+        "MFC",
+        "ceramic_membrane",
+        "porous_electrode",
+        "charge_and_species_balance"
+      ],
+      "application_context": "Tubular fed-batch MFC with carbon felt anode and slip-casted ceramic separator; formulation lead only.",
+      "candidate_status": "needs_full_text_and_human_review",
+      "eligible_for_decision": false,
+      "artifacts": [],
+      "review_notes": [
+        "Publisher excerpt states separate species storage epsilon_j dC/dt, effective diffusion and reaction terms in each domain, plus charge conservation; the manuscript was not fully readable here.",
+        "No numerical ceramic porosity, permeability, conductivity or EIS-derived value has been extracted; this source does not parameterize the METREV membrane diagnostic."
+      ],
+      "missing_data_reasons": {
+        "full_text": "Publisher page and institutional PDF retrieval failed; only publisher-indexed equation excerpt and repository abstract were available.",
+        "membrane_parameters": "No source-located membrane thickness, active area and ionic conductivity were retrieved together."
+      }
     },
     {
       "candidate_id": "patent-CN115159662A",
