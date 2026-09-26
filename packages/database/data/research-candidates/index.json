@@ -3,9 +3,9 @@
   "snapshot_date": "2026-09-26",
   "purpose": "Traceable candidate sources for analyst review; this index is not the curated corpus and is not eligible for decision inputs.",
   "counts": {
-    "candidate_records": 11,
+    "candidate_records": 12,
     "records_with_local_artifacts": 2,
-    "records_metadata_only": 9,
+    "records_metadata_only": 10,
     "human_review_complete": 0,
     "decision_eligible": 0
   },
@@ -1325,6 +1325,36 @@
       "missing_data_reasons": {
         "full_text": "Publisher page and institutional PDF retrieval failed; only publisher-indexed equation excerpt and repository abstract were available.",
         "membrane_parameters": "No source-located membrane thickness, active area and ionic conductivity were retrieved together."
+      }
+    },
+    {
+      "candidate_id": "article-10.1007-s10800-016-1017-2",
+      "document_type": "paper",
+      "source_type": "publisher_primary_full_text",
+      "title": "Nernst–Planck modeling of multicomponent ion transport in a Nafion membrane at high current density",
+      "doi": "10.1007/s10800-016-1017-2",
+      "source_url": "https://doi.org/10.1007/s10800-016-1017-2",
+      "publication_year": 2017,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access_checked_at": "2026-09-26",
+      "access_status": "open_primary_full_text_read_online_no_local_artifact",
+      "technology_scope": [
+        "ion_exchange_membrane",
+        "multicomponent_ion_transport",
+        "nernst_planck"
+      ],
+      "application_context": "Nafion membrane in high-current sodium hydroxide; formulation source only, not a compatible MFC parameter or performance dataset.",
+      "candidate_status": "needs_human_review",
+      "eligible_for_decision": false,
+      "artifacts": [],
+      "review_notes": [
+        "Equation 1 gives diffusion, electromigration and convection; Eq. 7 sums ionic current. The reduced METREV membrane solver omits convection and uses imposed potential and membrane-side concentrations.",
+        "The paper includes Donnan boundary equilibrium, fixed charge, swelling and a coupled potential equation. None is reproduced by the standalone METREV reduction."
+      ],
+      "missing_data_reasons": {
+        "transferability": "High-current alkaline Nafion measurements must not be treated as MFC membrane transport coefficients.",
+        "mfc_boundaries": "Matched MFC membrane partition concentrations, ionic species, potential, porosity/tortuosity and geometry are not collected."
       }
     },
     {
