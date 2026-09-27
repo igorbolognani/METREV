@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    EvaluationResultView,
-    EvaluationWorkspaceView
+  EvaluationResultView,
+  EvaluationWorkspaceView,
 } from '@/components/evaluation-result-view';
-

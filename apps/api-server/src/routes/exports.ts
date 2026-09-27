@@ -54,148 +54,181 @@ function buildVersions(input?: {
 export async function registerExportRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/evaluations/:evaluationId/json', rateLimitedRouteOptions, async (request, reply) => {
-    try {
-      requireRole(request.actor, 'VIEWER');
-    } catch (error) {
-      if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+  app.get(
+    '/evaluations/:evaluationId/json',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      try {
+        requireRole(request.actor, 'VIEWER');
+      } catch (error) {
+        if (error instanceof AuthorizationError) {
+          return replyForAuthorizationError(request, reply, error, 'VIEWER');
+        }
+
+        throw error;
       }
 
-      throw error;
-    }
+      const { evaluationId } = request.params as { evaluationId: string };
+      const evaluation = await withSpan(
+        'export.evaluation.json',
+        () => app.evaluationRepository.getEvaluation(evaluationId),
+        {
+          evaluation_id: evaluationId,
+          actor_id: request.actor?.userId ?? 'anonymous',
+        },
+      );
 
-    const { evaluationId } = request.params as { evaluationId: string };
-    const evaluation = await withSpan(
-      'export.evaluation.json',
-      () => app.evaluationRepository.getEvaluation(evaluationId),
-      {
-        evaluation_id: evaluationId,
-        actor_id: request.actor?.userId ?? 'anonymous',
-      },
-    );
-
-    if (!evaluation) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Evaluation ${evaluationId} was not found.`,
-      });
-    }
-
-    const history = await app.evaluationRepository.getCaseHistory(
-      evaluation.case_id,
-    );
-    const versions = buildVersions({
-      promptVersion: evaluation.narrative_metadata.prompt_version,
-      modelVersion:
-        evaluation.simulation_enrichment?.model_version ??
-        evaluation.narrative_metadata.model,
-    });
-    const workspace = buildEvaluationWorkspace({
-      evaluation,
-      history,
-      versions,
-    });
-
-    reply.header(
-      'content-disposition',
-      `attachment; filename="${evaluation.case_id}-${evaluation.evaluation_id}.json"`,
-    );
-
-    return reply.send(workspace);
-  });
-
-  app.get('/evaluations/:evaluationId/csv', rateLimitedRouteOptions, async (request, reply) => {
-    try {
-      requireRole(request.actor, 'VIEWER');
-    } catch (error) {
-      if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'VIEWER');
+      if (!evaluation) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Evaluation ${evaluationId} was not found.`,
+        });
       }
 
-      throw error;
-    }
-
-    const { evaluationId } = request.params as { evaluationId: string };
-    const evaluation = await withSpan(
-      'export.evaluation.csv',
-      () => app.evaluationRepository.getEvaluation(evaluationId),
-      {
-        evaluation_id: evaluationId,
-        actor_id: request.actor?.userId ?? 'anonymous',
-      },
-    );
-
-    if (!evaluation) {
-      return reply.code(404).send({
-        error: 'not_found',
-        message: `Evaluation ${evaluationId} was not found.`,
-      });
-    }
-
-    const { metadata, content } = serializeEvaluationCsv({
-      evaluation,
-      versions: buildVersions({
+      const history = await app.evaluationRepository.getCaseHistory(
+        evaluation.case_id,
+      );
+      const versions = buildVersions({
         promptVersion: evaluation.narrative_metadata.prompt_version,
         modelVersion:
           evaluation.simulation_enrichment?.model_version ??
           evaluation.narrative_metadata.model,
-      }),
-    });
+      });
+      const workspace = buildEvaluationWorkspace({
+        evaluation,
+        history,
+        versions,
+      });
 
-    reply.header('content-type', metadata.content_type);
-    reply.header(
-      'content-disposition',
-      `attachment; filename="${metadata.file_name}"`,
-    );
-    reply.header('x-metrev-export-generated-at', metadata.generated_at);
-    reply.header(
-      'x-metrev-workspace-schema-version',
-      metadata.versions.workspace_schema_version,
-    );
+      reply.header(
+        'content-disposition',
+        `attachment; filename="${evaluation.case_id}-${evaluation.evaluation_id}.json"`,
+      );
 
-    return reply.send(content);
-  });
+      return reply.send(workspace);
+    },
+  );
 
-  app.get('/evidence/explorer/csv', rateLimitedRouteOptions, async (request, reply) => {
-    try {
-      requireRole(request.actor, 'ANALYST');
-    } catch (error) {
-      if (error instanceof AuthorizationError) {
-        return replyForAuthorizationError(request, reply, error, 'ANALYST');
+  app.get(
+    '/evaluations/:evaluationId/csv',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      try {
+        requireRole(request.actor, 'VIEWER');
+      } catch (error) {
+        if (error instanceof AuthorizationError) {
+          return replyForAuthorizationError(request, reply, error, 'VIEWER');
+        }
+
+        throw error;
       }
 
-      throw error;
-    }
+      const { evaluationId } = request.params as { evaluationId: string };
+      const evaluation = await withSpan(
+        'export.evaluation.csv',
+        () => app.evaluationRepository.getEvaluation(evaluationId),
+        {
+          evaluation_id: evaluationId,
+          actor_id: request.actor?.userId ?? 'anonymous',
+        },
+      );
 
-    const query = request.query as {
-      componentType?: string;
-      decisionReady?: string;
-      material?: string;
-      metricType?: string;
-      status?: string;
-      q?: string;
-      sourceType?: string;
-      systemType?: string;
-      page?: string;
-      pageSize?: string;
-    };
-    const parsedQuery = parseExternalEvidenceListQuery(query);
+      if (!evaluation) {
+        return reply.code(404).send({
+          error: 'not_found',
+          message: `Evaluation ${evaluationId} was not found.`,
+        });
+      }
 
-    if (!parsedQuery.success) {
-      return reply.code(400).send({
-        error: 'invalid_query',
-        details: parsedQuery.details,
+      const { metadata, content } = serializeEvaluationCsv({
+        evaluation,
+        versions: buildVersions({
+          promptVersion: evaluation.narrative_metadata.prompt_version,
+          modelVersion:
+            evaluation.simulation_enrichment?.model_version ??
+            evaluation.narrative_metadata.model,
+        }),
       });
-    }
 
-    const parsed = parsedQuery.value;
-    const evidenceCatalog = await withSpan(
-      'export.evidence_explorer.csv',
-      () =>
-        app.evaluationRepository.listExternalEvidenceCatalog({
-          reviewStatus: parsed.status,
-          searchQuery: parsed.query,
+      reply.header('content-type', metadata.content_type);
+      reply.header(
+        'content-disposition',
+        `attachment; filename="${metadata.file_name}"`,
+      );
+      reply.header('x-metrev-export-generated-at', metadata.generated_at);
+      reply.header(
+        'x-metrev-workspace-schema-version',
+        metadata.versions.workspace_schema_version,
+      );
+
+      return reply.send(content);
+    },
+  );
+
+  app.get(
+    '/evidence/explorer/csv',
+    rateLimitedRouteOptions,
+    async (request, reply) => {
+      try {
+        requireRole(request.actor, 'ANALYST');
+      } catch (error) {
+        if (error instanceof AuthorizationError) {
+          return replyForAuthorizationError(request, reply, error, 'ANALYST');
+        }
+
+        throw error;
+      }
+
+      const query = request.query as {
+        componentType?: string;
+        decisionReady?: string;
+        material?: string;
+        metricType?: string;
+        status?: string;
+        q?: string;
+        sourceType?: string;
+        systemType?: string;
+        page?: string;
+        pageSize?: string;
+      };
+      const parsedQuery = parseExternalEvidenceListQuery(query);
+
+      if (!parsedQuery.success) {
+        return reply.code(400).send({
+          error: 'invalid_query',
+          details: parsedQuery.details,
+        });
+      }
+
+      const parsed = parsedQuery.value;
+      const evidenceCatalog = await withSpan(
+        'export.evidence_explorer.csv',
+        () =>
+          app.evaluationRepository.listExternalEvidenceCatalog({
+            reviewStatus: parsed.status,
+            searchQuery: parsed.query,
+            sourceType: parsed.sourceType,
+            systemType: parsed.systemType,
+            componentType: parsed.componentType,
+            decisionReady: parsed.decisionReady,
+            material: parsed.material,
+            metricType: parsed.metricType,
+            page: parsed.page,
+            pageSize: parsed.pageSize,
+          }),
+        {
+          actor_id: request.actor?.userId ?? 'anonymous',
+          review_status: parsed.status ?? 'all',
+          source_type: parsed.sourceType ?? 'all',
+        },
+      );
+
+      const workspace = buildEvidenceExplorerWorkspace({
+        evidenceCatalog,
+        versions: buildVersions(),
+        filters: {
+          status: parsed.status,
+          query: parsed.query,
           sourceType: parsed.sourceType,
           systemType: parsed.systemType,
           componentType: parsed.componentType,
@@ -204,46 +237,25 @@ export async function registerExportRoutes(
           metricType: parsed.metricType,
           page: parsed.page,
           pageSize: parsed.pageSize,
-        }),
-      {
-        actor_id: request.actor?.userId ?? 'anonymous',
-        review_status: parsed.status ?? 'all',
-        source_type: parsed.sourceType ?? 'all',
-      },
-    );
+        },
+      });
+      const { metadata, content } = serializeEvidenceExplorerCsv({
+        items: workspace.items,
+        versions: workspace.meta.versions,
+      });
 
-    const workspace = buildEvidenceExplorerWorkspace({
-      evidenceCatalog,
-      versions: buildVersions(),
-      filters: {
-        status: parsed.status,
-        query: parsed.query,
-        sourceType: parsed.sourceType,
-        systemType: parsed.systemType,
-        componentType: parsed.componentType,
-        decisionReady: parsed.decisionReady,
-        material: parsed.material,
-        metricType: parsed.metricType,
-        page: parsed.page,
-        pageSize: parsed.pageSize,
-      },
-    });
-    const { metadata, content } = serializeEvidenceExplorerCsv({
-      items: workspace.items,
-      versions: workspace.meta.versions,
-    });
+      reply.header('content-type', metadata.content_type);
+      reply.header(
+        'content-disposition',
+        `attachment; filename="${metadata.file_name}"`,
+      );
+      reply.header('x-metrev-export-generated-at', metadata.generated_at);
+      reply.header(
+        'x-metrev-workspace-schema-version',
+        metadata.versions.workspace_schema_version,
+      );
 
-    reply.header('content-type', metadata.content_type);
-    reply.header(
-      'content-disposition',
-      `attachment; filename="${metadata.file_name}"`,
-    );
-    reply.header('x-metrev-export-generated-at', metadata.generated_at);
-    reply.header(
-      'x-metrev-workspace-schema-version',
-      metadata.versions.workspace_schema_version,
-    );
-
-    return reply.send(content);
-  });
+      return reply.send(content);
+    },
+  );
 }

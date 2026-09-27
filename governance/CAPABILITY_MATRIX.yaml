@@ -1,0 +1,236 @@
+schema_version: 1
+models:
+  - model_id: coupled-0d-dae-v1
+    catalog_status: executable
+    runtime: true
+    case_runner: true
+    numerical_maturity: numerically_implemented
+    experimental_maturity: no_matched_independent_validation
+  - model_id: coupled-cell-1d-restricted-v1
+    catalog_status: case_runner_development
+    runtime: true
+    case_runner: true
+    numerical_maturity: numerically_implemented
+    experimental_maturity: no_matched_independent_validation
+  - model_id: biofilm-1d-direct-transfer-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+  - model_id: biofilm-2d-electrode-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+  - model_id: cell-3d-multiphysics-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+  - model_id: stack-network-macro-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+  - model_id: porous-electrode-micro-3d-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+  - model_id: electrode-interface-nano-research-v1
+    catalog_status: research_profile_only
+    runtime: false
+    case_runner: false
+    numerical_maturity: specified
+    experimental_maturity: none
+spatial_physics:
+  flow: not_implemented
+  species_convection: not_implemented
+  electrolyte_charge_field: not_implemented
+  solid_charge_field: not_implemented
+  resolved_cathode: not_implemented
+  fixed_charge_membrane: not_implemented
+  multiphase_gas: not_implemented
+  thermal_field: not_implemented
+feature_coverage:
+  mass_balance:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  species_diffusion:
+    0D: absent
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: restricted_1D_component
+    nano_interface: absent
+  species_convection:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  ionic_migration:
+    0D: absent
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  solid_potential:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  liquid_potential:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  hydraulics:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  biofilm_spatial_resolution:
+    0D: absent
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: restricted_1D_component
+    nano_interface: absent
+  membrane_transport:
+    0D: absent
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  donnan_fixed_charge:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  resolved_cathode:
+    0D: absent
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  gas_transport:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  thermal_physics:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  circuit_closure:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  persistence:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  case_runner:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  api:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  ui_visualization:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  reports:
+    0D: implemented
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  numerical_verification:
+    0D: partial
+    1D: restricted
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  experimental_comparison:
+    0D: development_only
+    1D: development_only
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent
+  independent_validation:
+    0D: absent
+    1D: absent
+    2D: absent
+    3D: absent
+    macro_stack: absent
+    micro_porous_electrode: absent
+    nano_interface: absent

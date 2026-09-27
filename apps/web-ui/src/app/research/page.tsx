@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 
 import {
-    buildLegacyRouteRedirectTarget,
-    type LegacyRouteSearchParams,
+  buildLegacyRouteRedirectTarget,
+  type LegacyRouteSearchParams,
 } from '@/lib/legacy-route-redirect';
 
 type ResearchWorkspacePageProps = {

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-    type EvidenceAuditRepository,
-    MemoryResearchRepository,
+  type EvidenceAuditRepository,
+  MemoryResearchRepository,
 } from '@metrev/database';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    getDefaultResearchColumns,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  getDefaultResearchColumns,
 } from '@metrev/research-intelligence';
 
 import { runResearchWorkerCycle } from '../../apps/research-worker/src/worker';

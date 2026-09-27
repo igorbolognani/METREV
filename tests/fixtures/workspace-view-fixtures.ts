@@ -3,17 +3,17 @@ import rawFixture from './raw-case-input.json';
 import type { SessionActor } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    rawCaseInputSchema,
-    type ExternalEvidenceCatalogListResponse,
+  rawCaseInputSchema,
+  type ExternalEvidenceCatalogListResponse,
 } from '@metrev/domain-contracts';
 
 import {
-    buildCaseHistoryWorkspace,
-    buildEvaluationComparison,
-    buildEvaluationWorkspace,
-    buildEvidenceExplorerWorkspace,
-    buildEvidenceReviewWorkspace,
-    buildPrintableEvaluationReport,
+  buildCaseHistoryWorkspace,
+  buildEvaluationComparison,
+  buildEvaluationWorkspace,
+  buildEvidenceExplorerWorkspace,
+  buildEvidenceReviewWorkspace,
+  buildPrintableEvaluationReport,
 } from '../../apps/api-server/src/presenters/workspace-presenters';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
 

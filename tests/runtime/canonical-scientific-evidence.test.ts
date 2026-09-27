@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    CANONICAL_FACT_LAYER,
-    CANONICALIZATION_STATUSES,
-    canonicalizeScientificEvidenceRecord,
-    normalizeScientificMeasurement,
+  CANONICAL_FACT_LAYER,
+  CANONICALIZATION_STATUSES,
+  canonicalizeScientificEvidenceRecord,
+  normalizeScientificMeasurement,
 } from '../../packages/database/scripts/canonical-scientific-evidence.mjs';
 
 function buildRecord(overrides: Record<string, unknown> = {}) {

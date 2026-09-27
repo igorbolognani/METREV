@@ -5,6 +5,7 @@ import type { MechanisticModelDefinition } from './loaders';
 
 export * from './browser';
 export * from './coupled-cell-1d-schema';
+export * from './spatial-model-schema';
 
 export function loadMechanisticModelDefinition(): MechanisticModelDefinition {
   return yaml.load(modelDefinitionYaml) as MechanisticModelDefinition;

@@ -23,6 +23,12 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      '@metrev/electrochem-models/physics-composition': fileURLToPath(
+        new URL(
+          './packages/electrochem-models/src/physics-composition.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/electrochem-models': fileURLToPath(
         new URL('./packages/electrochem-models/src/index.ts', import.meta.url),
       ),

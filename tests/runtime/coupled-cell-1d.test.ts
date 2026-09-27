@@ -1,88 +1,106 @@
 import { describe, expect, it } from 'vitest';
+import type { FastifyBaseLogger } from 'fastify';
+import type { SessionActor } from '@metrev/auth';
+import { MemoryEvaluationRepository } from '@metrev/database';
+import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
+import { fixture, q } from '../fixtures/coupled-cell-1d';
 import rawCaseFixture from '../fixtures/raw-case-input.json';
 import {
   normalizeCaseInput,
   rawCaseInputSchema,
 } from '@metrev/domain-contracts';
 import {
+  evaluateSimulationEnrichment,
   runConfiguredElectrochemicalModel,
   solveCoupledCell1d,
-  type CoupledCell1dInput,
 } from '@metrev/electrochem-models';
 
-// Deliberately synthetic: these parameters are numerical fixtures, not study data.
-const q = <U extends string>(value: number, unit: U) => ({
-  value,
-  unit,
-  source_kind: 'test_fixture' as const,
-  source_ref: 'test-fixture://coupled-cell-1d',
-});
-
-function fixture(n = 12): CoupledCell1dInput {
-  return {
-    system: 'MFC',
-    anode: {
-      thickness: q(0.001, 'm'),
-      projectedArea: q(0.01, 'm2'),
-      freeSubstrateDiffusivity: q(1e-9, 'm2/s'),
-      bulkSubstrateConcentration: q(1, 'mol/m3'),
-      maximumSurfaceReactionFlux: q(1e-8, 'mol/(m2 s)'),
-      halfSaturationConcentration: q(1, 'mol/m3'),
-      halfRateAnodePotential: q(0, 'V'),
-      temperature: q(298, 'K'),
-      electronsPerSubstrateMolecule: q(8, '1'),
-      cells: Array.from({ length: n }, (_, i) => ({
-        porosity: q(i < n / 2 ? 0.4 : 0.6, '1'),
-        tortuosity: q(2, '1'),
-        specificSurfaceArea: q(i < n / 2 ? 800 : 1200, 'm2/m3'),
-        accessibleAreaFraction: q(0.5, '1'),
-        anodePotential: q(0.1, 'V'),
-      })),
-    },
-    membrane: {
-      thickness: q(0.0002, 'm'),
-      area: q(0.01, 'm2'),
-      temperature: q(298, 'K'),
-      segments: Array.from({ length: n }, (_, i) => ({
-        porosity: q(i < n / 2 ? 0.4 : 0.6, '1'),
-        tortuosity: q(2, '1'),
-      })),
-      species: [
-        {
-          name: 'cation',
-          valence: q(1, '1'),
-          freeDiffusivity: q(1e-9, 'm2/s'),
-          leftConcentration: q(100, 'mol/m3'),
-          rightConcentration: q(100, 'mol/m3'),
-        },
-        {
-          name: 'anion',
-          valence: q(-1, '1'),
-          freeDiffusivity: q(1e-9, 'm2/s'),
-          leftConcentration: q(100, 'mol/m3'),
-          rightConcentration: q(100, 'mol/m3'),
-        },
-      ],
-    },
-    electrolyteResistance: q(2, 'ohm'),
-    contactResistance: q(1, 'ohm'),
-    reversibleCellVoltage: q(0.65, 'V'),
-    anodeTransferCoefficient: q(0.5, '1'),
-    maximumAnodeOverpotential: q(1, 'V'),
-    cathode: {
-      activeArea: q(0.01, 'm2'),
-      exchangeCurrentDensity: q(0.01, 'A/m2'),
-      transferCoefficient: q(0.5, '1'),
-      oxygen: {
-        concentration: q(0.25, 'mol/m3'),
-        massTransferCoefficient: q(1e-4, 'm/s'),
-      },
-    },
-    circuit: { kind: 'external_load', resistance: q(1000, 'ohm') },
-  };
-}
-
 describe('restricted coupled planar cell', () => {
+  it('persists the 1D development result through the same evaluation repository', async () => {
+    const repository = new MemoryEvaluationRepository();
+    const actor: SessionActor = {
+      userId: 'test-1d',
+      email: 'test@example.invalid',
+      role: 'ANALYST',
+      sessionId: 'test-session',
+      sessionToken: 'test-token',
+    };
+    try {
+      const evaluation = await createPersistedCaseEvaluation({
+        rawInput: rawCaseInputSchema.parse({
+          ...rawCaseFixture,
+          mechanistic_model: {
+            model_version: 'coupled-cell-1d-restricted-v1',
+            model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+            system_type: 'MFC',
+            cell_1d: fixture(),
+          },
+        }),
+        actor,
+        evaluationRepository: repository,
+        logger: { warn: () => undefined } as Pick<FastifyBaseLogger, 'warn'>,
+        environment: 'test',
+      });
+      const saved = await repository.getEvaluation(evaluation.evaluation_id);
+      expect(saved?.simulation_enrichment?.model_version).toBe(
+        'coupled-cell-1d-restricted-v1',
+      );
+      expect(saved?.simulation_enrichment?.series[0].points).toHaveLength(12);
+      expect(
+        saved?.simulation_enrichment?.derived_observations.every(
+          (entry) => entry.decision_relevance === 'informational',
+        ),
+      ).toBe(true);
+    } finally {
+      await repository.disconnect();
+    }
+  });
+
+  it('runs through normalized case evaluation without promoting results to decision evidence', () => {
+    const raw = rawCaseInputSchema.parse({
+      ...rawCaseFixture,
+      mechanistic_model: {
+        model_version: 'coupled-cell-1d-restricted-v1',
+        model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+        system_type: 'MFC',
+        cell_1d: fixture(),
+      },
+    });
+    const result = evaluateSimulationEnrichment({
+      normalizedCase: normalizeCaseInput(raw),
+    });
+    expect(result.status).toBe('completed');
+    expect(result.model_version).toBe('coupled-cell-1d-restricted-v1');
+    expect(
+      result.derived_observations.every(
+        (entry) => entry.decision_relevance === 'informational',
+      ),
+    ).toBe(true);
+    expect(
+      result.derived_observations.find(
+        (entry) => entry.key === 'mfc_electrical_generation_w',
+      )?.value,
+    ).toBeGreaterThan(0);
+    expect(result.series[0].points).toHaveLength(12);
+    expect(result.provenance.source_refs).toContain(
+      'test-fixture://coupled-cell-1d',
+    );
+
+    const mismatch = evaluateSimulationEnrichment({
+      normalizedCase: normalizeCaseInput(
+        rawCaseInputSchema.parse({
+          ...raw,
+          mechanistic_model: {
+            ...raw.mechanistic_model,
+            system_type: 'MEC',
+          },
+        }),
+      ),
+    });
+    expect(mismatch.status).toBe('insufficient_data');
+    expect(mismatch.series).toHaveLength(0);
+  });
+
   it('selects the declared 0D or 1D equations through one engine entrypoint', () => {
     const oneD = runConfiguredElectrochemicalModel({
       model: 'coupled-cell-1d-restricted-v1',
@@ -99,6 +117,22 @@ describe('restricted coupled planar cell', () => {
     });
     if (zeroD.model !== 'coupled-0d-dae-v1') throw new Error('Wrong model');
     expect(zeroD.result.status).toBe('completed');
+    expect(() =>
+      runConfiguredElectrochemicalModel({
+        model: 'coupled-0d-dae-v1',
+        normalizedCase: normalizeCaseInput(
+          rawCaseInputSchema.parse({
+            ...rawCaseFixture,
+            mechanistic_model: {
+              model_version: 'coupled-cell-1d-restricted-v1',
+              model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+              system_type: 'MFC',
+              cell_1d: fixture(),
+            },
+          }),
+        ),
+      }),
+    ).toThrow(/cannot execute selected fidelity/);
   });
 
   it('closes one current through anode, ions, cathode and MFC load', () => {

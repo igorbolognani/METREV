@@ -7,39 +7,39 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    EvidenceExplorerAssistantResponse,
-    EvidenceExplorerFacetBucket,
-    EvidenceExplorerWorkspaceResponse,
+  EvidenceExplorerAssistantResponse,
+  EvidenceExplorerFacetBucket,
+  EvidenceExplorerWorkspaceResponse,
 } from '@metrev/domain-contracts';
 
 import type { EvidenceExplorerSourceFilter } from '@/components/evidence-explorer/evidence-explorer-toolbar';
 import {
-    EvidenceExplorerToolbar,
-    type EvidenceExplorerTechnicalFilterField,
+  EvidenceExplorerToolbar,
+  type EvidenceExplorerTechnicalFilterField,
 } from '@/components/evidence-explorer/evidence-explorer-toolbar';
 import { EvidenceReviewTable } from '@/components/evidence-review/evidence-review-table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-    apiBaseUrl,
-    fetchEvidenceExplorerAssistant,
-    fetchEvidenceExplorerWorkspace,
+  apiBaseUrl,
+  fetchEvidenceExplorerAssistant,
+  fetchEvidenceExplorerWorkspace,
 } from '@/lib/api';
 import {
-    useEvidenceExplorerTab,
-    type EvidenceExplorerTab,
+  useEvidenceExplorerTab,
+  type EvidenceExplorerTab,
 } from '@/lib/evidence-explorer-view-query-state';
 import {
-    useEvidenceReviewQueryState,
-    type EvidenceReviewFilter,
+  useEvidenceReviewQueryState,
+  type EvidenceReviewFilter,
 } from '@/lib/evidence-review-query-state';
 import { formatToken } from '@/lib/formatting';
 

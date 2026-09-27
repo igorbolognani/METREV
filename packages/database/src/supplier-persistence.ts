@@ -44,7 +44,9 @@ export interface SupplierPersistencePlan {
 }
 
 function dedupeStrings(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
 }
 
 export function normalizeSupplierLabel(value: string): string {

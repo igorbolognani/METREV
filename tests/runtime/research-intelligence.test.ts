@@ -4,24 +4,24 @@ import mfcPaperFixture from '../fixtures/research/mfc-paper.json';
 import { describe, expect, it } from 'vitest';
 
 import {
-    evidenceClaimSchema,
-    researchColumnDefinitionSchema,
-    researchDataMetadataReadinessExtractionSchema,
-    researchDecisionIngestionPreviewSchema,
-    researchEvidencePackSchema,
-    researchExtractionResultSchema,
-    researchPaperMetadataSchema,
-    researchSystemPerformanceExtractionSchema,
-    type EvidenceClaim,
-    type RuntimeVersion,
+  evidenceClaimSchema,
+  researchColumnDefinitionSchema,
+  researchDataMetadataReadinessExtractionSchema,
+  researchDecisionIngestionPreviewSchema,
+  researchEvidencePackSchema,
+  researchExtractionResultSchema,
+  researchPaperMetadataSchema,
+  researchSystemPerformanceExtractionSchema,
+  type EvidenceClaim,
+  type RuntimeVersion,
 } from '@metrev/domain-contracts';
 import {
-    buildDecisionIngestionPreview,
-    buildResearchEvidencePack,
-    extractMetricMeasurements,
-    findDefaultResearchColumn,
-    getDefaultResearchColumns,
-    runDeterministicResearchExtraction,
+  buildDecisionIngestionPreview,
+  buildResearchEvidencePack,
+  extractMetricMeasurements,
+  findDefaultResearchColumn,
+  getDefaultResearchColumns,
+  runDeterministicResearchExtraction,
 } from '@metrev/research-intelligence';
 
 const now = '2026-04-24T12:00:00.000Z';

@@ -1,7 +1,7 @@
 import {
-    loadContractOutputDefinition,
-    type ContractOutputFieldDefinition,
-    type ContractOutputRecordDefinition,
+  loadContractOutputDefinition,
+  type ContractOutputFieldDefinition,
+  type ContractOutputRecordDefinition,
 } from './loaders';
 import { canonicalOutputSections } from './reconciliation';
 import { decisionOutputSchema, type DecisionOutput } from './schemas';

@@ -4,16 +4,16 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 import {
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { evaluateCase } from '@/lib/api';
 import {
-    clearPendingSubmission,
-    loadPendingSubmission,
-    saveSubmissionError,
+  clearPendingSubmission,
+  loadPendingSubmission,
+  saveSubmissionError,
 } from '@/lib/case-draft';
 
 export const progressStages = [

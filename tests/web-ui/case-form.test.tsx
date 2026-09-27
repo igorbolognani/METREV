@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-    AppRouterContext,
-    type AppRouterInstance,
+  AppRouterContext,
+  type AppRouterInstance,
 } from '../../apps/web-ui/node_modules/next/dist/shared/lib/app-router-context.shared-runtime.js';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 

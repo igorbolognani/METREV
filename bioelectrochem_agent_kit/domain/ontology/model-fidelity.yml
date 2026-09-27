@@ -57,7 +57,7 @@ fidelities:
     spatial_dimension: 1
     temporal: false
     scales: [macro, micro]
-    status: development_api_only
+    status: case_runner_development
     coordinates: [anode_thickness, membrane_thickness]
     phenomena:
       [
@@ -79,7 +79,7 @@ fidelities:
         10.1016/j.biortech.2010.06.156,
       ]
     limitations:
-      - Analyst API development calculation only; not a persisted case-runner profile or an experimentally calibrated predictive model.
+      - Persisted case-runner and analyst API development calculation only; not an experimentally calibrated predictive model.
   - id: biofilm-1d-direct-transfer-research-v1
     title: Biofilm depth and direct electron transfer, 1D micro
     spatial_dimension: 1

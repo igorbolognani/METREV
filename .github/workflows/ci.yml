@@ -79,6 +79,9 @@ jobs:
       - name: Run fast validation matrix
         run: pnpm run validate:fast
 
+      - name: Check repository formatting
+        run: pnpm run format
+
       - name: Check workflow formatting
         run: pnpm run format:workflow-assets
 

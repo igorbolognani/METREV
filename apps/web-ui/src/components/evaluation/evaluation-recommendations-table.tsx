@@ -6,12 +6,12 @@ import * as React from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import { formatToken } from '@/lib/formatting';

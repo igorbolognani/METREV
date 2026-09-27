@@ -1,0 +1,226 @@
+schema_version: 1
+risks:
+  - id: R01
+    risk: parameter_transfer
+    severity: high
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P01
+      - P02
+      - P12
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R02
+    risk: unit_mismatch
+    severity: high
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P01
+      - P02
+      - P12
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R03
+    risk: identifiability
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R04
+    risk: overparameterization
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R05
+    risk: nonlinear_coupling
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R06
+    risk: mesh_dependence
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R07
+    risk: convergence_masking
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R08
+    risk: three_d_cost
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R09
+    risk: large_json_artifacts
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R10
+    risk: stack_domain_mapping
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R11
+    risk: svg_mesh_confusion
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R12
+    risk: unsupported_ui_claims
+    severity: high
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R13
+    risk: candidate_evidence_promotion
+    severity: high
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R14
+    risk: stale_manifest
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R15
+    risk: typescript_python_contract_drift
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.
+  - id: R16
+    risk: runtime_version_drift
+    severity: medium
+    status: open
+    mitigation: Apply the associated acceptance gates and block maturity promotion without recorded evidence.
+    owner_role: release-auditor
+    likelihood: unknown
+    affected_capabilities:
+      - P12
+      - P20
+      - P24
+    verification:
+      Check the relevant required gates in ACCEPTANCE_GATES.yaml and record test/artifact references
+      before closure.

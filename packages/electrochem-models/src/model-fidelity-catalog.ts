@@ -2,7 +2,7 @@ export type SpatialDimension = 0 | 1 | 2 | 3;
 export type ModelResolutionScale = 'macro' | 'micro' | 'nano';
 export type ModelFidelityStatus =
   | 'executable'
-  | 'development_api_only'
+  | 'case_runner_development'
   | 'research_profile_only';
 
 export interface ModelFidelityProfile {
@@ -68,7 +68,7 @@ export const MODEL_FIDELITY_PROFILES: ModelFidelityProfile[] = [
     spatialDimension: 1,
     temporal: false,
     scales: ['macro', 'micro'],
-    status: 'development_api_only',
+    status: 'case_runner_development',
     systems: ['MFC', 'MEC'],
     phenomena: [
       'Porous-anode substrate diffusion and local Faradaic reaction',
@@ -89,9 +89,9 @@ export const MODEL_FIDELITY_PROFILES: ModelFidelityProfile[] = [
       '10.1016/j.biortech.2010.06.156',
     ],
     boundaryNote:
-      'A separate analyst API couples a steady planar anode, restricted binary membrane, cathode and electrical boundary with one current. Inputs use the coupled-cell-1d schema.',
+      'An analyst development API and the persisted case runner couple a steady planar anode, restricted binary membrane, cathode and electrical boundary with one current. Case execution requires the complete cell_1d input.',
     limitation:
-      'Not a persisted case-runner profile or a fitted predictive cell. The material potential is imposed; 2D/3D, transient chemistry, fixed-charge membrane and solid/electrolyte charge fields remain unresolved.',
+      'Case-runner development only, not a fitted predictive cell. The material potential is imposed; 2D/3D, transient chemistry, fixed-charge membrane and solid/electrolyte charge fields remain unresolved.',
   },
   {
     id: 'biofilm-1d-direct-transfer-research-v1',

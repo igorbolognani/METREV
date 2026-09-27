@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer';
 import { inflateSync } from 'node:zlib';
 
 import type {
-    ResearchEvidenceTrace,
-    ResearchPaperMetadata,
+  ResearchEvidenceTrace,
+  ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 
 export interface HydratedResearchTextBlock {

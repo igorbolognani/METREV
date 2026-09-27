@@ -8,4 +8,5 @@ export * from './reporting';
 export * from './reconciliation';
 export * from './research-schemas';
 export * from './schemas';
+export * from './spatial-model-schema';
 export * from './validator';

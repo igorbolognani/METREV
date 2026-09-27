@@ -2,10 +2,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import {
-    externalEvidenceBulkReviewRequestSchema,
-    externalEvidenceReviewRequestSchema,
-    externalEvidenceReviewStatusSchema,
-    externalEvidenceSourceTypeSchema,
+  externalEvidenceBulkReviewRequestSchema,
+  externalEvidenceReviewRequestSchema,
+  externalEvidenceReviewStatusSchema,
+  externalEvidenceSourceTypeSchema,
 } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
 

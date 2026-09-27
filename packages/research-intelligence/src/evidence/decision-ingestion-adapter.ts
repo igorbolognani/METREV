@@ -1,7 +1,7 @@
 import {
-    researchDecisionIngestionPreviewSchema,
-    type ResearchDecisionIngestionPreview,
-    type ResearchEvidencePack,
+  researchDecisionIngestionPreviewSchema,
+  type ResearchDecisionIngestionPreview,
+  type ResearchEvidencePack,
 } from '@metrev/domain-contracts';
 
 function hasContextReferencePenalty(

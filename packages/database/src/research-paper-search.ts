@@ -1,11 +1,11 @@
 import {
-    searchResearchPapersResponseSchema,
-    type ResearchPaperMetadata,
-    type ResearchPaperSearchResult,
-    type ResearchSearchProvider,
-    type SearchResearchPapersRequest,
-    type SearchResearchPapersResponse,
-    type StageResearchPapersRequest,
+  searchResearchPapersResponseSchema,
+  type ResearchPaperMetadata,
+  type ResearchPaperSearchResult,
+  type ResearchSearchProvider,
+  type SearchResearchPapersRequest,
+  type SearchResearchPapersResponse,
+  type StageResearchPapersRequest,
 } from '@metrev/domain-contracts';
 
 import type { Prisma, PrismaClient } from '../generated/prisma/client';

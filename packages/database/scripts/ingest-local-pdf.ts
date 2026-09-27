@@ -20,7 +20,11 @@ async function main() {
   const options = parseScriptOptions();
   const parsed = localSourceImportRequestSchema.safeParse({
     files: optionList(options, ['files', 'file'], []),
-    manifest_path: optionValue(options, ['manifest', 'manifestPath'], undefined),
+    manifest_path: optionValue(
+      options,
+      ['manifest', 'manifestPath'],
+      undefined,
+    ),
     access_status: optionValue(
       options,
       ['access-status', 'accessStatus'],

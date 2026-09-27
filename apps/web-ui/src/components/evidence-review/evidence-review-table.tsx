@@ -4,8 +4,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    ExternalEvidenceCatalogItemSummary,
-    ExternalEvidenceReviewStatus,
+  ExternalEvidenceCatalogItemSummary,
+  ExternalEvidenceReviewStatus,
 } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';

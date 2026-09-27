@@ -7,10 +7,10 @@ compatibility_rules:
     condition:
       all:
         - field: case.stack_blocks.anode_biofilm_support.material_family
-          operator: "="
+          operator: '='
           value: metal_based
         - field: case.stack_blocks.operational_biology.contamination_risk
-          operator: "="
+          operator: '='
           value: high
     finding: Potential mismatch between biological robustness and the local material environment.
     severity: medium
@@ -19,10 +19,10 @@ compatibility_rules:
     condition:
       all:
         - field: case.stack_blocks.membrane_or_separator.type
-          operator: "="
+          operator: '='
           value: AEM
         - field: case.stack_blocks.cathode_catalyst_support.reaction_target
-          operator: "="
+          operator: '='
           value: HER
     finding: Verify alkaline stability and full-system ionic compatibility before recommendation.
     severity: medium
@@ -31,7 +31,7 @@ compatibility_rules:
     condition:
       all:
         - field: case.stack_blocks.balance_of_plant.flow_control
-          operator: "="
+          operator: '='
           value: none
         - field: case.technology_context.scale_context
           operator: in
@@ -43,7 +43,7 @@ compatibility_rules:
     condition:
       all:
         - field: case.stack_blocks.sensors_and_analytics.data_quality
-          operator: "="
+          operator: '='
           value: low
         - field: case.technology_context.performance_claims_under_review
           operator: contains

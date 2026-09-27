@@ -5,8 +5,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import {
-    WorkspaceDataCard,
-    WorkspaceSection,
+  WorkspaceDataCard,
+  WorkspaceSection,
 } from '@/components/workspace-chrome';
 import { formatToken } from '@/lib/formatting';
 
@@ -44,7 +44,10 @@ export function EvaluationReportTab({
           <span className="badge subtle">Report sections</span>
           <ul className="list-block">
             <li>Stack diagnosis</li>
-            <li>{decision.prioritized_improvement_options.length} prioritized improvements</li>
+            <li>
+              {decision.prioritized_improvement_options.length} prioritized
+              improvements
+            </li>
             <li>{decision.impact_map.length} impact map entries</li>
             <li>{decision.supplier_shortlist.length} supplier candidates</li>
             <li>{decision.phased_roadmap.length} roadmap phases</li>
@@ -64,4 +67,3 @@ export function EvaluationReportTab({
     </div>
   );
 }
-

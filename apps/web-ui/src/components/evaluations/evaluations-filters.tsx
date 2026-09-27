@@ -3,9 +3,9 @@
 import * as React from 'react';
 
 import type {
-    EvaluationConfidenceFilter,
-    EvaluationSortDirection,
-    EvaluationSortKey,
+  EvaluationConfidenceFilter,
+  EvaluationSortDirection,
+  EvaluationSortKey,
 } from '@/lib/evaluations-list-query-state';
 
 import { Input } from '@/components/ui/input';

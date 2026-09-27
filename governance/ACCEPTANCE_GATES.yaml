@@ -1,0 +1,59 @@
+schema_version: 1
+gates:
+  - id: GATE-CONTRACT
+    evidence: Versioned input/output contract parses valid and rejects invalid cases.
+    state: defined
+  - id: GATE-PROVENANCE
+    evidence: Every scientific value retains unit, source kind/reference and relevant locator/conditions.
+    state: defined
+  - id: GATE-UNITS
+    evidence: Unit/range validation at external and runtime boundaries.
+    state: defined
+  - id: GATE-MASS-CONSERVATION
+    evidence: Balance residual checked on representative limiting and coupled cases.
+    state: defined
+  - id: GATE-CHARGE-CONSERVATION
+    evidence: Ionic/electronic/circuit current closure checked.
+    state: defined
+  - id: GATE-POSITIVITY
+    evidence: No silent negative-state clipping; failure and stabilization behavior covered.
+    state: defined
+  - id: GATE-LIMITING-CASE
+    evidence: Analytical or simplified reference case checked.
+    state: defined
+  - id: GATE-MESH-REFINEMENT
+    evidence: At least coarse/medium/fine refinement with declared observable and tolerance.
+    state: defined
+  - id: GATE-TIME-REFINEMENT
+    evidence: Transient step refinement with declared observable and tolerance.
+    state: defined
+  - id: GATE-NONLINEAR-CONVERGENCE
+    evidence: Iterations, tolerances, termination and nonconvergence visible.
+    state: defined
+  - id: GATE-CASE-RUNNER
+    evidence: Real normalized case reaches selected fidelity with no silent downgrade.
+    state: defined
+  - id: GATE-PERSISTENCE
+    evidence: Reload retains scientific results and declared status.
+    state: defined
+  - id: GATE-SPATIAL-ARTIFACT
+    evidence: Hash/version/units manifest and access to external field artifact verified.
+    state: defined
+  - id: GATE-API
+    evidence: Authenticated request, response and failure contract tested.
+    state: defined
+  - id: GATE-UI
+    evidence: Selected configuration reaches runtime and maturity/units remain visible.
+    state: defined
+  - id: GATE-E2E
+    evidence: Product path verified in browser and persistence.
+    state: defined
+  - id: GATE-EXPERIMENTAL-COMPARISON
+    evidence: Condition/units/coordinate matched with dataset role.
+    state: defined
+  - id: GATE-INDEPENDENT-VALIDATION
+    evidence: Independent holdout, review and uncertainty preserved.
+    state: defined
+  - id: GATE-FORMAT
+    evidence: Repository-wide pnpm run format passes with hash-pinned evidence bytes preserved.
+    state: defined

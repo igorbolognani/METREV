@@ -20,7 +20,10 @@ export interface StoredIntakeSubmission {
 }
 
 function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined';
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.sessionStorage !== 'undefined'
+  );
 }
 
 export function saveDraftInput(payload: StoredCaseFormDraft): void {

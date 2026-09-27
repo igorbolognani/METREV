@@ -4,9 +4,9 @@ import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/s
 
 import { PrimaryNav } from '../../apps/web-ui/src/components/primary-nav';
 import {
-    NAV_ITEMS,
-    buildBreadcrumbs,
-    getNavItemsForRole,
+  NAV_ITEMS,
+  buildBreadcrumbs,
+  getNavItemsForRole,
 } from '../../apps/web-ui/src/lib/navigation';
 
 vi.mock('next/navigation', () => ({

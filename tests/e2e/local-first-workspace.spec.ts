@@ -107,9 +107,7 @@ async function createEvaluationViaApi(
   return JSON.parse(response.body) as { evaluation_id: string };
 }
 
-async function chooseFocusedMfcTemplate(
-  page: import('@playwright/test').Page,
-) {
+async function chooseFocusedMfcTemplate(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Preset library/ }).click();
   const template = page
     .locator('article')

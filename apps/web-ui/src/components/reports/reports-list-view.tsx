@@ -8,24 +8,24 @@ import type { EvaluationListResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    DenseTableActions,
-    DenseTableShell,
-    DenseTableStack,
+  DenseTableActions,
+  DenseTableShell,
+  DenseTableStack,
 } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import {
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
-    WorkspaceStatCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
+  WorkspaceStatCard,
 } from '@/components/workspace-chrome';
 import { fetchEvaluationList } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';

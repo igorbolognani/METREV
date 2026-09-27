@@ -2,19 +2,19 @@ import { randomUUID } from 'node:crypto';
 
 import type { EvaluationRepository } from '@metrev/database';
 import {
-    reportConversationResponseSchema,
-    type EvaluationResponse,
-    type PrintableEvaluationReportResponse,
-    type ReportConversationCitation,
-    type ReportConversationGrounding,
-    type ReportConversationResponse,
-    type ReportConversationTurn,
+  reportConversationResponseSchema,
+  type EvaluationResponse,
+  type PrintableEvaluationReportResponse,
+  type ReportConversationCitation,
+  type ReportConversationGrounding,
+  type ReportConversationResponse,
+  type ReportConversationTurn,
 } from '@metrev/domain-contracts';
 import {
-    generateReportConversationAnswer,
-    type ReportConversationAnswerResult,
-    type ReportConversationBoundedContextSummary,
-    type ReportConversationRecentTurnContext,
+  generateReportConversationAnswer,
+  type ReportConversationAnswerResult,
+  type ReportConversationBoundedContextSummary,
+  type ReportConversationRecentTurnContext,
 } from '@metrev/llm-adapter';
 
 const REPORT_CONVERSATION_HISTORY_LIMIT = 12;

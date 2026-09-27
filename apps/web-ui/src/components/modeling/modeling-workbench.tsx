@@ -8,6 +8,7 @@ import {
   COMPONENT_MODEL_PARAMETER_GROUPS,
   MODEL_FIDELITY_PROFILES,
 } from '@metrev/electrochem-models/model-fidelity-catalog';
+import { resolvePhysicsComposition } from '@metrev/electrochem-models/physics-composition';
 
 import { PublicTopicNav } from '@/components/public-topic-nav';
 import {
@@ -21,7 +22,7 @@ const modelOptions = [
   { value: 'coupled-0d-dae-v1', label: '0D transient coupled reactor' },
   {
     value: 'coupled-cell-1d-restricted-v1',
-    label: '1D restricted steady cell · development API',
+    label: '1D restricted steady cell · case development',
   },
   {
     value: 'biofilm-1d-direct-transfer-research-v1',
@@ -165,6 +166,15 @@ export function ModelingWorkbench() {
     }),
     [selection, modelFidelityId, separatorType, membranePresence],
   );
+  const composition =
+    modelFidelityId && selection.system !== 'unspecified'
+      ? resolvePhysicsComposition({
+          modelId: modelFidelityId,
+          system: selection.system,
+          architecture: selection.architecture,
+          separator: separatorType,
+        })
+      : null;
 
   const update = <K extends keyof StackAssemblySelection>(
     key: K,
@@ -191,7 +201,7 @@ export function ModelingWorkbench() {
         <div className="modeling-workbench__hero-meta">
           <span>One component-linked SVG</span>
           <span>Macro · micro · nano properties</span>
-          <span>0D case runner · 1D development API</span>
+          <span>0D case runner · 1D case development</span>
         </div>
       </header>
 
@@ -289,8 +299,8 @@ export function ModelingWorkbench() {
                 >
                   {profile.status === 'executable'
                     ? 'Executable in the case runner'
-                    : profile.status === 'development_api_only'
-                      ? 'Executable through the analyst development API'
+                    : profile.status === 'case_runner_development'
+                      ? 'Case runner development · complete cell input required'
                       : 'Research profile · not executable'}
                 </span>
                 <strong>{profile.title}</strong>
@@ -301,6 +311,26 @@ export function ModelingWorkbench() {
                 </p>
                 <p>{profile.boundaryNote}</p>
                 <p>{profile.limitation}</p>
+                {composition ? (
+                  <div data-testid="physics-composition">
+                    <strong>Configured physics: {composition.status}</strong>
+                    <p>
+                      Requested modules: {composition.activeModules.join(', ')}
+                    </p>
+                    {composition.missingModules.length > 0 ? (
+                      <p>
+                        Unimplemented: {composition.missingModules.join(', ')}
+                      </p>
+                    ) : null}
+                    {composition.unsupportedConfiguration.length > 0 ? (
+                      <p>
+                        Unsupported stack mapping:{' '}
+                        {composition.unsupportedConfiguration.join(', ')}
+                      </p>
+                    ) : null}
+                    <p>{composition.note}</p>
+                  </div>
+                ) : null}
                 <div className="modeling-workbench__doi-list">
                   {profile.referenceDois.map((doi) => (
                     <a
@@ -358,8 +388,8 @@ export function ModelingWorkbench() {
                 >
                   {candidate.status === 'executable'
                     ? 'Case runner'
-                    : candidate.status === 'development_api_only'
-                      ? 'Development API'
+                    : candidate.status === 'case_runner_development'
+                      ? 'Case development'
                       : 'Not executable'}
                 </span>
               </header>

@@ -9,18 +9,18 @@ import type { EvaluationComparisonResponse } from '@metrev/domain-contracts';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchEvaluationComparison } from '@/lib/api';
 import {
-    useEvaluationComparisonTab,
-    type EvaluationComparisonTab,
+  useEvaluationComparisonTab,
+  type EvaluationComparisonTab,
 } from '@/lib/evaluation-comparison-view-query-state';
 import { formatToken } from '@/lib/formatting';
 

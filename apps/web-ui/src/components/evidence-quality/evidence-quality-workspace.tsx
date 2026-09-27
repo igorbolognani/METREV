@@ -1,22 +1,22 @@
 'use client';
 
 import {
-    CoverageHeatmap,
-    FunnelChart,
-    InstrumentPanel as Panel,
-    SignalBadge,
-    StatusBar,
+  CoverageHeatmap,
+  FunnelChart,
+  InstrumentPanel as Panel,
+  SignalBadge,
+  StatusBar,
 } from '@metrev/design-system';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-    fetchAcquisitionStatus,
-    fetchDiscoveryStatus,
-    fetchEvidenceQualityReport,
-    runEvidenceDiscovery,
-    triggerEvidenceQualityAudit,
+  fetchAcquisitionStatus,
+  fetchDiscoveryStatus,
+  fetchEvidenceQualityReport,
+  runEvidenceDiscovery,
+  triggerEvidenceQualityAudit,
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 

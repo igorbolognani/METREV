@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    DashboardWorkspace,
-    DashboardWorkspaceView
+  DashboardWorkspace,
+  DashboardWorkspaceView,
 } from '@/components/dashboard-workspace';
-

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import fixture from '../fixtures/raw-case-input.json';
+import { fixture as coupledCellFixture } from '../fixtures/coupled-cell-1d';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -29,6 +30,7 @@ import {
 } from '../../packages/database/scripts/external-ingestion-shared.mjs';
 
 const caseId = 'CASE-POSTGRES-SUITE';
+const caseId1d = 'CASE-POSTGRES-1D-SUITE';
 const lineageCaseId = 'CASE-POSTGRES-LINEAGE-SUITE';
 const supplierNames = [
   'Current Supplier',
@@ -97,6 +99,7 @@ describe('postgres-backed persistence flow', () => {
     };
 
     await prisma.caseRecord.deleteMany({ where: { id: caseId } });
+    await prisma.caseRecord.deleteMany({ where: { id: caseId1d } });
     await prisma.caseRecord.deleteMany({ where: { id: lineageCaseId } });
     await prisma.externalSourceRecord.deleteMany({
       where: {
@@ -154,6 +157,7 @@ describe('postgres-backed persistence flow', () => {
   afterAll(async () => {
     const prisma = getPrismaClient();
     await prisma.caseRecord.deleteMany({ where: { id: caseId } });
+    await prisma.caseRecord.deleteMany({ where: { id: caseId1d } });
     await prisma.caseRecord.deleteMany({ where: { id: lineageCaseId } });
     await prisma.externalSourceRecord.deleteMany({
       where: {
@@ -223,6 +227,17 @@ describe('postgres-backed persistence flow', () => {
         payload: {
           ...fixture,
           case_id: caseId,
+          mechanistic_model: {
+            ...fixture.mechanistic_model,
+            operation: {
+              ...fixture.mechanistic_model.operation,
+              influent_cod_kg_m3: {
+                ...fixture.mechanistic_model.operation.influent_cod_kg_m3,
+                uncertainty: 0.01,
+                uncertainty_unit: 'kgCOD/m3',
+              },
+            },
+          },
           supplier_context: {
             current_suppliers: ['Current Supplier'],
             preferred_suppliers: ['Preferred Supplier'],
@@ -245,6 +260,12 @@ describe('postgres-backed persistence flow', () => {
 
       expect(createResponse.statusCode).toBe(201);
       const created = createResponse.json();
+      expect(created.simulation_enrichment?.sensitivity_analysis).toMatchObject(
+        {
+          method: 'one_at_a_time_reported_uncertainty_v1',
+          evaluated_parameter_count: 1,
+        },
+      );
       expect(created.evidence_decision_context).toEqual(
         expect.objectContaining({
           case_id: caseId,
@@ -263,6 +284,9 @@ describe('postgres-backed persistence flow', () => {
       });
       expect(fetchResponse.statusCode).toBe(200);
       const fetched = fetchResponse.json();
+      expect(fetched.simulation_enrichment?.sensitivity_analysis).toEqual(
+        created.simulation_enrichment?.sensitivity_analysis,
+      );
       expect(fetched.evidence_decision_context).toEqual(
         expect.objectContaining({
           case_id: caseId,
@@ -385,6 +409,54 @@ describe('postgres-backed persistence flow', () => {
       });
 
       expect(simulationAuditEvent).not.toBeNull();
+    } finally {
+      await app.close();
+    }
+  }, 20000);
+
+  it('roundtrips a restricted 1D result through PostgreSQL evaluation storage', async () => {
+    const app = await buildApp({ sessionResolver });
+    try {
+      const createdResponse = await app.inject({
+        method: 'POST',
+        url: '/api/cases/evaluate',
+        headers: {
+          'content-type': 'application/json',
+          cookie: `${defaultSessionCookieName}=postgres-suite`,
+        },
+        payload: {
+          ...fixture,
+          case_id: caseId1d,
+          mechanistic_model: {
+            model_version: 'coupled-cell-1d-restricted-v1',
+            model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+            system_type: 'MFC',
+            cell_1d: coupledCellFixture(),
+          },
+        },
+      });
+      expect(createdResponse.statusCode).toBe(201);
+      const created = createdResponse.json();
+      expect(created.simulation_enrichment?.status).toBe('completed');
+      const fetchedResponse = await app.inject({
+        method: 'GET',
+        url: `/api/evaluations/${created.evaluation_id}`,
+        headers: { cookie: `${defaultSessionCookieName}=postgres-suite` },
+      });
+      expect(fetchedResponse.statusCode).toBe(200);
+      const fetched = fetchedResponse.json();
+      expect(fetched.simulation_enrichment?.model_version).toBe(
+        'coupled-cell-1d-restricted-v1',
+      );
+      expect(fetched.simulation_enrichment?.series).toEqual(
+        created.simulation_enrichment?.series,
+      );
+      expect(
+        fetched.simulation_enrichment?.derived_observations.every(
+          (entry: { decision_relevance: string }) =>
+            entry.decision_relevance === 'informational',
+        ),
+      ).toBe(true);
     } finally {
       await app.close();
     }

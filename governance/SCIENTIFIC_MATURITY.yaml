@@ -1,0 +1,19 @@
+schema_version: 1
+states:
+  - specified
+  - numerically_implemented
+  - numerically_verified
+  - development_integrated
+  - experimentally_compared
+  - calibrated
+  - independently_validated
+  - production_eligible
+production_requires:
+  - GATE-CONTRACT
+  - GATE-PROVENANCE
+  - GATE-UNITS
+  - GATE-CASE-RUNNER
+  - GATE-PERSISTENCE
+  - GATE-EXPERIMENTAL-COMPARISON
+  - GATE-INDEPENDENT-VALIDATION
+claims: Runtime execution, convergence and preliminary development comparison never imply predictive validation.

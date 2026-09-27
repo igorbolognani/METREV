@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-    PrintableReportWorkspaceView,
-    ReportConversationTrace,
+  PrintableReportWorkspaceView,
+  ReportConversationTrace,
 } from '../../apps/web-ui/src/components/printable-report-view';
 import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
 

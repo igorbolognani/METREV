@@ -7,22 +7,22 @@ import type { EvaluationListResponse } from '@metrev/domain-contracts';
 
 import { Badge } from '@/components/ui/badge';
 import {
-    DenseTableActions,
-    DenseTableShell,
-    DenseTableStack,
+  DenseTableActions,
+  DenseTableShell,
+  DenseTableStack,
 } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { WorkspaceEmptyState } from '@/components/workspace-chrome';
 import {
-    type EvaluationSortDirection,
-    type EvaluationSortKey,
+  type EvaluationSortDirection,
+  type EvaluationSortKey,
 } from '@/lib/evaluations-list-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 

@@ -14,16 +14,16 @@ import { EvaluationRoadmapSuppliersTab } from '@/components/evaluation/evaluatio
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSkeleton,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { apiBaseUrl, fetchEvaluationWorkspace } from '@/lib/api';
 import {
-    useEvaluationTab,
-    type EvaluationTab,
+  useEvaluationTab,
+  type EvaluationTab,
 } from '@/lib/evaluation-view-query-state';
 import { formatToken } from '@/lib/formatting';
 
@@ -150,7 +150,7 @@ export function EvaluationWorkspaceView({
         ? evaluation.decision_output.prioritized_improvement_options.length
         : tab.key === 'modeling'
           ? (simulation?.series.length ?? 0)
-        : tab.key === 'audit'
+          : tab.key === 'audit'
             ? evaluation.decision_output.assumptions_and_defaults_audit
                 .defaults_used.length +
               evaluation.decision_output.assumptions_and_defaults_audit

@@ -2,11 +2,7 @@
 
 import { useWorkspaceTabState } from '@/lib/workspace-tab-query-state';
 
-export const dashboardTabValues = [
-  'overview',
-  'runs',
-  'reports',
-] as const;
+export const dashboardTabValues = ['overview', 'runs', 'reports'] as const;
 
 export type DashboardTab = (typeof dashboardTabValues)[number];
 

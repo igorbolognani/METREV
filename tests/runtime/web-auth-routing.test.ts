@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    buildLoginRedirect,
-    normalizeCallbackPath,
-    sessionHasRequiredRole,
+  buildLoginRedirect,
+  normalizeCallbackPath,
+  sessionHasRequiredRole,
 } from '../../apps/web-ui/src/lib/auth-routing';
 
 describe('web auth routing helpers', () => {

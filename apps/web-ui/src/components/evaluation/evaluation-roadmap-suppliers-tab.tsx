@@ -4,8 +4,8 @@ import type { EvaluationResponse } from '@metrev/domain-contracts';
 import * as React from 'react';
 
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
 } from '@/components/workspace-chrome';
 
 void React;

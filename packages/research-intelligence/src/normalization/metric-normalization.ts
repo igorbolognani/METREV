@@ -1,6 +1,6 @@
 import type {
-    ResearchEvidenceTrace,
-    ResearchMetricMeasurement,
+  ResearchEvidenceTrace,
+  ResearchMetricMeasurement,
 } from '@metrev/domain-contracts';
 
 interface MetricRule {

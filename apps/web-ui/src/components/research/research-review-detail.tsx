@@ -5,38 +5,38 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    ResearchColumnDefinition,
-    ResearchDecisionIngestionPreview,
-    ResearchEvidencePack,
-    ResearchExtractionResult,
-    ResearchPaperMetadata,
-    ResearchReviewDetail,
+  ResearchColumnDefinition,
+  ResearchDecisionIngestionPreview,
+  ResearchEvidencePack,
+  ResearchExtractionResult,
+  ResearchPaperMetadata,
+  ResearchReviewDetail,
 } from '@metrev/domain-contracts';
 
 import { DenseTableShell } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-    addResearchColumn,
-    createResearchEvidencePack,
-    fetchResearchEvidencePackDecisionInput,
-    fetchResearchReview,
-    runResearchExtractions,
+  addResearchColumn,
+  createResearchEvidencePack,
+  fetchResearchEvidencePackDecisionInput,
+  fetchResearchReview,
+  runResearchExtractions,
 } from '@/lib/api';
 import { formatToken } from '@/lib/formatting';
 

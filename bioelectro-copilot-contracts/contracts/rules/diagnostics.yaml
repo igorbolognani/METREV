@@ -9,7 +9,7 @@ diagnostic_rules:
     trigger:
       all:
         - metric: current_density_a_m2
-          operator: "<"
+          operator: '<'
           value: low_threshold
         - field: case.stack_blocks.operational_biology.biofilm_maturity
           operator: in
@@ -25,10 +25,10 @@ diagnostic_rules:
     trigger:
       all:
         - metric: power_density_w_m2
-          operator: "<"
+          operator: '<'
           value: low_threshold
         - field: case.stack_blocks.cathode_catalyst_support.mass_transport_limitation_risk
-          operator: "="
+          operator: '='
           value: high
     diagnosis: The cathode may be the main performance bottleneck.
     confidence: medium
@@ -38,10 +38,10 @@ diagnostic_rules:
     trigger:
       any:
         - metric: internal_resistance_ohm
-          operator: ">"
+          operator: '>'
           value: high_threshold
         - field: case.stack_blocks.membrane_or_separator.fouling_risk
-          operator: "="
+          operator: '='
           value: high
     diagnosis: Ionic transport losses or fouling may be penalizing performance.
     confidence: medium
@@ -51,7 +51,7 @@ diagnostic_rules:
     trigger:
       all:
         - field: case.stack_blocks.sensors_and_analytics.data_quality
-          operator: "="
+          operator: '='
           value: low
     diagnosis: Current instrumentation is insufficient for robust diagnosis.
     confidence: high

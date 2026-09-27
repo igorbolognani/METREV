@@ -7,8 +7,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    EvidenceReviewWorkspaceResponse,
-    ExternalEvidenceReviewAction,
+  EvidenceReviewWorkspaceResponse,
+  ExternalEvidenceReviewAction,
 } from '@metrev/domain-contracts';
 
 import { EvidenceReviewBulkActionDialog } from '@/components/evidence-review/evidence-review-bulk-action-dialog';
@@ -18,26 +18,26 @@ import type { EvidenceReviewSourceFilter } from '@/components/evidence-review/ev
 import { EvidenceReviewToolbar } from '@/components/evidence-review/evidence-review-toolbar';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchEvidenceReviewWorkspace } from '@/lib/api';
 import {
-    runBulkEvidenceReview,
-    type BulkEvidenceReviewSummary,
+  runBulkEvidenceReview,
+  type BulkEvidenceReviewSummary,
 } from '@/lib/evidence-review-actions';
 import {
-    useEvidenceReviewQueryState,
-    type EvidenceReviewFilter,
+  useEvidenceReviewQueryState,
+  type EvidenceReviewFilter,
 } from '@/lib/evidence-review-query-state';
 import {
-    useEvidenceReviewTab,
-    type EvidenceReviewTab,
+  useEvidenceReviewTab,
+  type EvidenceReviewTab,
 } from '@/lib/evidence-review-view-query-state';
 
 void React;

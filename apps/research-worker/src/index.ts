@@ -1,16 +1,16 @@
 import {
-    assertRuntimeDatabaseReady,
-    createEvidenceAuditRepository,
-    createResearchRepository,
-    type EvidenceAuditRepository,
-    type ResearchRepository,
+  assertRuntimeDatabaseReady,
+  createEvidenceAuditRepository,
+  createResearchRepository,
+  type EvidenceAuditRepository,
+  type ResearchRepository,
 } from '@metrev/database';
 import { initializeTelemetry } from '@metrev/telemetry/node';
 
 import {
-    createWorkerHealthMonitor,
-    startWorkerHealthServer,
-    type StartedWorkerHealthServer,
+  createWorkerHealthMonitor,
+  startWorkerHealthServer,
+  type StartedWorkerHealthServer,
 } from './health';
 import { runResearchWorkerCycle, summarizeWorkerCycle } from './worker';
 

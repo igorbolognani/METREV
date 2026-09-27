@@ -1,19 +1,19 @@
 import {
-    researchExtractionResultSchema,
-    type ResearchEvidenceTrace,
-    type ResearchExtractionResult,
-    type ResearchPaperMetadata,
+  researchExtractionResultSchema,
+  type ResearchEvidenceTrace,
+  type ResearchExtractionResult,
+  type ResearchPaperMetadata,
 } from '@metrev/domain-contracts';
 import { generateStructuredResearchExtraction } from '@metrev/llm-adapter';
 
 import {
-    hydrateResearchPaperText,
-    type HydratedResearchPaperText,
+  hydrateResearchPaperText,
+  type HydratedResearchPaperText,
 } from '../fulltext/source-content';
 import {
-    DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
-    runDeterministicResearchExtraction,
-    type DeterministicExtractionInput,
+  DETERMINISTIC_RESEARCH_EXTRACTOR_VERSION,
+  runDeterministicResearchExtraction,
+  type DeterministicExtractionInput,
 } from './deterministic-extractor';
 
 export const RESEARCH_RUNTIME_EXTRACTOR_VERSION = 'research-runtime-v1';

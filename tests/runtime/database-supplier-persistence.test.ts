@@ -19,15 +19,18 @@ describe('supplier persistence planning', () => {
         current_suppliers: ['Current Supplier'],
         preferred_suppliers: ['Preferred Supplier'],
         excluded_suppliers: ['Blocked Supplier'],
-        supplier_preference_notes: 'Maintain current service coverage while qualifying one preferred vendor.',
+        supplier_preference_notes:
+          'Maintain current service coverage while qualifying one preferred vendor.',
       },
       evidence_records: [
         {
           evidence_type: 'supplier_claim',
           title: 'Preferred supplier datasheet',
-          summary: 'A membrane supplier claims compatibility with the target chemistry.',
+          summary:
+            'A membrane supplier claims compatibility with the target chemistry.',
           strength_level: 'weak',
-          provenance_note: 'Supplier-provided datasheet pending independent validation.',
+          provenance_note:
+            'Supplier-provided datasheet pending independent validation.',
           supplier_name: 'Preferred Supplier',
         },
       ],

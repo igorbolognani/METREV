@@ -1,0 +1,24 @@
+schema_version: 1
+baseline_main_head: dd4a9123960d96aacfec7ec3b4fba2e77377937c
+baseline_pr: 43
+systems:
+  - MFC
+  - MEC
+  - biosensor
+model_registry: CAPABILITY_MATRIX.yaml
+roadmap: ROADMAP.yaml
+numerical_sidecar: absent
+mesh_runtime: absent
+spatial_artifact_storage: absent
+async_simulation_jobs: absent
+spatial_viewer: absent
+notes:
+  - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
+  - Catalog status is execution availability, separate from scientific maturity.
+spatial_input_contract: spatial-input-v1_schema_only
+physics_composition: eligibility_resolver_only
+coupled_1d_case_runner: development_with_complete_cell_1d
+sensitivity_persistence: migration_and_roundtrip_implemented
+spatial_parameter_authority: version_1_material_fields_only
+numerical_toolchain: decision_pending_compatibility_proof
+governing_equations: candidate_registry_spatial_2d_3d_not_implemented
