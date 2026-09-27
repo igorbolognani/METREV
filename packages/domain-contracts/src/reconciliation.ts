@@ -79,7 +79,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
     runtime_path:
       'normalized_case.defaults_used | normalized_case.missing_data | decision_output.assumptions_and_defaults_audit',
     ui_surface:
-      'apps/web-ui/src/components/evaluation-cockpit.tsx#EvaluationCockpit',
+      'apps/web-ui/src/components/evaluation/evaluation-result-view.tsx#EvaluationWorkspaceView',
     note: 'Defaults and missing-data flags must stay visible in both decision output and history views.',
   },
   {
@@ -90,7 +90,7 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
       'bioelectro-copilot-contracts/contracts/output_contract.yaml#normalized_decision_output.required_sections',
     runtime_path: 'decision_output',
     ui_surface:
-      'apps/web-ui/src/components/evaluation-cockpit.tsx#EvaluationCockpit',
+      'apps/web-ui/src/components/evaluation/evaluation-result-view.tsx#EvaluationWorkspaceView',
     note: 'UI rendering and runtime validation must fail if any canonical output section drifts.',
   },
   {
@@ -267,12 +267,6 @@ export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
     runtime_consumer:
       'packages/domain-contracts/src/loaders.ts#loadContractEvidenceSchema',
     note: 'Evidence typing remains referenced through the shared contracts package even when not on the main hot path.',
-  },
-  {
-    concern: 'stack_brief',
-    file_path: 'stack.md',
-    authority_role: 'reference_only',
-    note: 'The stack brief is retained as a historical reference and is no longer a live runtime authority surface.',
   },
   {
     concern: 'component_graph',

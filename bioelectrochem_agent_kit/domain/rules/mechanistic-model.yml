@@ -149,7 +149,9 @@ input_parameters:
   model_fidelity_id:
     unit: '1'
     required_when: a non-default dimensional or scale formulation is explicitly requested
-    rule: Only coupled-0d-dae-v1 is executable. A 1D, 2D, 3D, stack-network, pore-scale, or nano-informed research selection returns insufficient_data and is never silently run through the 0D solver.
+    research_only_status: not_implemented
+    invalid_or_missing_parameter_status: insufficient_data
+    rule: Only coupled-0d-dae-v1 is executable in the integrated case runner. A known research-only 1D, 2D, 3D, stack-network, pore-scale, or nano-informed selection returns not_implemented, with explicit model blockers, and is never silently run through the 0D solver. Missing or invalid parameters for an executable model return insufficient_data. Standalone development solvers are not integrated case-runner profiles.
   component_model_parameters:
     required_when: a component-specific scale-resolved property is supplied or requested by a research profile
     parameter_contract:

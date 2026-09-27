@@ -32,8 +32,30 @@ const domainCatalog = loadYamlFile<DomainModelFidelityCatalog>(
     'bioelectrochem_agent_kit/domain/ontology/model-fidelity.yml',
   ),
 );
+const modelRules = loadYamlFile<{
+  input_parameters: {
+    model_fidelity_id: {
+      research_only_status: string;
+      invalid_or_missing_parameter_status: string;
+    };
+  };
+}>(
+  resolve(
+    process.cwd(),
+    'bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml',
+  ),
+);
 
 describe('multi-scale model fidelity catalog', () => {
+  it('agrees on unsupported-profile and missing-input status semantics', () => {
+    expect(
+      modelRules.input_parameters.model_fidelity_id.research_only_status,
+    ).toBe('not_implemented');
+    expect(
+      modelRules.input_parameters.model_fidelity_id
+        .invalid_or_missing_parameter_status,
+    ).toBe('insufficient_data');
+  });
   it('keeps the runtime profile dimensions and status aligned with the domain ontology', () => {
     expect(
       MODEL_FIDELITY_PROFILES.map((profile) => ({
