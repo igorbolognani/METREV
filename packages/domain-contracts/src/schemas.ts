@@ -531,6 +531,7 @@ export const mechanisticModelInputSchema = z.object({
   model_fidelity_id: z
     .enum([
       'coupled-0d-dae-v1',
+      'coupled-cell-1d-restricted-v1',
       'biofilm-1d-direct-transfer-research-v1',
       'biofilm-2d-electrode-research-v1',
       'cell-3d-multiphysics-research-v1',

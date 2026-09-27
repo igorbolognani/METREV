@@ -28,6 +28,8 @@ describe('modeling workbench', () => {
     expect(html).toContain('Assemble the cell as you specify it');
     expect(html).toContain('Interactive fuel-cell stack assembly');
     expect(html).toContain('0D transient coupled reactor');
+    expect(html).toContain('1D restricted steady cell · development API');
+    expect(html).toContain('Development API');
     expect(html).toContain('biofilm-1d-direct-transfer-research-v1');
     expect(html).toContain('cell-3d-multiphysics-research-v1');
     expect(html).toContain('electrode-interface-nano-research-v1');

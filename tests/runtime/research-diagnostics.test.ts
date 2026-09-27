@@ -41,6 +41,7 @@ describe('local research diagnostics', () => {
     expect(corpus.totals.curated_claims).toBe(10);
     expect(corpus.totals.source_artifacts_registered).toBe(9);
     expect(corpus.totals.source_artifacts_hash_verified).toBe(9);
+    expect(corpus.totals.numeric_artifacts_extracted).toBe(3);
     expect(corpus.totals.candidate_claims).toBe(26);
     expect(corpus.totals.candidate_claims_reviewed).toBe(0);
     expect(corpus.totals.decision_eligible_claims).toBe(0);
@@ -49,6 +50,27 @@ describe('local research diagnostics', () => {
         (area) => area.area === 'MFC-integrated BOD biosensor',
       )?.source_reported_claims,
     ).toBe(18);
+    const mecElectrochem = coverage.coverage_by_area.find(
+      (area) =>
+        area.area === 'MEC electrode and electrochemical characterization',
+    );
+    expect(mecElectrochem?.numeric_artifacts_extracted).toBe(3);
+    expect(mecElectrochem?.status).toContain(
+      'extracted_pending_scientific_interpretation',
+    );
+    expect(
+      coverage.coverage_by_area.find(
+        (area) =>
+          area.area ===
+          'MEC wastewater COD, gross hydrogen, and captured hydrogen',
+      )?.source_reported_claims,
+    ).toBe(0);
+    expect(
+      report.summaries.evidence_audit.issue_flags.map((flag) => flag.code),
+    ).toContain('NUMERIC_EXTRACTS_AWAIT_SCIENTIFIC_INTERPRETATION');
+    expect(
+      report.summaries.evidence_audit.issue_flags.map((flag) => flag.code),
+    ).not.toContain('SPREADSHEET_TABLE_EXTRACTION_PENDING');
     expect(
       report.checks.find((check) => check.label === 'provider-readiness')
         ?.payload.openalex.api_key_required_for_basic_search,

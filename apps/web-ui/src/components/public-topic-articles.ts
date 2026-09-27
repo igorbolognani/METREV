@@ -724,7 +724,7 @@ export const PUBLIC_TOPIC_ARTICLES: Record<
         paragraphs: [
           'The four reactor profiles currently supported are a two-compartment MFC in batch or continuous mixed-flow operation and a two-compartment MEC in batch or continuous mixed-flow operation. The flow field must agree with the named regime: batch means zero feed during the modeled interval; continuous mixed flow requires positive flow.',
           'Standalone amperometric calibration and calibrated amperometric sensing integrated with MFC/MEC power accounting are also executable sensor profiles when the case supplies complete, source-referenced calibration and analytical performance. These profiles do not simulate a live biofilm’s BOD response over time.',
-          'Single-chamber air-cathode cells, tubular modules, electrical stacks, spatial biofilms, multi-population MEC kinetics, and dynamic living-MFC BOD sensors are represented for research and evidence mapping only. Choosing one of those names in a run returns insufficient data instead of simulated output.',
+          'Single-chamber air-cathode cells, tubular modules, electrical stacks, spatial biofilms, multi-population MEC kinetics, and dynamic living-MFC BOD sensors are represented for research and evidence mapping only. Choosing a catalogued research profile in the case runner returns not_implemented instead of simulated output. A restricted steady planar 1D cell calculation is separately available through the analyst modeling API; it is not a general spatial case-runner profile.',
         ],
         diagramTitle: 'A configuration can be executable or a research profile',
         diagramCaption:
@@ -1328,7 +1328,7 @@ export const PUBLIC_TOPIC_ARTICLES: Record<
           {
             label: 'Profile gate',
             explanation:
-              'Research-only configurations return insufficient data instead of reusing the 0D model.',
+              'Research-only case-runner configurations return not_implemented instead of reusing the 0D model.',
           },
         ],
         sources: ['hamelers', 'zeng', 'multipop', 'picioreanu'],

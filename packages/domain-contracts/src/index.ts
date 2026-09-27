@@ -1,4 +1,5 @@
 export * from './agent-pipeline';
+export * from './coupled-cell-1d-schema';
 export * from './experimental-validation';
 export * from './loaders';
 export * from './normalize';

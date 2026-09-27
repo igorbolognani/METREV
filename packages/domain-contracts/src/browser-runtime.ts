@@ -4,6 +4,7 @@ import modelDefinitionYaml from '../../../bioelectrochem_agent_kit/domain/rules/
 import type { MechanisticModelDefinition } from './loaders';
 
 export * from './browser';
+export * from './coupled-cell-1d-schema';
 
 export function loadMechanisticModelDefinition(): MechanisticModelDefinition {
   return yaml.load(modelDefinitionYaml) as MechanisticModelDefinition;

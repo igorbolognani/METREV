@@ -311,6 +311,21 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(valueFor(result, 'current_density_a_m2')).toBeNull();
   });
 
+  it('does not run the separate 1D development API with a 0D case payload', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    raw.mechanistic_model!.model_fidelity_id = 'coupled-cell-1d-restricted-v1';
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('not_implemented');
+    expect(result.series).toHaveLength(0);
+    expect(result.failure_detail?.model_blockers).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('analyst development API'),
+      ]),
+    );
+  });
+
   it('does not run an MFC or MEC model for a legacy or unclassified family', () => {
     for (const technologyFamily of [
       'microbial_electrochemical_technology',

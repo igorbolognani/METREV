@@ -644,7 +644,7 @@
       "missing_data_reasons": {
         "raw_timeseries": "The paper states that raw data can be requested from the authors; no sample-level data file is locally registered.",
         "model_boundary": "The module uses tubular, depth-separated air-chamber geometry and anion-exchange membrane; the current 0D model does not resolve axial position or cathode flooding.",
-        "independent_validation": "Reported aggregate study outcomes have not been extracted into a benchmark or independently checked against the METREV model."
+        "independent_validation": "Reported aggregate outcomes are exported as provisional literature claims, but no condition-matched full-cell observations have been independently checked against the METREV model."
       },
       "review_calculations": [
         {
@@ -1097,7 +1097,7 @@
       "missing_data_reasons": {
         "raw_timeseries": "The article says data are available from the corresponding author on request; the supplementary PDF is not a raw sensor dataset.",
         "measurement_endpoint": "The study uses BOD and a living MFC biofilm rather than an isolated electrochemical recognition layer.",
-        "independent_validation": "These published metrics have not been applied as a METREV benchmark and are not external validation of its solver."
+        "independent_validation": "Published aggregates are exported as provisional literature claims, not compared to a condition-matched METREV sensor model and not external validation of its solver."
       },
       "review_calculations": [
         {

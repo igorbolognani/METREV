@@ -382,6 +382,12 @@ export function buildCorpusScore(repoRoot) {
       source_artifacts_hash_verified: inputs.artifacts.filter(
         (artifact) => artifact.status === 'PASS',
       ).length,
+      numeric_artifacts_extracted: inputs.artifacts.filter(
+        (artifact) =>
+          artifact.status === 'PASS' &&
+          artifact.extraction_status ===
+            'numeric_observations_extracted_pending_scientific_review',
+      ).length,
       candidate_claims: inputs.claims.length,
       candidate_claims_with_source_locator:
         inputs.claims.length - claimsMissingLocator,
@@ -405,6 +411,18 @@ export function buildCorpusScore(repoRoot) {
 
 export function buildResearchCoverage(repoRoot) {
   const inputs = baseInputs(repoRoot);
+  const recordsById = new Map(
+    inputs.candidateRecords.map((record) => [record.candidate_id, record]),
+  );
+  const numericExtracts = inputs.artifacts.filter(
+    (artifact) =>
+      artifact.status === 'PASS' &&
+      artifact.extraction_status ===
+        'numeric_observations_extracted_pending_scientific_review',
+  );
+  const coraNumericExtracts = numericExtracts.filter(
+    (artifact) => artifact.candidate_id === 'cora-dataset-10.34810-DATA2866',
+  );
   const candidateMetrics = new Map();
   for (const claim of inputs.claims) {
     candidateMetrics.set(
@@ -415,6 +433,12 @@ export function buildResearchCoverage(repoRoot) {
 
   const candidateClaimsFor = (predicate) =>
     inputs.claims.filter(predicate).length;
+  const scopedClaimsFor = (recordPredicate, claimPredicate) =>
+    candidateClaimsFor(
+      (claim) =>
+        recordPredicate(recordsById.get(claim.candidate_id) ?? {}) &&
+        claimPredicate(claim),
+    );
   const recordsFor = (predicate) =>
     inputs.candidateRecords.filter(predicate).length;
   const hasWastewaterScope = (record) =>
@@ -427,8 +451,11 @@ export function buildResearchCoverage(repoRoot) {
           record.technology_scope?.includes('MFC') &&
           hasWastewaterScope(record),
       ),
-      source_reported_claims: candidateClaimsFor((claim) =>
-        claim.metric_key.startsWith('wastewater.'),
+      source_reported_claims: scopedClaimsFor(
+        (record) =>
+          record.technology_scope?.includes('MFC') &&
+          hasWastewaterScope(record),
+        (claim) => claim.metric_key.startsWith('wastewater.'),
       ),
       decision_ready_claims: 0,
       status: candidateClaimsFor((claim) =>
@@ -444,13 +471,18 @@ export function buildResearchCoverage(repoRoot) {
           record.technology_scope?.includes('MFC') &&
           hasWastewaterScope(record),
       ),
-      source_reported_claims: candidateClaimsFor((claim) =>
-        /(^|\.)(current|voltage|power|electrical|coulombic)/i.test(
-          claim.metric_key,
-        ),
+      source_reported_claims: scopedClaimsFor(
+        (record) =>
+          record.technology_scope?.includes('MFC') &&
+          hasWastewaterScope(record),
+        (claim) =>
+          /(^|\.)(current|voltage|power|electrical|coulombic)/i.test(
+            claim.metric_key,
+          ),
       ),
       decision_ready_claims: 0,
-      status: 'downloaded_source_tables_or_figures_need_cell_level_review',
+      status:
+        'source_reported_outputs_need_condition_matched_cell_level_observations',
     },
     {
       area: 'MEC electrode and electrochemical characterization',
@@ -460,8 +492,12 @@ export function buildResearchCoverage(repoRoot) {
       source_reported_claims: candidateClaimsFor((claim) =>
         claim.metric_key.startsWith('mec.'),
       ),
+      numeric_artifacts_extracted: coraNumericExtracts.length,
       decision_ready_claims: 0,
-      status: 'ODS_current_EIS_LSV_files_wait_for_cell_level_extraction',
+      status:
+        coraNumericExtracts.length > 0
+          ? 'numeric_ODS_curves_extracted_pending_scientific_interpretation_not_full_cell_data'
+          : 'ODS_current_EIS_LSV_files_wait_for_cell_level_extraction',
     },
     {
       area: 'MEC wastewater COD, gross hydrogen, and captured hydrogen',
@@ -470,8 +506,11 @@ export function buildResearchCoverage(repoRoot) {
           record.technology_scope?.includes('MEC') &&
           hasWastewaterScope(record),
       ),
-      source_reported_claims: candidateClaimsFor((claim) =>
-        /(^|\.)(cod|hydrogen|h2)/i.test(claim.metric_key),
+      source_reported_claims: scopedClaimsFor(
+        (record) =>
+          record.technology_scope?.includes('MEC') &&
+          hasWastewaterScope(record),
+        (claim) => /(^|\.)(cod|hydrogen|h2)/i.test(claim.metric_key),
       ),
       decision_ready_claims: 0,
       status: 'no_compatible_external_observation_claims',
@@ -632,21 +671,40 @@ export function buildAuditExplain(repoRoot) {
         'Extracted values remain literature candidates and are blocked from decision inputs.',
     });
   }
-  if (
-    inputs.artifacts.some((artifact) =>
-      artifact.extraction_status?.includes('needs_table'),
-    )
-  ) {
+  const originalTablesPending = inputs.artifacts.filter(
+    (artifact) =>
+      artifact.extraction_status?.includes('needs_table') &&
+      !inputs.artifacts.some(
+        (extract) =>
+          extract.candidate_id === artifact.candidate_id &&
+          extract.status === 'PASS' &&
+          extract.extraction_status ===
+            'numeric_observations_extracted_pending_scientific_review',
+      ),
+  );
+  if (originalTablesPending.length) {
     issueFlags.push({
       code: 'SPREADSHEET_TABLE_EXTRACTION_PENDING',
       severity: 'warning',
-      count: inputs.artifacts.filter((artifact) =>
-        artifact.extraction_status?.includes('needs_table'),
-      ).length,
+      count: originalTablesPending.length,
       detail:
-        'The source ODS files are retained unchanged; cell-level extraction and units need analyst review.',
+        'Original tables have no verified numeric extract registered for this candidate.',
     });
   }
+  const numericPending = inputs.artifacts.filter(
+    (artifact) =>
+      artifact.status === 'PASS' &&
+      artifact.extraction_status ===
+        'numeric_observations_extracted_pending_scientific_review',
+  );
+  if (numericPending.length)
+    issueFlags.push({
+      code: 'NUMERIC_EXTRACTS_AWAIT_SCIENTIFIC_INTERPRETATION',
+      severity: 'warning',
+      count: numericPending.length,
+      detail:
+        'Native numeric observations were preserved; ambiguous axes, materials and full-cell applicability still require source interpretation.',
+    });
   if (localFailures(inputs).length) {
     issueFlags.push({
       code: 'LOCAL_PROVENANCE_INTEGRITY_FAILURE',
@@ -944,7 +1002,8 @@ export async function buildDoctorReport(repoRoot, options = {}) {
         artifact_types: countBy(baseInputs(repoRoot).artifacts, (artifact) =>
           artifact.file_name?.split('.').at(-1)?.toLowerCase(),
         ),
-        note: 'PDF text extraction is recorded; ODS tables still require cell-level extraction and analyst review.',
+        numeric_artifacts_extracted: corpus.totals.numeric_artifacts_extracted,
+        note: 'The CORA ODS numeric observations have been extracted. Scientific interpretation of source ambiguities and condition-matched full-cell data remain open.',
       },
     },
     {
