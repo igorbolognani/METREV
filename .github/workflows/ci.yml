@@ -138,6 +138,28 @@ jobs:
       - name: Run Postgres migration and persistence validation
         run: pnpm run validate:db
 
+  validate-spatial-mesh:
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned Gmsh and native libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglu1-mesa libxft2
+          python -m pip install gmsh==4.15.2
+
+      - name: Verify real planar meshes, physical groups and hashes
+        run: METREV_REQUIRE_GMSH=1 python -m unittest discover -s tests/contracts -p test_spatial_sidecar.py -v
+
   validate-local:
     runs-on: ubuntu-latest
     needs: validate

@@ -7,8 +7,8 @@ systems:
   - biosensor
 model_registry: CAPABILITY_MATRIX.yaml
 roadmap: ROADMAP.yaml
-numerical_sidecar: absent
-mesh_runtime: absent
+numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
+mesh_runtime: planar_gmsh_development_ci_gate_pending
 spatial_artifact_storage: absent
 async_simulation_jobs: absent
 spatial_viewer: absent
@@ -20,5 +20,5 @@ physics_composition: eligibility_resolver_only
 coupled_1d_case_runner: development_with_complete_cell_1d
 sensitivity_persistence: migration_and_roundtrip_implemented
 spatial_parameter_authority: version_1_material_fields_only
-numerical_toolchain: decision_pending_compatibility_proof
+numerical_toolchain: gmsh_4_15_2_pinned_dolfinx_0_10_0_r1_container_candidate_pde_unverified
 governing_equations: candidate_registry_spatial_2d_3d_not_implemented

@@ -1,0 +1,62 @@
+{
+  "protocol_version": "spatial-sidecar-v1",
+  "request_id": "ca19b65b-687d-4af6-b7be-c91c98df052a",
+  "operation": "planar_mesh",
+  "mesh": {
+    "geometry_version": "planar-layers-v1",
+    "height_m": {
+      "value": 0.01,
+      "unit": "m",
+      "source_kind": "test_fixture",
+      "source_ref": "test-fixture://planar-mesh"
+    },
+    "layers": [
+      {
+        "tag": "anode",
+        "kind": "anode",
+        "component_id": "case/anode",
+        "width_m": {
+          "value": 0.001,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://planar-mesh"
+        }
+      },
+      {
+        "tag": "biofilm",
+        "kind": "biofilm",
+        "component_id": "case/biofilm",
+        "width_m": {
+          "value": 0.002,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://planar-mesh"
+        }
+      },
+      {
+        "tag": "liquid",
+        "kind": "bulk_liquid",
+        "component_id": "case/reactor",
+        "width_m": {
+          "value": 0.007,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "test-fixture://planar-mesh"
+        }
+      }
+    ],
+    "boundaries": {
+      "left": { "tag": "anode_contact", "role": "electrode" },
+      "right": { "tag": "outer_wall", "role": "wall" },
+      "top": { "tag": "outlet", "role": "outlet" },
+      "bottom": { "tag": "inlet", "role": "inlet" }
+    },
+    "target_size_m": {
+      "value": 0.002,
+      "unit": "m",
+      "source_kind": "test_fixture",
+      "source_ref": "test-fixture://planar-mesh"
+    },
+    "refinement_factors": [1, 2, 4]
+  }
+}

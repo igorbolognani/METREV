@@ -70,7 +70,7 @@ work_items:
   - id: P04
     title: Activate the future numerical sidecar architecture
     phase: foundation
-    status: pending
+    status: partial
     depends_on:
       - P02
     required_gates:
@@ -89,11 +89,12 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - Container build and DOLFINx/PETSc compatibility not yet verified; no PDE or job service
+      - Product authorization, artifact store and async worker integration pending
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P04
     required_gates:
@@ -112,7 +113,8 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - Planar layered test geometry only; numerical cell geometry and mesh refinement study pending
+      - P04 deployment gate and artifact storage pending
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2
