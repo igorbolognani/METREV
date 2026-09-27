@@ -1,5 +1,5 @@
 version: 1
-scope: MFC, MEC, wastewater treatment, and electrochemical biosensing; research profiles describe requirements and do not imply an implemented solver.
+scope: MFC, MEC, wastewater treatment, and electrochemical biosensing; each fidelity declares its actual runtime availability.
 axes:
   spatial_dimension:
     0: Lumped states with no spatial coordinate; time dependence may still be resolved.
@@ -52,6 +52,34 @@ fidelities:
         10.1016/j.jpowsour.2009.06.101,
         10.3182/20110828-6-IT-1002.01636,
       ]
+  - id: coupled-cell-1d-restricted-v1
+    title: Restricted planar cell, steady 1D development
+    spatial_dimension: 1
+    temporal: false
+    scales: [macro, micro]
+    status: development_api_only
+    coordinates: [anode_thickness, membrane_thickness]
+    phenomena:
+      [
+        porous_anode_substrate_diffusion_and_Faradaic_reaction,
+        binary_electroneutral_membrane_migration,
+        cathode_polarization_and_oxygen_limit,
+        MFC_load_or_MEC_applied_voltage_circuit_closure,
+      ]
+    required_model_groups: [porous_anode, binary_membrane, cathode, circuit]
+    required_component_parameters: []
+    required_spatial_inputs:
+      - source-traced cellwise anode porosity, tortuosity, accessible surface area and imposed material potential
+      - source-traced binary monovalent membrane composition, equal interface concentrations and equal ion diffusivities
+      - source-traced cathode kinetics and oxygen or hydrogen boundary, plus load or applied voltage
+    references:
+      [
+        10.1051/e3sconf/202233408005,
+        10.1007/s10800-016-1017-2,
+        10.1016/j.biortech.2010.06.156,
+      ]
+    limitations:
+      - Analyst API development calculation only; not a persisted case-runner profile or an experimentally calibrated predictive model.
   - id: biofilm-1d-direct-transfer-research-v1
     title: Biofilm depth and direct electron transfer, 1D micro
     spatial_dimension: 1

@@ -45,6 +45,7 @@
     "ui:layout-audit": "node scripts/run-ui-layout-audit.mjs",
     "corpus:score": "node scripts/run-corpus-score.mjs",
     "research:coverage": "node scripts/run-research-coverage.mjs",
+    "evidence:export:development": "node packages/database/scripts/export-development-benchmark.mjs --output=test-results/development-benchmark",
     "pdf:inspect": "node scripts/run-pdf-inspect.mjs",
     "audit:explain": "node scripts/run-audit-explain.mjs",
     "metrev:doctor": "NODE_USE_ENV_PROXY=1 node scripts/run-metrev-doctor.mjs",

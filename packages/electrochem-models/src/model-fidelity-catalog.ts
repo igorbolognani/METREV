@@ -1,6 +1,9 @@
 export type SpatialDimension = 0 | 1 | 2 | 3;
 export type ModelResolutionScale = 'macro' | 'micro' | 'nano';
-export type ModelFidelityStatus = 'executable' | 'research_profile_only';
+export type ModelFidelityStatus =
+  | 'executable'
+  | 'development_api_only'
+  | 'research_profile_only';
 
 export interface ModelFidelityProfile {
   id: string;
@@ -58,6 +61,37 @@ export const MODEL_FIDELITY_PROFILES: ModelFidelityProfile[] = [
       'Each compartment is well mixed and isothermal. Batch and continuous mixed-flow profiles use the same state equations with different flow boundaries.',
     limitation:
       'This model has no spatial gradients, resolved biofilm thickness, pore transport, stack network, thermal field, or gas-transfer/crossover model.',
+  },
+  {
+    id: 'coupled-cell-1d-restricted-v1',
+    title: 'Restricted planar cell · steady 1D development',
+    spatialDimension: 1,
+    temporal: false,
+    scales: ['macro', 'micro'],
+    status: 'development_api_only',
+    systems: ['MFC', 'MEC'],
+    phenomena: [
+      'Porous-anode substrate diffusion and local Faradaic reaction',
+      'Binary electroneutral membrane migration',
+      'Cathode Butler–Volmer polarization and optional oxygen transport loss',
+      'One MFC load or MEC applied-voltage circuit current',
+    ],
+    requiredComponentParameters: [],
+    requiredSpatialInputs: [
+      'source-traced cellwise anode porosity, tortuosity, accessible surface area and imposed material potential',
+      'source-traced binary monovalent membrane composition, equal interface concentrations and equal ion diffusivities',
+      'source-traced cathode kinetics and oxygen or hydrogen boundary, plus load or applied voltage',
+    ],
+    requiredGroups: ['porous_anode', 'binary_membrane', 'cathode', 'circuit'],
+    referenceDois: [
+      '10.1051/e3sconf/202233408005',
+      '10.1007/s10800-016-1017-2',
+      '10.1016/j.biortech.2010.06.156',
+    ],
+    boundaryNote:
+      'A separate analyst API couples a steady planar anode, restricted binary membrane, cathode and electrical boundary with one current. Inputs use the coupled-cell-1d schema.',
+    limitation:
+      'Not a persisted case-runner profile or a fitted predictive cell. The material potential is imposed; 2D/3D, transient chemistry, fixed-charge membrane and solid/electrolyte charge fields remain unresolved.',
   },
   {
     id: 'biofilm-1d-direct-transfer-research-v1',

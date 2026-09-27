@@ -22,6 +22,7 @@ import { registerEvidenceAuditRoutes } from './routes/evidence-audit';
 import { registerExportRoutes } from './routes/exports';
 import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
+import { registerModelingRoutes } from './routes/modeling';
 import { registerResearchRoutes } from './routes/research';
 import { registerWorkspaceRoutes } from './routes/workspace';
 
@@ -95,6 +96,7 @@ export async function buildApp(
     prefix: '/api/evidence-intelligence',
   });
   await app.register(registerResearchRoutes, { prefix: '/api/research' });
+  await app.register(registerModelingRoutes, { prefix: '/api/modeling' });
   await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });
   await app.register(registerExportRoutes, { prefix: '/api/exports' });
 

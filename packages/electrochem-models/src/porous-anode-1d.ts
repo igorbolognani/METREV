@@ -53,6 +53,11 @@ export interface SourcedSpatialValue<Unit extends string = string> {
   unit: Unit;
   source_kind: SourceKind;
   source_ref: string;
+  original_value?: number;
+  original_unit?: string;
+  normalization_rule_id?: string;
+  uncertainty?: number;
+  uncertainty_unit?: Unit;
 }
 
 export interface PorousAnodeCell {

@@ -12,6 +12,11 @@ import {
   simulateMechanisticCase,
   type MechanisticRun,
 } from './mechanistic';
+import {
+  solveCoupledCell1d,
+  type CoupledCell1dInput,
+  type CoupledCell1dResult,
+} from './coupled-cell-1d';
 
 export const INTERNAL_MODEL_VERSION = mechanisticModelVersion;
 export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
@@ -33,6 +38,11 @@ export type {
   MembraneIonInput,
   MembraneIonResult,
 } from './membrane-ion-1d';
+export { COUPLED_CELL_1D_SOURCES, solveCoupledCell1d } from './coupled-cell-1d';
+export type {
+  CoupledCell1dInput,
+  CoupledCell1dResult,
+} from './coupled-cell-1d';
 export {
   GATTI_2017_SOURCE,
   GATTI_2017_PARAMETER_EVIDENCE,
@@ -278,4 +288,30 @@ export function evaluateSimulationEnrichment(input: {
       },
     });
   }
+}
+
+/** The selected configuration determines which equations are coupled. */
+export type ConfiguredElectrochemicalModel =
+  | { model: 'coupled-0d-dae-v1'; normalizedCase: NormalizedCaseInput }
+  | { model: 'coupled-cell-1d-restricted-v1'; cell: CoupledCell1dInput };
+
+export type ConfiguredElectrochemicalResult =
+  | { model: 'coupled-0d-dae-v1'; result: SimulationEnrichment }
+  | { model: 'coupled-cell-1d-restricted-v1'; result: CoupledCell1dResult };
+
+export function runConfiguredElectrochemicalModel(
+  input: ConfiguredElectrochemicalModel,
+): ConfiguredElectrochemicalResult {
+  if (input.model === 'coupled-0d-dae-v1') {
+    return {
+      model: input.model,
+      result: evaluateSimulationEnrichment({
+        normalizedCase: input.normalizedCase,
+      }),
+    };
+  }
+  if (input.model === 'coupled-cell-1d-restricted-v1') {
+    return { model: input.model, result: solveCoupledCell1d(input.cell) };
+  }
+  throw new RangeError('Unknown configured electrochemical model');
 }

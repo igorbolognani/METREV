@@ -83,6 +83,11 @@ describe('multi-scale model fidelity catalog', () => {
         (profile) => profile.status === 'executable',
       ).map((profile) => profile.id),
     ).toEqual(['coupled-0d-dae-v1']);
+    expect(
+      MODEL_FIDELITY_PROFILES.filter(
+        (profile) => profile.status === 'development_api_only',
+      ).map((profile) => profile.id),
+    ).toEqual(['coupled-cell-1d-restricted-v1']);
   });
 
   it('keeps every component property ID and SI unit aligned with the domain catalog', () => {

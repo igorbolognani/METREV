@@ -283,16 +283,20 @@ export function CaseFormReviewSubmitStep({
                     {profile.title} ·{' '}
                     {profile.status === 'executable'
                       ? 'executable'
-                      : 'research only'}
+                      : profile.status === 'development_api_only'
+                        ? 'development API only'
+                        : 'research only'}
                   </option>
                 ))}
               </select>
             </label>
             <p className="muted">
               Spatial dimension, temporal resolution, and represented scale are
-              separate choices. Only the lumped 0D solver runs today; selecting
-              another fidelity records the requested model and returns{' '}
-              <em>insufficient data</em> instead of silently using 0D.
+              separate choices. The case runner executes the lumped 0D model;
+              selecting a different fidelity records the request and returns{' '}
+              <em>not_implemented</em>. The restricted steady 1D cell runs
+              separately through the analyst modeling API with its own input
+              contract.
             </p>
             <ul
               className="case-form-model-profiles__catalog"
@@ -311,7 +315,9 @@ export function CaseFormReviewSubmitStep({
                         {profile.scales.join(' + ')} scale ·{' '}
                         {profile.status === 'executable'
                           ? 'executable'
-                          : 'research profile only'}
+                          : profile.status === 'development_api_only'
+                            ? 'development API only'
+                            : 'research profile only'}
                       </span>
                     </summary>
                     <p>{profile.boundaryNote}</p>

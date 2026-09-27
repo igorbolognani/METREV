@@ -1332,6 +1332,11 @@ function modelFidelityIssues(
   }
   if (profile.status === 'executable') return [];
 
+  if (profile.status === 'development_api_only')
+    return [
+      `mechanistic_model.model_fidelity_id=${profile.id} runs only through the analyst development API with its separate source-traced planar cell contract; it is not a persisted case-runner model.`,
+    ];
+
   const issues = [
     `mechanistic_model.model_fidelity_id=${profile.id} is a research profile only; METREV does not execute this spatial/scale formulation.`,
   ];
@@ -1932,8 +1937,10 @@ function simulateMechanisticCaseCore(
       : undefined;
     return failedRun(
       fidelityIssues,
-      'The requested model fidelity is catalogued for research but is not executable in METREV.',
-      fidelityProfile?.status === 'research_profile_only'
+      fidelityProfile?.status === 'development_api_only'
+        ? 'The requested planar cell model runs through the analyst development API, not the persisted case runner.'
+        : 'The requested model fidelity is catalogued for research but is not executable in the case runner.',
+      fidelityProfile && fidelityProfile.status !== 'executable'
         ? 'not_implemented'
         : 'insufficient_data',
     );

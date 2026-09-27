@@ -1,0 +1,74 @@
+version: metrev-development-benchmark-v1
+purpose: Portable, source-traced numeric observations for provisional development comparisons.
+entrypoint: packages/database/scripts/export-development-benchmark.mjs
+manifest_required:
+  - schema_version
+  - source_doi
+  - source_url
+  - license
+  - split
+  - decision_eligible
+  - independent_validation
+  - original_source_hashes
+  - extract_hashes
+  - candidate_registry_sha256
+  - exports
+  - study_context
+  - exclusions
+  - applicability
+observation_columns:
+  - dataset_role
+  - split
+  - source_doi
+  - source_sha256
+  - extract_sha256
+  - source_file
+  - source_cell
+  - coordinate_source_cell
+  - series_label
+  - coordinate_name
+  - coordinate_value
+  - coordinate_unit
+  - metric
+  - observed_value
+  - observed_unit
+  - uncertainty_status
+  - review_status
+eis_pair_columns:
+  - dataset_role
+  - split
+  - source_doi
+  - source_sha256
+  - extract_sha256
+  - source_file
+  - source_cells
+  - series_label
+  - real_ohm
+  - secondary_ohm_raw
+  - frequency_status
+  - review_status
+literature_claim_fields:
+  - record_kind
+  - split
+  - source_doi
+  - source_url
+  - license
+  - registry_sha256
+  - claim_id
+  - metric_key
+  - technology_scope
+  - sample_context
+  - source_locator
+  - original_value
+  - evidence_role
+  - review_status
+  - decision_eligible
+  - independent_validation
+  - missing_for_model_comparison
+rules:
+  - Preserve source coordinates, signed observations and native units without imputation.
+  - An incomplete trace exports only observed coordinate/value pairs.
+  - An EIS row is a paired source observation; no frequency or complex-impedance interpretation is inferred.
+  - Use development_candidate until explicit split and independent condition matching exist.
+  - A hash check proves file identity only. It does not approve a source or validate a solver.
+  - Literature claims retain aggregate, range, uncertainty, or qualitative shapes; they are not raw paired observations or calibration targets without condition matching.

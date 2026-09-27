@@ -20,6 +20,10 @@ void React;
 const modelOptions = [
   { value: 'coupled-0d-dae-v1', label: '0D transient coupled reactor' },
   {
+    value: 'coupled-cell-1d-restricted-v1',
+    label: '1D restricted steady cell · development API',
+  },
+  {
     value: 'biofilm-1d-direct-transfer-research-v1',
     label: '1D biofilm and electron transfer',
   },
@@ -187,7 +191,7 @@ export function ModelingWorkbench() {
         <div className="modeling-workbench__hero-meta">
           <span>One component-linked SVG</span>
           <span>Macro · micro · nano properties</span>
-          <span>0D runnable boundary stated</span>
+          <span>0D case runner · 1D development API</span>
         </div>
       </header>
 
@@ -284,8 +288,10 @@ export function ModelingWorkbench() {
                   }
                 >
                   {profile.status === 'executable'
-                    ? 'Executable in METREV'
-                    : 'Research profile · not executable'}
+                    ? 'Executable in the case runner'
+                    : profile.status === 'development_api_only'
+                      ? 'Executable through the analyst development API'
+                      : 'Research profile · not executable'}
                 </span>
                 <strong>{profile.title}</strong>
                 <p>
@@ -351,8 +357,10 @@ export function ModelingWorkbench() {
                   }
                 >
                   {candidate.status === 'executable'
-                    ? 'Runnable'
-                    : 'Not executable'}
+                    ? 'Case runner'
+                    : candidate.status === 'development_api_only'
+                      ? 'Development API'
+                      : 'Not executable'}
                 </span>
               </header>
               <h3>{candidate.title}</h3>
