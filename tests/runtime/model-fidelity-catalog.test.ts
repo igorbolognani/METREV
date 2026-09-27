@@ -85,7 +85,7 @@ describe('multi-scale model fidelity catalog', () => {
     ).toEqual(['coupled-0d-dae-v1']);
     expect(
       MODEL_FIDELITY_PROFILES.filter(
-        (profile) => profile.status === 'development_api_only',
+        (profile) => profile.status === 'case_runner_development',
       ).map((profile) => profile.id),
     ).toEqual(['coupled-cell-1d-restricted-v1']);
   });

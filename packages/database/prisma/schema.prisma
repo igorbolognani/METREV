@@ -297,6 +297,7 @@ model SimulationArtifactRecord {
   inputSnapshot       Json
   derivedObservations Json
   series              Json
+  sensitivityAnalysis Json?
   assumptions         Json
   confidence          Json
   provenance          Json

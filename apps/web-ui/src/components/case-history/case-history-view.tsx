@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    CaseHistoryView,
-    CaseHistoryWorkspaceView
+  CaseHistoryView,
+  CaseHistoryWorkspaceView,
 } from '@/components/case-history-view';
-

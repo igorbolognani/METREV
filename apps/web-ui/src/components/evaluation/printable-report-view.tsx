@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    PrintableReportView,
-    PrintableReportWorkspaceView
+  PrintableReportView,
+  PrintableReportWorkspaceView,
 } from '@/components/printable-report-view';
-

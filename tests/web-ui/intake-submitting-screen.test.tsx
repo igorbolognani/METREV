@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import {
-    IntakeSubmittingProgressView,
-    progressStages,
+  IntakeSubmittingProgressView,
+  progressStages,
 } from '../../apps/web-ui/src/components/intake-submitting-screen';
 
 describe('intake submitting screen', () => {

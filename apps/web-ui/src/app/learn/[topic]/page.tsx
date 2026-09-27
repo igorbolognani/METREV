@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import {
-    PUBLIC_TOPIC_SLUGS,
-    getPublicTopicConfig,
+  PUBLIC_TOPIC_SLUGS,
+  getPublicTopicConfig,
 } from '@/components/public-topic-content';
 import { PublicTopicPage } from '@/components/public-topic-page';
 

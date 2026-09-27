@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "scope": "Spatial material fields in spatial-input-v1; no case parameter values or solver defaults are supplied here.",
+  "allowed_source_kinds": [
+    "measured",
+    "literature",
+    "default",
+    "assumption",
+    "test_fixture"
+  ],
+  "provenance_requirement": "Every value needs its canonical unit, source_kind, source_ref, and a locator and conditions when the source requires them; derived fields require a source-backed derivation record.",
+  "parameters": {
+    "fluid_density_kg_m3": {
+      "meaning": "Liquid mass density",
+      "unit": "kg/m3",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["hydraulics"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "dynamic_viscosity_pa_s": {
+      "meaning": "Liquid dynamic viscosity",
+      "unit": "Pa*s",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["hydraulics"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "kinematic_viscosity_m2_s": {
+      "meaning": "Liquid kinematic viscosity",
+      "unit": "m2/s",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid"],
+      "derivable": true,
+      "derivation_rule": "dynamic_viscosity_pa_s / fluid_density_kg_m3, same local conditions",
+      "physics": ["hydraulics"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "hydraulic_permeability_m2": {
+      "meaning": "Intrinsic permeability of porous media",
+      "unit": "m2",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "separator", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["darcy_flow", "brinkman_flow"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "porosity": {
+      "meaning": "Connected pore volume fraction",
+      "unit": "1",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "membrane", "separator", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["porous_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0, "max": 1 }
+    },
+    "tortuosity": {
+      "meaning": "Effective path length correction",
+      "unit": "1",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "membrane", "separator", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["porous_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 1 }
+    },
+    "specific_surface_area_m2_m3": {
+      "meaning": "Accessible internal area per porous volume",
+      "unit": "m2/m3",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["heterogeneous_reaction"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "effective_diffusivity_m2_s": {
+      "meaning": "Species and domain specific effective diffusivity",
+      "unit": "m2/s",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "derivable": true,
+      "derivation_rule": "Only with source-backed species free diffusivity and declared porosity/tortuosity law",
+      "physics": ["species_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "effective_substrate_diffusivity_m2_s": {
+      "meaning": "Substrate diffusivity in a specific biofilm",
+      "unit": "m2/s",
+      "form": "scalar_or_field",
+      "domains": ["biofilm"],
+      "derivable": true,
+      "derivation_rule": "Only with source-backed free diffusivity and local effective transport law",
+      "physics": ["species_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "solid_conductivity_s_m": {
+      "meaning": "Electronic conductivity of electrode solid",
+      "unit": "S/m",
+      "form": "scalar_or_field",
+      "domains": ["anode", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["electronic_charge"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "ionic_conductivity_s_m": {
+      "meaning": "Ionic conductivity under declared electrolyte conditions",
+      "unit": "S/m",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["ionic_charge"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "biofilm_conductivity_s_m": {
+      "meaning": "Local biofilm electron conductivity",
+      "unit": "S/m",
+      "form": "scalar_or_field",
+      "domains": ["biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_electron_transfer"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "exchange_current_density_a_m2": {
+      "meaning": "Protocol-specific interfacial exchange current density",
+      "unit": "A/m2",
+      "form": "scalar_or_field",
+      "domains": ["anode", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["charge_transfer"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "charge_transfer_coefficient": {
+      "meaning": "Electrode charge transfer coefficient",
+      "unit": "1",
+      "form": "scalar_or_field",
+      "domains": ["anode", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["charge_transfer"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0, "max": 1 }
+    },
+    "membrane_fixed_charge_mol_m3": {
+      "meaning": "Fixed ionic charge per membrane pore volume",
+      "unit": "mol/m3",
+      "form": "scalar_or_field",
+      "domains": ["membrane"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["donnan_partition", "ionic_migration"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "partition_coefficient": {
+      "meaning": "Species-specific membrane interface partition coefficient",
+      "unit": "1",
+      "form": "scalar_or_field",
+      "domains": ["membrane"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["donnan_partition"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "gas_transfer_coefficient_m_s": {
+      "meaning": "Condition-specific gas/liquid mass transfer velocity",
+      "unit": "m/s",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid", "cathode", "gas"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["gas_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "biomass_density_kg_m3": {
+      "meaning": "Local biomass density",
+      "unit": "kg/m3",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "min": 0 }
+    },
+    "half_saturation_cod_kg_m3": {
+      "meaning": "Substrate half-saturation COD concentration",
+      "unit": "kgCOD/m3",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": { "exclusive_min": 0 }
+    }
+  }
+}

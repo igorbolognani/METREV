@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    ExternalEvidenceDetail,
-    ExternalEvidenceDetailView
+  ExternalEvidenceDetail,
+  ExternalEvidenceDetailView,
 } from '@/components/external-evidence-detail';
-

@@ -386,6 +386,7 @@ function fromSimulationArtifactRecord(record: {
   inputSnapshot: unknown;
   derivedObservations: unknown;
   series: unknown;
+  sensitivityAnalysis: unknown;
   assumptions: unknown;
   confidence: unknown;
   provenance: unknown;
@@ -397,6 +398,7 @@ function fromSimulationArtifactRecord(record: {
     input_snapshot: record.inputSnapshot,
     derived_observations: record.derivedObservations,
     series: record.series,
+    sensitivity_analysis: record.sensitivityAnalysis ?? undefined,
     assumptions: record.assumptions,
     confidence: record.confidence,
     provenance: record.provenance,
@@ -2658,6 +2660,12 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
                   series: toRequiredPrismaJsonValue(
                     evaluation.simulation_enrichment.series,
                   ),
+                  sensitivityAnalysis: evaluation.simulation_enrichment
+                    .sensitivity_analysis
+                    ? toPrismaJsonObject(
+                        evaluation.simulation_enrichment.sensitivity_analysis,
+                      )
+                    : Prisma.JsonNull,
                   assumptions: toRequiredPrismaJsonValue(
                     evaluation.simulation_enrichment.assumptions,
                   ),

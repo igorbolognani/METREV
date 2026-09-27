@@ -5,8 +5,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    PrintableEvaluationReportResponse,
-    ReportConversationResponse,
+  PrintableEvaluationReportResponse,
+  ReportConversationResponse,
 } from '@metrev/domain-contracts';
 
 import { ParameterStateAuditCard } from '@/components/parameter-state-audit-card';
@@ -14,22 +14,22 @@ import { PrintableReportModelingSection } from '@/components/printable-report-mo
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-    askReportConversation,
-    fetchPrintableEvaluationReport,
+  askReportConversation,
+  fetchPrintableEvaluationReport,
 } from '@/lib/api';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 import {
-    usePrintableReportTab,
-    type PrintableReportTab,
+  usePrintableReportTab,
+  type PrintableReportTab,
 } from '@/lib/printable-report-view-query-state';
 
 void React;

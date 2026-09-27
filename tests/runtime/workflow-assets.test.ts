@@ -33,28 +33,39 @@ describe('METREV bootstrap and automation', () => {
 
     expect(existsSync(resolve(repoRoot, 'specs'))).toBe(false);
     expect(existsSync(resolve(repoRoot, 'WORKFLOW.md'))).toBe(false);
-    expect(existsSync(resolve(repoRoot, 'docs'))).toBe(false);
+    expect(
+      existsSync(resolve(repoRoot, 'docs/science/MODEL_BOUNDARIES.md')),
+    ).toBe(true);
+    expect(existsSync(resolve(repoRoot, 'governance/ROADMAP.yaml'))).toBe(true);
   });
 
   it('states the scientific scope, input contract, limits, and corpus status', () => {
     const readme = readRepoFile('README.md');
     const agentRules = readRepoFile('AGENTS.md');
+    const scientificBoundary = readRepoFile('docs/science/MODEL_BOUNDARIES.md');
+    const evidencePolicy = readRepoFile('docs/science/EVIDENCE_POLICY.md');
 
     for (const term of [
       'MFC',
       'MEC',
       'wastewater treatment',
       'electrochemical biosensors',
+    ]) {
+      expect(readme).toContain(term);
+    }
+    for (const term of [
       'lumped, isothermal 0D',
       'value, unit, source kind',
       'modeled outputs',
       'uncertainty',
+    ])
+      expect(scientificBoundary).toContain(term);
+    for (const term of [
       '20 queries',
       '480 before duplicates',
       'ten source records and ten claims, all pending human review',
-    ]) {
-      expect(readme).toContain(term);
-    }
+    ])
+      expect(evidencePolicy).toContain(term);
 
     expect(agentRules).toContain('Never invent');
     expect(agentRules).toContain('source_ref');

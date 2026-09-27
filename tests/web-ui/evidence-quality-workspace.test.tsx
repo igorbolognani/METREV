@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from '../../apps/web-ui/node_modules/react-dom/server.node.js';
 
 import type {
-    AcquisitionStatusResponse,
-    DiscoveryStatusResponse,
-    EvidenceQualityAuditResponse,
+  AcquisitionStatusResponse,
+  DiscoveryStatusResponse,
+  EvidenceQualityAuditResponse,
 } from '@metrev/domain-contracts/browser';
 
 vi.mock('@metrev/design-system', async () => {

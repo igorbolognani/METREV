@@ -4,13 +4,13 @@ import * as React from 'react';
 
 import type { CaseFormStep } from '@/lib/case-form-query-state';
 import type {
-    CaseIntakeFormValues,
-    CaseIntakeParameterFieldId,
-    CaseIntakeParameterMode,
+  CaseIntakeFormValues,
+  CaseIntakeParameterFieldId,
+  CaseIntakeParameterMode,
 } from '@/lib/case-intake';
 import {
-    caseIntakeParameterConfigs,
-    getCaseIntakeParameterMode,
+  caseIntakeParameterConfigs,
+  getCaseIntakeParameterMode,
 } from '@/lib/case-intake';
 
 import { CaseFormParameterField } from '@/components/case-form/case-form-parameter-field';

@@ -311,18 +311,16 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(valueFor(result, 'current_density_a_m2')).toBeNull();
   });
 
-  it('does not run the separate 1D development API with a 0D case payload', () => {
+  it('requires a complete 1D cell instead of substituting the 0D case payload', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     raw.mechanistic_model!.model_fidelity_id = 'coupled-cell-1d-restricted-v1';
 
     const result = evaluate(raw);
 
-    expect(result.status).toBe('not_implemented');
+    expect(result.status).toBe('insufficient_data');
     expect(result.series).toHaveLength(0);
-    expect(result.failure_detail?.model_blockers).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('analyst development API'),
-      ]),
+    expect(result.failure_detail?.missing_inputs).toEqual(
+      expect.arrayContaining(['mechanistic_model.cell_1d']),
     );
   });
 

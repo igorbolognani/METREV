@@ -1,7 +1,6 @@
 'use client';
 
 export {
-    EvaluationComparisonView,
-    EvaluationComparisonWorkspaceView
+  EvaluationComparisonView,
+  EvaluationComparisonWorkspaceView,
 } from '@/components/evaluation-comparison-view';
-

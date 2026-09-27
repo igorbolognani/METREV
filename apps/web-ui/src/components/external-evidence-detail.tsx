@@ -5,8 +5,8 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import type {
-    ExternalEvidenceCatalogItemDetail,
-    ExternalEvidenceReviewAction,
+  ExternalEvidenceCatalogItemDetail,
+  ExternalEvidenceReviewAction,
 } from '@metrev/domain-contracts';
 
 import { EvidenceClaimsTable } from '@/components/evidence-detail/evidence-claims-table';
@@ -16,21 +16,21 @@ import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import {
-    fetchExternalEvidenceCatalogItem,
-    reviewExternalEvidenceCatalogItem,
+  fetchExternalEvidenceCatalogItem,
+  reviewExternalEvidenceCatalogItem,
 } from '@/lib/api';
 import {
-    useExternalEvidenceDetailTab,
-    type ExternalEvidenceDetailTab,
+  useExternalEvidenceDetailTab,
+  type ExternalEvidenceDetailTab,
 } from '@/lib/external-evidence-detail-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 

@@ -3,9 +3,9 @@
 import * as React from 'react';
 
 import {
-    caseFormSteps,
-    getCaseFormStepIndex,
-    type CaseFormStep,
+  caseFormSteps,
+  getCaseFormStepIndex,
+  type CaseFormStep,
 } from '@/lib/case-form-query-state';
 
 void React;

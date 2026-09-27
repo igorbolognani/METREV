@@ -7,19 +7,19 @@ import { promisify } from 'node:util';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 import {
-    evidenceVeracityScoreSchema,
-    externalEvidenceAccessStatusSchema,
-    localSourceImportResponseSchema,
-    metadataQualityProfileSchema,
-    researchPaperMetadataSchema,
-    sourceArtifactSchema,
-    type EvidenceVeracityScore,
-    type ExternalEvidenceAccessStatus,
-    type LocalSourceImportRequest,
-    type LocalSourceImportResponse,
-    type MetadataQualityProfile,
-    type ResearchPaperMetadata,
-    type SourceArtifact,
+  evidenceVeracityScoreSchema,
+  externalEvidenceAccessStatusSchema,
+  localSourceImportResponseSchema,
+  metadataQualityProfileSchema,
+  researchPaperMetadataSchema,
+  sourceArtifactSchema,
+  type EvidenceVeracityScore,
+  type ExternalEvidenceAccessStatus,
+  type LocalSourceImportRequest,
+  type LocalSourceImportResponse,
+  type MetadataQualityProfile,
+  type ResearchPaperMetadata,
+  type SourceArtifact,
 } from '@metrev/domain-contracts';
 
 const execFileAsync = promisify(execFile);

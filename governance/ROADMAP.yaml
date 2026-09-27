@@ -1,0 +1,962 @@
+schema_version: 1
+source: MASTER_EXECUTION_TASK.md
+work_items:
+  - id: P01
+    title: Close the common engine architecture before writing large 2D PDE code
+    phase: foundation
+    status: partial
+    depends_on: []
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.1'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: architecture
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - packages/domain-contracts/
+      - packages/electrochem-models/
+    blockers: []
+  - id: P02
+    title: Create a real spatial input contract
+    phase: foundation
+    status: partial
+    depends_on:
+      - P01
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.2'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: architecture
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - packages/domain-contracts/
+      - packages/electrochem-models/
+    blockers: []
+  - id: P03
+    title: Expand the physical vocabulary needed by PDE models
+    phase: foundation
+    status: pending
+    depends_on:
+      - P02
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.3'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: architecture
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - packages/domain-contracts/
+      - packages/electrochem-models/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P04
+    title: Activate the future numerical sidecar architecture
+    phase: foundation
+    status: pending
+    depends_on:
+      - P02
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.4'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: architecture
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P05
+    title: Build geometry and mesh infrastructure before broad 2D physics
+    phase: P2
+    status: pending
+    depends_on:
+      - P04
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MESH-REFINEMENT
+    source_section: '28.5'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P06
+    title: Implement a conservative spatial mathematical core
+    phase: P2
+    status: pending
+    depends_on:
+      - P03
+      - P05
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.6'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P07
+    title: Implement 2D hydraulics
+    phase: P2
+    status: pending
+    depends_on:
+      - P05
+      - P06
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.7'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P08
+    title: Generalize anode/biofilm physics from 1D to real 2D
+    phase: P2
+    status: pending
+    depends_on:
+      - P06
+      - P07
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.8'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P09
+    title: Generalize membrane physics beyond the restricted 1D reduction
+    phase: P2
+    status: pending
+    depends_on:
+      - P06
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.9'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P10
+    title: Implement a resolved cathode model
+    phase: P2
+    status: pending
+    depends_on:
+      - P06
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.10'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P11
+    title: Implement a robust numerical strategy
+    phase: P2
+    status: pending
+    depends_on:
+      - P06
+      - P07
+      - P08
+      - P09
+      - P10
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.11'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P12
+    title: Turn the 2D research profile into actual executable functionality
+    phase: P2
+    status: pending
+    depends_on:
+      - P11
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.12'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P13
+    title: Create mathematical verification before treating papers as validation
+    phase: P2
+    status: pending
+    depends_on:
+      - P12
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+      - GATE-MESH-REFINEMENT
+    source_section: '28.13'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P14
+    title: Create a spatial result contract
+    phase: P2
+    status: pending
+    depends_on:
+      - P02
+      - P04
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.14'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P15
+    title: Correct persistence before large spatial results arrive
+    phase: P2
+    status: partial
+    depends_on:
+      - P14
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+    source_section: '28.15'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers: []
+  - id: P16
+    title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
+    phase: P2
+    status: pending
+    depends_on:
+      - P04
+      - P15
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.16'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P17
+    title: Integrate 2D with the actual case runner
+    phase: P2
+    status: pending
+    depends_on:
+      - P01
+      - P12
+      - P16
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-PROVENANCE
+      - GATE-UNITS
+      - GATE-CASE-RUNNER
+      - GATE-API
+      - GATE-UI
+    source_section: '28.17'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P18
+    title: Turn the modeling workbench into a real solver configurator
+    phase: P2
+    status: pending
+    depends_on:
+      - P17
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.18'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P19
+    title: Build proper 2D visualization
+    phase: P2
+    status: pending
+    depends_on:
+      - P14
+      - P17
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.19'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P20
+    title: Define when Phase 2 is actually complete
+    phase: P2
+    status: pending
+    depends_on:
+      - P13
+      - P17
+      - P18
+      - P19
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MESH-REFINEMENT
+      - GATE-CASE-RUNNER
+      - GATE-API
+      - GATE-UI
+    source_section: '28.20'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P21
+    title: Reuse the same mathematical/runtime architecture for 3D
+    phase: P3
+    status: pending
+    depends_on:
+      - P20
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.21'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P22
+    title: Create cell-scale 3D geometry
+    phase: P3
+    status: pending
+    depends_on:
+      - P21
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+      - GATE-MESH-REFINEMENT
+    source_section: '28.22'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P23
+    title: Extend hydraulics to 3D
+    phase: P3
+    status: pending
+    depends_on:
+      - P22
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.23'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P24
+    title: Extend species, charge and reaction to 3D
+    phase: P3
+    status: pending
+    depends_on:
+      - P21
+      - P22
+      - P23
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.24'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P25
+    title: Do not resolve nano/pore geometry inside the full cell mesh by default
+    phase: P3
+    status: pending
+    depends_on:
+      - P21
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.25'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P26
+    title: Implement porous-electrode micro-3D as a separate capability
+    phase: P3
+    status: pending
+    depends_on:
+      - P25
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.26'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P27
+    title: Keep stack-network modeling separate from cell-scale 3D
+    phase: P3
+    status: pending
+    depends_on:
+      - P25
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.27'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P28
+    title: Prepare real 3D performance architecture
+    phase: P3
+    status: pending
+    depends_on:
+      - P22
+      - P24
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+      - GATE-MESH-REFINEMENT
+    source_section: '28.28'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: numerics_and_physics
+    affected_layers:
+      - science
+      - contracts
+      - runtime
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P29
+    title: Build a scientific 3D viewer
+    phase: P3
+    status: pending
+    depends_on:
+      - P22
+      - P24
+      - P28
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-CASE-RUNNER
+      - GATE-API
+      - GATE-UI
+    source_section: '28.29'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P30
+    title: Extend experimental comparison to spatial observations
+    phase: P3
+    status: pending
+    depends_on:
+      - P14
+      - P24
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.30'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: evidence_and_verification
+    affected_layers:
+      - evidence
+      - science
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P31
+    title: Make data acquisition solver-oriented rather than paper-count-oriented
+    phase: evidence
+    status: pending
+    depends_on:
+      - P03
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.31'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: evidence_and_verification
+    affected_layers:
+      - evidence
+      - science
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P32
+    title: Create graded scientific benchmarks
+    phase: evidence
+    status: pending
+    depends_on:
+      - P13
+      - P31
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.32'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: evidence_and_verification
+    affected_layers:
+      - evidence
+      - science
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P33
+    title: Build field-to-decision reduction
+    phase: P2
+    status: pending
+    depends_on:
+      - P14
+      - P17
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-CASE-RUNNER
+      - GATE-API
+      - GATE-UI
+    source_section: '28.33'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P34
+    title: Update reports and narrative for spatial models
+    phase: P2
+    status: pending
+    depends_on:
+      - P33
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-CASE-RUNNER
+      - GATE-API
+      - GATE-UI
+    source_section: '28.34'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: product_integration
+    affected_layers:
+      - runtime
+      - database
+      - api
+      - ui
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P35
+    title: Add tests specific to spatial runtime
+    phase: P2
+    status: pending
+    depends_on:
+      - P13
+      - P17
+    required_gates:
+      - GATE-CONTRACT
+      - GATE-MASS-CONSERVATION
+      - GATE-NONLINEAR-CONVERGENCE
+    source_section: '28.35'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: evidence_and_verification
+    affected_layers:
+      - evidence
+      - science
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P36
+    title: Expand CI without making every PR prohibitively expensive
+    phase: P2
+    status: pending
+    depends_on:
+      - P35
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.36'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: governance_and_ci
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - governance/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P37
+    title: Clean format debt before the spatial codebase becomes much larger
+    phase: foundation
+    status: complete
+    depends_on: []
+    required_gates:
+      - GATE-FORMAT
+    source_section: '28.37'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: governance_and_ci
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - governance/
+    blockers: []
+    gate_evidence:
+      GATE-FORMAT:
+        pnpm run format; three hash-pinned CORA extracts excluded; extraction and benchmark tests
+        passed
+  - id: P38
+    title: Create explicit maturity gates per model
+    phase: evidence
+    status: pending
+    depends_on:
+      - P13
+      - P20
+      - P32
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.38'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: evidence_and_verification
+    affected_layers:
+      - evidence
+      - science
+    owned_paths:
+      - packages/
+      - apps/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P39
+    title: Follow a practical implementation sequence
+    phase: foundation
+    status: pending
+    depends_on: []
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.39'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: governance_and_ci
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - governance/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section
+  - id: P40
+    title: Do not take architectural shortcuts
+    phase: foundation
+    status: pending
+    depends_on: []
+    required_gates:
+      - GATE-CONTRACT
+    source_section: '28.40'
+    completion_requires:
+      All requirements in source_section; status promotion requires gate evidence and product
+      integration where applicable.
+    workstream: governance_and_ci
+    affected_layers:
+      - governance
+      - contracts
+    owned_paths:
+      - governance/
+    blockers:
+      - dependency gate pending; inspect depends_on and full source section

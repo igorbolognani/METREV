@@ -10,33 +10,33 @@ import { PayloadDisclosureCard } from '@/components/evidence-detail/payload-disc
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    DenseChipList,
-    DenseTableActions,
-    DenseTableShell,
-    DenseTableStack,
+  DenseChipList,
+  DenseTableActions,
+  DenseTableShell,
+  DenseTableStack,
 } from '@/components/ui/dense-table';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeaderCell,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import {
-    WorkspaceDataCard,
-    WorkspaceEmptyState,
-    WorkspacePageHeader,
-    WorkspaceSection,
-    WorkspaceSkeleton,
+  WorkspaceDataCard,
+  WorkspaceEmptyState,
+  WorkspacePageHeader,
+  WorkspaceSection,
+  WorkspaceSkeleton,
 } from '@/components/workspace-chrome';
 import { SummaryRail } from '@/components/workspace/summary-rail';
 import { WorkspaceTabShell } from '@/components/workspace/workspace-tab-shell';
 import { fetchCaseHistoryWorkspace } from '@/lib/api';
 import {
-    useCaseHistoryTab,
-    type CaseHistoryTab,
+  useCaseHistoryTab,
+  type CaseHistoryTab,
 } from '@/lib/case-history-view-query-state';
 import { formatTimestamp, formatToken } from '@/lib/formatting';
 

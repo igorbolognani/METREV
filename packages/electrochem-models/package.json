@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./model-catalog": "./src/model-catalog.ts",
-    "./model-fidelity-catalog": "./src/model-fidelity-catalog.ts"
+    "./model-fidelity-catalog": "./src/model-fidelity-catalog.ts",
+    "./physics-composition": "./src/physics-composition.ts"
   },
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",

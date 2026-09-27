@@ -17,11 +17,21 @@ import {
   type CoupledCell1dInput,
   type CoupledCell1dResult,
 } from './coupled-cell-1d';
+import { resolvePhysicsComposition } from './physics-composition';
+import {
+  CASE_RUNNER_1D_MODEL,
+  coupledCell1dEnrichment,
+} from './coupled-cell-1d-enrichment';
 
 export const INTERNAL_MODEL_VERSION = mechanisticModelVersion;
 export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 
 export { simulateMechanisticCase };
+export { resolvePhysicsComposition } from './physics-composition';
+export type {
+  PhysicsComposition,
+  StackPhysicsSelection,
+} from './physics-composition';
 export type { MechanisticRun };
 export { POROUS_ANODE_1D_SOURCES, solvePorousAnode1d } from './porous-anode-1d';
 export type {
@@ -275,6 +285,77 @@ export function evaluateSimulationEnrichment(input: {
     });
   }
 
+  if (
+    input.normalizedCase.mechanistic_model?.model_fidelity_id ===
+    CASE_RUNNER_1D_MODEL
+  ) {
+    const model = input.normalizedCase.mechanistic_model;
+    const cell = model.cell_1d;
+    const expectedSystem =
+      input.normalizedCase.technology_family === 'microbial_fuel_cell'
+        ? 'MFC'
+        : input.normalizedCase.technology_family ===
+            'microbial_electrolysis_cell'
+          ? 'MEC'
+          : null;
+    const missing = [
+      ...(!cell ? ['mechanistic_model.cell_1d'] : []),
+      ...(model.model_version !== CASE_RUNNER_1D_MODEL
+        ? ['mechanistic_model.model_version']
+        : []),
+      ...(!expectedSystem ||
+      model.system_type !== expectedSystem ||
+      (cell && cell.system !== expectedSystem)
+        ? ['mechanistic_model.system_type/cell_1d.system: case mismatch']
+        : []),
+    ];
+    if (missing.length) {
+      const incomplete = emptyEnrichment({
+        status: 'insufficient_data',
+        note: 'Restricted 1D case needs its complete source-backed cell and matching system/version.',
+        failureDetail: { missing_inputs: missing },
+      });
+      return {
+        ...incomplete,
+        model_version: CASE_RUNNER_1D_MODEL,
+        provenance: {
+          ...incomplete.provenance,
+          source_version: CASE_RUNNER_1D_MODEL,
+        },
+        derived_observations: unavailableObservations(
+          missing,
+          'insufficient_data',
+        ),
+      };
+    }
+    try {
+      const calculation = runConfiguredElectrochemicalModel({
+        model: CASE_RUNNER_1D_MODEL,
+        cell: cell!,
+      });
+      if (calculation.model !== CASE_RUNNER_1D_MODEL)
+        throw new Error('Wrong fidelity dispatch for restricted 1D case');
+      return coupledCell1dEnrichment(cell!, calculation.result);
+    } catch (error) {
+      const failure = emptyEnrichment({
+        status: error instanceof RangeError ? 'insufficient_data' : 'failed',
+        note: 'Restricted 1D case could not be solved.',
+        failureDetail: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+      return {
+        ...failure,
+        model_version: CASE_RUNNER_1D_MODEL,
+        input_snapshot: { cell_1d: cell },
+        provenance: {
+          ...failure.provenance,
+          source_version: CASE_RUNNER_1D_MODEL,
+        },
+      };
+    }
+  }
+
   try {
     return (input.provider ?? defaultInternalModelProvider).evaluate({
       normalizedCase: input.normalizedCase,
@@ -303,14 +384,25 @@ export function runConfiguredElectrochemicalModel(
   input: ConfiguredElectrochemicalModel,
 ): ConfiguredElectrochemicalResult {
   if (input.model === 'coupled-0d-dae-v1') {
+    const selected = input.normalizedCase.mechanistic_model?.model_fidelity_id;
+    if (selected && selected !== input.model)
+      throw new RangeError(
+        `Configured 0D dispatcher cannot execute selected fidelity ${selected}`,
+      );
     return {
       model: input.model,
-      result: evaluateSimulationEnrichment({
-        normalizedCase: input.normalizedCase,
-      }),
+      result: toEnrichment(simulateMechanisticCase(input.normalizedCase)),
     };
   }
   if (input.model === 'coupled-cell-1d-restricted-v1') {
+    const resolution = resolvePhysicsComposition({
+      modelId: input.model,
+      system: input.cell.system,
+      architecture: 'planar',
+      separator: 'binary-electroneutral',
+    });
+    if (resolution.status !== 'case_runner_development')
+      throw new RangeError(resolution.note);
     return { model: input.model, result: solveCoupledCell1d(input.cell) };
   }
   throw new RangeError('Unknown configured electrochemical model');

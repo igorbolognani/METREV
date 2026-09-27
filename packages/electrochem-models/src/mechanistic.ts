@@ -1332,9 +1332,9 @@ function modelFidelityIssues(
   }
   if (profile.status === 'executable') return [];
 
-  if (profile.status === 'development_api_only')
+  if (profile.status === 'case_runner_development')
     return [
-      `mechanistic_model.model_fidelity_id=${profile.id} runs only through the analyst development API with its separate source-traced planar cell contract; it is not a persisted case-runner model.`,
+      `mechanistic_model.model_fidelity_id=${profile.id} requires the dedicated source-traced cell_1d contract through evaluateSimulationEnrichment; the lumped 0D routine cannot execute it.`,
     ];
 
   const issues = [
@@ -1937,8 +1937,8 @@ function simulateMechanisticCaseCore(
       : undefined;
     return failedRun(
       fidelityIssues,
-      fidelityProfile?.status === 'development_api_only'
-        ? 'The requested planar cell model runs through the analyst development API, not the persisted case runner.'
+      fidelityProfile?.status === 'case_runner_development'
+        ? 'The requested planar cell needs its dedicated source-traced 1D case path, not the lumped 0D routine.'
         : 'The requested model fidelity is catalogued for research but is not executable in the case runner.',
       fidelityProfile && fidelityProfile.status !== 'executable'
         ? 'not_implemented'

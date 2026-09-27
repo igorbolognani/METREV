@@ -1,17 +1,17 @@
 import {
-    type EvidenceAuditRepository,
-    type ResearchRepository,
+  type EvidenceAuditRepository,
+  type ResearchRepository,
 } from '@metrev/database';
 import { researchExtractionResultSchema } from '@metrev/domain-contracts';
 import {
-    processQueuedEvidenceDiscovery,
-    runEvidenceDiscovery,
+  processQueuedEvidenceDiscovery,
+  runEvidenceDiscovery,
 } from '@metrev/evidence-discovery';
 import {
-    RESEARCH_RUNTIME_EXTRACTOR_VERSION,
-    executeResearchExtraction,
-    hydrateResearchPaperText,
-    type HydratedResearchPaperText,
+  RESEARCH_RUNTIME_EXTRACTOR_VERSION,
+  executeResearchExtraction,
+  hydrateResearchPaperText,
+  type HydratedResearchPaperText,
 } from '@metrev/research-intelligence';
 
 export interface ResearchWorkerCycleResult {

@@ -27,13 +27,21 @@ export async function buildEvidenceQualityReport(prisma = getPrismaClient()) {
     acceptedWithoutCanonicalFacts,
   ] = await prisma.$transaction([
     prisma.externalEvidenceCatalogItem.count(),
-    prisma.externalEvidenceCatalogItem.count({ where: { reviewStatus: 'ACCEPTED' } }),
-    prisma.externalEvidenceCatalogItem.count({ where: { reviewStatus: 'PENDING' } }),
-    prisma.externalEvidenceCatalogItem.count({ where: { reviewStatus: 'REJECTED' } }),
+    prisma.externalEvidenceCatalogItem.count({
+      where: { reviewStatus: 'ACCEPTED' },
+    }),
+    prisma.externalEvidenceCatalogItem.count({
+      where: { reviewStatus: 'PENDING' },
+    }),
+    prisma.externalEvidenceCatalogItem.count({
+      where: { reviewStatus: 'REJECTED' },
+    }),
     prisma.externalSourceRecord.count(),
     prisma.evidenceClaim.count(),
     prisma.scientificEvidenceFact.count(),
-    prisma.scientificEvidenceFact.count({ where: { factLayer: CANONICAL_FACT_LAYER } }),
+    prisma.scientificEvidenceFact.count({
+      where: { factLayer: CANONICAL_FACT_LAYER },
+    }),
     prisma.scientificEvidenceFact.count({
       where: { factLayer: CANONICAL_FACT_LAYER, decisionReady: true },
     }),

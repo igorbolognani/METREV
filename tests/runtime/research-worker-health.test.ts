@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    createWorkerHealthMonitor,
-    startWorkerHealthServer,
-    type StartedWorkerHealthServer,
+  createWorkerHealthMonitor,
+  startWorkerHealthServer,
+  type StartedWorkerHealthServer,
 } from '../../apps/research-worker/src/health';
 
 describe('research worker health server', () => {

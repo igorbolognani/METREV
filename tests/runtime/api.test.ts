@@ -3,17 +3,17 @@ import fixture from '../fixtures/raw-case-input.json';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-    defaultSessionCookieName,
-    getSessionTokenFromCookie,
-    type SessionActor,
-    type SessionResolver,
+  defaultSessionCookieName,
+  getSessionTokenFromCookie,
+  type SessionActor,
+  type SessionResolver,
 } from '@metrev/auth';
 import { MemoryEvaluationRepository } from '@metrev/database';
 import {
-    evaluationListResponseSchema,
-    evaluationResponseSchema,
-    type EvaluationResponse,
-    type ExternalEvidenceCatalogItemDetail,
+  evaluationListResponseSchema,
+  evaluationResponseSchema,
+  type EvaluationResponse,
+  type ExternalEvidenceCatalogItemDetail,
 } from '@metrev/domain-contracts';
 import { buildApp } from '../../apps/api-server/src/app';
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { coupledCell1dInputSchema } from './coupled-cell-1d-schema';
 
 export const activeTechnologyFamilyValues = [
   'microbial_fuel_cell',
@@ -612,9 +613,13 @@ export const mechanisticModelInputSchema = z.object({
 
 /** Draft input shape supports incremental entry; the solver validates the full shape before execution. */
 export const mechanisticModelDraftInputSchema = z.object({
-  model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
+  model_version: z
+    .enum(['coupled-0d-dae-v1', 'coupled-cell-1d-restricted-v1'])
+    .default('coupled-0d-dae-v1'),
   model_profile_id: z.string().trim().min(1).optional(),
   model_fidelity_id: mechanisticModelInputSchema.shape.model_fidelity_id,
+  /** Full, source-backed restricted cell input; never inferred from 0D fields. */
+  cell_1d: coupledCell1dInputSchema.optional(),
   system_type: z.enum(['MFC', 'MEC']),
   geometry: mechanisticModelInputSchema.shape.geometry.partial().optional(),
   materials: mechanisticModelInputSchema.shape.materials.partial().optional(),

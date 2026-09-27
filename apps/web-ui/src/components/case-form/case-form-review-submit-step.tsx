@@ -266,8 +266,17 @@ export function CaseFormReviewSubmitStep({
                     'model_fidelity_id',
                     event.target.value,
                   );
-                  if (updated !== null)
-                    onFieldChange('mechanisticModelJson', updated);
+                  if (updated !== null) {
+                    const versioned = writeJsonField(
+                      updated,
+                      'model_version',
+                      event.target.value === 'coupled-cell-1d-restricted-v1'
+                        ? 'coupled-cell-1d-restricted-v1'
+                        : 'coupled-0d-dae-v1',
+                    );
+                    if (versioned !== null)
+                      onFieldChange('mechanisticModelJson', versioned);
+                  }
                 }}
                 value={selectedModelFidelity}
               >
@@ -283,8 +292,8 @@ export function CaseFormReviewSubmitStep({
                     {profile.title} ·{' '}
                     {profile.status === 'executable'
                       ? 'executable'
-                      : profile.status === 'development_api_only'
-                        ? 'development API only'
+                      : profile.status === 'case_runner_development'
+                        ? 'case development · cell_1d required'
                         : 'research only'}
                   </option>
                 ))}
@@ -292,11 +301,11 @@ export function CaseFormReviewSubmitStep({
             </label>
             <p className="muted">
               Spatial dimension, temporal resolution, and represented scale are
-              separate choices. The case runner executes the lumped 0D model;
-              selecting a different fidelity records the request and returns{' '}
-              <em>not_implemented</em>. The restricted steady 1D cell runs
-              separately through the analyst modeling API with its own input
-              contract.
+              separate choices. The case runner supports the lumped 0D model and
+              a restricted steady 1D development cell when the complete
+              source-backed <code>cell_1d</code> object is supplied in the model
+              JSON. Missing 1D data returns <em>insufficient_data</em>;
+              research-only 2D/3D requests return <em>not_implemented</em>.
             </p>
             <ul
               className="case-form-model-profiles__catalog"
@@ -315,8 +324,8 @@ export function CaseFormReviewSubmitStep({
                         {profile.scales.join(' + ')} scale ·{' '}
                         {profile.status === 'executable'
                           ? 'executable'
-                          : profile.status === 'development_api_only'
-                            ? 'development API only'
+                          : profile.status === 'case_runner_development'
+                            ? 'case development'
                             : 'research profile only'}
                       </span>
                     </summary>

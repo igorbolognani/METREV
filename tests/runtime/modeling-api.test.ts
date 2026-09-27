@@ -76,6 +76,37 @@ const analyst: SessionActor = {
 };
 
 describe('read-only coupled cell modeling API', () => {
+  it('exposes the same explicit composition and missing modules through an authenticated API', async () => {
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      rateLimit: false,
+      sessionResolver: async () => analyst,
+    });
+    try {
+      const result = await app.inject({
+        method: 'POST',
+        url: '/api/modeling/composition',
+        payload: { modelId: 'biofilm-2d-electrode-research-v1', system: 'MFC' },
+      });
+      expect(result.statusCode).toBe(200);
+      expect(result.json()).toMatchObject({
+        status: 'not_implemented',
+        missingModules: expect.arrayContaining(['spatial_geometry_mesh']),
+      });
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/modeling/composition',
+            payload: { modelId: '', system: 'MFC' },
+          })
+        ).statusCode,
+      ).toBe(400);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('requires analyst role and validates physical and source boundaries', async () => {
     let actor: SessionActor | null = null;
     const app = await buildApp({
