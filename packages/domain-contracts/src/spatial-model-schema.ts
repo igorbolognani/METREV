@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import spatialParameterAuthority from '../../../bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json';
+import spatialParameterAuthority from '../../../bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json' with { type: 'json' };
 
 export { spatialParameterAuthority };
 
