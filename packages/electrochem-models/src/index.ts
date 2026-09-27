@@ -28,6 +28,7 @@ export const INTERNAL_MODEL_PROVIDER = 'metrev-coupled-electrochem-models';
 
 export { simulateMechanisticCase };
 export { resolvePhysicsComposition } from './physics-composition';
+export { PHYSICS_MODULES, composeModules } from './physics-modules';
 export type {
   PhysicsComposition,
   StackPhysicsSelection,

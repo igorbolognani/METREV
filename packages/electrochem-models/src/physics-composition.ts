@@ -1,4 +1,5 @@
 import { MODEL_FIDELITY_PROFILES } from './model-fidelity-catalog';
+import { composeModules, type ComposedModule } from './physics-modules';
 
 export type StackPhysicsSelection = {
   modelId: string;
@@ -15,6 +16,7 @@ export type PhysicsComposition = {
   missingInputs: string[];
   unsupportedConfiguration: string[];
   note: string;
+  modulePlan: ComposedModule[];
 };
 
 /**
@@ -36,6 +38,7 @@ export function resolvePhysicsComposition(
       missingInputs: [],
       unsupportedConfiguration: [],
       note: 'Unknown model ID; no fallback was executed.',
+      modulePlan: [],
     };
 
   const activeModules = [
@@ -79,6 +82,16 @@ export function resolvePhysicsComposition(
   }
 
   const researchOnly = profile.status === 'research_profile_only';
+  const modulePlan = composeModules(
+    activeModules,
+    profile.spatialDimension,
+  ).map((module) => ({
+    ...module,
+    executableAtFidelity:
+      !researchOnly &&
+      unsupportedConfiguration.length === 0 &&
+      module.executableAtFidelity,
+  }));
   const missingModules = researchOnly
     ? profile.spatialDimension >= 2
       ? [
@@ -94,7 +107,9 @@ export function resolvePhysicsComposition(
           'numerical_runtime',
           'product_integration',
         ]
-    : [];
+    : unsupportedConfiguration.length
+      ? ['configuration_specific_mapping']
+      : [];
   return {
     modelId: profile.id,
     status:
@@ -111,5 +126,6 @@ export function resolvePhysicsComposition(
       : unsupportedConfiguration.length
         ? 'The selected stack has no implemented mapping to this fidelity.'
         : profile.boundaryNote,
+    modulePlan,
   };
 }

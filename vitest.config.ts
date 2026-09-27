@@ -32,6 +32,12 @@ export default defineConfig({
       '@metrev/electrochem-models': fileURLToPath(
         new URL('./packages/electrochem-models/src/index.ts', import.meta.url),
       ),
+      '@metrev/spatial-sidecar-client': fileURLToPath(
+        new URL(
+          './packages/spatial-sidecar-client/src/index.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/rule-engine': fileURLToPath(
         new URL('./packages/rule-engine/src/index.ts', import.meta.url),
       ),
