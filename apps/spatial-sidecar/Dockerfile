@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends libglu1-mesa li
 
 WORKDIR /opt/metrev-spatial
 COPY apps/spatial-sidecar/metrev_spatial ./metrev_spatial
-ENV PYTHONPATH=/opt/metrev-spatial
+# Keep the DOLFINx image's PYTHONPATH (which exposes its installed Python
+# bindings) while adding the sidecar package. Overwriting it makes `python3`
+# unable to import dolfinx in the CI smoke command.
+ENV PYTHONPATH=/opt/metrev-spatial:${PYTHONPATH}
 HEALTHCHECK --interval=30s --timeout=5s CMD printf '{"protocol_version":"spatial-sidecar-v1","request_id":"00000000-0000-4000-8000-000000000000","operation":"health"}' | python3 -m metrev_spatial | grep -q '"status":"ok"'
 ENTRYPOINT ["python3", "-m", "metrev_spatial"]
