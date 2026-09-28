@@ -1,9 +1,9 @@
 """Bounded, conservative orthogonal-grid transport verification kernel.
 
 EQ-SP-001 restricted to isothermal, single-species transport:
-    div(u c - D grad(c)) = R.
+    div(u c - D grad(c)) + k c = R.
 
-All faces have declared Dirichlet values. Optional constant velocity uses
+Faces select Dirichlet concentration or prescribed outward diffusive flux. Optional constant velocity uses
 first-order upwind fluxes. This module is deliberately isolated from case
 admission: fixture coefficients and boundaries are not product data. It
 supplies a reproducible 1D/2D/3D numerical baseline, not cell physics.
@@ -101,7 +101,7 @@ def solve_stationary_diffusion(
     diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float | tuple[float, ...],
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
-    boundary_diffusive_flux_mol_m2_s: Callable[[tuple[float, ...]], float] | None = None,
+    boundary_diffusive_flux_mol_m2_s: Callable[[tuple[float, ...]], float | None] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
@@ -114,7 +114,8 @@ def solve_stationary_diffusion(
     constant diagonal-tensor coefficient per grid axis. Positive source
     creates species; the optional first-order term ``k*c`` consumes it.
     Positive outward flux removes it. An optional prescribed diffusive flux
-    replaces the Dirichlet diffusion condition on every exterior face; the
+    replaces the Dirichlet diffusion condition on faces where it returns a
+    number; returning None selects Dirichlet on that face. The
     concentration callback remains the trace for any advective inflow.
     Each internal face uses equal-and-opposite diffusive and upwind advective fluxes.
     The returned integrated balance includes physical boundary flux, storage
@@ -192,13 +193,6 @@ def solve_stationary_diffusion(
         raise ValueError("Every face needs a boundary-value function")
     if boundary_diffusive_flux_mol_m2_s is not None and not callable(boundary_diffusive_flux_mol_m2_s):
         raise ValueError("Prescribed diffusive boundary flux must be callable")
-    if (
-        boundary_diffusive_flux_mol_m2_s is not None
-        and storage_rate_s1 == 0
-        and not any(rate > 0 for rate in reaction_rates)
-        and not any(component != 0 for component in velocity)
-    ):
-        raise ValueError("Steady all-flux diffusion requires a reaction, storage or advective anchor")
 
     spacing = tuple(length / n for length, n in zip(lengths_m, cells))
     if any(step == 0 for step in spacing):
@@ -240,13 +234,16 @@ def solve_stationary_diffusion(
                     value = boundary_mol_m3(tuple(face))
                     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                         raise ValueError("Boundary concentration must be finite and nonnegative")
-                    if boundary_diffusive_flux_mol_m2_s is None:
+                    prescribed_flux = (
+                        None if boundary_diffusive_flux_mol_m2_s is None
+                        else boundary_diffusive_flux_mol_m2_s(tuple(face))
+                    )
+                    if prescribed_flux is None:
                         face_conductance = 2 * boundary_conductance
                         diagonal[index] += face_conductance
                         rhs[index] += face_conductance * value
                         boundary_faces.append((index, face_conductance, float(value)))
                     else:
-                        prescribed_flux = boundary_diffusive_flux_mol_m2_s(tuple(face))
                         if (
                             isinstance(prescribed_flux, bool)
                             or not isinstance(prescribed_flux, (int, float))
@@ -264,6 +261,15 @@ def solve_stationary_diffusion(
                     else:
                         rhs[index] -= normal_velocity * value / step
                         boundary_advective_fluxes.append((index, normal_velocity, float(value), volume / step))
+
+    # Decide anchoring from assembled faces, not merely callback presence.
+    if (
+        not boundary_faces
+        and storage_rate_s1 == 0
+        and not any(rate > 0 for rate in reaction_rates)
+        and not any(component != 0 for component in velocity)
+    ):
+        raise ValueError("Steady all-flux diffusion requires a reaction, storage or advective anchor")
 
     if any(not math.isfinite(value) or value <= 0 for value in diagonal) or any(
         not math.isfinite(value) for value in rhs
@@ -352,12 +358,12 @@ def solve_transient_diffusion(
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
     time_step_s: float,
     steps: int,
-    boundary_diffusive_flux_mol_m2_s: Callable[[float, tuple[float, ...]], float] | None = None,
+    boundary_diffusive_flux_mol_m2_s: Callable[[float, tuple[float, ...]], float | None] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
 ) -> TransientDiffusionResult:
-    """Implicit-Euler fixture for ∂c/∂t + div(u c - D grad(c)) = R.
+    """Implicit-Euler fixture for ∂c/∂t + div(u c - D grad(c)) + k c = R.
 
     The new state appears on every boundary, transport and first-order
     reaction term; each balance includes storage, reaction and boundary flux.

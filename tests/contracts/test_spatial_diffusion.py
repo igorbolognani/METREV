@@ -17,6 +17,58 @@ from metrev_spatial.diffusion import (  # noqa: E402
 
 
 class DiffusionKernelTest(unittest.TestCase):
+    def test_mixed_nonzero_flux_affine_fields_all_axes_and_dimensions(self):
+        for dimension in (1, 2, 3):
+            n = 6
+            lengths = tuple(1.0 + axis / 2 for axis in range(dimension))
+            diffusion = tuple(0.2 + axis / 10 for axis in range(dimension))
+            gradient = tuple(0.1 * (axis + 1) for axis in range(dimension))
+            exact = lambda point: 2 + sum(g * x for g, x in zip(gradient, point))
+            for anchor in range(dimension):
+                for anchor_side in (0.0, lengths[anchor]):
+                    def flux(point):
+                        if point[anchor] == anchor_side:
+                            return None
+                        for axis in range(dimension):
+                            if point[axis] == 0:
+                                return diffusion[axis] * gradient[axis]
+                            if point[axis] == lengths[axis]:
+                                return -diffusion[axis] * gradient[axis]
+                        raise AssertionError("Expected an exterior face")
+                    result = solve_stationary_diffusion(
+                        lengths_m=lengths, cells=(n,) * dimension,
+                        diffusivity_m2_s=diffusion, source_mol_m3_s=0.0,
+                        boundary_mol_m3=exact,
+                        boundary_diffusive_flux_mol_m2_s=flux,
+                    )
+                    self.assertLess(abs(result.global_balance_mol_s), 1e-8)
+                    for index, value in enumerate(result.concentrations_mol_m3):
+                        point = tuple((index // n ** (dimension - axis - 1) % n + 0.5)
+                                      * lengths[axis] / n for axis in range(dimension))
+                        self.assertAlmostEqual(value, exact(point), delta=1e-8)
+
+    def test_time_dependent_mixed_and_all_flux_manufactured_solution(self):
+        for dimension in (1, 2, 3):
+            n = 4
+            points = [tuple((index // n ** (dimension - axis - 1) % n + 0.5) / n
+                            for axis in range(dimension)) for index in range(n ** dimension)]
+            for mixed in (False, True):
+                def flux(time, point):
+                    if mixed and point[0] == 0:
+                        return None
+                    return 0.2 if 0 in point else -0.2
+                result = solve_transient_diffusion(
+                    lengths_m=(1.0,) * dimension, cells=(n,) * dimension,
+                    diffusivity_m2_s=0.2, source_mol_m3_s=1.0,
+                    initial_mol_m3=tuple(2 + sum(p) for p in points),
+                    boundary_mol_m3=lambda time, point: 2 + sum(point) + time,
+                    boundary_diffusive_flux_mol_m2_s=flux,
+                    time_step_s=0.1, steps=3,
+                )
+                for value, point in zip(result.final.concentrations_mol_m3, points):
+                    self.assertAlmostEqual(value, 2.3 + sum(point), delta=1e-8)
+                self.assertLess(max(map(abs, result.step_balances_mol_s)), 1e-8)
+
     def test_layered_material_interface_flux_in_one_two_three_dimensions(self):
         for dimension in (1, 2, 3):
             with self.subTest(dimension=dimension):
