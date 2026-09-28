@@ -12,6 +12,7 @@ from metrev_spatial.diffusion import (  # noqa: E402
     DiffusionConvergenceError,
     NegativeConcentrationError,
     solve_stationary_diffusion,
+    solve_transient_diffusion,
 )
 
 
@@ -93,6 +94,52 @@ class DiffusionKernelTest(unittest.TestCase):
             solve_stationary_diffusion(**(base | {
                 "source_mol_m3_s": -1e-9,
             }))
+
+    def test_transient_implicit_diffusion_conserves_and_refines_in_2d_and_3d(self):
+        for dimension in (2, 3):
+            n = 8 if dimension == 2 else 5
+            count = n ** dimension
+            common = dict(
+                lengths_m=(1.0,) * dimension,
+                cells=(n,) * dimension,
+                diffusivity_m2_s=0.05,
+                source_mol_m3_s=0.0,
+                initial_mol_m3=(1.0,) * count,
+                boundary_mol_m3=lambda _time, _point: 0.0,
+            )
+            reference = solve_transient_diffusion(**common, time_step_s=0.01, steps=40)
+            errors = []
+            masses = []
+            for dt, steps in ((0.2, 2), (0.1, 4), (0.05, 8)):
+                with self.subTest(dimension=dimension, dt=dt):
+                    result = solve_transient_diffusion(**common, time_step_s=dt, steps=steps)
+                    self.assertAlmostEqual(result.time_s, 0.4)
+                    self.assertLess(max(abs(b) for b in result.step_balances_mol_s), 1e-9)
+                    self.assertGreater(min(result.final.concentrations_mol_m3), 0)
+                    mass = math.fsum(result.final.concentrations_mol_m3) / count
+                    self.assertLess(mass, 1)
+                    masses.append(mass)
+                    errors.append(abs(mass - math.fsum(reference.final.concentrations_mol_m3) / count))
+            self.assertGreater(errors[0], errors[1] * 1.5)
+            self.assertGreater(errors[1], errors[2] * 1.5)
+            self.assertGreater(masses[0], masses[1])
+            self.assertGreater(masses[1], masses[2])
+
+    def test_transient_rejects_bad_time_and_initial_states(self):
+        base = dict(
+            lengths_m=(1.0,), cells=(4,), diffusivity_m2_s=1e-9,
+            source_mol_m3_s=0.0, initial_mol_m3=(0.0,) * 4,
+            boundary_mol_m3=lambda _time, _point: 0.0,
+            time_step_s=1.0, steps=2,
+        )
+        for changed in (
+            {"time_step_s": 0}, {"steps": 0},
+            {"initial_mol_m3": (0.0, -1.0, 0.0, 0.0)},
+            {"initial_mol_m3": (0.0,)},
+        ):
+            with self.subTest(changed=changed):
+                with self.assertRaises(ValueError):
+                    solve_transient_diffusion(**(base | changed))
 
 
 if __name__ == "__main__":
