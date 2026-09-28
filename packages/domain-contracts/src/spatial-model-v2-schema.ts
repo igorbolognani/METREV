@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { z } from 'zod';
 
 import spatialParameterAuthority from '../../../bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json' with { type: 'json' };
@@ -128,6 +130,34 @@ const outsideBounds = (value: number, bounds: Bounds) =>
   (bounds.min !== undefined && value < bounds.min) ||
   (bounds.max !== undefined && value > bounds.max) ||
   (bounds.exclusive_min !== undefined && value <= bounds.exclusive_min);
+const sameJsonValue = (left: unknown, right: unknown): boolean => {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right))
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => sameJsonValue(value, right[index]))
+    );
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  )
+    return false;
+  const lhs = left as Record<string, unknown>;
+  const rhs = right as Record<string, unknown>;
+  const keys = Object.keys(lhs);
+  return (
+    keys.length === Object.keys(rhs).length &&
+    keys.every((key) =>
+      Object.prototype.hasOwnProperty.call(rhs, key)
+        ? sameJsonValue(lhs[key], rhs[key])
+        : false,
+    )
+  );
+};
 type Field = z.infer<typeof spatialFieldSchema>;
 type VariableSpec = {
   unit: string;
@@ -292,8 +322,7 @@ export const spatialModelInputV2Schema = z
       );
     if (
       input.mesh.request.operation !== 'planar_mesh' ||
-      JSON.stringify(input.mesh.request.mesh) !==
-        JSON.stringify(input.geometry) ||
+      !sameJsonValue(input.mesh.request.mesh, input.geometry) ||
       !input.mesh.request.mesh.refinement_factors.includes(
         input.mesh.refinement_factor,
       )
@@ -301,6 +330,16 @@ export const spatialModelInputV2Schema = z
       issue(
         ['mesh', 'request'],
         'The verified mesh request must reproduce the complete declared geometry and refinement level',
+      );
+    if (
+      input.mesh.input_sha256 !==
+      createHash('sha256')
+        .update(JSON.stringify(input.mesh.request))
+        .digest('hex')
+    )
+      issue(
+        ['mesh', 'input_sha256'],
+        'Mesh request digest must match the exact normalized sidecar request',
       );
     const width = layers.reduce((sum, layer) => sum + layer.width_m.value, 0);
     const checkField = (

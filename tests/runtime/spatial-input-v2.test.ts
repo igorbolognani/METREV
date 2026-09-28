@@ -184,6 +184,31 @@ describe('spatial-input-v2 admission boundary', () => {
     const candidate = valid();
     candidate.geometry.layers[1].width_m.value += 0.0001;
     expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(false);
+    const alteredDigest = valid();
+    alteredDigest.mesh.input_sha256 = 'b'.repeat(64);
+    expect(spatialModelInputV2Schema.safeParse(alteredDigest).success).toBe(
+      false,
+    );
+  });
+
+  it('compares equivalent geometry metadata independent of record key insertion order', () => {
+    const candidate = valid();
+    candidate.geometry.height_m.conditions = {
+      pressure: '101325 Pa',
+      temperature: '298 K',
+    };
+    candidate.mesh.request.mesh.height_m.conditions = {
+      temperature: '298 K',
+      pressure: '101325 Pa',
+    };
+    candidate.mesh.input_sha256 = createHash('sha256')
+      .update(
+        JSON.stringify(
+          spatialSidecarRequestSchema.parse(candidate.mesh.request),
+        ),
+      )
+      .digest('hex');
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(true);
   });
 
   it('checks species, material, sample and boundary units against explicit variable authority', () => {
