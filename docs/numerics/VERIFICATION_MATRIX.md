@@ -15,3 +15,9 @@
 | Independent validation            | TODO                        | TODO            | TODO            | Separate holdout set and uncertainty review, never inferred from refinement.                                                                                                                                                                                                       |
 
 For each new PDE capability, record mesh/time levels, observable, norms, tolerances, residual units, solver options and run artifact hash in a versioned benchmark. Promotion follows `governance/SCIENTIFIC_MATURITY.yaml` and `governance/ACCEPTANCE_GATES.yaml`.
+
+The isolated scalar finite-volume kernel additionally verifies a first-order linear disappearance term: a manufactured 1D profile refines at three grids; a spatially constant source/loss equilibrium is checked in 1D/2D/3D; transient reaction, storage and boundary flux close the global balance in 1D/2D/3D. These fixtures do not satisfy cell-level reaction, charge or coupled-interface gates.
+
+The same kernel verifies a constant, grid-aligned diagonal diffusion tensor through affine fields in 1D/2D/3D and manufactured-source refinement in 2D/3D. It has no off-diagonal tensor terms or unstructured-mesh discretization.
+
+Prescribed outward diffusive-flux boundaries are checked as a no-flux limit with reaction in steady 1D/2D/3D and with implicit transient loss/storage in 1D/2D/3D. Mixed Dirichlet/flux faces and a steady unanchored all-Neumann problem remain unsupported.
