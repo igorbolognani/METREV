@@ -109,8 +109,10 @@ def solve_stationary_diffusion(
 ) -> DiffusionResult:
     """Solve a bounded cell-centred finite-volume diffusion/transport fixture.
 
-    Positive source creates species; the optional first-order term ``k*c``
-    consumes it. Positive outward flux removes it. Each internal face uses
+    Diffusivity is scalar isotropic, one isotropic value per cell, or one
+    constant diagonal-tensor coefficient per grid axis. Positive source
+    creates species; the optional first-order term ``k*c`` consumes it.
+    Positive outward flux removes it. Each internal face uses
     equal-and-opposite diffusive and upwind advective fluxes.
     The returned integrated balance includes physical boundary flux, storage
     and first-order consumption minus source over the whole domain, in mol/s
@@ -131,15 +133,27 @@ def solve_stationary_diffusion(
     else:
         raise ValueError("One advection velocity is required for every axis")
     if isinstance(diffusivity_m2_s, tuple):
-        if len(diffusivity_m2_s) != count:
-            raise ValueError("One diffusivity is required for every cell")
-        diffusivities = diffusivity_m2_s
+        if len(diffusivity_m2_s) == count:
+            # Preserve the existing cellwise-isotropic input form.
+            diffusivities = diffusivity_m2_s
+            axis_diffusivities = [diffusivities] * dimension
+        elif len(diffusivity_m2_s) == dimension:
+            # A dimension-length tuple declares diagonal tensor coefficients.
+            diffusivities = tuple(diffusivity_m2_s)
+            axis_diffusivities = [
+                (diffusivity_m2_s[axis],) * count for axis in range(dimension)
+            ]
+        else:
+            raise ValueError("Supply one diffusivity per cell or one per spatial axis")
     else:
         diffusivities = (diffusivity_m2_s,) * count
+        axis_diffusivities = [diffusivities] * dimension
     values = (*lengths_m, *diffusivities, *velocity, storage_rate_s1, relative_tolerance)
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
         raise ValueError("Lengths, diffusivity, source and tolerance must be finite")
-    if any(length <= 0 for length in lengths_m) or any(value <= 0 for value in diffusivities):
+    if any(length <= 0 for length in lengths_m) or any(
+        value <= 0 for values_by_axis in axis_diffusivities for value in values_by_axis
+    ):
         raise ValueError("Lengths and diffusivity must be positive")
     if not 0 < relative_tolerance <= 1e-4:
         raise ValueError("Relative tolerance must lie in (0, 1e-4]")
@@ -191,14 +205,14 @@ def solve_stationary_diffusion(
         coordinates = tuple(index // stride % n for stride, n in zip(strides, cells))
         centre = tuple((i + 0.5) * step for i, step in zip(coordinates, spacing))
         for axis, (i, n, stride, step) in enumerate(zip(coordinates, cells, strides, spacing)):
-            boundary_conductance = diffusivities[index] / (step * step)
+            boundary_conductance = axis_diffusivities[axis][index] / (step * step)
             for side in (-1, 1):
                 adjacent = i + side
                 if 0 <= adjacent < n:
                     other = index + side * stride
                     # Series resistance across two half cells. The same
                     # coefficient is assembled on both sides of the face.
-                    left, right = diffusivities[index], diffusivities[other]
+                    left, right = axis_diffusivities[axis][index], axis_diffusivities[axis][other]
                     conductance = (2 * left * right / (left + right)) / (step * step)
                     diagonal[index] += conductance
                     neighbors[index].append((other, conductance))
