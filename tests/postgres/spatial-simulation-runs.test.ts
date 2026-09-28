@@ -244,6 +244,13 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
         idempotency_key: `${idempotencyKey}-retry-child`,
       }),
     ).resolves.toMatchObject({ created: false, run: { id: retry.run.id } });
+    await expect(
+      repository.retryFailedRun({
+        run_id: failedRun.run.id,
+        owner_id: ownerId,
+        idempotency_key: `${idempotencyKey}-retry-sibling`,
+      }),
+    ).rejects.toMatchObject({ code: 'retry_not_allowed' });
   });
 
   it('reloads non-convergence diagnostics and failure state from PostgreSQL', async () => {

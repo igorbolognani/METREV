@@ -123,6 +123,10 @@ export interface SpatialSimulationRunRepository {
     runId: string,
     ownerId: string,
   ): Promise<SpatialSimulationRunSnapshot | null>;
+  getOwnedInput(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialModelInputV2 | null>;
   transition(
     input: TransitionSpatialSimulationRunInput,
   ): Promise<SpatialSimulationRunSnapshot | null>;
@@ -467,6 +471,18 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
       where: { id: runId, ownerId },
     });
     return record ? fromRecord(record) : null;
+  }
+
+  async getOwnedInput(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialModelInputV2 | null> {
+    const record = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: runId, ownerId },
+      select: { inputSnapshot: true },
+    });
+    if (!record?.inputSnapshot) return null;
+    return spatialModelInputV2Schema.parse(record.inputSnapshot);
   }
 
   async transition(
@@ -903,6 +919,15 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
         'retry_limit_exceeded',
         'This run has reached the manual retry limit',
       );
+    const sibling = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { retryOfRunId: parent.id },
+      select: { id: true },
+    });
+    if (sibling)
+      throw new SpatialSimulationRunError(
+        'retry_not_allowed',
+        'This failed run already has a retry; continue from that lineage',
+      );
     const id = randomUUID();
     try {
       const retried = await this.prisma.spatialSimulationRunRecord.create({
@@ -934,8 +959,20 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
           idempotencyKey: input.idempotency_key,
         },
       });
-      if (!raced || raced.retryOfRunId !== input.run_id) throw error;
-      return { created: false, run: fromRecord(raced) };
+      if (raced) {
+        if (raced.retryOfRunId !== input.run_id) throw error;
+        return { created: false, run: fromRecord(raced) };
+      }
+      const sibling = await this.prisma.spatialSimulationRunRecord.findFirst({
+        where: { retryOfRunId: parent.id },
+        select: { id: true },
+      });
+      if (sibling)
+        throw new SpatialSimulationRunError(
+          'retry_not_allowed',
+          'This failed run already has a retry; continue from that lineage',
+        );
+      throw error;
     }
   }
 }
@@ -1022,6 +1059,14 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
   ): Promise<SpatialSimulationRunSnapshot | null> {
     const record = this.runs.get(runId);
     return record?.ownerId === ownerId ? record.snapshot : null;
+  }
+
+  async getOwnedInput(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialModelInputV2 | null> {
+    const record = this.runs.get(runId);
+    return record?.ownerId === ownerId ? record.input : null;
   }
 
   async transition(
@@ -1285,6 +1330,15 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
       throw new SpatialSimulationRunError(
         'retry_limit_exceeded',
         'This run has reached the manual retry limit',
+      );
+    if (
+      [...this.runs.values()].some(
+        (record) => record.snapshot.retry_of_run_id === parent.snapshot.id,
+      )
+    )
+      throw new SpatialSimulationRunError(
+        'retry_not_allowed',
+        'This failed run already has a retry; continue from that lineage',
       );
     const now = this.now().toISOString();
     const run = spatialSimulationRunSnapshotSchema.parse({

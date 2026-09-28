@@ -187,8 +187,8 @@ describe('spatial simulation API', () => {
       repository: new MemoryEvaluationRepository(),
       spatialSimulationRunRepository: spatialRuns,
       spatialSimulationRunAdmission: {
-        solverVersion: 'test-solver-1',
-        runtimeVersion: 'test-runtime-1',
+        solverVersion: 'solver-dev-1',
+        runtimeVersion: 'sidecar-dev-1',
         supports: () => true,
       },
       rateLimit: false,
@@ -234,6 +234,24 @@ describe('spatial simulation API', () => {
           retry_count: 1,
         },
       });
+      expect((await retry('retry-sibling')).json()).toMatchObject({
+        error: 'retry_not_allowed',
+      });
+
+      app.spatialSimulationRunAdmission = {
+        solverVersion: 'solver-dev-2',
+        runtimeVersion: 'sidecar-dev-1',
+        supports: () => true,
+      };
+      expect((await retry('retry-incompatible-version')).statusCode).toBe(409);
+      app.spatialSimulationRunAdmission = {
+        solverVersion: 'solver-dev-1',
+        runtimeVersion: 'sidecar-dev-1',
+        supports: () => false,
+      };
+      expect((await retry('retry-unsupported-input')).statusCode).toBe(422);
+      actor = { ...analyst, userId: 'another-owner' };
+      expect((await retry('retry-another-owner')).statusCode).toBe(404);
     } finally {
       await app.close();
     }
