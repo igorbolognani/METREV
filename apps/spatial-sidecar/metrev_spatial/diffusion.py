@@ -1,11 +1,12 @@
-"""Bounded, conservative orthogonal-grid diffusion verification kernel.
+"""Bounded, conservative orthogonal-grid transport verification kernel.
 
-EQ-SP-001 restricted to isothermal, single-species diffusion:
-    div(-D grad(c)) = R.
+EQ-SP-001 restricted to isothermal, single-species transport:
+    div(u c - D grad(c)) = R.
 
-All faces have declared Dirichlet values. This module is deliberately isolated
-from case admission: fixture coefficients and boundaries are not product data.
-It supplies a reproducible 1D/2D/3D numerical baseline, not cell physics.
+All faces have declared Dirichlet values. Optional constant velocity uses
+first-order upwind fluxes. This module is deliberately isolated from case
+admission: fixture coefficients and boundaries are not product data. It
+supplies a reproducible 1D/2D/3D numerical baseline, not cell physics.
 """
 
 from __future__ import annotations
@@ -44,6 +45,55 @@ def _dot(left: list[float], right: list[float]) -> float:
     return math.fsum(a * b for a, b in zip(left, right))
 
 
+def _solve_bicgstab(
+    apply: Callable[[list[float]], list[float]],
+    rhs: list[float],
+    diagonal: list[float],
+    *,
+    relative_tolerance: float,
+    max_iterations: int,
+) -> tuple[list[float], int]:
+    """Solve a bounded nonsymmetric system using right Jacobi preconditioning."""
+    count = len(rhs)
+    scale = max(abs(value) for value in rhs)
+    solution = [0.0] * count
+    residual = rhs.copy()
+    shadow = residual.copy()
+    direction = [0.0] * count
+    applied_direction = [0.0] * count
+    rho_previous = alpha = omega = 1.0
+    for iteration in range(1, max_iterations + 1):
+        rho = _dot(shadow, residual)
+        if not math.isfinite(rho) or abs(rho) <= 1e-300 or abs(omega) <= 1e-300:
+            raise DiffusionConvergenceError("Advection-diffusion iteration broke down")
+        beta = (rho / rho_previous) * (alpha / omega)
+        direction = [r + beta * (p - omega * v) for r, p, v in zip(residual, direction, applied_direction)]
+        preconditioned = [direction[i] / diagonal[i] for i in range(count)]
+        applied_direction = apply(preconditioned)
+        denominator = _dot(shadow, applied_direction)
+        if not math.isfinite(denominator) or abs(denominator) <= 1e-300:
+            raise DiffusionConvergenceError("Advection-diffusion iteration broke down")
+        alpha = rho / denominator
+        intermediate = [r - alpha * v for r, v in zip(residual, applied_direction)]
+        if max(abs(value) for value in intermediate) / scale <= relative_tolerance:
+            solution = [x + alpha * p for x, p in zip(solution, preconditioned)]
+            return solution, iteration
+        preconditioned_intermediate = [intermediate[i] / diagonal[i] for i in range(count)]
+        applied_intermediate = apply(preconditioned_intermediate)
+        norm_squared = _dot(applied_intermediate, applied_intermediate)
+        if not math.isfinite(norm_squared) or norm_squared <= 1e-300:
+            raise DiffusionConvergenceError("Advection-diffusion iteration broke down")
+        omega = _dot(applied_intermediate, intermediate) / norm_squared
+        if not math.isfinite(omega) or abs(omega) <= 1e-300:
+            raise DiffusionConvergenceError("Advection-diffusion iteration broke down")
+        solution = [x + alpha * p + omega * q for x, p, q in zip(solution, preconditioned, preconditioned_intermediate)]
+        residual = [s - omega * t for s, t in zip(intermediate, applied_intermediate)]
+        if max(abs(value) for value in residual) / scale <= relative_tolerance:
+            return solution, iteration
+        rho_previous = rho
+    raise DiffusionConvergenceError("Advection-diffusion residual exceeded the iteration budget")
+
+
 def solve_stationary_diffusion(
     *,
     lengths_m: tuple[float, ...],
@@ -51,16 +101,17 @@ def solve_stationary_diffusion(
     diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float | tuple[float, ...],
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
+    advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
     max_iterations: int | None = None,
     storage_rate_s1: float = 0.0,
 ) -> DiffusionResult:
-    """Solve a bounded cell-centred finite-volume diffusion fixture.
+    """Solve a bounded cell-centred finite-volume diffusion/transport fixture.
 
     Positive source creates species; positive outward flux removes it. Each
-    internal face uses one identical conductance in both adjacent balances.
-    The returned integrated residual sums the physical boundary flux minus
-    the source over the whole domain, in mol/s for the declared geometry.
+    internal face uses equal-and-opposite diffusive and upwind advective fluxes.
+    The returned integrated balance includes both physical boundary fluxes
+    minus source over the whole domain, in mol/s for the declared geometry.
     """
     dimension = len(cells)
     if dimension not in (1, 2, 3) or len(lengths_m) != dimension:
@@ -70,13 +121,19 @@ def solve_stationary_diffusion(
     count = math.prod(cells)
     if count > 4096:
         raise ValueError("Verification mesh exceeds the 4096-cell bound")
+    if advection_velocity_m_s is None:
+        velocity = (0.0,) * dimension
+    elif len(advection_velocity_m_s) == dimension:
+        velocity = advection_velocity_m_s
+    else:
+        raise ValueError("One advection velocity is required for every axis")
     if isinstance(diffusivity_m2_s, tuple):
         if len(diffusivity_m2_s) != count:
             raise ValueError("One diffusivity is required for every cell")
         diffusivities = diffusivity_m2_s
     else:
         diffusivities = (diffusivity_m2_s,) * count
-    values = (*lengths_m, *diffusivities, storage_rate_s1, relative_tolerance)
+    values = (*lengths_m, *diffusivities, *velocity, storage_rate_s1, relative_tolerance)
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
         raise ValueError("Lengths, diffusivity, source and tolerance must be finite")
     if any(length <= 0 for length in lengths_m) or any(value <= 0 for value in diffusivities):
@@ -111,6 +168,7 @@ def solve_stationary_diffusion(
     rhs = source_values.copy()
     neighbors: list[list[tuple[int, float]]] = [[] for _ in range(count)]
     boundary_faces: list[tuple[int, float, float]] = []
+    boundary_advective_fluxes: list[tuple[int, float, float | None, float]] = []
 
     for index in range(count):
         coordinates = tuple(index // stride % n for stride, n in zip(strides, cells))
@@ -127,6 +185,11 @@ def solve_stationary_diffusion(
                     conductance = (2 * left * right / (left + right)) / (step * step)
                     diagonal[index] += conductance
                     neighbors[index].append((other, conductance))
+                    normal_velocity = side * velocity[axis]
+                    if normal_velocity >= 0:
+                        diagonal[index] += normal_velocity / step
+                    else:
+                        neighbors[index].append((other, -normal_velocity / step))
                 else:
                     face = list(centre)
                     face[axis] = 0.0 if side == -1 else lengths_m[axis]
@@ -137,6 +200,15 @@ def solve_stationary_diffusion(
                     diagonal[index] += face_conductance
                     rhs[index] += face_conductance * value
                     boundary_faces.append((index, face_conductance, float(value)))
+                    normal_velocity = side * velocity[axis]
+                    if normal_velocity >= 0:
+                        # Advective outflow uses the cell state; only inflow
+                        # takes its trace from the declared boundary value.
+                        diagonal[index] += normal_velocity / step
+                        boundary_advective_fluxes.append((index, normal_velocity, None, volume / step))
+                    else:
+                        rhs[index] -= normal_velocity * value / step
+                        boundary_advective_fluxes.append((index, normal_velocity, float(value), volume / step))
 
     if any(not math.isfinite(value) or value <= 0 for value in diagonal) or any(
         not math.isfinite(value) for value in rhs
@@ -155,33 +227,42 @@ def solve_stationary_diffusion(
     scale = max(abs(value) for value in rhs)
     if scale == 0:
         return DiffusionResult(tuple(solution), cells, 0, 0.0, 0.0)
-    preconditioned = [residual[i] / diagonal[i] for i in range(count)]
-    direction = preconditioned.copy()
-    old_product = _dot(residual, preconditioned)
-    iterations = 0
-    for iteration in range(1, max_iterations + 1):
-        applied = apply(direction)
-        denominator = _dot(direction, applied)
-        if not math.isfinite(denominator) or denominator <= 0:
-            raise DiffusionConvergenceError("Diffusion operator lost positive definiteness")
-        alpha = old_product / denominator
-        solution = [u + alpha * p for u, p in zip(solution, direction)]
-        residual = [r - alpha * a for r, a in zip(residual, applied)]
-        iterations = iteration
-        if max(abs(value) for value in residual) / scale <= relative_tolerance:
-            break
-        preconditioned = [residual[i] / diagonal[i] for i in range(count)]
-        new_product = _dot(residual, preconditioned)
-        direction = [z + new_product / old_product * p for z, p in zip(preconditioned, direction)]
-        old_product = new_product
+    if any(component != 0 for component in velocity):
+        solution, iterations = _solve_bicgstab(
+            apply,
+            rhs,
+            diagonal,
+            relative_tolerance=relative_tolerance,
+            max_iterations=max_iterations,
+        )
     else:
-        raise DiffusionConvergenceError("Diffusion residual exceeded the iteration budget")
+        preconditioned = [residual[i] / diagonal[i] for i in range(count)]
+        direction = preconditioned.copy()
+        old_product = _dot(residual, preconditioned)
+        iterations = 0
+        for iteration in range(1, max_iterations + 1):
+            applied = apply(direction)
+            denominator = _dot(direction, applied)
+            if not math.isfinite(denominator) or denominator <= 0:
+                raise DiffusionConvergenceError("Diffusion operator lost positive definiteness")
+            alpha = old_product / denominator
+            solution = [u + alpha * p for u, p in zip(solution, direction)]
+            residual = [r - alpha * a for r, a in zip(residual, applied)]
+            iterations = iteration
+            if max(abs(value) for value in residual) / scale <= relative_tolerance:
+                break
+            preconditioned = [residual[i] / diagonal[i] for i in range(count)]
+            new_product = _dot(residual, preconditioned)
+            direction = [z + new_product / old_product * p for z, p in zip(preconditioned, direction)]
+            old_product = new_product
+        else:
+            raise DiffusionConvergenceError("Diffusion residual exceeded the iteration budget")
 
     # Re-evaluate the true residual; the recursive CG residual can drift.
     true_residual = [b - a for b, a in zip(rhs, apply(solution))]
     relative_residual = max(abs(value) for value in true_residual) / scale
     if relative_residual > relative_tolerance:
-        raise DiffusionConvergenceError("True diffusion residual exceeds tolerance")
+        raise DiffusionConvergenceError("True transport residual exceeds tolerance")
     magnitude = max(max(abs(value) for value in solution), 1e-30)
     if min(solution) < -relative_tolerance * magnitude:
         raise NegativeConcentrationError("Diffusion yielded a negative concentration")
@@ -191,6 +272,10 @@ def solve_stationary_diffusion(
     outward_flux = math.fsum(
         coefficient * (solution[index] - value) * volume
         for index, coefficient, value in boundary_faces
+    )
+    outward_flux += math.fsum(
+        normal_velocity * (solution[index] if value is None else value) * area
+        for index, normal_velocity, value, area in boundary_advective_fluxes
     )
     global_balance = (
         outward_flux
@@ -210,11 +295,12 @@ def solve_transient_diffusion(
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
     time_step_s: float,
     steps: int,
+    advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
 ) -> TransientDiffusionResult:
-    """Implicit-Euler fixture for ∂c/∂t + div(-D grad(c)) = R.
+    """Implicit-Euler fixture for ∂c/∂t + div(u c - D grad(c)) = R.
 
-    The new state appears on every boundary and diffusion term; each returned
+    The new state appears on every boundary and transport term; each returned
     balance includes storage change and boundary flux at that time step.
     """
     count = math.prod(cells)
@@ -247,6 +333,7 @@ def solve_transient_diffusion(
             source_mol_m3_s=tuple(source_mol_m3_s + value * storage for value in state),
             storage_rate_s1=storage,
             boundary_mol_m3=lambda point: boundary_mol_m3(time, point),
+            advection_velocity_m_s=advection_velocity_m_s,
             relative_tolerance=relative_tolerance,
         )
         state = result.concentrations_mol_m3
