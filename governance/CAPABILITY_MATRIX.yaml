@@ -173,7 +173,7 @@ feature_coverage:
   persistence:
     0D: implemented
     1D: restricted
-    2D: absent
+    2D: partial
     3D: absent
     macro_stack: absent
     micro_porous_electrode: absent

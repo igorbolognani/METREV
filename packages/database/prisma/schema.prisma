@@ -158,18 +158,30 @@ enum ResearchEvidencePackStatus {
   REVIEWED
 }
 
+enum SpatialSimulationRunStatus {
+  QUEUED
+  PREPARING_GEOMETRY
+  MESHING
+  SOLVING
+  POSTPROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  passwordHash  String
-  role          Role      @default(VIEWER)
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
+  id                    String                       @id @default(cuid())
+  email                 String                       @unique
+  name                  String?
+  passwordHash          String
+  role                  Role                         @default(VIEWER)
+  emailVerified         DateTime?
+  image                 String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  accounts              Account[]
+  sessions              Session[]
+  spatialSimulationRuns SpatialSimulationRunRecord[]
 }
 
 model Account {
@@ -256,6 +268,7 @@ model EvaluationRecord {
   workspaceSnapshots      WorkspaceSnapshotRecord[]
   auditEvents             AuditEvent[]
   reportConversations     ReportConversationSession[]
+  spatialSimulationRuns   SpatialSimulationRunRecord[]
 }
 
 model EvidenceDecisionContextRecord {
@@ -307,6 +320,37 @@ model SimulationArtifactRecord {
   evaluation          EvaluationRecord @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+}
+
+model SpatialSimulationRunRecord {
+  id                   String                     @id
+  ownerId              String
+  evaluationId         String?
+  idempotencyKey       String
+  modelId              String
+  system               String
+  dimension            Int
+  inputContractVersion String
+  inputSha256          String
+  solverVersion        String
+  runtimeVersion       String
+  meshRequestSha256    String?
+  meshSha256           String?
+  status               SpatialSimulationRunStatus @default(QUEUED)
+  progress             Int                        @default(0)
+  resultManifest       Json?
+  failureDetail        Json?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  startedAt            DateTime?
+  completedAt          DateTime?
+  owner                User                       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  evaluation           EvaluationRecord?          @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
+
+  @@unique([ownerId, idempotencyKey])
+  @@index([ownerId, status, createdAt])
+  @@index([evaluationId, createdAt])
+  @@index([status, updatedAt])
 }
 
 model Supplier {

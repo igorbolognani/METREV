@@ -17,6 +17,8 @@ notes:
   - Catalog status is execution availability, separate from scientific maturity.
   - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
 spatial_input_contract: spatial_input_v1_legacy_plus_v2_planar_schema_only
+spatial_result_contract: spatial_simulation_result_v1_compact_manifest_external_field_references
+spatial_run_metadata: postgresql_owner_scoped_lifecycle_repository_worker_pending
 physics_composition: dependency_ordered_descriptors_without_equation_assembly
 coupled_1d_case_runner: development_with_complete_cell_1d
 sensitivity_persistence: migration_and_roundtrip_implemented
