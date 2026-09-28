@@ -63,6 +63,12 @@ class SidecarTest(unittest.TestCase):
                 for side in ("left", "right", "top", "bottom")
             }
             interface_positions = {}
+            boundary_positions = {
+                f"boundary:{mesh['boundaries']['left']['tag']}": (0, None),
+                f"boundary:{mesh['boundaries']['right']['tag']}": (total_width, None),
+                f"boundary:{mesh['boundaries']['bottom']['tag']}": (None, 0),
+                f"boundary:{mesh['boundaries']['top']['tag']}": (None, height),
+            }
             position = 0.0
             for left, right in zip(mesh["layers"], mesh["layers"][1:]):
                 position += left["width_m"]["value"]
@@ -172,6 +178,17 @@ class SidecarTest(unittest.TestCase):
                                                 abs(node[0] - interface_positions[name]),
                                                 total_width * MESH_AREA_RELATIVE_TOLERANCE,
                                             )
+                                    if name in boundary_positions:
+                                        for node in (first, second):
+                                            for coordinate, expected in zip(
+                                                node, boundary_positions[name]
+                                            ):
+                                                if expected is not None:
+                                                    self.assertLessEqual(
+                                                        abs(coordinate - expected),
+                                                        max(height, total_width)
+                                                        * MESH_AREA_RELATIVE_TOLERANCE,
+                                                    )
                                     lengths.append(math.dist(first, second))
                         curve_lengths[name] = math.fsum(lengths)
                     self.assertEqual(set(curve_lengths), set(expected_curve_lengths))
