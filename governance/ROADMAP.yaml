@@ -145,7 +145,7 @@ work_items:
       - apps/
     blockers:
       - An isolated scalar finite-volume kernel has bounded steady, transient, heterogeneous-interface and prescribed-velocity verification on 1D/2D/3D orthogonal grids; P03 and P05 remain partial and it is not connected to Gmsh or a case
-      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux fixtures are verified on orthogonal grids; electrochemical reaction networks, solved hydraulics, electromigration, electrolyte and solid charge, physical region interfaces, circuit closure and nonlinear convergence remain unimplemented in spatial runtime
+      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; electrochemical reaction networks, solved hydraulics, electromigration, electrolyte and solid charge, physical region interfaces, circuit closure and nonlinear convergence remain unimplemented in spatial runtime
     gate_evidence:
       GATE-MASS-CONSERVATION: A scalar finite-volume fixture checks integrated source and first-order disappearance against prescribed diffusive and upwind advective boundary flux and verifies affine isotropic/diagonal-anisotropic, manufactured and two-material interface solutions in 1D/2D/3D; this is not coupled species/charge conservation
       GATE-TIME-REFINEMENT: Implicit-Euler scalar diffusion fixtures in 2D and 3D compare three step sizes with a finer numerical reference and check storage plus flux balance; no transient cell model is verified

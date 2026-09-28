@@ -69,6 +69,62 @@ class DiffusionKernelTest(unittest.TestCase):
                     self.assertAlmostEqual(value, 2.3 + sum(point), delta=1e-8)
                 self.assertLess(max(map(abs, result.step_balances_mol_s)), 1e-8)
 
+    def test_heterogeneous_porous_storage_and_cellwise_source_all_dimensions(self):
+        for dimension in (1, 2, 3):
+            count = 4 ** dimension
+            epsilon = tuple(0.2 + 0.1 * (i % 4) for i in range(count))
+            common = dict(
+                lengths_m=(1.0,) * dimension, cells=(4,) * dimension,
+                diffusivity_m2_s=0.1, porosity=epsilon,
+                boundary_mol_m3=lambda time, point: 1.0,
+                boundary_diffusive_flux_mol_m2_s=lambda time, point: 0.0,
+                time_step_s=0.1, steps=4,
+            )
+            # ε dc/dt = ε with zero diffusion: c = 1 + t exactly.
+            rising = solve_transient_diffusion(
+                **common, initial_mol_m3=(1.0,) * count, source_mol_m3_s=epsilon,
+            )
+            for value in rising.final.concentrations_mol_m3:
+                self.assertAlmostEqual(value, 1.4, delta=1e-9)
+            initial = tuple(1.0 + (i % 3) for i in range(count))
+            closed = solve_transient_diffusion(
+                **common, initial_mol_m3=initial, source_mol_m3_s=0.0,
+            )
+            before = sum(e * c for e, c in zip(epsilon, initial)) / count
+            after = sum(e * c for e, c in zip(epsilon, closed.final.concentrations_mol_m3)) / count
+            self.assertAlmostEqual(before, after, delta=1e-9)
+            self.assertGreaterEqual(min(closed.final.concentrations_mol_m3), min(initial))
+            self.assertLessEqual(max(closed.final.concentrations_mol_m3), max(initial))
+            self.assertLess(max(map(abs, closed.step_balances_mol_s)), 1e-8)
+            self.assertLess(max(map(abs, rising.step_balances_mol_s)), 1e-8)
+            # Bulk-volume disappearance k=ε gives uniform dc/dt=-c.
+            decay = solve_transient_diffusion(
+                **common, initial_mol_m3=(1.0,) * count,
+                source_mol_m3_s=0.0, reaction_rate_s1=epsilon,
+            )
+            for value in decay.final.concentrations_mol_m3:
+                self.assertAlmostEqual(value, (1 / 1.1) ** 4, delta=1e-9)
+
+    def test_porous_storage_rejects_invalid_porosity_and_sources(self):
+        common = dict(
+            lengths_m=(1.0,), cells=(2,), diffusivity_m2_s=1.0,
+            initial_mol_m3=(1.0, 1.0), boundary_mol_m3=lambda time, point: 1.0,
+            time_step_s=0.1, steps=1,
+        )
+        for invalid in (0, -1, 1.1, True, float("nan"), float("inf"), (0.5,), (0.5, 0)):
+            with self.subTest(porosity=invalid), self.assertRaises(ValueError):
+                solve_transient_diffusion(**common, source_mol_m3_s=0.0, porosity=invalid)
+        for invalid in ((1.0,), (0.0, float("nan")), (True, 0.0)):
+            with self.subTest(source=invalid), self.assertRaises(ValueError):
+                solve_transient_diffusion(**common, source_mol_m3_s=invalid)
+        for invalid in ((0.1,), (0.1, -1), (0.1, float("inf")), True):
+            with self.subTest(storage=invalid), self.assertRaises(ValueError):
+                solve_stationary_diffusion(
+                    lengths_m=(1.0,), cells=(2,), diffusivity_m2_s=1.0,
+                    source_mol_m3_s=0.0, boundary_mol_m3=lambda point: 1.0,
+                    storage_rate_s1=invalid,
+                )
+
     def test_layered_material_interface_flux_in_one_two_three_dimensions(self):
         for dimension in (1, 2, 3):
             with self.subTest(dimension=dimension):

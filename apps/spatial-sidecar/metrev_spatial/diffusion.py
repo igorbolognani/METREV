@@ -106,7 +106,7 @@ def solve_stationary_diffusion(
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
     max_iterations: int | None = None,
-    storage_rate_s1: float = 0.0,
+    storage_rate_s1: float | tuple[float, ...] = 0.0,
 ) -> DiffusionResult:
     """Solve a bounded cell-centred finite-volume diffusion/transport fixture.
 
@@ -152,7 +152,13 @@ def solve_stationary_diffusion(
     else:
         diffusivities = (diffusivity_m2_s,) * count
         axis_diffusivities = [diffusivities] * dimension
-    values = (*lengths_m, *diffusivities, *velocity, storage_rate_s1, relative_tolerance)
+    if isinstance(storage_rate_s1, tuple):
+        if len(storage_rate_s1) != count:
+            raise ValueError("One storage coefficient is required for every cell")
+        storage_rates = storage_rate_s1
+    else:
+        storage_rates = (storage_rate_s1,) * count
+    values = (*lengths_m, *diffusivities, *velocity, *storage_rates, relative_tolerance)
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
         raise ValueError("Lengths, diffusivity, source and tolerance must be finite")
     if any(length <= 0 for length in lengths_m) or any(
@@ -161,7 +167,7 @@ def solve_stationary_diffusion(
         raise ValueError("Lengths and diffusivity must be positive")
     if not 0 < relative_tolerance <= 1e-4:
         raise ValueError("Relative tolerance must lie in (0, 1e-4]")
-    if storage_rate_s1 < 0:
+    if any(rate < 0 for rate in storage_rates):
         raise ValueError("Storage coefficient must be nonnegative")
     if isinstance(source_mol_m3_s, tuple):
         if len(source_mol_m3_s) != count:
@@ -201,7 +207,7 @@ def solve_stationary_diffusion(
     volume = math.prod(spacing)
     if volume == 0 or not math.isfinite(volume):
         raise ValueError("Cell volume is not numerically representable")
-    diagonal = [storage_rate_s1 + reaction_rates[index] for index in range(count)]
+    diagonal = [storage_rates[index] + reaction_rates[index] for index in range(count)]
     rhs = source_values.copy()
     neighbors: list[list[tuple[int, float]]] = [[] for _ in range(count)]
     boundary_faces: list[tuple[int, float, float]] = []
@@ -265,7 +271,7 @@ def solve_stationary_diffusion(
     # Decide anchoring from assembled faces, not merely callback presence.
     if (
         not boundary_faces
-        and storage_rate_s1 == 0
+        and not any(rate > 0 for rate in storage_rates)
         and not any(rate > 0 for rate in reaction_rates)
         and not any(component != 0 for component in velocity)
     ):
@@ -341,7 +347,7 @@ def solve_stationary_diffusion(
     )
     global_balance = (
         outward_flux
-        + storage_rate_s1 * math.fsum(solution) * volume
+        + math.fsum(rate * value for rate, value in zip(storage_rates, solution)) * volume
         + math.fsum(rate * value for rate, value in zip(reaction_rates, solution)) * volume
         - math.fsum(source_values) * volume
     )
@@ -353,8 +359,9 @@ def solve_transient_diffusion(
     lengths_m: tuple[float, ...],
     cells: tuple[int, ...],
     diffusivity_m2_s: float | tuple[float, ...],
-    source_mol_m3_s: float,
+    source_mol_m3_s: float | tuple[float, ...],
     initial_mol_m3: tuple[float, ...],
+    porosity: float | tuple[float, ...] = 1.0,
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
     time_step_s: float,
     steps: int,
@@ -382,10 +389,20 @@ def solve_transient_diffusion(
         raise ValueError("A time-dependent boundary function is required")
     if boundary_diffusive_flux_mol_m2_s is not None and not callable(boundary_diffusive_flux_mol_m2_s):
         raise ValueError("Time-dependent diffusive boundary flux must be callable")
-    if isinstance(source_mol_m3_s, bool) or not isinstance(source_mol_m3_s, (int, float)) or not math.isfinite(source_mol_m3_s):
-        raise ValueError("Transient source must be finite")
-    storage = 1 / time_step_s
-    if not math.isfinite(storage):
+    porosities = porosity if isinstance(porosity, tuple) else (porosity,) * count
+    if len(porosities) != count or any(
+        isinstance(value, bool) or not isinstance(value, (int, float))
+        or not math.isfinite(value) or not 0 < value <= 1 for value in porosities
+    ):
+        raise ValueError("Each cell needs a finite porosity in (0, 1]")
+    sources = source_mol_m3_s if isinstance(source_mol_m3_s, tuple) else (source_mol_m3_s,) * count
+    if len(sources) != count or any(
+        isinstance(value, bool) or not isinstance(value, (int, float))
+        or not math.isfinite(value) for value in sources
+    ):
+        raise ValueError("Every transient source must be finite")
+    storage = tuple(value / time_step_s for value in porosities)
+    if any(not math.isfinite(value) or value <= 0 for value in storage):
         raise ValueError("Time step yields an unrepresentable storage coefficient")
     state = initial_mol_m3
     balances = []
@@ -397,7 +414,7 @@ def solve_transient_diffusion(
             lengths_m=lengths_m,
             cells=cells,
             diffusivity_m2_s=diffusivity_m2_s,
-            source_mol_m3_s=tuple(source_mol_m3_s + value * storage for value in state),
+            source_mol_m3_s=tuple(source + value * rate for source, value, rate in zip(sources, state, storage)),
             boundary_diffusive_flux_mol_m2_s=(
                 None
                 if boundary_diffusive_flux_mol_m2_s is None

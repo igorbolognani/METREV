@@ -23,3 +23,5 @@ The same kernel verifies a constant, grid-aligned diagonal diffusion tensor thro
 Prescribed outward diffusive-flux boundaries are checked as a no-flux limit with reaction in steady 1D/2D/3D and with implicit transient loss/storage in 1D/2D/3D. Mixed Dirichlet/flux faces and a steady unanchored all-Neumann problem remain unsupported.
 
 Mixed-boundary extension: exact affine concentration and signed nonzero outward flux on non-unit 1D/2D/3D boxes with every possible anchor axis/side; transient affine-plus-time reference for mixed and all-flux boundaries. Concentration error and integrated balance tolerance: 1e-8. Fixtures only; no cell-level maturity promotion.
+
+Porous-storage extension: heterogeneous time-independent porosity, cellwise production, closed-domain pore-volume-weighted inventory, concentration bounds and implicit linear decay in 1D/2D/3D. Analytic concentration/inventory tolerance 1e-9; integrated step balance tolerance 1e-8. No porosity-derived transport or reactive area.
