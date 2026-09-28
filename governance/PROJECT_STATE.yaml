@@ -17,7 +17,7 @@ notes:
   - Catalog status is execution availability, separate from scientific maturity.
   - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
   - Spatial job creation and retries fail closed unless an executor admission is injected; no spatial PDE solver or production field-artifact provider is registered.
-  - The spatial worker package enforces a cooperative execution deadline; hard CPU and memory isolation must be supplied by its deployment container.
+  - The spatial worker bounds its asynchronous wait even if an executor ignores AbortSignal; terminating a blocked native solver process and hard CPU/memory isolation still require an executor/deployment boundary.
 spatial_input_contract: spatial_input_v1_legacy_plus_v2_planar_schema_only
 spatial_result_contract: spatial_simulation_result_v1_compact_manifest_external_field_references
 spatial_run_metadata: postgresql_owner_scoped_lifecycle_with_hash_bound_snapshots_worker_leases_and_authenticated_api
