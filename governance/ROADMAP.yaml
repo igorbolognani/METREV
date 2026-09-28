@@ -123,7 +123,7 @@ work_items:
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P03
       - P05
@@ -144,7 +144,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - An isolated scalar diffusion kernel now has bounded 1D/2D/3D orthogonal-grid verification; P03 and P05 remain partial and the kernel is not connected to Gmsh or a case
+      - Convection, migration, reaction, electrolyte and solid charge, interfaces, circuit closure and nonlinear convergence remain unimplemented in spatial runtime
+    gate_evidence:
+      GATE-MASS-CONSERVATION: A steady scalar finite-volume fixture checks integrated source against boundary flux and verifies affine and manufactured solutions in 1D/2D/3D; this is not coupled species/charge conservation
   - id: P07
     title: Implement 2D hydraulics
     phase: P2
