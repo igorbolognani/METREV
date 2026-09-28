@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -528,3 +529,29 @@ def test_metadata_taxonomy_declares_veracity_and_local_ingestion_boundaries() ->
         "metadata_quality",
         "veracity_score",
     }.issubset(required_fields)
+
+
+def test_spatial_v2_external_contract_and_unit_authority() -> None:
+    contract = _load_yaml(CONTRACTS_ROOT / "spatial_input_v2.yaml")
+    authority = json.loads(
+        (DOMAIN_ONTOLOGY_ROOT / "spatial-variable-authority.json").read_text()
+    )
+    assert contract["version"] == "spatial-input-v2"
+    assert authority["schema_version"] == 1
+    declared_kinds = (
+        contract["boundary_kinds"]["exterior_with_value"]
+        + contract["boundary_kinds"]["exterior_without_value"]
+        + contract["boundary_kinds"]["internal"]
+    )
+    assert set(declared_kinds) == set(authority["boundary_semantics"])
+    assert contract["geometry"]["version"] == "planar-layers-v1"
+    assert contract["scientific_value"]["required"] == [
+        "value", "unit", "source_kind", "source_ref"
+    ]
+    assert {"mesh", "geometry", "variables", "reaction_laws", "boundary_conditions"}.issubset(
+        contract["required_fields"]
+    )
+    for spec in authority["variables"].values():
+        assert spec["unit"] and spec["domains"]
+        assert spec["bounds"] is not None
+    assert authority["species_properties"]["ion_mobility"]["derivation"]

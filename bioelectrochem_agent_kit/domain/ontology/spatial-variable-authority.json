@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "scope": "Units and physically eligible domains for spatial-input-v2 state variables and boundary values. This file supplies no numerical values or constitutive laws.",
+  "boundary_semantics": {
+    "dirichlet": "Prescribed value of the declared variable at an exterior facet",
+    "neumann": "Prescribed outward normal gradient, not a conserved flux",
+    "flux": "Prescribed outward normal conserved flux, using the variable's declared flux unit",
+    "robin": "Outward flux = coefficient * (local variable - ambient value); the coefficient's unit is variable specific",
+    "symmetry": "Zero outward normal flux at an exterior wall, without an implicit value",
+    "interface_continuity": "Continuity of a variable on both sides of an oriented internal interface; balance law remains solver specific",
+    "circuit_coupling": "Solid terminal potential coupled to the explicitly declared external circuit"
+  },
+  "variables": {
+    "species_concentration": {
+      "unit": "mol/m3",
+      "gradient_unit": "mol/m4",
+      "flux_unit": "mol/m2/s",
+      "robin_coefficient_unit": "m/s",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "bounds": { "min": 0 }
+    },
+    "electrolyte_potential": {
+      "unit": "V",
+      "gradient_unit": "V/m",
+      "flux_unit": "A/m2",
+      "robin_coefficient_unit": "S/m2",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "bounds": {}
+    },
+    "solid_potential": {
+      "unit": "V",
+      "gradient_unit": "V/m",
+      "flux_unit": "A/m2",
+      "robin_coefficient_unit": "S/m2",
+      "domains": ["anode", "biofilm", "cathode"],
+      "bounds": {}
+    },
+    "pressure": {
+      "unit": "Pa",
+      "gradient_unit": "Pa/m",
+      "flux_unit": null,
+      "robin_coefficient_unit": null,
+      "domains": ["bulk_liquid", "anode", "biofilm", "separator"],
+      "bounds": {}
+    },
+    "velocity_x": {
+      "unit": "m/s",
+      "gradient_unit": "1/s",
+      "flux_unit": null,
+      "robin_coefficient_unit": null,
+      "domains": ["bulk_liquid", "anode", "biofilm", "separator"],
+      "bounds": {}
+    },
+    "velocity_y": {
+      "unit": "m/s",
+      "gradient_unit": "1/s",
+      "flux_unit": null,
+      "robin_coefficient_unit": null,
+      "domains": ["bulk_liquid", "anode", "biofilm", "separator"],
+      "bounds": {}
+    },
+    "temperature": {
+      "unit": "K",
+      "gradient_unit": "K/m",
+      "flux_unit": "W/m2",
+      "robin_coefficient_unit": "W/m2/K",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "bounds": { "exclusive_min": 0 }
+    },
+    "biomass_density": {
+      "unit": "kg/m3",
+      "gradient_unit": "kg/m4",
+      "flux_unit": "kg/m2/s",
+      "robin_coefficient_unit": "m/s",
+      "domains": ["anode", "biofilm"],
+      "bounds": { "min": 0 }
+    },
+    "biofilm_thickness": {
+      "unit": "m",
+      "gradient_unit": null,
+      "flux_unit": null,
+      "robin_coefficient_unit": null,
+      "domains": ["biofilm"],
+      "bounds": { "min": 0 }
+    }
+  },
+  "species_properties": {
+    "molecular_diffusivity": {
+      "unit": "m2/s",
+      "bounds": { "exclusive_min": 0 }
+    },
+    "effective_diffusivity": {
+      "unit": "m2/s",
+      "bounds": { "exclusive_min": 0 }
+    },
+    "ion_mobility": {
+      "unit": "m2/V/s",
+      "bounds": { "min": 0 },
+      "derivation": "Only with a declared temperature, valence, diffusivity and electrochemical transport law"
+    },
+    "henry_coefficient": {
+      "unit": "mol/m3/Pa",
+      "bounds": { "exclusive_min": 0 },
+      "definition": "Dissolved concentration divided by gas partial pressure at stated conditions"
+    },
+    "gas_solubility": { "unit": "mol/m3", "bounds": { "min": 0 } }
+  }
+}
