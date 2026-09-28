@@ -38,6 +38,12 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      '@metrev/spatial-artifact-store': fileURLToPath(
+        new URL(
+          './packages/spatial-artifact-store/src/index.ts',
+          import.meta.url,
+        ),
+      ),
       '@metrev/rule-engine': fileURLToPath(
         new URL('./packages/rule-engine/src/index.ts', import.meta.url),
       ),
