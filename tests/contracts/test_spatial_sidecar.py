@@ -77,7 +77,7 @@ class SidecarTest(unittest.TestCase):
                     for _, physical_tag in gmsh.model.getPhysicalGroups(2):
                         name = gmsh.model.getPhysicalName(2, physical_tag)
                         area_terms = []
-                        for _, entity_tag in gmsh.model.getEntitiesForPhysicalGroup(
+                        for entity_tag in gmsh.model.getEntitiesForPhysicalGroup(
                             2, physical_tag
                         ):
                             element_types, _, connectivity = gmsh.model.mesh.getElements(
