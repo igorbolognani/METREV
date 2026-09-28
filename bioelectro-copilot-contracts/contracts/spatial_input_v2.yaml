@@ -49,12 +49,13 @@ mesh:
     - sha256
     - refinement_factor
     - input_sha256
+    - request
     - sidecar_version
     - gmsh_version
     - physical_groups
     - component_map
     - interfaces
-  admission: Match every physical group, component map and interface to geometry; the artifact store must separately authorize and verify URI/hash before a numerical run.
+  admission: Keep the exact sidecar request alongside the manifest; compare its complete geometry to the case and verify its serialized SHA-256 against the response through the Node sidecar client. The artifact store must separately authorize and verify URI/hash before a numerical run.
 fields:
   forms: [constant, piecewise, sampled, artifact]
   artifact_formats: [XDMF, HDF5, VTU]
