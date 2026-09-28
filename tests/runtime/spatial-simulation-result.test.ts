@@ -493,4 +493,56 @@ describe('spatial simulation run lifecycle', () => {
       progress: 0,
       failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
     });
-    const 
+    const retryOne = await repository.retryFailedRun({
+      run_id: original.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-1',
+    });
+    const replay = await repository.retryFailedRun({
+      run_id: original.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-1',
+    });
+    expect(retryOne).toMatchObject({
+      created: true,
+      run: {
+        status: 'queued',
+        retry_count: 1,
+        retry_of_run_id: original.id,
+      },
+    });
+    expect(replay).toMatchObject({
+      created: false,
+      run: { id: retryOne.run.id },
+    });
+
+    await repository.transition({
+      run_id: retryOne.run.id,
+      owner_id: input.owner_id,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    const retryTwo = await repository.retryFailedRun({
+      run_id: retryOne.run.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-2',
+    });
+    await repository.transition({
+      run_id: retryTwo.run.id,
+      owner_id: input.owner_id,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    await expect(
+      repository.retryFailedRun({
+        run_id: retryTwo.run.id,
+        owner_id: input.owner_id,
+        idempotency_key: 'retry-parent-key-3',
+      }),
+    ).rejects.toMatchObject({ code: 'retry_limit_exceeded' });
+  });
+});

@@ -491,4 +491,828 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
         'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
       );
 
-    const update
+    const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
+      where: {
+        id: input.run_id,
+        ownerId: input.owner_id,
+        status: toDatabaseStatus[input.expected_status],
+        updatedAt: currentRecord.updatedAt,
+        leaseToken: null,
+      },
+      data: {
+        status: toDatabaseStatus[input.next_status],
+        progress: input.progress,
+        meshSha256: next.mesh_sha256,
+        resultManifest:
+          resultJson !== null
+            ? (JSON.parse(resultJson) as Prisma.InputJsonValue)
+            : undefined,
+        failureDetail: input.failure
+          ? (input.failure as Prisma.InputJsonValue)
+          : undefined,
+        updatedAt: new Date(next.updated_at),
+        startedAt: next.started_at ? new Date(next.started_at) : null,
+        completedAt: next.completed_at ? new Date(next.completed_at) : null,
+        cancelRequestedAt:
+          input.next_status === 'cancelled'
+            ? new Date(next.updated_at)
+            : undefined,
+      },
+    });
+    if (updated.count !== 1)
+      throw new SpatialSimulationRunError(
+        'stale_state',
+        'The run changed while this transition was being committed',
+      );
+
+    const persisted = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: input.run_id, ownerId: input.owner_id },
+    });
+    return persisted ? fromRecord(persisted) : null;
+  }
+
+  async claimNextQueued(
+    candidate: ClaimSpatialSimulationRunInput,
+  ): Promise<SpatialSimulationRunWorkItem | null> {
+    const input = claimSpatialSimulationRunInputSchema.parse(candidate);
+    return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const legacyQueued = await tx.spatialSimulationRunRecord.findMany({
+        where: {
+          status: 'QUEUED',
+          inputSnapshot: { equals: Prisma.DbNull },
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: 100,
+      });
+      for (const record of legacyQueued) {
+        await tx.spatialSimulationRunRecord.updateMany({
+          where: {
+            id: record.id,
+            status: 'QUEUED',
+            updatedAt: record.updatedAt,
+            inputSnapshot: { equals: Prisma.DbNull },
+          },
+          data: {
+            status: 'FAILED',
+            failureDetail: {
+              code: 'missing_input_snapshot',
+              message:
+                'This queued run cannot be reproduced because its input snapshot was not persisted',
+            },
+            startedAt: record.startedAt ?? now,
+            completedAt: now,
+            updatedAt: now,
+          },
+        });
+      }
+      const expired = await tx.spatialSimulationRunRecord.findMany({
+        where: {
+          status: { in: [...activeStatuses] },
+          leaseExpiresAt: { lte: now },
+        },
+        orderBy: [{ leaseExpiresAt: 'asc' }, { id: 'asc' }],
+        take: 100,
+      });
+      for (const record of expired) {
+        const cancelled = record.cancelRequestedAt !== null;
+        const exhausted = record.attemptCount >= record.maxAttempts;
+        const status = cancelled
+          ? 'CANCELLED'
+          : exhausted
+            ? 'FAILED'
+            : 'QUEUED';
+        await tx.spatialSimulationRunRecord.updateMany({
+          where: {
+            id: record.id,
+            status: record.status,
+            workerId: record.workerId,
+            leaseToken: record.leaseToken,
+            leaseExpiresAt: { lte: now },
+            cancelRequestedAt: record.cancelRequestedAt,
+          },
+          data: {
+            status,
+            progress: cancelled || exhausted ? record.progress : 0,
+            resultManifest: Prisma.DbNull,
+            failureDetail: exhausted
+              ? {
+                  code: 'worker_lease_expired',
+                  message:
+                    'The worker lease expired after the allowed attempts',
+                }
+              : Prisma.DbNull,
+            workerId: null,
+            leaseToken: null,
+            leaseExpiresAt: null,
+            startedAt: cancelled || exhausted ? record.startedAt : null,
+            completedAt: cancelled || exhausted ? now : null,
+            updatedAt: now,
+          },
+        });
+      }
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const queued = await tx.spatialSimulationRunRecord.findFirst({
+          where: {
+            status: 'QUEUED',
+            inputSnapshot: { not: Prisma.DbNull },
+            cancelRequestedAt: null,
+            leaseToken: null,
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+        if (!queued) return null;
+        const leaseToken = randomUUID();
+        const updatedAt = new Date(
+          Math.max(now.getTime(), queued.updatedAt.getTime() + 1),
+        );
+        const claimed = await tx.spatialSimulationRunRecord.updateMany({
+          where: {
+            id: queued.id,
+            ownerId: queued.ownerId,
+            status: 'QUEUED',
+            updatedAt: queued.updatedAt,
+            leaseToken: null,
+            cancelRequestedAt: null,
+            inputSnapshot: { not: Prisma.DbNull },
+          },
+          data: {
+            status: 'PREPARING_GEOMETRY',
+            progress: 5,
+            attemptCount: { increment: 1 },
+            workerId: input.worker_id,
+            leaseToken,
+            leaseExpiresAt: new Date(
+              updatedAt.getTime() + input.lease_duration_ms,
+            ),
+            startedAt: updatedAt,
+            updatedAt,
+          },
+        });
+        if (claimed.count !== 1) continue;
+        const persisted = await tx.spatialSimulationRunRecord.findUnique({
+          where: { id: queued.id },
+        });
+        if (!persisted || persisted.inputSnapshot === null) return null;
+        return {
+          ownerId: persisted.ownerId,
+          workerId: input.worker_id,
+          leaseToken,
+          input: spatialModelInputV2Schema.parse(persisted.inputSnapshot),
+          run: fromRecord(persisted),
+        };
+      }
+      return null;
+    });
+  }
+
+  async renewClaim(
+    candidate: SpatialSimulationRunLeaseInput,
+  ): Promise<SpatialSimulationRunLeaseResult | null> {
+    const input = spatialSimulationRunLeaseInputSchema.parse(candidate);
+    const now = new Date();
+    const leaseExpiresAt = new Date(now.getTime() + input.lease_duration_ms);
+    const renewed = await this.prisma.spatialSimulationRunRecord.updateMany({
+      where: {
+        id: input.run_id,
+        ownerId: input.owner_id,
+        workerId: input.worker_id,
+        leaseToken: input.lease_token,
+        status: { in: [...activeStatuses] },
+        leaseExpiresAt: { gt: now },
+      },
+      data: { leaseExpiresAt, updatedAt: now },
+    });
+    if (renewed.count !== 1) return null;
+    const record = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: {
+        id: input.run_id,
+        ownerId: input.owner_id,
+        workerId: input.worker_id,
+        leaseToken: input.lease_token,
+      },
+    });
+    if (!record) return null;
+    return {
+      cancelRequested: record.cancelRequestedAt !== null,
+      leaseExpiresAt: leaseExpiresAt.toISOString(),
+    };
+  }
+
+  async transitionClaimed(
+    candidate: TransitionSpatialSimulationRunInput & {
+      worker_id: string;
+      lease_token: string;
+    },
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const { worker_id, lease_token, ...transition } = candidate;
+    const input = transitionSpatialSimulationRunInputSchema.parse(transition);
+    const currentRecord =
+      await this.prisma.spatialSimulationRunRecord.findFirst({
+        where: { id: input.run_id, ownerId: input.owner_id },
+      });
+    if (!currentRecord) return null;
+    const now = new Date();
+    if (
+      currentRecord.workerId !== worker_id ||
+      currentRecord.leaseToken !== lease_token ||
+      !currentRecord.leaseExpiresAt ||
+      currentRecord.leaseExpiresAt <= now
+    )
+      throw new SpatialSimulationRunError(
+        'lease_lost',
+        'The worker no longer owns a live lease for this run',
+      );
+    const current = fromRecord(currentRecord);
+    const next = assertTransition(current, input);
+    const resultJson = input.result ? JSON.stringify(input.result) : null;
+    if (
+      resultJson !== null &&
+      Buffer.byteLength(resultJson, 'utf8') > MAX_RESULT_MANIFEST_BYTES
+    )
+      throw new SpatialSimulationRunError(
+        'result_manifest_too_large',
+        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
+      );
+    const terminal = ['completed', 'failed', 'cancelled'].includes(
+      input.next_status,
+    );
+    const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
+      where: {
+        id: input.run_id,
+        ownerId: input.owner_id,
+        status: toDatabaseStatus[input.expected_status],
+        workerId: worker_id,
+        leaseToken: lease_token,
+        leaseExpiresAt: { gt: now },
+        ...(current.cancellation_requested && input.next_status !== 'cancelled'
+          ? { cancelRequestedAt: currentRecord.cancelRequestedAt }
+          : input.next_status === 'cancelled'
+            ? {}
+            : { cancelRequestedAt: null }),
+      },
+      data: {
+        status: toDatabaseStatus[input.next_status],
+        progress: input.progress,
+        meshSha256: next.mesh_sha256,
+        resultManifest:
+          resultJson !== null
+            ? (JSON.parse(resultJson) as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        failureDetail: input.failure
+          ? (input.failure as Prisma.InputJsonValue)
+          : Prisma.DbNull,
+        updatedAt: new Date(next.updated_at),
+        startedAt: next.started_at ? new Date(next.started_at) : null,
+        completedAt: next.completed_at ? new Date(next.completed_at) : null,
+        cancelRequestedAt:
+          input.next_status === 'cancelled'
+            ? (currentRecord.cancelRequestedAt ?? now)
+            : undefined,
+        workerId: terminal ? null : worker_id,
+        leaseToken: terminal ? null : lease_token,
+        leaseExpiresAt: terminal ? null : currentRecord.leaseExpiresAt,
+      },
+    });
+    if (updated.count !== 1)
+      throw new SpatialSimulationRunError(
+        'lease_lost',
+        'The run or worker lease changed while the transition was being committed',
+      );
+    const persisted = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: input.run_id, ownerId: input.owner_id },
+    });
+    return persisted ? fromRecord(persisted) : null;
+  }
+
+  async requestCancellation(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const record = await this.prisma.spatialSimulationRunRecord.findFirst({
+        where: { id: runId, ownerId },
+      });
+      if (!record) return null;
+      const current = fromRecord(record);
+      if (['completed', 'failed', 'cancelled'].includes(current.status))
+        return current;
+      if (current.cancellation_requested) return current;
+      const now = new Date(
+        Math.max(Date.now(), record.updatedAt.getTime() + 1),
+      );
+      if (current.status === 'queued' && record.leaseToken === null) {
+        const next = assertTransition(current, {
+          run_id: runId,
+          owner_id: ownerId,
+          expected_status: 'queued',
+          next_status: 'cancelled',
+          progress: current.progress,
+        });
+        const updated = await this.prisma.spatialSimulationRunRecord.updateMany(
+          {
+            where: {
+              id: runId,
+              ownerId,
+              status: 'QUEUED',
+              updatedAt: record.updatedAt,
+              leaseToken: null,
+              cancelRequestedAt: null,
+            },
+            data: {
+              status: 'CANCELLED',
+              progress: current.progress,
+              startedAt: null,
+              completedAt: new Date(next.completed_at!),
+              cancelRequestedAt: now,
+              workerId: null,
+              leaseToken: null,
+              leaseExpiresAt: null,
+              updatedAt: now,
+            },
+          },
+        );
+        if (updated.count === 1) {
+          const cancelled =
+            await this.prisma.spatialSimulationRunRecord.findFirst({
+              where: { id: runId, ownerId },
+            });
+          return cancelled ? fromRecord(cancelled) : null;
+        }
+        continue;
+      }
+      const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
+        where: {
+          id: runId,
+          ownerId,
+          status: toDatabaseStatus[current.status],
+          updatedAt: record.updatedAt,
+          cancelRequestedAt: null,
+        },
+        data: { cancelRequestedAt: now, updatedAt: now },
+      });
+      if (updated.count === 1) {
+        const requested =
+          await this.prisma.spatialSimulationRunRecord.findFirst({
+            where: { id: runId, ownerId },
+          });
+        return requested ? fromRecord(requested) : null;
+      }
+    }
+    throw new SpatialSimulationRunError(
+      'stale_state',
+      'The run changed while cancellation was being requested',
+    );
+  }
+
+  async retryFailedRun(
+    candidate: RetrySpatialSimulationRunInput,
+  ): Promise<RetrySpatialSimulationRunResult> {
+    const input = retrySpatialSimulationRunInputSchema.parse(candidate);
+    const existing = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: {
+        ownerId: input.owner_id,
+        idempotencyKey: input.idempotency_key,
+      },
+    });
+    if (existing) {
+      if (existing.retryOfRunId !== input.run_id)
+        throw new SpatialSimulationRunError(
+          'idempotency_conflict',
+          'This idempotency key is already bound to another run',
+        );
+      return { created: false, run: fromRecord(existing) };
+    }
+    const parent = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: input.run_id, ownerId: input.owner_id },
+    });
+    if (!parent)
+      throw new SpatialSimulationRunError('not_found', 'Run not found');
+    if (parent.status !== 'FAILED' || parent.inputSnapshot === null)
+      throw new SpatialSimulationRunError(
+        'retry_not_allowed',
+        'Only failed runs with a persisted input snapshot can be retried',
+      );
+    if (parent.retryCount >= MAX_MANUAL_RETRIES)
+      throw new SpatialSimulationRunError(
+        'retry_limit_exceeded',
+        'This run has reached the manual retry limit',
+      );
+    const id = randomUUID();
+    try {
+      const retried = await this.prisma.spatialSimulationRunRecord.create({
+        data: {
+          id,
+          ownerId: parent.ownerId,
+          evaluationId: parent.evaluationId,
+          idempotencyKey: input.idempotency_key,
+          modelId: parent.modelId,
+          system: parent.system,
+          dimension: parent.dimension,
+          inputContractVersion: parent.inputContractVersion,
+          inputSha256: parent.inputSha256,
+          inputSnapshot: parent.inputSnapshot as Prisma.InputJsonValue,
+          solverVersion: parent.solverVersion,
+          runtimeVersion: parent.runtimeVersion,
+          meshRequestSha256: parent.meshRequestSha256,
+          retryOfRunId: parent.id,
+          retryCount: parent.retryCount + 1,
+          maxAttempts: parent.maxAttempts,
+        },
+      });
+      return { created: true, run: fromRecord(retried) };
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      const raced = await this.prisma.spatialSimulationRunRecord.findFirst({
+        where: {
+          ownerId: input.owner_id,
+          idempotencyKey: input.idempotency_key,
+        },
+      });
+      if (!raced || raced.retryOfRunId !== input.run_id) throw error;
+      return { created: false, run: fromRecord(raced) };
+    }
+  }
+}
+
+export class MemorySpatialSimulationRunRepository implements SpatialSimulationRunRepository {
+  private readonly runs = new Map<
+    string,
+    {
+      ownerId: string;
+      idempotencyKey: string;
+      input: SpatialModelInputV2;
+      workerId: string | null;
+      leaseToken: string | null;
+      leaseExpiresAt: number | null;
+      cancelRequestedAt: string | null;
+      snapshot: SpatialSimulationRunSnapshot;
+    }
+  >();
+
+  constructor(private readonly now: () => Date = () => new Date()) {}
+
+  async createOrGet(
+    candidate: CreateSpatialSimulationRunInput,
+  ): Promise<CreateSpatialSimulationRunResult> {
+    const input = createSpatialSimulationRunInputSchema.parse(candidate);
+    const inputJson = JSON.stringify(input.input_snapshot);
+    if (Buffer.byteLength(inputJson, 'utf8') > MAX_INPUT_SNAPSHOT_BYTES)
+      throw new SpatialSimulationRunError(
+        'input_snapshot_too_large',
+        'Spatial input metadata exceeds 2 MiB; keep mesh and field arrays in artifacts',
+      );
+    const existing = [...this.runs.values()].find(
+      (record) =>
+        record.ownerId === input.owner_id &&
+        record.idempotencyKey === input.idempotency_key,
+    );
+    if (existing) {
+      assertSameIdempotentRequest(existing.snapshot, input);
+      return { run: existing.snapshot, created: false };
+    }
+    const now = this.now().toISOString();
+    const run = spatialSimulationRunSnapshotSchema.parse({
+      id: randomUUID(),
+      evaluation_id: input.evaluation_id,
+      model_id: input.model_id,
+      system: input.system,
+      dimension: input.dimension,
+      input_contract_version: input.input_contract_version,
+      input_sha256: input.input_sha256,
+      solver_version: input.solver_version,
+      runtime_version: input.runtime_version,
+      mesh_request_sha256: input.mesh_request_sha256,
+      mesh_sha256: null,
+      status: 'queued',
+      progress: 0,
+      attempt_count: 0,
+      max_attempts: DEFAULT_MAX_ATTEMPTS,
+      retry_count: 0,
+      retry_of_run_id: null,
+      cancellation_requested: false,
+      result: null,
+      failure: null,
+      created_at: now,
+      updated_at: now,
+      started_at: null,
+      completed_at: null,
+    });
+    this.runs.set(run.id, {
+      ownerId: input.owner_id,
+      idempotencyKey: input.idempotency_key,
+      input: spatialModelInputV2Schema.parse(JSON.parse(inputJson)),
+      workerId: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
+      cancelRequestedAt: null,
+      snapshot: run,
+    });
+    return { run, created: true };
+  }
+
+  async getOwnedRun(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const record = this.runs.get(runId);
+    return record?.ownerId === ownerId ? record.snapshot : null;
+  }
+
+  async transition(
+    candidate: TransitionSpatialSimulationRunInput,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const input = transitionSpatialSimulationRunInputSchema.parse(candidate);
+    const record = this.runs.get(input.run_id);
+    if (!record || record.ownerId !== input.owner_id) return null;
+    if (record.leaseToken)
+      throw new SpatialSimulationRunError(
+        'lease_lost',
+        'A claimed run can only be transitioned by its active worker lease',
+      );
+    const next = assertTransition(record.snapshot, input);
+    if (
+      input.result &&
+      Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
+        MAX_RESULT_MANIFEST_BYTES
+    )
+      throw new SpatialSimulationRunError(
+        'result_manifest_too_large',
+        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
+      );
+    record.snapshot = next;
+    if (input.next_status === 'cancelled')
+      record.cancelRequestedAt = next.updated_at;
+    if (['completed', 'failed', 'cancelled'].includes(input.next_status)) {
+      record.workerId = null;
+      record.leaseToken = null;
+      record.leaseExpiresAt = null;
+    }
+    return next;
+  }
+
+  async claimNextQueued(
+    candidate: ClaimSpatialSimulationRunInput,
+  ): Promise<SpatialSimulationRunWorkItem | null> {
+    const input = claimSpatialSimulationRunInputSchema.parse(candidate);
+    const now = this.now();
+    for (const record of this.runs.values()) {
+      if (
+        !record.leaseExpiresAt ||
+        record.leaseExpiresAt > now.getTime() ||
+        ![
+          'preparing_geometry',
+          'meshing',
+          'solving',
+          'postprocessing',
+        ].includes(record.snapshot.status)
+      )
+        continue;
+      const terminal = record.cancelRequestedAt
+        ? 'cancelled'
+        : record.snapshot.attempt_count >= record.snapshot.max_attempts
+          ? 'failed'
+          : null;
+      const updatedAt = new Date(
+        Math.max(now.getTime(), Date.parse(record.snapshot.updated_at) + 1),
+      ).toISOString();
+      if (terminal === 'cancelled') {
+        record.snapshot = spatialSimulationRunSnapshotSchema.parse({
+          ...record.snapshot,
+          status: 'cancelled',
+          cancellation_requested: true,
+          updated_at: updatedAt,
+          completed_at: updatedAt,
+        });
+      } else if (terminal === 'failed') {
+        record.snapshot = spatialSimulationRunSnapshotSchema.parse({
+          ...record.snapshot,
+          status: 'failed',
+          failure: {
+            code: 'worker_lease_expired',
+            message: 'The worker lease expired after the allowed attempts',
+          },
+          updated_at: updatedAt,
+          completed_at: updatedAt,
+        });
+      } else {
+        record.snapshot = spatialSimulationRunSnapshotSchema.parse({
+          ...record.snapshot,
+          status: 'queued',
+          progress: 0,
+          result: null,
+          failure: null,
+          updated_at: updatedAt,
+          started_at: null,
+          completed_at: null,
+        });
+      }
+      record.workerId = null;
+      record.leaseToken = null;
+      record.leaseExpiresAt = null;
+    }
+
+    const queued = [...this.runs.values()]
+      .filter(
+        (record) =>
+          record.snapshot.status === 'queued' &&
+          !record.snapshot.cancellation_requested,
+      )
+      .sort(
+        (left, right) =>
+          left.snapshot.created_at.localeCompare(right.snapshot.created_at) ||
+          left.snapshot.id.localeCompare(right.snapshot.id),
+      )[0];
+    if (!queued) return null;
+    const leaseToken = randomUUID();
+    const preparing = assertTransition(queued.snapshot, {
+      run_id: queued.snapshot.id,
+      owner_id: queued.ownerId,
+      expected_status: 'queued',
+      next_status: 'preparing_geometry',
+      progress: 5,
+    });
+    const attemptCount = preparing.attempt_count + 1;
+    queued.snapshot = spatialSimulationRunSnapshotSchema.parse({
+      ...preparing,
+      attempt_count: attemptCount,
+    });
+    queued.workerId = input.worker_id;
+    queued.leaseToken = leaseToken;
+    queued.leaseExpiresAt = now.getTime() + input.lease_duration_ms;
+    return {
+      ownerId: queued.ownerId,
+      workerId: input.worker_id,
+      leaseToken,
+      input: queued.input,
+      run: queued.snapshot,
+    };
+  }
+
+  async renewClaim(
+    candidate: SpatialSimulationRunLeaseInput,
+  ): Promise<SpatialSimulationRunLeaseResult | null> {
+    const input = spatialSimulationRunLeaseInputSchema.parse(candidate);
+    const record = this.runs.get(input.run_id);
+    const now = this.now();
+    if (
+      !record ||
+      record.ownerId !== input.owner_id ||
+      record.workerId !== input.worker_id ||
+      record.leaseToken !== input.lease_token ||
+      !record.leaseExpiresAt ||
+      record.leaseExpiresAt <= now.getTime() ||
+      !['preparing_geometry', 'meshing', 'solving', 'postprocessing'].includes(
+        record.snapshot.status,
+      )
+    )
+      return null;
+    record.leaseExpiresAt = now.getTime() + input.lease_duration_ms;
+    return {
+      cancelRequested: record.cancelRequestedAt !== null,
+      leaseExpiresAt: new Date(record.leaseExpiresAt).toISOString(),
+    };
+  }
+
+  async transitionClaimed(
+    candidate: TransitionSpatialSimulationRunInput & {
+      worker_id: string;
+      lease_token: string;
+    },
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const { worker_id, lease_token, ...transition } = candidate;
+    const input = transitionSpatialSimulationRunInputSchema.parse(transition);
+    const record = this.runs.get(input.run_id);
+    const now = this.now();
+    if (!record || record.ownerId !== input.owner_id) return null;
+    if (
+      record.workerId !== worker_id ||
+      record.leaseToken !== lease_token ||
+      !record.leaseExpiresAt ||
+      record.leaseExpiresAt <= now.getTime()
+    )
+      throw new SpatialSimulationRunError(
+        'lease_lost',
+        'The worker no longer owns a live lease for this run',
+      );
+    const next = assertTransition(record.snapshot, input);
+    if (
+      input.result &&
+      Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
+        MAX_RESULT_MANIFEST_BYTES
+    )
+      throw new SpatialSimulationRunError(
+        'result_manifest_too_large',
+        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
+      );
+    record.snapshot = next;
+    if (input.next_status === 'cancelled' && !record.cancelRequestedAt)
+      record.cancelRequestedAt = next.updated_at;
+    if (['completed', 'failed', 'cancelled'].includes(input.next_status)) {
+      record.workerId = null;
+      record.leaseToken = null;
+      record.leaseExpiresAt = null;
+    }
+    return next;
+  }
+
+  async requestCancellation(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const record = this.runs.get(runId);
+    if (!record || record.ownerId !== ownerId) return null;
+    const current = record.snapshot;
+    if (['completed', 'failed', 'cancelled'].includes(current.status))
+      return current;
+    if (current.cancellation_requested) return current;
+    const now = new Date(
+      Math.max(this.now().getTime(), Date.parse(current.updated_at) + 1),
+    ).toISOString();
+    if (current.status === 'queued') {
+      record.snapshot = assertTransition(current, {
+        run_id: runId,
+        owner_id: ownerId,
+        expected_status: 'queued',
+        next_status: 'cancelled',
+        progress: current.progress,
+      });
+      record.cancelRequestedAt = now;
+      return record.snapshot;
+    }
+    record.cancelRequestedAt = now;
+    record.snapshot = spatialSimulationRunSnapshotSchema.parse({
+      ...current,
+      cancellation_requested: true,
+      updated_at: now,
+    });
+    return record.snapshot;
+  }
+
+  async retryFailedRun(
+    candidate: RetrySpatialSimulationRunInput,
+  ): Promise<RetrySpatialSimulationRunResult> {
+    const input = retrySpatialSimulationRunInputSchema.parse(candidate);
+    const existing = [...this.runs.values()].find(
+      (record) =>
+        record.ownerId === input.owner_id &&
+        record.idempotencyKey === input.idempotency_key,
+    );
+    if (existing) {
+      if (existing.snapshot.retry_of_run_id !== input.run_id)
+        throw new SpatialSimulationRunError(
+          'idempotency_conflict',
+          'This idempotency key is already bound to another run',
+        );
+      return { created: false, run: existing.snapshot };
+    }
+    const parent = this.runs.get(input.run_id);
+    if (!parent || parent.ownerId !== input.owner_id)
+      throw new SpatialSimulationRunError('not_found', 'Run not found');
+    if (parent.snapshot.status !== 'failed')
+      throw new SpatialSimulationRunError(
+        'retry_not_allowed',
+        'Only failed runs can be retried',
+      );
+    if (parent.snapshot.retry_count >= MAX_MANUAL_RETRIES)
+      throw new SpatialSimulationRunError(
+        'retry_limit_exceeded',
+        'This run has reached the manual retry limit',
+      );
+    const now = this.now().toISOString();
+    const run = spatialSimulationRunSnapshotSchema.parse({
+      ...parent.snapshot,
+      id: randomUUID(),
+      status: 'queued',
+      progress: 0,
+      attempt_count: 0,
+      retry_count: parent.snapshot.retry_count + 1,
+      retry_of_run_id: parent.snapshot.id,
+      cancellation_requested: false,
+      result: null,
+      failure: null,
+      created_at: now,
+      updated_at: now,
+      started_at: null,
+      completed_at: null,
+    });
+    this.runs.set(run.id, {
+      ownerId: parent.ownerId,
+      idempotencyKey: input.idempotency_key,
+      input: parent.input,
+      workerId: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
+      cancelRequestedAt: null,
+      snapshot: run,
+    });
+    return { created: true, run };
+  }
+}
+
+export function createSpatialSimulationRunRepository(
+  prisma: PrismaClient = getPrismaClient(),
+): PrismaSpatialSimulationRunRepository {
+  return new PrismaSpatialSimulationRunRepository(prisma);
+}
