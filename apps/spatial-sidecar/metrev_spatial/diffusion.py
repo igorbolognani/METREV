@@ -1,6 +1,6 @@
 """Bounded, conservative orthogonal-grid diffusion verification kernel.
 
-EQ-SP-001 restricted to steady, isothermal, single-species diffusion:
+EQ-SP-001 restricted to isothermal, single-species diffusion:
     div(-D grad(c)) = R.
 
 All faces have declared Dirichlet values. This module is deliberately isolated
@@ -48,7 +48,7 @@ def solve_stationary_diffusion(
     *,
     lengths_m: tuple[float, ...],
     cells: tuple[int, ...],
-    diffusivity_m2_s: float,
+    diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float | tuple[float, ...],
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
     relative_tolerance: float = 1e-10,
@@ -70,10 +70,16 @@ def solve_stationary_diffusion(
     count = math.prod(cells)
     if count > 4096:
         raise ValueError("Verification mesh exceeds the 4096-cell bound")
-    values = (*lengths_m, diffusivity_m2_s, storage_rate_s1, relative_tolerance)
+    if isinstance(diffusivity_m2_s, tuple):
+        if len(diffusivity_m2_s) != count:
+            raise ValueError("One diffusivity is required for every cell")
+        diffusivities = diffusivity_m2_s
+    else:
+        diffusivities = (diffusivity_m2_s,) * count
+    values = (*lengths_m, *diffusivities, storage_rate_s1, relative_tolerance)
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
         raise ValueError("Lengths, diffusivity, source and tolerance must be finite")
-    if any(length <= 0 for length in lengths_m) or diffusivity_m2_s <= 0:
+    if any(length <= 0 for length in lengths_m) or any(value <= 0 for value in diffusivities):
         raise ValueError("Lengths and diffusivity must be positive")
     if not 0 < relative_tolerance <= 1e-4:
         raise ValueError("Relative tolerance must lie in (0, 1e-4]")
@@ -110,19 +116,24 @@ def solve_stationary_diffusion(
         coordinates = tuple(index // stride % n for stride, n in zip(strides, cells))
         centre = tuple((i + 0.5) * step for i, step in zip(coordinates, spacing))
         for axis, (i, n, stride, step) in enumerate(zip(coordinates, cells, strides, spacing)):
-            conductance = diffusivity_m2_s / (step * step)
+            boundary_conductance = diffusivities[index] / (step * step)
             for side in (-1, 1):
                 adjacent = i + side
                 if 0 <= adjacent < n:
+                    other = index + side * stride
+                    # Series resistance across two half cells. The same
+                    # coefficient is assembled on both sides of the face.
+                    left, right = diffusivities[index], diffusivities[other]
+                    conductance = (2 * left * right / (left + right)) / (step * step)
                     diagonal[index] += conductance
-                    neighbors[index].append((index + side * stride, conductance))
+                    neighbors[index].append((other, conductance))
                 else:
                     face = list(centre)
                     face[axis] = 0.0 if side == -1 else lengths_m[axis]
                     value = boundary_mol_m3(tuple(face))
                     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                         raise ValueError("Boundary concentration must be finite and nonnegative")
-                    face_conductance = 2 * conductance
+                    face_conductance = 2 * boundary_conductance
                     diagonal[index] += face_conductance
                     rhs[index] += face_conductance * value
                     boundary_faces.append((index, face_conductance, float(value)))
@@ -193,7 +204,7 @@ def solve_transient_diffusion(
     *,
     lengths_m: tuple[float, ...],
     cells: tuple[int, ...],
-    diffusivity_m2_s: float,
+    diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float,
     initial_mol_m3: tuple[float, ...],
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
