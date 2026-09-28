@@ -24,6 +24,9 @@
       "@metrev/spatial-sidecar-client": [
         "./packages/spatial-sidecar-client/src/index.ts"
       ],
+      "@metrev/spatial-artifact-store": [
+        "./packages/spatial-artifact-store/src/index.ts"
+      ],
       "@metrev/rule-engine": ["./packages/rule-engine/src/index.ts"],
       "@metrev/audit": ["./packages/audit/src/index.ts"],
       "@metrev/telemetry": ["./packages/telemetry/src/index.ts"],

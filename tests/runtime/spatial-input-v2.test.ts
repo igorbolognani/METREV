@@ -1,149 +1,22 @@
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-
 import { describe, expect, it } from 'vitest';
 
 import {
   spatialModelInputSchema,
   spatialModelInputV2Schema,
-  spatialSidecarRequestSchema,
   spatialVariableAuthority,
 } from '@metrev/domain-contracts';
 import { meshReferenceFromSidecar } from '@metrev/spatial-sidecar-client';
+import {
+  canonicalRequest,
+  copy,
+  digestRequest,
+  meshRequest,
+  q,
+  requestDigest,
+  validSpatialInput,
+} from '../fixtures/spatial-input-v2';
 
-const fixturePath = fileURLToPath(
-  new URL('../fixtures/planar-mesh-request.json', import.meta.url),
-);
-const meshRequest = JSON.parse(await readFile(fixturePath, 'utf8'));
-const canonicalRequest = spatialSidecarRequestSchema.parse(meshRequest);
-const requestDigest = createHash('sha256')
-  .update(JSON.stringify(canonicalRequest))
-  .digest('hex');
-const q = (value: number, unit: string) => ({
-  value,
-  unit,
-  source_kind: 'test_fixture',
-  source_ref: 'test-fixture://spatial-v2',
-});
-const copy = <T>(value: T): T => structuredClone(value);
-
-const valid = () => ({
-  contract_version: 'spatial-input-v2',
-  model_id: 'biofilm-2d-electrode-research-v1',
-  system: 'MFC',
-  dimension: 2,
-  coordinate_system: 'cartesian',
-  axes: ['x', 'y'],
-  geometry: copy(meshRequest.mesh),
-  mesh: {
-    kind: 'generated_mesh',
-    uri: 'test-fixture://mesh-1.msh',
-    sha256: 'a'.repeat(64),
-    format: 'msh4',
-    refinement_factor: 1,
-    input_sha256: requestDigest,
-    request: copy(meshRequest),
-    sidecar_version: '0.1.0',
-    gmsh_version: '4.15.2',
-    physical_groups: {
-      'region:anode': 1,
-      'region:biofilm': 2,
-      'region:liquid': 3,
-      'boundary:anode_contact': 101,
-      'boundary:outer_wall': 102,
-      'boundary:inlet': 103,
-      'boundary:outlet': 104,
-      'interface:anode:biofilm': 202,
-      'interface:biofilm:liquid': 203,
-    },
-    component_map: {
-      anode: 'case/anode',
-      biofilm: 'case/biofilm',
-      liquid: 'case/reactor',
-    },
-    interfaces: [
-      {
-        tag: 'interface:anode:biofilm',
-        from_tag: 'anode',
-        to_tag: 'biofilm',
-        normal: [1, 0],
-      },
-      {
-        tag: 'interface:biofilm:liquid',
-        from_tag: 'biofilm',
-        to_tag: 'liquid',
-        normal: [1, 0],
-      },
-    ],
-  },
-  material_fields: [
-    {
-      parameter_id: 'porosity',
-      domain_tag: 'anode',
-      field: { kind: 'constant', value: q(0.5, '1') },
-    },
-  ],
-  species: [
-    {
-      id: 'substrate',
-      valence: q(0, '1'),
-      molecular_diffusivity: { kind: 'constant', value: q(1e-9, 'm2/s') },
-    },
-  ],
-  variables: [
-    {
-      id: 'substrate_c',
-      kind: 'species_concentration',
-      species_id: 'substrate',
-      domain_tags: ['biofilm', 'liquid'],
-      unit: 'mol/m3',
-    },
-    {
-      id: 'phi_s',
-      kind: 'solid_potential',
-      domain_tags: ['anode', 'biofilm'],
-      unit: 'V',
-    },
-    {
-      id: 'temperature',
-      kind: 'temperature',
-      domain_tags: ['anode', 'biofilm', 'liquid'],
-      unit: 'K',
-    },
-  ],
-  reaction_laws: [],
-  initial_conditions: [
-    {
-      variable: 'substrate_c',
-      domain_tag: 'liquid',
-      field: {
-        kind: 'sampled',
-        interpolation: 'linear',
-        samples: [
-          { position_m: [0.004, 0.002], value: q(1, 'mol/m3') },
-          { position_m: [0.008, 0.008], value: q(1.2, 'mol/m3') },
-        ],
-      },
-    },
-  ],
-  boundary_conditions: [
-    {
-      kind: 'dirichlet',
-      tag: 'outer_wall',
-      variable: 'substrate_c',
-      value: q(1, 'mol/m3'),
-    },
-    {
-      kind: 'interface_continuity',
-      tag: 'interface:biofilm:liquid',
-      variable: 'substrate_c',
-    },
-    { kind: 'circuit_coupling', tag: 'anode_contact', variable: 'phi_s' },
-  ],
-  circuit: { kind: 'external_load', resistance: q(1000, 'ohm') },
-  requested_outputs: ['substrate_c', 'phi_s'],
-});
+const valid = validSpatialInput;
 
 describe('spatial-input-v2 admission boundary', () => {
   it('joins a tagged planar mesh to source-backed state and circuit declarations without enabling a solver', () => {
@@ -201,13 +74,7 @@ describe('spatial-input-v2 admission boundary', () => {
       temperature: '298 K',
       pressure: '101325 Pa',
     };
-    candidate.mesh.input_sha256 = createHash('sha256')
-      .update(
-        JSON.stringify(
-          spatialSidecarRequestSchema.parse(candidate.mesh.request),
-        ),
-      )
-      .digest('hex');
+    candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
     expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(true);
   });
 

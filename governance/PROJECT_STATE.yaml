@@ -9,12 +9,13 @@ model_registry: CAPABILITY_MATRIX.yaml
 roadmap: ROADMAP.yaml
 numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_development_real_mesh_ci_gate_passed
-spatial_artifact_storage: absent
+spatial_artifact_storage: development_local_content_addressed_mesh_adapter_not_product_integrated
 async_simulation_jobs: absent
 spatial_viewer: absent
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
   - Catalog status is execution availability, separate from scientific maturity.
+  - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
 spatial_input_contract: spatial_input_v1_legacy_plus_v2_planar_schema_only
 physics_composition: dependency_ordered_descriptors_without_equation_assembly
 coupled_1d_case_runner: development_with_complete_cell_1d

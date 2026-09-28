@@ -45,7 +45,7 @@ work_items:
       - packages/electrochem-models/
     blockers:
       - v2 currently covers planar 2D research input; 1D/3D geometry variants and full case intake pending
-      - Artifact store must authorize and verify the referenced mesh before numerical execution
+      - Local artifact adapter verifies and owner-scopes mesh reads; product-authenticated artifact access is not integrated
   - id: P03
     title: Expand the physical vocabulary needed by PDE models
     phase: foundation
@@ -93,7 +93,7 @@ work_items:
       - apps/
     blockers:
       - Container build and DOLFINx/PETSc compatibility not yet verified; no PDE or job service
-      - Product authorization, artifact store and async worker integration pending
+      - Product authorization, production artifact provider and async worker integration pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
     phase: P2
@@ -117,7 +117,7 @@ work_items:
       - apps/
     blockers:
       - Planar layered test geometry only; numerical cell geometry and mesh refinement study pending
-      - P04 deployment gate and artifact storage pending
+      - P04 deployment gate, product authorization and durable artifact provider pending
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2
@@ -343,7 +343,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - Spatial run/result contract and PostgreSQL integration pending; current mesh manifest is not a run result
   - id: P15
     title: Correct persistence before large spatial results arrive
     phase: P2
@@ -367,7 +367,8 @@ work_items:
     owned_paths:
       - packages/
       - apps/
-    blockers: []
+    blockers:
+      - Run identity/lifecycle metadata and production artifact provider remain pending; current filesystem adapter stores meshes only
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2
