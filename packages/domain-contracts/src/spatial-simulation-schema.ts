@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  spatialModelInputV2Schema,
+  spatialModelInputV2Sha256,
+} from './spatial-model-v2-schema';
+
 const identifier = z.string().trim().min(1).max(160);
 const tag = z.string().trim().min(1).max(160);
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
@@ -566,6 +571,11 @@ export const spatialSimulationRunSnapshotSchema = z
     mesh_sha256: sha256.nullable(),
     status: spatialSimulationRunStatusSchema,
     progress: z.number().int().min(0).max(100),
+    attempt_count: z.number().int().min(0).max(3),
+    max_attempts: z.number().int().min(1).max(3),
+    retry_count: z.number().int().min(0).max(2),
+    retry_of_run_id: identifier.nullable(),
+    cancellation_requested: z.boolean(),
     result: spatialSimulationResultSchema.nullable(),
     failure: spatialSimulationFailureSchema.nullable(),
     created_at: timestamp,
@@ -628,11 +638,42 @@ export const spatialSimulationRunSnapshotSchema = z
         path: ['started_at'],
         message: 'Queued runs have not started execution',
       });
-    if (run.status !== 'queued' && run.started_at === null)
+    const cancelledBeforeStart =
+      run.status === 'cancelled' && run.started_at === null;
+    if (
+      run.status !== 'queued' &&
+      run.started_at === null &&
+      !cancelledBeforeStart
+    )
       context.addIssue({
         code: 'custom',
         path: ['started_at'],
         message: 'Started or terminal runs require a start timestamp',
+      });
+    if (run.cancellation_requested && run.status === 'completed')
+      context.addIssue({
+        code: 'custom',
+        path: ['cancellation_requested'],
+        message:
+          'A completed run cannot have an outstanding cancellation request',
+      });
+    if (run.status === 'cancelled' && !run.cancellation_requested)
+      context.addIssue({
+        code: 'custom',
+        path: ['cancellation_requested'],
+        message: 'Cancelled runs must retain the cancellation request state',
+      });
+    if (run.retry_count === 0 && run.retry_of_run_id !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['retry_of_run_id'],
+        message: 'A retry run must have a positive retry count',
+      });
+    if (run.retry_count > 0 && run.retry_of_run_id === null)
+      context.addIssue({
+        code: 'custom',
+        path: ['retry_of_run_id'],
+        message: 'A retried run must reference the run it retries',
       });
     if (run.result) {
       if (
@@ -668,8 +709,40 @@ export const createSpatialSimulationRunInputSchema = z
     solver_version: identifier,
     runtime_version: identifier,
     mesh_request_sha256: sha256.nullable().default(null),
+    input_snapshot: spatialModelInputV2Schema,
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    const bindings: Array<[string, unknown, unknown]> = [
+      ['model_id', input.model_id, input.input_snapshot.model_id],
+      ['system', input.system, input.input_snapshot.system],
+      ['dimension', input.dimension, input.input_snapshot.dimension],
+      [
+        'input_contract_version',
+        input.input_contract_version,
+        input.input_snapshot.contract_version,
+      ],
+      [
+        'input_sha256',
+        input.input_sha256,
+        spatialModelInputV2Sha256(input.input_snapshot),
+      ],
+      [
+        'mesh_request_sha256',
+        input.mesh_request_sha256,
+        input.input_snapshot.mesh.input_sha256,
+      ],
+    ];
+    for (const [field, actual, expected] of bindings) {
+      if (actual !== expected)
+        context.addIssue({
+          code: 'custom',
+          path: [field],
+          message:
+            'Run identity must match the immutable spatial input snapshot',
+        });
+    }
+  });
 
 export const transitionSpatialSimulationRunInputSchema = z
   .object({
@@ -681,6 +754,31 @@ export const transitionSpatialSimulationRunInputSchema = z
     mesh_sha256: sha256.optional(),
     result: spatialSimulationResultSchema.optional(),
     failure: spatialSimulationFailureSchema.optional(),
+  })
+  .strict();
+
+export const claimSpatialSimulationRunInputSchema = z
+  .object({
+    worker_id: z.string().trim().min(1).max(128),
+    lease_duration_ms: z.number().int().min(1_000).max(300_000),
+  })
+  .strict();
+
+export const spatialSimulationRunLeaseInputSchema = z
+  .object({
+    run_id: identifier,
+    owner_id: identifier,
+    worker_id: z.string().trim().min(1).max(128),
+    lease_token: z.string().uuid(),
+    lease_duration_ms: z.number().int().min(1_000).max(300_000),
+  })
+  .strict();
+
+export const retrySpatialSimulationRunInputSchema = z
+  .object({
+    run_id: identifier,
+    owner_id: identifier,
+    idempotency_key: z.string().trim().min(1).max(128),
   })
   .strict();
 
@@ -699,4 +797,13 @@ export type CreateSpatialSimulationRunInput = z.input<
 >;
 export type TransitionSpatialSimulationRunInput = z.infer<
   typeof transitionSpatialSimulationRunInputSchema
+>;
+export type ClaimSpatialSimulationRunInput = z.infer<
+  typeof claimSpatialSimulationRunInputSchema
+>;
+export type SpatialSimulationRunLeaseInput = z.infer<
+  typeof spatialSimulationRunLeaseInputSchema
+>;
+export type RetrySpatialSimulationRunInput = z.infer<
+  typeof retrySpatialSimulationRunInputSchema
 >;

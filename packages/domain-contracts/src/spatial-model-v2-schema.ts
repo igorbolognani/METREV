@@ -682,3 +682,9 @@ export const spatialModelInputV2Schema = z
   });
 
 export type SpatialModelInputV2 = z.infer<typeof spatialModelInputV2Schema>;
+
+/** Hash a validated, normalized request so queue retries bind to the same inputs. */
+export function spatialModelInputV2Sha256(candidate: unknown): string {
+  const input = spatialModelInputV2Schema.parse(candidate);
+  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
+}

@@ -2,27 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import { MemorySpatialSimulationRunRepository } from '@metrev/database';
 import {
+  createSpatialSimulationRunInputSchema,
   spatialSimulationResultSchema,
-  type CreateSpatialSimulationRunInput,
   type SpatialSimulationRunSnapshot,
 } from '@metrev/domain-contracts';
 
 import { validSpatialSimulationResult } from '../fixtures/spatial-simulation-result';
+import { createSpatialSimulationRunInput } from '../fixtures/spatial-simulation-run';
 
 const meshSha256 = 'a'.repeat(64);
-const input: CreateSpatialSimulationRunInput = {
-  owner_id: 'user-123',
-  evaluation_id: null,
-  idempotency_key: 'spatial-run-test-key',
-  model_id: 'cell-2d-development-v1',
-  system: 'MFC',
-  dimension: 2,
-  input_contract_version: 'spatial-input-v2',
-  input_sha256: 'd'.repeat(64),
-  solver_version: 'solver-dev-1',
-  runtime_version: 'sidecar-dev-1',
-  mesh_request_sha256: 'c'.repeat(64),
-};
+const input = createSpatialSimulationRunInput({
+  ownerId: 'user-123',
+  idempotencyKey: 'spatial-run-test-key',
+});
 
 async function completeRun(
   repository: MemorySpatialSimulationRunRepository,
@@ -162,6 +154,21 @@ describe('spatial simulation result contract', () => {
 });
 
 describe('spatial simulation run lifecycle', () => {
+  it('binds idempotency metadata to a validated, hash-bound input snapshot', () => {
+    expect(() =>
+      createSpatialSimulationRunInputSchema.parse({
+        ...input,
+        input_sha256: 'e'.repeat(64),
+      }),
+    ).toThrow(/immutable spatial input snapshot/i);
+    expect(() =>
+      createSpatialSimulationRunInputSchema.parse({
+        ...input,
+        model_id: 'another-model',
+      }),
+    ).toThrow(/immutable spatial input snapshot/i);
+  });
+
   it('is owner scoped, idempotent, monotonic and persists a matching result only at completion', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
     const first = await repository.createOrGet(input);
@@ -170,7 +177,7 @@ describe('spatial simulation run lifecycle', () => {
     expect(replay.created).toBe(false);
     expect(replay.run.id).toBe(first.run.id);
     await expect(
-      repository.createOrGet({ ...input, input_sha256: 'e'.repeat(64) }),
+      repository.createOrGet({ ...input, runtime_version: 'sidecar-dev-2' }),
     ).rejects.toMatchObject({
       code: 'idempotency_conflict',
     });
@@ -344,5 +351,198 @@ describe('spatial simulation run lifecycle', () => {
       result: { convergence: [{ status: 'not_converged' }] },
       failure: { code: 'non_convergence' },
     });
+  });
+
+  it('claims each durable input once and requires the live lease to transition it', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const claims = await Promise.all([
+      repository.claimNextQueued({
+        worker_id: 'worker-a',
+        lease_duration_ms: 30_000,
+      }),
+      repository.claimNextQueued({
+        worker_id: 'worker-b',
+        lease_duration_ms: 30_000,
+      }),
+    ]);
+    const claimed = claims.filter((entry) => entry !== null);
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]).toMatchObject({
+      run: { id: run.id, status: 'preparing_geometry', attempt_count: 1 },
+      input: input.input_snapshot,
+    });
+    await expect(
+      repository.claimNextQueued({
+        worker_id: 'worker-c',
+        lease_duration_ms: 30_000,
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it('records cooperative cancellation for queued and leased runs', async () => {
+    const queuedRepository = new MemorySpatialSimulationRunRepository();
+    const queued = await queuedRepository.createOrGet({
+      ...input,
+      idempotency_key: 'queued-cancellation-key',
+    });
+    await expect(
+      queuedRepository.requestCancellation(queued.run.id, input.owner_id),
+    ).resolves.toMatchObject({
+      status: 'cancelled',
+      started_at: null,
+      cancellation_requested: true,
+    });
+
+    const activeRepository = new MemorySpatialSimulationRunRepository();
+    const active = await activeRepository.createOrGet({
+      ...input,
+      idempotency_key: 'active-cancellation-key',
+    });
+    const claim = await activeRepository.claimNextQueued({
+      worker_id: 'worker-cancel',
+      lease_duration_ms: 30_000,
+    });
+    expect(claim?.run.id).toBe(active.run.id);
+    await expect(
+      activeRepository.requestCancellation(active.run.id, input.owner_id),
+    ).resolves.toMatchObject({
+      status: 'preparing_geometry',
+      cancellation_requested: true,
+    });
+    await expect(
+      activeRepository.renewClaim({
+        run_id: active.run.id,
+        owner_id: input.owner_id,
+        worker_id: 'worker-cancel',
+        lease_token: claim!.leaseToken,
+        lease_duration_ms: 30_000,
+      }),
+    ).resolves.toMatchObject({ cancelRequested: true });
+    await expect(
+      activeRepository.transitionClaimed({
+        run_id: active.run.id,
+        owner_id: input.owner_id,
+        worker_id: 'worker-cancel',
+        lease_token: claim!.leaseToken,
+        expected_status: 'preparing_geometry',
+        next_status: 'cancelled',
+        progress: 5,
+      }),
+    ).resolves.toMatchObject({
+      status: 'cancelled',
+      cancellation_requested: true,
+    });
+  });
+
+  it('requeues a run after an expired lease and rejects the stale worker token', async () => {
+    let clock = new Date('2026-09-28T12:00:00.000Z');
+    const repository = new MemorySpatialSimulationRunRepository(() => clock);
+    const { run } = await repository.createOrGet({
+      ...input,
+      idempotency_key: 'expired-lease-key',
+    });
+    const firstClaim = await repository.claimNextQueued({
+      worker_id: 'worker-stale',
+      lease_duration_ms: 1_000,
+    });
+    expect(firstClaim?.run.id).toBe(run.id);
+    clock = new Date(clock.getTime() + 1_001);
+    const secondClaim = await repository.claimNextQueued({
+      worker_id: 'worker-recovery',
+      lease_duration_ms: 30_000,
+    });
+    expect(secondClaim?.run).toMatchObject({
+      id: run.id,
+      status: 'preparing_geometry',
+      attempt_count: 2,
+    });
+    await expect(
+      repository.renewClaim({
+        run_id: run.id,
+        owner_id: input.owner_id,
+        worker_id: 'worker-stale',
+        lease_token: firstClaim!.leaseToken,
+        lease_duration_ms: 30_000,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.transitionClaimed({
+        run_id: run.id,
+        owner_id: input.owner_id,
+        worker_id: 'worker-stale',
+        lease_token: firstClaim!.leaseToken,
+        expected_status: 'preparing_geometry',
+        next_status: 'meshing',
+        progress: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'lease_lost' });
+  });
+
+  it('creates bounded, idempotent retries as new runs linked to the failed parent', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run: original } = await repository.createOrGet({
+      ...input,
+      idempotency_key: 'retry-parent-key',
+    });
+    await repository.transition({
+      run_id: original.id,
+      owner_id: input.owner_id,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    const retryOne = await repository.retryFailedRun({
+      run_id: original.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-1',
+    });
+    const replay = await repository.retryFailedRun({
+      run_id: original.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-1',
+    });
+    expect(retryOne).toMatchObject({
+      created: true,
+      run: {
+        status: 'queued',
+        retry_count: 1,
+        retry_of_run_id: original.id,
+      },
+    });
+    expect(replay).toMatchObject({
+      created: false,
+      run: { id: retryOne.run.id },
+    });
+
+    await repository.transition({
+      run_id: retryOne.run.id,
+      owner_id: input.owner_id,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    const retryTwo = await repository.retryFailedRun({
+      run_id: retryOne.run.id,
+      owner_id: input.owner_id,
+      idempotency_key: 'retry-parent-key-2',
+    });
+    await repository.transition({
+      run_id: retryTwo.run.id,
+      owner_id: input.owner_id,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    await expect(
+      repository.retryFailedRun({
+        run_id: retryTwo.run.id,
+        owner_id: input.owner_id,
+        idempotency_key: 'retry-parent-key-3',
+      }),
+    ).rejects.toMatchObject({ code: 'retry_limit_exceeded' });
   });
 });

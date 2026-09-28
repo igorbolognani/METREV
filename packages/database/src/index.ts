@@ -76,8 +76,11 @@ export {
   PrismaSpatialSimulationRunRepository,
   SpatialSimulationRunError,
   type CreateSpatialSimulationRunResult,
+  type RetrySpatialSimulationRunResult,
   type SpatialSimulationRunErrorCode,
+  type SpatialSimulationRunLeaseResult,
   type SpatialSimulationRunRepository,
+  type SpatialSimulationRunWorkItem,
 } from './spatial-simulation-runs';
 export {
   FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID,

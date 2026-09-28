@@ -374,12 +374,12 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Run metadata persistence is implemented in a migration and owner-scoped repository; PostgreSQL roundtrip is assigned to CI because this workspace has no Docker/PostgreSQL service
-      - Async worker, authenticated API integration and external field-artifact provider remain pending
+      - Run metadata now includes a validated, hash-bound input snapshot and durable worker lease state; PostgreSQL roundtrip and concurrent claim tests remain assigned to CI because this workspace has no Docker/PostgreSQL service
+      - Worker process, authenticated simulation API and external field-artifact provider remain pending
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P04
       - P15
@@ -399,7 +399,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - Durable input snapshots, idempotent worker claims, expiring leases, cooperative cancellation, lease recovery and a two-retry lineage are implemented; PostgreSQL execution evidence remains in CI
+      - Worker process, authenticated API routes, artifact authorization and a registered spatial solver remain pending; current spatial input coverage is planar 2D research data only
+    gate_evidence:
+      GATE-CONTRACT: Spatial run creation rejects any input snapshot whose normalized hash, model identity, contract version or mesh request hash does not match the persisted run; focused queue lifecycle tests pass
   - id: P17
     title: Integrate 2D with the actual case runner
     phase: P2
