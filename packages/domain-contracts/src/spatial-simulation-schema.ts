@@ -760,6 +760,8 @@ export const transitionSpatialSimulationRunInputSchema = z
 export const claimSpatialSimulationRunInputSchema = z
   .object({
     worker_id: z.string().trim().min(1).max(128),
+    solver_version: identifier,
+    runtime_version: identifier,
     lease_duration_ms: z.number().int().min(1_000).max(300_000),
   })
   .strict();

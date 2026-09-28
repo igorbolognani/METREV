@@ -8,11 +8,14 @@ import {
   createEvaluationRepository,
   createEvidenceAuditRepository,
   createResearchRepository,
+  createSpatialSimulationRunRepository,
   MemoryEvidenceAuditRepository,
   MemoryResearchRepository,
+  MemorySpatialSimulationRunRepository,
   type EvaluationRepository,
   type EvidenceAuditRepository,
   type ResearchRepository,
+  type SpatialSimulationRunRepository,
 } from '@metrev/database';
 
 import { authPlugin } from './plugins/auth';
@@ -24,6 +27,11 @@ import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
 import { registerModelingRoutes } from './routes/modeling';
 import { registerResearchRoutes } from './routes/research';
+import {
+  registerSpatialSimulationRoutes,
+  type SpatialFieldArtifactReader,
+  type SpatialSimulationRunAdmission,
+} from './routes/spatial-simulations';
 import { registerWorkspaceRoutes } from './routes/workspace';
 
 declare module 'fastify' {
@@ -31,6 +39,9 @@ declare module 'fastify' {
     evaluationRepository: EvaluationRepository;
     evidenceAuditRepository: EvidenceAuditRepository;
     researchRepository: ResearchRepository;
+    spatialSimulationRunRepository: SpatialSimulationRunRepository;
+    spatialSimulationRunAdmission: SpatialSimulationRunAdmission | null;
+    spatialFieldArtifactReader: SpatialFieldArtifactReader | null;
   }
 }
 
@@ -40,6 +51,9 @@ export interface BuildAppOptions {
   repository?: EvaluationRepository;
   rateLimit?: false;
   sessionResolver?: SessionResolver;
+  spatialFieldArtifactReader?: SpatialFieldArtifactReader;
+  spatialSimulationRunAdmission?: SpatialSimulationRunAdmission;
+  spatialSimulationRunRepository?: SpatialSimulationRunRepository;
 }
 
 function parseRateLimitMax() {
@@ -65,10 +79,27 @@ export async function buildApp(
     (options.repository
       ? new MemoryEvidenceAuditRepository()
       : createEvidenceAuditRepository());
+  const spatialSimulationRunRepository =
+    options.spatialSimulationRunRepository ??
+    (options.repository
+      ? new MemorySpatialSimulationRunRepository()
+      : createSpatialSimulationRunRepository());
 
   app.decorate('evaluationRepository', repository);
   app.decorate('evidenceAuditRepository', evidenceAuditRepository);
   app.decorate('researchRepository', researchRepository);
+  app.decorate(
+    'spatialSimulationRunRepository',
+    spatialSimulationRunRepository,
+  );
+  app.decorate(
+    'spatialSimulationRunAdmission',
+    options.spatialSimulationRunAdmission ?? null,
+  );
+  app.decorate(
+    'spatialFieldArtifactReader',
+    options.spatialFieldArtifactReader ?? null,
+  );
 
   await app.register(cors, {
     origin: true,
@@ -96,6 +127,9 @@ export async function buildApp(
     prefix: '/api/evidence-intelligence',
   });
   await app.register(registerResearchRoutes, { prefix: '/api/research' });
+  await app.register(registerSpatialSimulationRoutes, {
+    prefix: '/api/spatial-simulations',
+  });
   await app.register(registerModelingRoutes, { prefix: '/api/modeling' });
   await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });
   await app.register(registerExportRoutes, { prefix: '/api/exports' });

@@ -375,7 +375,7 @@ work_items:
       - apps/
     blockers:
       - Run metadata now includes a validated, hash-bound input snapshot and durable worker lease state; PostgreSQL roundtrip and concurrent claim tests remain assigned to CI because this workspace has no Docker/PostgreSQL service
-      - Worker process, authenticated simulation API and external field-artifact provider remain pending
+      - The pluggable worker runtime and authenticated owner-scoped API are implemented; production executor admission, PDE solver, field-artifact provider and container CPU/memory limits remain pending
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2
@@ -399,10 +399,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Durable input snapshots, idempotent worker claims, expiring leases, cooperative cancellation, lease recovery and a two-retry lineage are implemented; PostgreSQL execution evidence remains in CI
-      - Worker process, authenticated API routes, artifact authorization and a registered spatial solver remain pending; current spatial input coverage is planar 2D research data only
+      - Durable snapshots, idempotent worker claims, expiring leases, cooperative cancellation, lease recovery, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; PostgreSQL execution evidence remains in CI
+      - No spatial solver or production field store is registered; run creation and retries remain fail-closed without explicit admission, and deployment CPU/memory limits are still required
     gate_evidence:
-      GATE-CONTRACT: Spatial run creation rejects any input snapshot whose normalized hash, model identity, contract version or mesh request hash does not match the persisted run; focused queue lifecycle tests pass
+      GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines and field-byte hash verification pass focused tests
   - id: P17
     title: Integrate 2D with the actual case runner
     phase: P2

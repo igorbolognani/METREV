@@ -95,6 +95,9 @@ importers:
       fastify:
         specifier: ^5.2.1
         version: 5.8.5
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       tsx:
         specifier: ^4.19.3
@@ -409,6 +412,28 @@ importers:
         specifier: workspace:*
         version: link:../domain-contracts
     devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/spatial-worker:
+    dependencies:
+      '@metrev/database':
+        specifier: workspace:*
+        version: link:../database
+      '@metrev/domain-contracts':
+        specifier: workspace:*
+        version: link:../domain-contracts
+      '@metrev/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
