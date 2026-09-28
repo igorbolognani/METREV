@@ -116,8 +116,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Planar layered test geometry only; numerical cell geometry and mesh refinement study pending
+      - The planar layered mesh has a three-level geometry audit; numerical cell geometries and PDE-observable mesh refinement remain pending
       - P04 deployment gate, product authorization and durable artifact provider pending
+    gate_evidence:
+      GATE-MESH-REFINEMENT: Coarse/medium/fine meshes at refinement factors 1, 2, and 4 preserve per-region triangle-integrated area against the analytic planar geometry within a 1e-10 relative tolerance; this does not claim PDE solution convergence
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2
