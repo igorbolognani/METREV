@@ -551,6 +551,7 @@ def test_spatial_v2_external_contract_and_unit_authority() -> None:
     assert {"mesh", "geometry", "variables", "reaction_laws", "boundary_conditions"}.issubset(
         contract["required_fields"]
     )
+    assert "request" in contract["mesh"]["required"]
     for spec in authority["variables"].values():
         assert spec["unit"] and spec["domains"]
         assert spec["bounds"] is not None

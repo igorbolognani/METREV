@@ -4,11 +4,57 @@ import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
+  spatialMeshReferenceSchema,
   spatialSidecarRequestSchema,
   spatialSidecarResponseSchema,
   type SpatialSidecarRequest,
   type SpatialSidecarResponse,
 } from '@metrev/domain-contracts';
+
+/** Bind a validated request and matching sidecar manifest to a stored mesh URI.
+ * The artifact store must still authorize the URI and verify its file hash before use.
+ */
+export function meshReferenceFromSidecar(
+  candidateRequest: SpatialSidecarRequest,
+  candidateResponse: SpatialSidecarResponse,
+  refinementFactor: number,
+  uri: string,
+): ReturnType<typeof spatialMeshReferenceSchema.parse> {
+  const request = spatialSidecarRequestSchema.parse(candidateRequest);
+  const response = spatialSidecarResponseSchema.parse(candidateResponse);
+  if (
+    request.operation !== 'planar_mesh' ||
+    response.status !== 'ok' ||
+    response.operation !== 'planar_mesh' ||
+    !response.metadata.gmsh_version ||
+    response.request_id !== request.request_id ||
+    response.geometry_version !== request.mesh.geometry_version ||
+    response.input_sha256 !==
+      createHash('sha256').update(JSON.stringify(request)).digest('hex')
+  )
+    throw new RangeError(
+      'Mesh manifest does not match the exact planar request',
+    );
+  const artifact = response.artifacts.find(
+    (entry) => entry.refinement_factor === refinementFactor,
+  );
+  if (!artifact || !request.mesh.refinement_factors.includes(refinementFactor))
+    throw new RangeError('Requested mesh level is absent from the manifest');
+  return spatialMeshReferenceSchema.parse({
+    kind: 'generated_mesh',
+    uri,
+    sha256: artifact.sha256,
+    format: artifact.format,
+    refinement_factor: artifact.refinement_factor,
+    input_sha256: response.input_sha256,
+    request,
+    sidecar_version: response.metadata.sidecar_version,
+    gmsh_version: response.metadata.gmsh_version,
+    physical_groups: response.physical_groups,
+    component_map: response.component_map,
+    interfaces: response.interfaces,
+  });
+}
 
 export type SidecarTransportCode =
   | 'timeout'

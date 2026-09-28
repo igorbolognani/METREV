@@ -1,19 +1,25 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import {
-  meshReferenceFromSidecar,
   spatialModelInputSchema,
   spatialModelInputV2Schema,
+  spatialSidecarRequestSchema,
   spatialVariableAuthority,
 } from '@metrev/domain-contracts';
+import { meshReferenceFromSidecar } from '@metrev/spatial-sidecar-client';
 
 const fixturePath = fileURLToPath(
   new URL('../fixtures/planar-mesh-request.json', import.meta.url),
 );
 const meshRequest = JSON.parse(await readFile(fixturePath, 'utf8'));
+const canonicalRequest = spatialSidecarRequestSchema.parse(meshRequest);
+const requestDigest = createHash('sha256')
+  .update(JSON.stringify(canonicalRequest))
+  .digest('hex');
 const q = (value: number, unit: string) => ({
   value,
   unit,
@@ -36,7 +42,8 @@ const valid = () => ({
     sha256: 'a'.repeat(64),
     format: 'msh4',
     refinement_factor: 1,
-    input_sha256: 'b'.repeat(64),
+    input_sha256: requestDigest,
+    request: copy(meshRequest),
     sidecar_version: '0.1.0',
     gmsh_version: '4.15.2',
     physical_groups: {
@@ -173,6 +180,37 @@ describe('spatial-input-v2 admission boundary', () => {
     }
   });
 
+  it('rejects a valid mesh manifest reused for a differently sized geometry', () => {
+    const candidate = valid();
+    candidate.geometry.layers[1].width_m.value += 0.0001;
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(false);
+    const alteredDigest = valid();
+    alteredDigest.mesh.input_sha256 = 'b'.repeat(64);
+    expect(spatialModelInputV2Schema.safeParse(alteredDigest).success).toBe(
+      false,
+    );
+  });
+
+  it('compares equivalent geometry metadata independent of record key insertion order', () => {
+    const candidate = valid();
+    candidate.geometry.height_m.conditions = {
+      pressure: '101325 Pa',
+      temperature: '298 K',
+    };
+    candidate.mesh.request.mesh.height_m.conditions = {
+      temperature: '298 K',
+      pressure: '101325 Pa',
+    };
+    candidate.mesh.input_sha256 = createHash('sha256')
+      .update(
+        JSON.stringify(
+          spatialSidecarRequestSchema.parse(candidate.mesh.request),
+        ),
+      )
+      .digest('hex');
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(true);
+  });
+
   it('checks species, material, sample and boundary units against explicit variable authority', () => {
     const changes = [
       (candidate: ReturnType<typeof valid>) => {
@@ -216,6 +254,19 @@ describe('spatial-input-v2 admission boundary', () => {
     expect(spatialModelInputV2Schema.safeParse(flux).success).toBe(true);
     flux.boundary_conditions[0].value = q(1, 'mol/m3');
     expect(spatialModelInputV2Schema.safeParse(flux).success).toBe(false);
+    const robin = valid();
+    robin.boundary_conditions[0] = {
+      kind: 'robin',
+      tag: 'outer_wall',
+      variable: 'temperature',
+      ambient: q(300, 'K'),
+      coefficient: q(1, 'W/m2/K'),
+    } as never;
+    expect(spatialModelInputV2Schema.safeParse(robin).success).toBe(true);
+    (
+      robin.boundary_conditions[0] as { ambient: ReturnType<typeof q> }
+    ).ambient = q(0, 'K');
+    expect(spatialModelInputV2Schema.safeParse(robin).success).toBe(false);
   });
 
   it('requires complete, source-backed stoichiometry and retains MEC electrical input', () => {
@@ -262,7 +313,7 @@ describe('spatial-input-v2 admission boundary', () => {
         petsc_version: null,
       },
       geometry_version: 'planar-layers-v1',
-      input_sha256: 'b'.repeat(64),
+      input_sha256: requestDigest,
       physical_groups: candidate.mesh.physical_groups,
       component_map: candidate.mesh.component_map,
       interfaces: candidate.mesh.interfaces as [
@@ -280,15 +331,29 @@ describe('spatial-input-v2 admission boundary', () => {
           min_quality: 0.5,
         },
       ],
-    } as Parameters<typeof meshReferenceFromSidecar>[0];
+    } as Parameters<typeof meshReferenceFromSidecar>[1];
     const reference = meshReferenceFromSidecar(
+      canonicalRequest,
       response,
       1,
       'test-fixture://mesh-1.msh',
     );
     expect(reference.sha256).toBe(candidate.mesh.sha256);
     expect(() =>
-      meshReferenceFromSidecar(response, 2, 'test-fixture://mesh-2.msh'),
+      meshReferenceFromSidecar(
+        canonicalRequest,
+        response,
+        2,
+        'test-fixture://mesh-2.msh',
+      ),
     ).toThrow('Requested mesh level is absent');
+    expect(() =>
+      meshReferenceFromSidecar(
+        canonicalRequest,
+        { ...response, input_sha256: 'b'.repeat(64) },
+        1,
+        'test-fixture://mesh-1.msh',
+      ),
+    ).toThrow('does not match the exact planar request');
   });
 });

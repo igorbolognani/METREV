@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { z } from 'zod';
 
 import spatialParameterAuthority from '../../../bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json' with { type: 'json' };
@@ -6,8 +8,7 @@ import spatialVariableAuthority from '../../../bioelectrochem_agent_kit/domain/o
 import { spatialFieldSchema, spatialValueSchema } from './spatial-model-schema';
 import {
   planarMeshSchema,
-  spatialSidecarResponseSchema,
-  type SpatialSidecarResponse,
+  spatialSidecarRequestSchema,
 } from './spatial-sidecar-schema';
 
 export { spatialVariableAuthority };
@@ -24,6 +25,10 @@ export const spatialMeshReferenceSchema = z
     format: z.literal('msh4'),
     refinement_factor: z.number().int().positive(),
     input_sha256: digest,
+    request: spatialSidecarRequestSchema.refine(
+      (request) => request.operation === 'planar_mesh',
+      'A planar mesh request is required',
+    ),
     sidecar_version: sourceRef,
     gmsh_version: sourceRef,
     physical_groups: z.record(z.number().int().positive()),
@@ -121,6 +126,38 @@ const boundarySchema = z.discriminatedUnion('kind', [
 ]);
 
 type Bounds = { min?: number; max?: number; exclusive_min?: number };
+const outsideBounds = (value: number, bounds: Bounds) =>
+  (bounds.min !== undefined && value < bounds.min) ||
+  (bounds.max !== undefined && value > bounds.max) ||
+  (bounds.exclusive_min !== undefined && value <= bounds.exclusive_min);
+const sameJsonValue = (left: unknown, right: unknown): boolean => {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right))
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => sameJsonValue(value, right[index]))
+    );
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  )
+    return false;
+  const lhs = left as Record<string, unknown>;
+  const rhs = right as Record<string, unknown>;
+  const keys = Object.keys(lhs);
+  return (
+    keys.length === Object.keys(rhs).length &&
+    keys.every((key) =>
+      Object.prototype.hasOwnProperty.call(rhs, key)
+        ? sameJsonValue(lhs[key], rhs[key])
+        : false,
+    )
+  );
+};
 type Field = z.infer<typeof spatialFieldSchema>;
 type VariableSpec = {
   unit: string;
@@ -283,6 +320,27 @@ export const spatialModelInputV2Schema = z
         ['mesh', 'refinement_factor'],
         'Referenced mesh level is absent from the geometry recipe',
       );
+    if (
+      input.mesh.request.operation !== 'planar_mesh' ||
+      !sameJsonValue(input.mesh.request.mesh, input.geometry) ||
+      !input.mesh.request.mesh.refinement_factors.includes(
+        input.mesh.refinement_factor,
+      )
+    )
+      issue(
+        ['mesh', 'request'],
+        'The verified mesh request must reproduce the complete declared geometry and refinement level',
+      );
+    if (
+      input.mesh.input_sha256 !==
+      createHash('sha256')
+        .update(JSON.stringify(input.mesh.request))
+        .digest('hex')
+    )
+      issue(
+        ['mesh', 'input_sha256'],
+        'Mesh request digest must match the exact normalized sidecar request',
+      );
     const width = layers.reduce((sum, layer) => sum + layer.width_m.value, 0);
     const checkField = (
       field: Field,
@@ -304,12 +362,7 @@ export const spatialModelInputV2Schema = z
       values.forEach((value, index) => {
         if (value.unit !== unit)
           issue([...path, index, 'unit'], `Expected ${unit}`);
-        if (
-          (bounds.min !== undefined && value.value < bounds.min) ||
-          (bounds.max !== undefined && value.value > bounds.max) ||
-          (bounds.exclusive_min !== undefined &&
-            value.value <= bounds.exclusive_min)
-        )
+        if (outsideBounds(value.value, bounds))
           issue([...path, index, 'value'], 'Value outside declared bounds');
       });
       if (field.kind === 'piecewise') {
@@ -562,10 +615,7 @@ export const spatialModelInputV2Schema = z
           issue([...path, 'value'], `Expected ${spec.unit}`);
         if (
           entry.kind === 'dirichlet' &&
-          ((spec.bounds.min !== undefined &&
-            entry.value.value < spec.bounds.min) ||
-            (spec.bounds.exclusive_min !== undefined &&
-              entry.value.value <= spec.bounds.exclusive_min))
+          outsideBounds(entry.value.value, spec.bounds)
         )
           issue(
             [...path, 'value'],
@@ -593,8 +643,7 @@ export const spatialModelInputV2Schema = z
             entry.ambient.unit !== spec.unit ||
             entry.coefficient.unit !== spec.robin_coefficient_unit ||
             entry.coefficient.value < 0 ||
-            (spec.bounds.min !== undefined &&
-              entry.ambient.value < spec.bounds.min))
+            outsideBounds(entry.ambient.value, spec.bounds))
         )
           issue(
             path,
@@ -633,36 +682,3 @@ export const spatialModelInputV2Schema = z
   });
 
 export type SpatialModelInputV2 = z.infer<typeof spatialModelInputV2Schema>;
-
-/** Bind an independently verified sidecar manifest to an immutable artifact URI. */
-export function meshReferenceFromSidecar(
-  candidate: SpatialSidecarResponse,
-  refinementFactor: number,
-  uri: string,
-): z.infer<typeof spatialMeshReferenceSchema> {
-  const response = spatialSidecarResponseSchema.parse(candidate);
-  if (
-    response.status !== 'ok' ||
-    response.operation !== 'planar_mesh' ||
-    !response.metadata.gmsh_version
-  )
-    throw new RangeError('A successful Gmsh mesh manifest is required');
-  const artifact = response.artifacts.find(
-    (entry) => entry.refinement_factor === refinementFactor,
-  );
-  if (!artifact)
-    throw new RangeError('Requested mesh level is absent from the manifest');
-  return spatialMeshReferenceSchema.parse({
-    kind: 'generated_mesh',
-    uri,
-    sha256: artifact.sha256,
-    format: artifact.format,
-    refinement_factor: artifact.refinement_factor,
-    input_sha256: response.input_sha256,
-    sidecar_version: response.metadata.sidecar_version,
-    gmsh_version: response.metadata.gmsh_version,
-    physical_groups: response.physical_groups,
-    component_map: response.component_map,
-    interfaces: response.interfaces,
-  });
-}
