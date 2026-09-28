@@ -17,6 +17,42 @@ from metrev_spatial.diffusion import (  # noqa: E402
 
 
 class DiffusionKernelTest(unittest.TestCase):
+    def test_layered_material_interface_flux_in_one_two_three_dimensions(self):
+        for dimension in (1, 2, 3):
+            with self.subTest(dimension=dimension):
+                n = 12
+                low, high = 1e-9, 4e-9
+                expected_flux = 1 / (0.5 / low + 0.5 / high)
+
+                def exact(point):
+                    x = point[0]
+                    resistance = min(x, 0.5) / low + max(x - 0.5, 0) / high
+                    return 1 - expected_flux * resistance
+
+                diffusivities = tuple(
+                    low if index // n ** (dimension - 1) < n // 2 else high
+                    for index in range(n ** dimension)
+                )
+                result = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(n,) * dimension,
+                    diffusivity_m2_s=diffusivities,
+                    source_mol_m3_s=0.0,
+                    boundary_mol_m3=exact,
+                )
+                self.assertLess(result.relative_residual, 1e-10)
+                self.assertLess(abs(result.global_balance_mol_s), 1e-16)
+                stride = n ** (dimension - 1)
+                for index, concentration in enumerate(result.concentrations_mol_m3):
+                    x = ((index // stride) + 0.5) / n
+                    self.assertAlmostEqual(concentration, exact((x,)), delta=1e-8)
+                for transverse in range(stride):
+                    left = result.concentrations_mol_m3[(n // 2 - 1) * stride + transverse]
+                    right = result.concentrations_mol_m3[(n // 2) * stride + transverse]
+                    harmonic = 2 * low * high / (low + high)
+                    interface_flux = harmonic * (left - right) * n
+                    self.assertAlmostEqual(interface_flux, expected_flux, delta=1e-16)
+
     def test_affine_solution_and_global_balance_in_one_two_three_dimensions(self):
         for dimension in (1, 2, 3):
             with self.subTest(dimension=dimension):
@@ -80,6 +116,8 @@ class DiffusionKernelTest(unittest.TestCase):
             {"lengths_m": (1.0, float("nan"))},
             {"cells": (4, 0)},
             {"cells": (65, 4)},
+            {"diffusivity_m2_s": (1e-9,) * 15},
+            {"diffusivity_m2_s": (1e-9,) * 15 + (-1e-9,)},
             {"boundary_mol_m3": lambda _: float("inf")},
         ):
             with self.subTest(changed=changed):
