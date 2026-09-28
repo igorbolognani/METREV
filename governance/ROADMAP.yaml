@@ -147,7 +147,8 @@ work_items:
       - An isolated scalar diffusion kernel now has bounded 1D/2D/3D orthogonal-grid verification; P03 and P05 remain partial and the kernel is not connected to Gmsh or a case
       - Convection, migration, reaction, electrolyte and solid charge, interfaces, circuit closure and nonlinear convergence remain unimplemented in spatial runtime
     gate_evidence:
-      GATE-MASS-CONSERVATION: A steady scalar finite-volume fixture checks integrated source against boundary flux and verifies affine and manufactured solutions in 1D/2D/3D; this is not coupled species/charge conservation
+      GATE-MASS-CONSERVATION: A scalar finite-volume fixture checks integrated source against boundary flux and verifies affine, manufactured and two-material interface solutions in 1D/2D/3D; this is not coupled species/charge conservation
+      GATE-TIME-REFINEMENT: Implicit-Euler scalar diffusion fixtures in 2D and 3D compare three step sizes with a finer numerical reference and check storage plus flux balance; no transient cell model is verified
   - id: P07
     title: Implement 2D hydraulics
     phase: P2
