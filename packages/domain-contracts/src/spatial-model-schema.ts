@@ -56,7 +56,7 @@ const regionKind = z.enum([
   'outlet',
 ]);
 
-const field = z.discriminatedUnion('kind', [
+export const spatialFieldSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('constant'), value: spatialValueSchema }).strict(),
   z
     .object({
@@ -158,7 +158,7 @@ export const spatialModelInputSchema = z
         .object({
           parameter_id: z.string().trim().min(1),
           domain_tag: z.string().trim().min(1),
-          field,
+          field: spatialFieldSchema,
         })
         .strict(),
     ),
@@ -167,7 +167,7 @@ export const spatialModelInputSchema = z
         .object({
           id: z.string().trim().min(1),
           valence: spatialValueSchema,
-          diffusivity: field,
+          diffusivity: spatialFieldSchema,
         })
         .strict(),
     ),
@@ -176,7 +176,7 @@ export const spatialModelInputSchema = z
         .object({
           variable: z.string().trim().min(1),
           domain_tag: z.string().trim().min(1),
-          field,
+          field: spatialFieldSchema,
         })
         .strict(),
     ),
@@ -274,7 +274,7 @@ export const spatialModelInputSchema = z
         );
     });
     const checkField = (
-      candidate: z.infer<typeof field>,
+      candidate: z.infer<typeof spatialFieldSchema>,
       path: (string | number)[],
       expectedUnit?: string,
       bounds?: { min?: number; max?: number; exclusive_min?: number },

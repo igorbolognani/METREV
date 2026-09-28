@@ -43,11 +43,13 @@ work_items:
     owned_paths:
       - packages/domain-contracts/
       - packages/electrochem-models/
-    blockers: []
+    blockers:
+      - v2 currently covers planar 2D research input; 1D/3D geometry variants and full case intake pending
+      - Artifact store must authorize and verify the referenced mesh before numerical execution
   - id: P03
     title: Expand the physical vocabulary needed by PDE models
     phase: foundation
-    status: pending
+    status: partial
     depends_on:
       - P02
     required_gates:
@@ -66,7 +68,8 @@ work_items:
       - packages/domain-contracts/
       - packages/electrochem-models/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - P02 product intake and full dimensional coverage pending
+      - Darcy/Brinkman, buffer, thermal and biological law parameters need source-backed model-specific contracts
   - id: P04
     title: Activate the future numerical sidecar architecture
     phase: foundation
