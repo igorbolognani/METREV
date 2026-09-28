@@ -76,7 +76,7 @@
     "research:queue:focused-literature": "pnpm --filter @metrev/database queue:research:backfill-preset -- --preset=mfc_mec_wastewater_biosensors --targetRecords=500"
   },
   "devDependencies": {
-    "@auth/core": "0.41.2",
+    "@auth/core": "0.41.3",
     "@playwright/test": "^1.59.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
