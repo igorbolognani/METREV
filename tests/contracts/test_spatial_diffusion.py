@@ -163,6 +163,58 @@ class DiffusionKernelTest(unittest.TestCase):
         self.assertGreater(errors[0], errors[1] * 3)
         self.assertGreater(errors[1], errors[2] * 3)
 
+    def test_axis_aligned_anisotropic_affine_solution_in_one_two_three_dimensions(self):
+        for dimension in (1, 2, 3):
+            with self.subTest(dimension=dimension):
+                axis_diffusivity = tuple(1e-9 * (axis + 1) for axis in range(dimension))
+                result = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(6,) * dimension,
+                    diffusivity_m2_s=axis_diffusivity,
+                    source_mol_m3_s=0.0,
+                    boundary_mol_m3=lambda point: 1.0
+                    + sum((axis + 1) * position for axis, position in enumerate(point)),
+                )
+                strides = tuple(math.prod(result.shape[axis + 1 :]) for axis in range(dimension))
+                for index, concentration in enumerate(result.concentrations_mol_m3):
+                    expected = 1.0 + sum(
+                        (axis + 1) * ((index // stride % result.shape[axis] + 0.5) / result.shape[axis])
+                        for axis, stride in enumerate(strides)
+                    )
+                    self.assertAlmostEqual(concentration, expected, delta=1e-8)
+                self.assertLess(abs(result.global_balance_mol_s), 1e-15)
+
+    def test_anisotropic_manufactured_source_refines_in_two_and_three_dimensions(self):
+        for dimension, levels in ((2, (8, 16, 32)), (3, (4, 8, 12))):
+            axis_diffusivity = tuple(1e-9 * (axis + 1) for axis in range(dimension))
+            source = 2 * math.fsum(axis_diffusivity)
+
+            def exact(point):
+                return math.fsum(position * (1 - position) for position in point)
+
+            errors = []
+            for n in levels:
+                result = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(n,) * dimension,
+                    diffusivity_m2_s=axis_diffusivity,
+                    source_mol_m3_s=source,
+                    boundary_mol_m3=exact,
+                )
+                strides = tuple(math.prod(result.shape[axis + 1 :]) for axis in range(dimension))
+                error = max(
+                    abs(value - exact(tuple(
+                        (index // stride % n + 0.5) / n
+                        for stride in strides
+                    )))
+                    for index, value in enumerate(result.concentrations_mol_m3)
+                )
+                errors.append(error)
+                self.assertLess(result.relative_residual, 1e-9)
+                self.assertLess(abs(result.global_balance_mol_s), 1e-15)
+            self.assertLess(errors[1], errors[0] / 2)
+            self.assertLess(errors[2], errors[1] / 2)
+
     def test_transient_first_order_reaction_is_conservative_and_reduces_mass(self):
         for dimension, n in ((1, 8), (2, 4), (3, 3)):
             common = dict(
@@ -224,6 +276,8 @@ class DiffusionKernelTest(unittest.TestCase):
             {"cells": (65, 4)},
             {"diffusivity_m2_s": (1e-9,) * 15},
             {"diffusivity_m2_s": (1e-9,) * 15 + (-1e-9,)},
+            {"diffusivity_m2_s": (1e-9, 1e-9, 1e-9)},
+            {"diffusivity_m2_s": (1e-9, 0.0)},
             {"advection_velocity_m_s": (1.0,)},
             {"advection_velocity_m_s": (1.0, float("nan"))},
             {"reaction_rate_s1": -1.0},
