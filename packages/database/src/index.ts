@@ -71,6 +71,15 @@ export {
 } from './evidence-audit-repository';
 export { disconnectPrismaClient, getPrismaClient } from './prisma-client';
 export {
+  createSpatialSimulationRunRepository,
+  MemorySpatialSimulationRunRepository,
+  PrismaSpatialSimulationRunRepository,
+  SpatialSimulationRunError,
+  type CreateSpatialSimulationRunResult,
+  type SpatialSimulationRunErrorCode,
+  type SpatialSimulationRunRepository,
+} from './spatial-simulation-runs';
+export {
   FOCUSED_MFC_MEC_WASTEWATER_BIOSENSORS_PRESET_ID,
   planResearchBackfillPreset,
   type PlannedResearchBackfill,

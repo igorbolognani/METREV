@@ -321,7 +321,7 @@ work_items:
   - id: P14
     title: Create a spatial result contract
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P02
       - P04
@@ -343,7 +343,12 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Spatial run/result contract and PostgreSQL integration pending; current mesh manifest is not a run result
+      - Versioned spatial result manifest is implemented, but P02/P04 remain partial and the contract is not yet connected to the spatial API or viewer
+      - Output unit labels are required, but result fields are not yet checked against the input's authoritative variable kind and compatible unit
+    gate_evidence:
+      GATE-CONTRACT: spatial-simulation-result-v1 rejects inconsistent domains, field references, hash lists and completion identity; seven focused tests pass
+      GATE-PROVENANCE: result and scalar outputs bind to run, model, input hash and content-addressed mesh/field references
+      GATE-UNITS: field, integral and conservation values require explicit unit labels and reject false residual passes; authoritative output-unit compatibility remains open
   - id: P15
     title: Correct persistence before large spatial results arrive
     phase: P2
@@ -354,6 +359,7 @@ work_items:
       - GATE-CONTRACT
       - GATE-PROVENANCE
       - GATE-UNITS
+      - GATE-PERSISTENCE
     source_section: '28.15'
     completion_requires:
       All requirements in source_section; status promotion requires gate evidence and product
@@ -368,7 +374,8 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Run identity/lifecycle metadata and production artifact provider remain pending; current filesystem adapter stores meshes only
+      - Run metadata persistence is implemented in a migration and owner-scoped repository; PostgreSQL roundtrip is assigned to CI because this workspace has no Docker/PostgreSQL service
+      - Async worker, authenticated API integration and external field-artifact provider remain pending
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2
