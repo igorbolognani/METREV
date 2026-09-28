@@ -15,6 +15,10 @@ const input = createSpatialSimulationRunInput({
   ownerId: 'user-123',
   idempotencyKey: 'spatial-run-test-key',
 });
+const workerVersions = {
+  solver_version: input.solver_version,
+  runtime_version: input.runtime_version,
+};
 
 async function completeRun(
   repository: MemorySpatialSimulationRunRepository,
@@ -359,10 +363,12 @@ describe('spatial simulation run lifecycle', () => {
     const claims = await Promise.all([
       repository.claimNextQueued({
         worker_id: 'worker-a',
+        ...workerVersions,
         lease_duration_ms: 30_000,
       }),
       repository.claimNextQueued({
         worker_id: 'worker-b',
+        ...workerVersions,
         lease_duration_ms: 30_000,
       }),
     ]);
@@ -375,6 +381,7 @@ describe('spatial simulation run lifecycle', () => {
     await expect(
       repository.claimNextQueued({
         worker_id: 'worker-c',
+        ...workerVersions,
         lease_duration_ms: 30_000,
       }),
     ).resolves.toBeNull();
@@ -401,6 +408,7 @@ describe('spatial simulation run lifecycle', () => {
     });
     const claim = await activeRepository.claimNextQueued({
       worker_id: 'worker-cancel',
+      ...workerVersions,
       lease_duration_ms: 30_000,
     });
     expect(claim?.run.id).toBe(active.run.id);
@@ -444,12 +452,14 @@ describe('spatial simulation run lifecycle', () => {
     });
     const firstClaim = await repository.claimNextQueued({
       worker_id: 'worker-stale',
+      ...workerVersions,
       lease_duration_ms: 1_000,
     });
     expect(firstClaim?.run.id).toBe(run.id);
     clock = new Date(clock.getTime() + 1_001);
     const secondClaim = await repository.claimNextQueued({
       worker_id: 'worker-recovery',
+      ...workerVersions,
       lease_duration_ms: 30_000,
     });
     expect(secondClaim?.run).toMatchObject({

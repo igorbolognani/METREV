@@ -619,6 +619,8 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
             inputSnapshot: { not: Prisma.DbNull },
             cancelRequestedAt: null,
             leaseToken: null,
+            solverVersion: input.solver_version,
+            runtimeVersion: input.runtime_version,
           },
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         });
@@ -636,6 +638,8 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
             leaseToken: null,
             cancelRequestedAt: null,
             inputSnapshot: { not: Prisma.DbNull },
+            solverVersion: input.solver_version,
+            runtimeVersion: input.runtime_version,
           },
           data: {
             status: 'PREPARING_GEOMETRY',
@@ -1117,7 +1121,9 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
       .filter(
         (record) =>
           record.snapshot.status === 'queued' &&
-          !record.snapshot.cancellation_requested,
+          !record.snapshot.cancellation_requested &&
+          record.snapshot.solver_version === input.solver_version &&
+          record.snapshot.runtime_version === input.runtime_version,
       )
       .sort(
         (left, right) =>

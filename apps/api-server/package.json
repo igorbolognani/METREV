@@ -24,6 +24,7 @@
     "@metrev/research-intelligence": "workspace:*",
     "@metrev/rule-engine": "workspace:*",
     "@metrev/telemetry": "workspace:*",
+    "zod": "^3.24.2",
     "fastify": "^5.2.1"
   },
   "devDependencies": {

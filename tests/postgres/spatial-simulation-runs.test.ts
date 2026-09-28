@@ -166,10 +166,14 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
     const claims = await Promise.all([
       repository.claimNextQueued({
         worker_id: 'postgres-worker-a',
+        solver_version: queuedInput.solver_version,
+        runtime_version: queuedInput.runtime_version,
         lease_duration_ms: 30_000,
       }),
       repository.claimNextQueued({
         worker_id: 'postgres-worker-b',
+        solver_version: queuedInput.solver_version,
+        runtime_version: queuedInput.runtime_version,
         lease_duration_ms: 30_000,
       }),
     ]);
