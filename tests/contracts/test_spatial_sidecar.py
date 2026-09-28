@@ -54,6 +54,27 @@ class SidecarTest(unittest.TestCase):
                 * mesh["height_m"]["value"]
                 for layer in mesh["layers"]
             }
+            height = mesh["height_m"]["value"]
+            total_width = sum(layer["width_m"]["value"] for layer in mesh["layers"])
+            expected_curve_lengths = {
+                f"boundary:{mesh['boundaries'][side]['tag']}": (
+                    height if side in ("left", "right") else total_width
+                )
+                for side in ("left", "right", "top", "bottom")
+            }
+            interface_positions = {}
+            boundary_positions = {
+                f"boundary:{mesh['boundaries']['left']['tag']}": (0, None),
+                f"boundary:{mesh['boundaries']['right']['tag']}": (total_width, None),
+                f"boundary:{mesh['boundaries']['bottom']['tag']}": (None, 0),
+                f"boundary:{mesh['boundaries']['top']['tag']}": (None, height),
+            }
+            position = 0.0
+            for left, right in zip(mesh["layers"], mesh["layers"][1:]):
+                position += left["width_m"]["value"]
+                name = f"interface:{left['tag']}:{right['tag']}"
+                expected_curve_lengths[name] = height
+                interface_positions[name] = position
             import gmsh
 
             for artifact in response["artifacts"]:
@@ -125,6 +146,58 @@ class SidecarTest(unittest.TestCase):
                             MESH_AREA_RELATIVE_TOLERANCE,
                             f"{region} area error {relative_error:.3g} exceeds "
                             f"{MESH_AREA_RELATIVE_TOLERANCE:g}",
+                        )
+                    curve_lengths = {}
+                    for _, physical_tag in gmsh.model.getPhysicalGroups(1):
+                        name = gmsh.model.getPhysicalName(1, physical_tag)
+                        lengths = []
+                        for entity_tag in gmsh.model.getEntitiesForPhysicalGroup(
+                            1, physical_tag
+                        ):
+                            element_types, _, connectivity = gmsh.model.mesh.getElements(
+                                1, entity_tag
+                            )
+                            for element_type, node_ids in zip(
+                                element_types, connectivity
+                            ):
+                                properties = gmsh.model.mesh.getElementProperties(
+                                    element_type
+                                )
+                                self.assertEqual(
+                                    (properties[0], properties[1], properties[3]),
+                                    ("Line 2", 1, 2),
+                                )
+                                for offset in range(0, len(node_ids), 2):
+                                    first, second = (
+                                        points[int(node_id)]
+                                        for node_id in node_ids[offset : offset + 2]
+                                    )
+                                    if name in interface_positions:
+                                        for node in (first, second):
+                                            self.assertLessEqual(
+                                                abs(node[0] - interface_positions[name]),
+                                                total_width * MESH_AREA_RELATIVE_TOLERANCE,
+                                            )
+                                    if name in boundary_positions:
+                                        for node in (first, second):
+                                            for coordinate, expected in zip(
+                                                node, boundary_positions[name]
+                                            ):
+                                                if expected is not None:
+                                                    self.assertLessEqual(
+                                                        abs(coordinate - expected),
+                                                        max(height, total_width)
+                                                        * MESH_AREA_RELATIVE_TOLERANCE,
+                                                    )
+                                    lengths.append(math.dist(first, second))
+                        curve_lengths[name] = math.fsum(lengths)
+                    self.assertEqual(set(curve_lengths), set(expected_curve_lengths))
+                    for name, expected_length in expected_curve_lengths.items():
+                        self.assertLessEqual(
+                            abs(curve_lengths[name] - expected_length)
+                            / expected_length,
+                            MESH_AREA_RELATIVE_TOLERANCE,
+                            f"{name} does not preserve its analytic length",
                         )
                 finally:
                     gmsh.finalize()
