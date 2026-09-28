@@ -51,7 +51,7 @@
     "pdf:inspect": "node scripts/run-pdf-inspect.mjs",
     "audit:explain": "node scripts/run-audit-explain.mjs",
     "metrev:doctor": "NODE_USE_ENV_PROXY=1 node scripts/run-metrev-doctor.mjs",
-    "test:python": "python3 tests/contracts/run_contract_check.py && python3 -m unittest discover -s tests/contracts -p test_spatial_sidecar.py && pnpm run governance:check",
+    "test:python": "python3 tests/contracts/run_contract_check.py && python3 -m unittest discover -s tests/contracts -p 'test_spatial_*.py' && pnpm run governance:check",
     "validate:advanced": "pnpm run test:advanced && pnpm --filter @metrev/database bootstrap:bigdata -- --sources= --dryRun",
     "validate:db": "pnpm run db:migrate:deploy && pnpm run db:seed && pnpm run test:db",
     "validate:fast": "pnpm run lint && pnpm run test:fast && pnpm run build",
