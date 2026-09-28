@@ -152,6 +152,9 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
       true,
     ]);
     expect(outcomes[0]?.run.id).toBe(outcomes[1]?.run.id);
+    await expect(
+      repository.requestCancellation(outcomes[0]!.run.id, ownerId),
+    ).resolves.toMatchObject({ status: 'cancelled' });
   });
 
   it('leases a queued run to one worker and persists cancellation and retry lineage', async () => {
