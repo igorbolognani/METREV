@@ -101,6 +101,7 @@ def solve_stationary_diffusion(
     diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float | tuple[float, ...],
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
+    reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
     max_iterations: int | None = None,
@@ -108,10 +109,12 @@ def solve_stationary_diffusion(
 ) -> DiffusionResult:
     """Solve a bounded cell-centred finite-volume diffusion/transport fixture.
 
-    Positive source creates species; positive outward flux removes it. Each
-    internal face uses equal-and-opposite diffusive and upwind advective fluxes.
-    The returned integrated balance includes both physical boundary fluxes
-    minus source over the whole domain, in mol/s for the declared geometry.
+    Positive source creates species; the optional first-order term ``k*c``
+    consumes it. Positive outward flux removes it. Each internal face uses
+    equal-and-opposite diffusive and upwind advective fluxes.
+    The returned integrated balance includes physical boundary flux, storage
+    and first-order consumption minus source over the whole domain, in mol/s
+    for the declared geometry.
     """
     dimension = len(cells)
     if dimension not in (1, 2, 3) or len(lengths_m) != dimension:
@@ -150,6 +153,20 @@ def solve_stationary_diffusion(
         source_values = [source_mol_m3_s] * count
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in source_values):
         raise ValueError("Every source value must be finite")
+    if isinstance(reaction_rate_s1, tuple):
+        if len(reaction_rate_s1) != count:
+            raise ValueError("One reaction rate is required for every cell")
+        reaction_rates = list(reaction_rate_s1)
+    else:
+        reaction_rates = [reaction_rate_s1] * count
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value < 0
+        for value in reaction_rates
+    ):
+        raise ValueError("Every first-order reaction rate must be finite and nonnegative")
     if max_iterations is None:
         max_iterations = 4 * count
     if type(max_iterations) is not int or not 1 <= max_iterations <= 16_384:
@@ -164,7 +181,7 @@ def solve_stationary_diffusion(
     volume = math.prod(spacing)
     if volume == 0 or not math.isfinite(volume):
         raise ValueError("Cell volume is not numerically representable")
-    diagonal = [storage_rate_s1] * count
+    diagonal = [storage_rate_s1 + reaction_rates[index] for index in range(count)]
     rhs = source_values.copy()
     neighbors: list[list[tuple[int, float]]] = [[] for _ in range(count)]
     boundary_faces: list[tuple[int, float, float]] = []
@@ -280,6 +297,7 @@ def solve_stationary_diffusion(
     global_balance = (
         outward_flux
         + storage_rate_s1 * math.fsum(solution) * volume
+        + math.fsum(rate * value for rate, value in zip(reaction_rates, solution)) * volume
         - math.fsum(source_values) * volume
     )
     return DiffusionResult(tuple(solution), cells, iterations, relative_residual, global_balance)
@@ -295,13 +313,14 @@ def solve_transient_diffusion(
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
     time_step_s: float,
     steps: int,
+    reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
 ) -> TransientDiffusionResult:
     """Implicit-Euler fixture for ∂c/∂t + div(u c - D grad(c)) = R.
 
-    The new state appears on every boundary and transport term; each returned
-    balance includes storage change and boundary flux at that time step.
+    The new state appears on every boundary, transport and first-order
+    reaction term; each balance includes storage, reaction and boundary flux.
     """
     count = math.prod(cells)
     if len(initial_mol_m3) != count or any(
@@ -331,6 +350,7 @@ def solve_transient_diffusion(
             cells=cells,
             diffusivity_m2_s=diffusivity_m2_s,
             source_mol_m3_s=tuple(source_mol_m3_s + value * storage for value in state),
+            reaction_rate_s1=reaction_rate_s1,
             storage_rate_s1=storage,
             boundary_mol_m3=lambda point: boundary_mol_m3(time, point),
             advection_velocity_m_s=advection_velocity_m_s,

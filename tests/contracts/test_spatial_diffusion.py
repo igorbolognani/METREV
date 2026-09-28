@@ -110,6 +110,79 @@ class DiffusionKernelTest(unittest.TestCase):
                     )
                     self.assertAlmostEqual(actual, expected, delta=1e-8)
 
+    def test_first_order_reaction_source_balance_and_constant_state_in_all_dimensions(self):
+        for dimension in (1, 2, 3):
+            with self.subTest(dimension=dimension):
+                count = 5**dimension
+                result = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(5,) * dimension,
+                    diffusivity_m2_s=1e-9,
+                    source_mol_m3_s=0.8,
+                    reaction_rate_s1=0.4,
+                    boundary_mol_m3=lambda _point: 2.0,
+                )
+                self.assertEqual(len(result.concentrations_mol_m3), count)
+                for concentration in result.concentrations_mol_m3:
+                    self.assertAlmostEqual(concentration, 2.0, delta=1e-9)
+                self.assertLess(abs(result.global_balance_mol_s), 1e-15)
+
+                rates = tuple(0.2 + 0.001 * index for index in range(count))
+                sources = tuple(3.0 * rate for rate in rates)
+                heterogeneous = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(5,) * dimension,
+                    diffusivity_m2_s=1e-9,
+                    source_mol_m3_s=sources,
+                    reaction_rate_s1=rates,
+                    boundary_mol_m3=lambda _point: 3.0,
+                )
+                self.assertTrue(all(abs(value - 3.0) < 1e-9 for value in heterogeneous.concentrations_mol_m3))
+                self.assertLess(abs(heterogeneous.global_balance_mol_s), 1e-15)
+
+    def test_first_order_reaction_matches_manufactured_one_dimensional_profile(self):
+        diffusivity = 1e-9
+        reaction_rate = 4e-9
+        decay_length = math.sqrt(reaction_rate / diffusivity)
+        errors = []
+        for n in (8, 16, 32):
+            result = solve_stationary_diffusion(
+                lengths_m=(1.0,),
+                cells=(n,),
+                diffusivity_m2_s=diffusivity,
+                source_mol_m3_s=0.0,
+                reaction_rate_s1=reaction_rate,
+                boundary_mol_m3=lambda _point: 1.0,
+            )
+            errors.append(max(
+                abs(value - math.cosh(decay_length * ((index + 0.5) / n - 0.5))
+                    / math.cosh(decay_length / 2))
+                for index, value in enumerate(result.concentrations_mol_m3)
+            ))
+            self.assertLess(abs(result.global_balance_mol_s), 1e-15)
+        self.assertGreater(errors[0], errors[1] * 3)
+        self.assertGreater(errors[1], errors[2] * 3)
+
+    def test_transient_first_order_reaction_is_conservative_and_reduces_mass(self):
+        for dimension, n in ((1, 8), (2, 4), (3, 3)):
+            common = dict(
+                lengths_m=(1.0,) * dimension,
+                cells=(n,) * dimension,
+                diffusivity_m2_s=0.01,
+                source_mol_m3_s=0.0,
+                initial_mol_m3=(1.0,) * n**dimension,
+                boundary_mol_m3=lambda _time, _point: 0.0,
+                time_step_s=0.1,
+                steps=3,
+            )
+            without_reaction = solve_transient_diffusion(**common)
+            rates = tuple(0.3 + 0.1 * (index % 3) for index in range(n**dimension))
+            with_reaction = solve_transient_diffusion(**common, reaction_rate_s1=rates)
+            self.assertLess(math.fsum(with_reaction.final.concentrations_mol_m3),
+                            math.fsum(without_reaction.final.concentrations_mol_m3))
+            self.assertLess(max(abs(value) for value in with_reaction.step_balances_mol_s), 1e-9)
+            self.assertGreaterEqual(min(with_reaction.final.concentrations_mol_m3), 0)
+
     def test_multidimensional_manufactured_source_refines_and_conserves(self):
         diffusivity = 1e-9
         for dimension, levels in ((2, (8, 16, 32)), (3, (4, 8, 12))):
@@ -153,6 +226,10 @@ class DiffusionKernelTest(unittest.TestCase):
             {"diffusivity_m2_s": (1e-9,) * 15 + (-1e-9,)},
             {"advection_velocity_m_s": (1.0,)},
             {"advection_velocity_m_s": (1.0, float("nan"))},
+            {"reaction_rate_s1": -1.0},
+            {"reaction_rate_s1": float("nan")},
+            {"reaction_rate_s1": (0.1,) * 15},
+            {"reaction_rate_s1": (0.1,) * 15 + (-0.1,)},
             {"boundary_mol_m3": lambda _: float("inf")},
         ):
             with self.subTest(changed=changed):
