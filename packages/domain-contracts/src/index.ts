@@ -10,5 +10,6 @@ export * from './research-schemas';
 export * from './schemas';
 export * from './spatial-model-schema';
 export * from './spatial-sidecar-schema';
+export * from './spatial-model-v2-schema';
 export type * from './spatial-physics-types';
 export * from './validator';

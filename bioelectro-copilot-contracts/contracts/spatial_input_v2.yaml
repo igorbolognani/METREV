@@ -1,0 +1,82 @@
+version: spatial-input-v2
+scope: Planar Cartesian 2D input metadata. Parsing does not execute a spatial model.
+runtime_validator: packages/domain-contracts/src/spatial-model-v2-schema.ts
+scientific_authority:
+  material_fields: bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json
+  state_and_boundary_units: bioelectrochem_agent_kit/domain/ontology/spatial-variable-authority.json
+required_fields:
+  - contract_version
+  - model_id
+  - system
+  - dimension
+  - coordinate_system
+  - axes
+  - geometry
+  - mesh
+  - material_fields
+  - species
+  - variables
+  - reaction_laws
+  - initial_conditions
+  - boundary_conditions
+  - circuit
+  - requested_outputs
+scientific_value:
+  required: [value, unit, source_kind, source_ref]
+  optional: [source_locator, conditions, uncertainty, uncertainty_unit]
+  source_kinds: [measured, literature, default, assumption, test_fixture]
+geometry:
+  version: planar-layers-v1
+  dimension: 2
+  coordinates: { system: cartesian, axes: [x, y] }
+  required: [height_m, layers, boundaries, target_size_m, refinement_factors]
+  layer_required: [tag, kind, width_m]
+  layer_optional: [component_id]
+  boundary_sides: [left, right, top, bottom]
+  boundary_roles: [wall, inlet, outlet, electrode]
+  interface_normal: [1, 0]
+  property_ownership:
+    material: region tag
+    species: species ID
+    state: variable ID and one or more region tags
+    reaction: region tag and declared stoichiometry
+    interface: adjacent ordered layer pair
+mesh:
+  kind: generated_mesh
+  format: msh4
+  required:
+    - uri
+    - sha256
+    - refinement_factor
+    - input_sha256
+    - sidecar_version
+    - gmsh_version
+    - physical_groups
+    - component_map
+    - interfaces
+  admission: Match every physical group, component map and interface to geometry; the artifact store must separately authorize and verify URI/hash before a numerical run.
+fields:
+  forms: [constant, piecewise, sampled, artifact]
+  artifact_formats: [XDMF, HDF5, VTU]
+  validation: Canonical units and bounds; piecewise tags within owned domains; sample coordinates inside their physical region.
+species:
+  required: [id, valence, molecular_diffusivity]
+  optional:
+    [effective_diffusivity, ion_mobility, henry_coefficient, gas_solubility]
+  rule: An optional property is supplied with provenance; no mobility, Henry coefficient or effective diffusivity is silently derived.
+reaction_laws:
+  required:
+    [id, domain_tag, equation_ref, stoichiometry, electron_count, proton_count]
+  rule: At least one reactant and product with distinct declared species; electron and proton counts are explicit sourced integers. Mass and charge balance need chemical formulas and a later scientific gate.
+boundary_kinds:
+  exterior_with_value: [dirichlet, neumann, flux, robin]
+  exterior_without_value: [symmetry, circuit_coupling]
+  internal: [interface_continuity]
+  rule: A tag must be a physical facet or ordered interface, never a region. Units and supported operators come from state_and_boundary_units.
+circuit:
+  MFC: { kind: external_load, unit: ohm, sign: generated_power }
+  MEC: { kind: applied_voltage, unit: V, sign: consumed_electrical_power }
+compatibility:
+  persisted_0d: Retains its existing normalized case contract and reader; spatial-input-v2 is opt-in and has no 0D migration.
+  spatial_input_v1: Continues to parse as a legacy research data contract; no automatic upgrade without physical geometry.
+  runtime: A valid v2 payload is not eligible for 2D execution until the solver, numerical verification, artifact authorization and case runner gates pass.
