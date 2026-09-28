@@ -92,8 +92,8 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Container build and DOLFINx/PETSc compatibility not yet verified; no PDE or job service
-      - Product authorization, production artifact provider and async worker integration pending; local filesystem adapter is development-only
+      - DOLFINx/PETSc mesh import and PDE compatibility in the pinned container remain unverified; the pluggable job worker exists but no production solver adapter is admitted
+      - The worker and authenticated API exist; product authorization for mesh artifacts, a production artifact provider and a deployed solver remain pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
     phase: P2
@@ -116,10 +116,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - The planar layered mesh has a three-level geometry audit; numerical cell geometries and PDE-observable mesh refinement remain pending
+      - The planar layered mesh has a three-level region-area and physical-boundary/interface geometry audit; numerical cell geometries and PDE-observable mesh refinement remain pending
       - P04 deployment gate, product authorization and durable artifact provider pending
     gate_evidence:
-      GATE-MESH-REFINEMENT: Coarse/medium/fine meshes at refinement factors 1, 2, and 4 preserve per-region triangle-integrated area against the analytic planar geometry within a 1e-10 relative tolerance; this does not claim PDE solution convergence
+      GATE-MESH-REFINEMENT: Coarse/medium/fine meshes at refinement factors 1, 2, and 4 preserve per-region triangle-integrated area and physical boundary/interface lengths and positions against analytic planar geometry within a 1e-10 relative tolerance; this does not claim PDE solution convergence
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2
@@ -345,7 +345,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Versioned spatial result manifest is implemented, but P02/P04 remain partial and the contract is not yet connected to the spatial API or viewer
+      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider and the viewer is absent
       - Output unit labels are required, but result fields are not yet checked against the input's authoritative variable kind and compatible unit
     gate_evidence:
       GATE-CONTRACT: spatial-simulation-result-v1 rejects inconsistent domains, field references, hash lists and completion identity; seven focused tests pass
@@ -376,7 +376,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Run metadata now includes a validated, hash-bound input snapshot and durable worker lease state; PostgreSQL roundtrip and concurrent claim tests remain assigned to CI because this workspace has no Docker/PostgreSQL service
+      - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large artifact provider remain unverified
       - The pluggable worker runtime and authenticated owner-scoped API are implemented; production executor admission, PDE solver, field-artifact provider and container CPU/memory limits remain pending
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
@@ -401,7 +401,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Durable snapshots, idempotent worker claims, expiring leases, cooperative cancellation, lease recovery, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; PostgreSQL execution evidence remains in CI
+      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; an unresponsive asynchronous executor no longer blocks the worker's deadline, but native process termination is not provided
       - No spatial solver or production field store is registered; run creation and retries remain fail-closed without explicit admission, and deployment CPU/memory limits are still required
     gate_evidence:
       GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines and field-byte hash verification pass focused tests
