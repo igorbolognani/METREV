@@ -160,6 +160,23 @@ jobs:
       - name: Verify real planar meshes, physical groups and hashes
         run: METREV_REQUIRE_GMSH=1 python -m unittest discover -s tests/contracts -p test_spatial_sidecar.py -v
 
+  validate-spatial-toolchain:
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build pinned DOLFINx/PETSc/Gmsh sidecar
+        run: docker build -f apps/spatial-sidecar/Dockerfile -t metrev-spatial-toolchain .
+
+      - name: Import tagged mesh and solve affine Poisson fixture
+        run: |
+          docker run --rm --entrypoint python3 \
+            --mount type=bind,source="${{ github.workspace }}/tests",target=/opt/metrev-spatial/tests,readonly \
+            metrev-spatial-toolchain /opt/metrev-spatial/tests/contracts/spatial_toolchain_smoke.py
+
   validate-local:
     runs-on: ubuntu-latest
     needs: validate
