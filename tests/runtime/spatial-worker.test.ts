@@ -173,6 +173,63 @@ describe('spatial simulation worker', () => {
     });
   }, 5_000);
 
+  it('settles a timed-out claim even when the executor ignores abort', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await queueRun(repository);
+    const cycle = await runSpatialSimulationWorkerCycle({
+      repository,
+      workerId: 'spatial-worker-unresponsive-test',
+      leaseDurationMs: 2_000,
+      heartbeatIntervalMs: 250,
+      executionTimeoutMs: 1_000,
+      executor: {
+        ...workerVersions,
+        supports: () => true,
+        execute: () => new Promise(() => undefined),
+      },
+    });
+
+    expect(cycle).toMatchObject({ claimed: 1, failed: 1 });
+    await expect(
+      repository.getOwnedRun(run.id, ownerId),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      failure: { code: 'execution_timeout' },
+    });
+  }, 5_000);
+
+  it('settles cancellation even when the executor ignores abort', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await queueRun(repository);
+    let started!: () => void;
+    const executorStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const cyclePromise = runSpatialSimulationWorkerCycle({
+      repository,
+      workerId: 'spatial-worker-unresponsive-cancel',
+      leaseDurationMs: 1_000,
+      heartbeatIntervalMs: 250,
+      executor: {
+        ...workerVersions,
+        supports: () => true,
+        execute: () => {
+          started();
+          return new Promise(() => undefined);
+        },
+      },
+    });
+    await executorStarted;
+    await repository.requestCancellation(run.id, ownerId);
+    const cycle = await cyclePromise;
+    expect(cycle).toMatchObject({ claimed: 1, cancelled: 1 });
+    await expect(
+      repository.getOwnedRun(run.id, ownerId),
+    ).resolves.toMatchObject({
+      status: 'cancelled',
+    });
+  }, 5_000);
+
   it('leaves runs queued for a different solver/runtime version', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
     const { run } = await queueRun(repository);
