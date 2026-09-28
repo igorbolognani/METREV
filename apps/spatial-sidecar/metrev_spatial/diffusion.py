@@ -101,6 +101,7 @@ def solve_stationary_diffusion(
     diffusivity_m2_s: float | tuple[float, ...],
     source_mol_m3_s: float | tuple[float, ...],
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
+    boundary_diffusive_flux_mol_m2_s: Callable[[tuple[float, ...]], float] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
@@ -112,8 +113,10 @@ def solve_stationary_diffusion(
     Diffusivity is scalar isotropic, one isotropic value per cell, or one
     constant diagonal-tensor coefficient per grid axis. Positive source
     creates species; the optional first-order term ``k*c`` consumes it.
-    Positive outward flux removes it. Each internal face uses
-    equal-and-opposite diffusive and upwind advective fluxes.
+    Positive outward flux removes it. An optional prescribed diffusive flux
+    replaces the Dirichlet diffusion condition on every exterior face; the
+    concentration callback remains the trace for any advective inflow.
+    Each internal face uses equal-and-opposite diffusive and upwind advective fluxes.
     The returned integrated balance includes physical boundary flux, storage
     and first-order consumption minus source over the whole domain, in mol/s
     for the declared geometry.
@@ -187,6 +190,15 @@ def solve_stationary_diffusion(
         raise ValueError("Iteration budget must be between 1 and 16384")
     if not callable(boundary_mol_m3):
         raise ValueError("Every face needs a boundary-value function")
+    if boundary_diffusive_flux_mol_m2_s is not None and not callable(boundary_diffusive_flux_mol_m2_s):
+        raise ValueError("Prescribed diffusive boundary flux must be callable")
+    if (
+        boundary_diffusive_flux_mol_m2_s is not None
+        and storage_rate_s1 == 0
+        and not any(rate > 0 for rate in reaction_rates)
+        and not any(component != 0 for component in velocity)
+    ):
+        raise ValueError("Steady all-flux diffusion requires a reaction, storage or advective anchor")
 
     spacing = tuple(length / n for length, n in zip(lengths_m, cells))
     if any(step == 0 for step in spacing):
@@ -199,6 +211,7 @@ def solve_stationary_diffusion(
     rhs = source_values.copy()
     neighbors: list[list[tuple[int, float]]] = [[] for _ in range(count)]
     boundary_faces: list[tuple[int, float, float]] = []
+    prescribed_diffusive_fluxes: list[tuple[float, float]] = []
     boundary_advective_fluxes: list[tuple[int, float, float | None, float]] = []
 
     for index in range(count):
@@ -227,10 +240,21 @@ def solve_stationary_diffusion(
                     value = boundary_mol_m3(tuple(face))
                     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                         raise ValueError("Boundary concentration must be finite and nonnegative")
-                    face_conductance = 2 * boundary_conductance
-                    diagonal[index] += face_conductance
-                    rhs[index] += face_conductance * value
-                    boundary_faces.append((index, face_conductance, float(value)))
+                    if boundary_diffusive_flux_mol_m2_s is None:
+                        face_conductance = 2 * boundary_conductance
+                        diagonal[index] += face_conductance
+                        rhs[index] += face_conductance * value
+                        boundary_faces.append((index, face_conductance, float(value)))
+                    else:
+                        prescribed_flux = boundary_diffusive_flux_mol_m2_s(tuple(face))
+                        if (
+                            isinstance(prescribed_flux, bool)
+                            or not isinstance(prescribed_flux, (int, float))
+                            or not math.isfinite(prescribed_flux)
+                        ):
+                            raise ValueError("Prescribed outward diffusive flux must be finite")
+                        rhs[index] -= prescribed_flux / step
+                        prescribed_diffusive_fluxes.append((float(prescribed_flux), volume / step))
                     normal_velocity = side * velocity[axis]
                     if normal_velocity >= 0:
                         # Advective outflow uses the cell state; only inflow
@@ -304,6 +328,7 @@ def solve_stationary_diffusion(
         coefficient * (solution[index] - value) * volume
         for index, coefficient, value in boundary_faces
     )
+    outward_flux += math.fsum(flux * area for flux, area in prescribed_diffusive_fluxes)
     outward_flux += math.fsum(
         normal_velocity * (solution[index] if value is None else value) * area
         for index, normal_velocity, value, area in boundary_advective_fluxes
@@ -327,6 +352,7 @@ def solve_transient_diffusion(
     boundary_mol_m3: Callable[[float, tuple[float, ...]], float],
     time_step_s: float,
     steps: int,
+    boundary_diffusive_flux_mol_m2_s: Callable[[float, tuple[float, ...]], float] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
     advection_velocity_m_s: tuple[float, ...] | None = None,
     relative_tolerance: float = 1e-10,
@@ -348,6 +374,8 @@ def solve_transient_diffusion(
         raise ValueError("Transient verification requires 1 to 200 steps")
     if not callable(boundary_mol_m3):
         raise ValueError("A time-dependent boundary function is required")
+    if boundary_diffusive_flux_mol_m2_s is not None and not callable(boundary_diffusive_flux_mol_m2_s):
+        raise ValueError("Time-dependent diffusive boundary flux must be callable")
     if isinstance(source_mol_m3_s, bool) or not isinstance(source_mol_m3_s, (int, float)) or not math.isfinite(source_mol_m3_s):
         raise ValueError("Transient source must be finite")
     storage = 1 / time_step_s
@@ -364,6 +392,11 @@ def solve_transient_diffusion(
             cells=cells,
             diffusivity_m2_s=diffusivity_m2_s,
             source_mol_m3_s=tuple(source_mol_m3_s + value * storage for value in state),
+            boundary_diffusive_flux_mol_m2_s=(
+                None
+                if boundary_diffusive_flux_mol_m2_s is None
+                else lambda point: boundary_diffusive_flux_mol_m2_s(time, point)
+            ),
             reaction_rate_s1=reaction_rate_s1,
             storage_rate_s1=storage,
             boundary_mol_m3=lambda point: boundary_mol_m3(time, point),

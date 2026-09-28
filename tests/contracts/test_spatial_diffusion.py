@@ -235,6 +235,42 @@ class DiffusionKernelTest(unittest.TestCase):
             self.assertLess(max(abs(value) for value in with_reaction.step_balances_mol_s), 1e-9)
             self.assertGreaterEqual(min(with_reaction.final.concentrations_mol_m3), 0)
 
+    def test_prescribed_zero_flux_boundaries_close_steady_and_transient_balances(self):
+        for dimension, n in ((1, 6), (2, 4), (3, 3)):
+            count = n**dimension
+            rates = tuple(0.2 + 0.001 * index for index in range(count))
+            concentration = 1.5
+            steady = solve_stationary_diffusion(
+                lengths_m=(1.0,) * dimension,
+                cells=(n,) * dimension,
+                diffusivity_m2_s=(1e-9,) * dimension,
+                source_mol_m3_s=tuple(rate * concentration for rate in rates),
+                reaction_rate_s1=rates,
+                boundary_mol_m3=lambda _point: concentration,
+                boundary_diffusive_flux_mol_m2_s=lambda _point: 0.0,
+            )
+            self.assertTrue(all(abs(value - concentration) < 1e-9 for value in steady.concentrations_mol_m3))
+            self.assertLess(abs(steady.global_balance_mol_s), 1e-15)
+
+            time_step = 0.1
+            transient_rates = (0.4,) * count
+            transient = solve_transient_diffusion(
+                lengths_m=(1.0,) * dimension,
+                cells=(n,) * dimension,
+                diffusivity_m2_s=(1e-9,) * dimension,
+                source_mol_m3_s=0.0,
+                initial_mol_m3=(concentration,) * count,
+                boundary_mol_m3=lambda _time, _point: 0.0,
+                boundary_diffusive_flux_mol_m2_s=lambda _time, _point: 0.0,
+                time_step_s=time_step,
+                steps=3,
+                reaction_rate_s1=transient_rates,
+            )
+            expected = tuple(concentration / (1 + rate * time_step) ** 3 for rate in transient_rates)
+            for actual, target in zip(transient.final.concentrations_mol_m3, expected):
+                self.assertAlmostEqual(actual, target, delta=1e-9)
+            self.assertLess(max(abs(value) for value in transient.step_balances_mol_s), 1e-14)
+
     def test_multidimensional_manufactured_source_refines_and_conserves(self):
         diffusivity = 1e-9
         for dimension, levels in ((2, (8, 16, 32)), (3, (4, 8, 12))):
@@ -284,11 +320,21 @@ class DiffusionKernelTest(unittest.TestCase):
             {"reaction_rate_s1": float("nan")},
             {"reaction_rate_s1": (0.1,) * 15},
             {"reaction_rate_s1": (0.1,) * 15 + (-0.1,)},
+            {"boundary_diffusive_flux_mol_m2_s": lambda _: float("nan")},
             {"boundary_mol_m3": lambda _: float("inf")},
         ):
             with self.subTest(changed=changed):
                 with self.assertRaises(ValueError):
                     solve_stationary_diffusion(**(base | changed))
+        with self.assertRaisesRegex(ValueError, "reaction, storage or advective anchor"):
+            solve_stationary_diffusion(**(base | {
+                "boundary_diffusive_flux_mol_m2_s": lambda _point: 0.0,
+            }))
+        with self.assertRaisesRegex(ValueError, "finite"):
+            solve_stationary_diffusion(**(base | {
+                "reaction_rate_s1": 0.5,
+                "boundary_diffusive_flux_mol_m2_s": lambda _point: float("nan"),
+            }))
         with self.assertRaises(DiffusionConvergenceError):
             solve_stationary_diffusion(**(base | {
                 "source_mol_m3_s": 1e-9,
