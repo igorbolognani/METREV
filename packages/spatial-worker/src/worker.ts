@@ -160,6 +160,12 @@ async function processClaimedRun(input: {
     timedOut = true;
     abortController.abort(new Error('spatial execution deadline exceeded'));
   }, input.executionTimeoutMs);
+  let rejectOnAbort: ((reason: unknown) => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    rejectOnAbort = reject;
+  });
+  const onAbort = () => rejectOnAbort?.(abortController.signal.reason);
+  abortController.signal.addEventListener('abort', onAbort, { once: true });
 
   try {
     if (!input.executor.supports(work.input)) {
@@ -168,7 +174,7 @@ async function processClaimedRun(input: {
         'The configured spatial executor does not support this input',
       );
     }
-    const result = await input.executor.execute({
+    const execution = input.executor.execute({
       input: work.input,
       run: work.run,
       signal: abortController.signal,
@@ -192,6 +198,9 @@ async function processClaimedRun(input: {
         latest = next;
       },
     });
+    // An adapter may fail to settle after AbortSignal. Release the claim and
+    // record the deadline/cancellation without waiting indefinitely for it.
+    const result = await Promise.race([execution, aborted]);
 
     await heartbeat();
     if (cancellationRequested)
@@ -258,6 +267,7 @@ async function processClaimedRun(input: {
   } finally {
     clearInterval(heartbeatTimer);
     clearTimeout(executionTimer);
+    abortController.signal.removeEventListener('abort', onAbort);
     if (!abortController.signal.aborted) abortController.abort();
   }
 }
