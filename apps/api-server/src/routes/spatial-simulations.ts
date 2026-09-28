@@ -331,13 +331,43 @@ export async function registerSpatialSimulationRoutes(
         error: 'missing_idempotency_key',
         message: 'Supply a 1 to 128 character Idempotency-Key header.',
       });
-    if (!app.spatialSimulationRunAdmission)
+    const admission = app.spatialSimulationRunAdmission;
+    if (!admission)
       return reply.code(503).send({
         error: 'spatial_execution_unavailable',
         message:
           'Retries are unavailable until a validated spatial solver/runtime adapter is registered.',
       });
     try {
+      const parent = await app.spatialSimulationRunRepository.getOwnedRun(
+        params.data.runId,
+        actor.userId,
+      );
+      if (!parent) return reply.code(404).send({ error: 'not_found' });
+      if (
+        parent.solver_version !== admission.solverVersion ||
+        parent.runtime_version !== admission.runtimeVersion
+      )
+        return reply.code(409).send({
+          error: 'incompatible_solver_version',
+          message:
+            'The original run requires a different solver/runtime version.',
+        });
+      const originalInput =
+        await app.spatialSimulationRunRepository.getOwnedInput(
+          parent.id,
+          actor.userId,
+        );
+      if (!originalInput)
+        return reply.code(409).send({ error: 'missing_input_snapshot' });
+      try {
+        if (!admission.supports(originalInput))
+          return reply.code(422).send({
+            error: 'unsupported_spatial_input',
+          });
+      } catch {
+        return reply.code(503).send({ error: 'spatial_admission_failed' });
+      }
       const retried = await app.spatialSimulationRunRepository.retryFailedRun({
         run_id: params.data.runId,
         owner_id: actor.userId,

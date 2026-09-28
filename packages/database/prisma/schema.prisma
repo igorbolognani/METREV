@@ -348,7 +348,7 @@ model SpatialSimulationRunRecord {
   attemptCount         Int                          @default(0)
   maxAttempts          Int                          @default(3)
   retryCount           Int                          @default(0)
-  retryOfRunId         String?
+  retryOfRunId         String?                      @unique
   createdAt            DateTime                     @default(now())
   updatedAt            DateTime                     @updatedAt
   startedAt            DateTime?
@@ -356,13 +356,12 @@ model SpatialSimulationRunRecord {
   owner                User                         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   evaluation           EvaluationRecord?            @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
   retryOf              SpatialSimulationRunRecord?  @relation("SpatialSimulationRunRetry", fields: [retryOfRunId], references: [id], onDelete: SetNull)
-  retries              SpatialSimulationRunRecord[] @relation("SpatialSimulationRunRetry")
+  retry                SpatialSimulationRunRecord?  @relation("SpatialSimulationRunRetry")
 
   @@unique([ownerId, idempotencyKey])
   @@index([ownerId, status, createdAt])
   @@index([evaluationId, createdAt])
   @@index([status, updatedAt])
-  @@index([retryOfRunId])
   @@index([status, leaseExpiresAt])
 }
 
