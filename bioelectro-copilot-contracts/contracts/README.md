@@ -3,6 +3,7 @@
 These files define the validation and serialization boundary used by METREV. They must match the scientific meaning in `bioelectrochem_agent_kit/domain/`; runtime validators and adapters live in `packages/domain-contracts/`.
 
 - `input_schema.yaml` and `output_contract.yaml`: normalized case and decision-output shapes.
+- `spatial_input_v2.yaml`: planar 2D research input with physical mesh tags, state and boundary unit authority; it does not enable a spatial solve.
 - `ontology/`: stack, evidence, property, and relation vocabulary.
 - `rules/`: compatibility, defaults, scoring, ranges, diagnostics, and evidence rules.
 - `research/`: literature, extraction, evidence-pack, and review payload schemas.
