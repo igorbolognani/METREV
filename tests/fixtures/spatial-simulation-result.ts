@@ -32,7 +32,7 @@ export function validSpatialSimulationResult(
       },
       dimension: 2,
       geometry_version: 'planar-layers-v1',
-      request_sha256: 'c'.repeat(64),
+      request_sha256: run.mesh_request_sha256 ?? 'c'.repeat(64),
       refinement_factor: 1,
       generated_with: { name: 'gmsh', version: '4.15.2' },
       physical_groups: {

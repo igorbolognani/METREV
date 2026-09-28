@@ -7,9 +7,8 @@ import {
   disconnectPrismaClient,
   getPrismaClient,
 } from '@metrev/database';
-import type { CreateSpatialSimulationRunInput } from '@metrev/domain-contracts';
-
 import { validSpatialSimulationResult } from '../fixtures/spatial-simulation-result';
+import { createSpatialSimulationRunInput } from '../fixtures/spatial-simulation-run';
 
 describe('PostgreSQL spatial simulation run lifecycle', () => {
   const prisma = getPrismaClient();
@@ -41,6 +40,9 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
               idempotencyKey,
               `${idempotencyKey}-parallel`,
               `${idempotencyKey}-nonconverged`,
+              `${idempotencyKey}-lease`,
+              `${idempotencyKey}-retry-parent`,
+              `${idempotencyKey}-retry-child`,
             ],
           },
         },
@@ -50,19 +52,10 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
   });
 
   it('persists an idempotent owner-scoped run through completion and result reload', async () => {
-    const input: CreateSpatialSimulationRunInput = {
-      owner_id: ownerId,
-      evaluation_id: null,
-      idempotency_key: idempotencyKey,
-      model_id: 'cell-2d-development-v1',
-      system: 'MFC',
-      dimension: 2,
-      input_contract_version: 'spatial-input-v2',
-      input_sha256: 'd'.repeat(64),
-      solver_version: 'solver-dev-1',
-      runtime_version: 'sidecar-dev-1',
-      mesh_request_sha256: 'c'.repeat(64),
-    };
+    const input = createSpatialSimulationRunInput({
+      ownerId,
+      idempotencyKey,
+    });
 
     const created = await repository.createOrGet(input);
     runId = created.run.id;
@@ -73,7 +66,7 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
     expect(replay.created).toBe(false);
     expect(replay.run.id).toBe(runId);
     await expect(
-      repository.createOrGet({ ...input, input_sha256: 'e'.repeat(64) }),
+      repository.createOrGet({ ...input, runtime_version: 'sidecar-dev-2' }),
     ).rejects.toMatchObject({
       code: 'idempotency_conflict',
     });
@@ -145,19 +138,10 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
   });
 
   it('deduplicates concurrent creates that reuse one owner idempotency key', async () => {
-    const input: CreateSpatialSimulationRunInput = {
-      owner_id: ownerId,
-      evaluation_id: null,
-      idempotency_key: `${idempotencyKey}-parallel`,
-      model_id: 'cell-2d-development-v1',
-      system: 'MFC',
-      dimension: 2,
-      input_contract_version: 'spatial-input-v2',
-      input_sha256: 'f'.repeat(64),
-      solver_version: 'solver-dev-1',
-      runtime_version: 'sidecar-dev-1',
-      mesh_request_sha256: 'c'.repeat(64),
-    };
+    const input = createSpatialSimulationRunInput({
+      ownerId,
+      idempotencyKey: `${idempotencyKey}-parallel`,
+    });
     const outcomes = await Promise.all([
       repository.createOrGet(input),
       repository.createOrGet(input),
@@ -170,20 +154,96 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
     expect(outcomes[0]?.run.id).toBe(outcomes[1]?.run.id);
   });
 
-  it('reloads non-convergence diagnostics and failure state from PostgreSQL', async () => {
-    const input: CreateSpatialSimulationRunInput = {
+  it('leases a queued run to one worker and persists cancellation and retry lineage', async () => {
+    const queuedInput = createSpatialSimulationRunInput({
+      ownerId,
+      idempotencyKey: `${idempotencyKey}-lease`,
+    });
+    const { run } = await repository.createOrGet(queuedInput);
+    const claims = await Promise.all([
+      repository.claimNextQueued({
+        worker_id: 'postgres-worker-a',
+        lease_duration_ms: 30_000,
+      }),
+      repository.claimNextQueued({
+        worker_id: 'postgres-worker-b',
+        lease_duration_ms: 30_000,
+      }),
+    ]);
+    const claimed = claims.filter((entry) => entry !== null);
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]?.run).toMatchObject({
+      id: run.id,
+      status: 'preparing_geometry',
+      attempt_count: 1,
+    });
+    const worker = claimed[0]!;
+    await expect(
+      repository.requestCancellation(run.id, ownerId),
+    ).resolves.toMatchObject({ cancellation_requested: true });
+    await expect(
+      repository.renewClaim({
+        run_id: run.id,
+        owner_id: ownerId,
+        worker_id: worker.workerId,
+        lease_token: worker.leaseToken,
+        lease_duration_ms: 30_000,
+      }),
+    ).resolves.toMatchObject({ cancelRequested: true });
+    const cancelled = await repository.transitionClaimed({
+      run_id: run.id,
       owner_id: ownerId,
-      evaluation_id: null,
-      idempotency_key: `${idempotencyKey}-nonconverged`,
-      model_id: 'cell-2d-development-v1',
-      system: 'MFC',
-      dimension: 2,
-      input_contract_version: 'spatial-input-v2',
-      input_sha256: '9'.repeat(64),
-      solver_version: 'solver-dev-1',
-      runtime_version: 'sidecar-dev-1',
-      mesh_request_sha256: 'c'.repeat(64),
-    };
+      worker_id: worker.workerId,
+      lease_token: worker.leaseToken,
+      expected_status: 'preparing_geometry',
+      next_status: 'cancelled',
+      progress: 5,
+    });
+    expect(cancelled).toMatchObject({
+      status: 'cancelled',
+      cancellation_requested: true,
+    });
+
+    const failedInput = createSpatialSimulationRunInput({
+      ownerId,
+      idempotencyKey: `${idempotencyKey}-retry-parent`,
+    });
+    const failedRun = await repository.createOrGet(failedInput);
+    await repository.transition({
+      run_id: failedRun.run.id,
+      owner_id: ownerId,
+      expected_status: 'queued',
+      next_status: 'failed',
+      progress: 0,
+      failure: { code: 'mesh_failure', message: 'Mesh preparation failed' },
+    });
+    const retry = await repository.retryFailedRun({
+      run_id: failedRun.run.id,
+      owner_id: ownerId,
+      idempotency_key: `${idempotencyKey}-retry-child`,
+    });
+    expect(retry).toMatchObject({
+      created: true,
+      run: {
+        status: 'queued',
+        retry_of_run_id: failedRun.run.id,
+        retry_count: 1,
+      },
+    });
+    await expect(
+      repository.retryFailedRun({
+        run_id: failedRun.run.id,
+        owner_id: ownerId,
+        idempotency_key: `${idempotencyKey}-retry-child`,
+      }),
+    ).resolves.toMatchObject({ created: false, run: { id: retry.run.id } });
+  });
+
+  it('reloads non-convergence diagnostics and failure state from PostgreSQL', async () => {
+    const input = createSpatialSimulationRunInput({
+      ownerId,
+      idempotencyKey: `${idempotencyKey}-nonconverged`,
+    });
     const { run } = await repository.createOrGet(input);
     const preparing = await repository.transition({
       run_id: run.id,

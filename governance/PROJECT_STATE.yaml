@@ -10,7 +10,7 @@ roadmap: ROADMAP.yaml
 numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_development_real_mesh_ci_gate_passed
 spatial_artifact_storage: development_local_content_addressed_mesh_adapter_not_product_integrated
-async_simulation_jobs: absent
+async_simulation_jobs: durable_owner_scoped_queue_input_snapshots_leases_cancellation_and_retry_lineage_worker_api_pending
 spatial_viewer: absent
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
@@ -18,7 +18,7 @@ notes:
   - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
 spatial_input_contract: spatial_input_v1_legacy_plus_v2_planar_schema_only
 spatial_result_contract: spatial_simulation_result_v1_compact_manifest_external_field_references
-spatial_run_metadata: postgresql_owner_scoped_lifecycle_repository_worker_pending
+spatial_run_metadata: postgresql_owner_scoped_lifecycle_with_hash_bound_input_snapshots_and_worker_leases
 physics_composition: dependency_ordered_descriptors_without_equation_assembly
 coupled_1d_case_runner: development_with_complete_cell_1d
 sensitivity_persistence: migration_and_roundtrip_implemented

@@ -1,13 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  claimSpatialSimulationRunInputSchema,
   createSpatialSimulationRunInputSchema,
+  retrySpatialSimulationRunInputSchema,
   spatialSimulationResultSchema,
+  spatialSimulationRunLeaseInputSchema,
   spatialSimulationRunSnapshotSchema,
   transitionSpatialSimulationRunInputSchema,
+  spatialModelInputV2Schema,
+  type ClaimSpatialSimulationRunInput,
   type CreateSpatialSimulationRunInput,
+  type RetrySpatialSimulationRunInput,
+  type SpatialModelInputV2,
   type SpatialSimulationRunSnapshot,
   type SpatialSimulationRunStatus,
+  type SpatialSimulationRunLeaseInput,
   type TransitionSpatialSimulationRunInput,
 } from '@metrev/domain-contracts';
 
@@ -51,6 +59,15 @@ const allowedNextStatuses: Record<
 };
 
 const MAX_RESULT_MANIFEST_BYTES = 2 * 1024 * 1024;
+const MAX_INPUT_SNAPSHOT_BYTES = 2 * 1024 * 1024;
+const DEFAULT_MAX_ATTEMPTS = 3;
+const MAX_MANUAL_RETRIES = 2;
+const activeStatuses = [
+  'PREPARING_GEOMETRY',
+  'MESHING',
+  'SOLVING',
+  'POSTPROCESSING',
+] as const;
 
 export type SpatialSimulationRunErrorCode =
   | 'not_found'
@@ -58,7 +75,12 @@ export type SpatialSimulationRunErrorCode =
   | 'invalid_transition'
   | 'stale_state'
   | 'invalid_evaluation_scope'
-  | 'result_manifest_too_large';
+  | 'result_manifest_too_large'
+  | 'input_snapshot_too_large'
+  | 'lease_lost'
+  | 'cancel_requested'
+  | 'retry_not_allowed'
+  | 'retry_limit_exceeded';
 
 export class SpatialSimulationRunError extends Error {
   constructor(
@@ -75,6 +97,24 @@ export interface CreateSpatialSimulationRunResult {
   created: boolean;
 }
 
+export interface SpatialSimulationRunWorkItem {
+  ownerId: string;
+  workerId: string;
+  leaseToken: string;
+  input: SpatialModelInputV2;
+  run: SpatialSimulationRunSnapshot;
+}
+
+export interface SpatialSimulationRunLeaseResult {
+  cancelRequested: boolean;
+  leaseExpiresAt: string;
+}
+
+export interface RetrySpatialSimulationRunResult {
+  created: boolean;
+  run: SpatialSimulationRunSnapshot;
+}
+
 export interface SpatialSimulationRunRepository {
   createOrGet(
     input: CreateSpatialSimulationRunInput,
@@ -86,6 +126,25 @@ export interface SpatialSimulationRunRepository {
   transition(
     input: TransitionSpatialSimulationRunInput,
   ): Promise<SpatialSimulationRunSnapshot | null>;
+  claimNextQueued(
+    input: ClaimSpatialSimulationRunInput,
+  ): Promise<SpatialSimulationRunWorkItem | null>;
+  renewClaim(
+    input: SpatialSimulationRunLeaseInput,
+  ): Promise<SpatialSimulationRunLeaseResult | null>;
+  transitionClaimed(
+    input: TransitionSpatialSimulationRunInput & {
+      worker_id: string;
+      lease_token: string;
+    },
+  ): Promise<SpatialSimulationRunSnapshot | null>;
+  requestCancellation(
+    runId: string,
+    ownerId: string,
+  ): Promise<SpatialSimulationRunSnapshot | null>;
+  retryFailedRun(
+    input: RetrySpatialSimulationRunInput,
+  ): Promise<RetrySpatialSimulationRunResult>;
 }
 
 function iso(value: Date | null): string | null {
@@ -112,6 +171,11 @@ function fromRecord(record: {
   updatedAt: Date;
   startedAt: Date | null;
   completedAt: Date | null;
+  attemptCount: number;
+  maxAttempts: number;
+  retryCount: number;
+  retryOfRunId: string | null;
+  cancelRequestedAt: Date | null;
 }): SpatialSimulationRunSnapshot {
   const result = record.resultManifest
     ? spatialSimulationResultSchema.parse(record.resultManifest)
@@ -130,6 +194,11 @@ function fromRecord(record: {
     mesh_sha256: record.meshSha256,
     status: fromDatabaseStatus[record.status],
     progress: record.progress,
+    attempt_count: record.attemptCount,
+    max_attempts: record.maxAttempts,
+    retry_count: record.retryCount,
+    retry_of_run_id: record.retryOfRunId,
+    cancellation_requested: record.cancelRequestedAt !== null,
     result,
     failure: record.failureDetail,
     created_at: record.createdAt.toISOString(),
@@ -164,6 +233,14 @@ function assertTransition(
   current: SpatialSimulationRunSnapshot,
   input: ReturnType<typeof transitionSpatialSimulationRunInputSchema.parse>,
 ): SpatialSimulationRunSnapshot {
+  if (
+    current.cancellation_requested &&
+    !['cancelled', 'failed'].includes(input.next_status)
+  )
+    throw new SpatialSimulationRunError(
+      'cancel_requested',
+      'The run has a pending cancellation request',
+    );
   if (current.status !== input.expected_status)
     throw new SpatialSimulationRunError(
       'stale_state',
@@ -276,6 +353,10 @@ function assertTransition(
   const terminal = ['completed', 'failed', 'cancelled'].includes(
     input.next_status,
   );
+  const cancelledBeforeStart =
+    input.next_status === 'cancelled' &&
+    current.status === 'queued' &&
+    current.started_at === null;
   const result = input.result ?? null;
   const failure = input.failure ?? null;
   return spatialSimulationRunSnapshotSchema.parse({
@@ -283,11 +364,14 @@ function assertTransition(
     status: input.next_status,
     progress: input.progress,
     mesh_sha256: meshSha256,
+    cancellation_requested:
+      current.cancellation_requested || input.next_status === 'cancelled',
     result,
     failure,
     updated_at: now,
     started_at:
-      current.started_at ?? (input.next_status === 'queued' ? null : now),
+      current.started_at ??
+      (input.next_status === 'queued' || cancelledBeforeStart ? null : now),
     completed_at: terminal ? now : null,
   });
 }
@@ -308,6 +392,12 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
     candidate: CreateSpatialSimulationRunInput,
   ): Promise<CreateSpatialSimulationRunResult> {
     const input = createSpatialSimulationRunInputSchema.parse(candidate);
+    const inputSnapshotJson = JSON.stringify(input.input_snapshot);
+    if (Buffer.byteLength(inputSnapshotJson, 'utf8') > MAX_INPUT_SNAPSHOT_BYTES)
+      throw new SpatialSimulationRunError(
+        'input_snapshot_too_large',
+        'Spatial input metadata exceeds 2 MiB; keep mesh and field arrays in artifacts',
+      );
     const existing = await this.prisma.spatialSimulationRunRecord.findFirst({
       where: {
         ownerId: input.owner_id,
@@ -347,6 +437,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
           dimension: input.dimension,
           inputContractVersion: input.input_contract_version,
           inputSha256: input.input_sha256,
+          inputSnapshot: JSON.parse(inputSnapshotJson) as Prisma.InputJsonValue,
           solverVersion: input.solver_version,
           runtimeVersion: input.runtime_version,
           meshRequestSha256: input.mesh_request_sha256,
@@ -400,126 +491,4 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
         'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
       );
 
-    const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
-      where: {
-        id: input.run_id,
-        ownerId: input.owner_id,
-        status: toDatabaseStatus[input.expected_status],
-        updatedAt: currentRecord.updatedAt,
-      },
-      data: {
-        status: toDatabaseStatus[input.next_status],
-        progress: input.progress,
-        meshSha256: next.mesh_sha256,
-        resultManifest:
-          resultJson !== null
-            ? (JSON.parse(resultJson) as Prisma.InputJsonValue)
-            : undefined,
-        failureDetail: input.failure
-          ? (input.failure as Prisma.InputJsonValue)
-          : undefined,
-        updatedAt: new Date(next.updated_at),
-        startedAt: next.started_at ? new Date(next.started_at) : null,
-        completedAt: next.completed_at ? new Date(next.completed_at) : null,
-      },
-    });
-    if (updated.count !== 1)
-      throw new SpatialSimulationRunError(
-        'stale_state',
-        'The run changed while this transition was being committed',
-      );
-
-    const persisted = await this.prisma.spatialSimulationRunRecord.findFirst({
-      where: { id: input.run_id, ownerId: input.owner_id },
-    });
-    return persisted ? fromRecord(persisted) : null;
-  }
-}
-
-export class MemorySpatialSimulationRunRepository implements SpatialSimulationRunRepository {
-  private readonly runs = new Map<
-    string,
-    {
-      ownerId: string;
-      idempotencyKey: string;
-      snapshot: SpatialSimulationRunSnapshot;
-    }
-  >();
-
-  async createOrGet(
-    candidate: CreateSpatialSimulationRunInput,
-  ): Promise<CreateSpatialSimulationRunResult> {
-    const input = createSpatialSimulationRunInputSchema.parse(candidate);
-    const existing = [...this.runs.values()].find(
-      (record) =>
-        record.ownerId === input.owner_id &&
-        record.idempotencyKey === input.idempotency_key,
-    );
-    if (existing) {
-      assertSameIdempotentRequest(existing.snapshot, input);
-      return { run: existing.snapshot, created: false };
-    }
-    const now = new Date().toISOString();
-    const run = spatialSimulationRunSnapshotSchema.parse({
-      id: randomUUID(),
-      evaluation_id: input.evaluation_id,
-      model_id: input.model_id,
-      system: input.system,
-      dimension: input.dimension,
-      input_contract_version: input.input_contract_version,
-      input_sha256: input.input_sha256,
-      solver_version: input.solver_version,
-      runtime_version: input.runtime_version,
-      mesh_request_sha256: input.mesh_request_sha256,
-      mesh_sha256: null,
-      status: 'queued',
-      progress: 0,
-      result: null,
-      failure: null,
-      created_at: now,
-      updated_at: now,
-      started_at: null,
-      completed_at: null,
-    });
-    this.runs.set(run.id, {
-      ownerId: input.owner_id,
-      idempotencyKey: input.idempotency_key,
-      snapshot: run,
-    });
-    return { run, created: true };
-  }
-
-  async getOwnedRun(
-    runId: string,
-    ownerId: string,
-  ): Promise<SpatialSimulationRunSnapshot | null> {
-    const record = this.runs.get(runId);
-    return record?.ownerId === ownerId ? record.snapshot : null;
-  }
-
-  async transition(
-    candidate: TransitionSpatialSimulationRunInput,
-  ): Promise<SpatialSimulationRunSnapshot | null> {
-    const input = transitionSpatialSimulationRunInputSchema.parse(candidate);
-    const record = this.runs.get(input.run_id);
-    if (!record || record.ownerId !== input.owner_id) return null;
-    const next = assertTransition(record.snapshot, input);
-    if (
-      input.result &&
-      Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
-        MAX_RESULT_MANIFEST_BYTES
-    )
-      throw new SpatialSimulationRunError(
-        'result_manifest_too_large',
-        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
-      );
-    record.snapshot = next;
-    return next;
-  }
-}
-
-export function createSpatialSimulationRunRepository(
-  prisma: PrismaClient = getPrismaClient(),
-): PrismaSpatialSimulationRunRepository {
-  return new PrismaSpatialSimulationRunRepository(prisma);
-}
+    const update
