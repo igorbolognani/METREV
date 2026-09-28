@@ -171,7 +171,7 @@ jobs:
       - name: Build pinned DOLFINx/PETSc/Gmsh sidecar
         run: docker build -f apps/spatial-sidecar/Dockerfile -t metrev-spatial-toolchain .
 
-      - name: Import tagged mesh and solve affine Poisson fixture
+      - name: Import tagged 2D and 3D meshes and solve affine Poisson fixtures
         run: |
           docker run --rm --entrypoint python3 \
             --mount type=bind,source="${{ github.workspace }}/tests",target=/opt/metrev-spatial/tests,readonly \
