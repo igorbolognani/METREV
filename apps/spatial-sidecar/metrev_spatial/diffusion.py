@@ -112,8 +112,9 @@ def solve_stationary_diffusion(
     Positive source creates species; the optional first-order term ``k*c``
     consumes it. Positive outward flux removes it. Each internal face uses
     equal-and-opposite diffusive and upwind advective fluxes.
-    The returned integrated balance includes both physical boundary fluxes
-    minus source over the whole domain, in mol/s for the declared geometry.
+    The returned integrated balance includes physical boundary flux, storage
+    and first-order consumption minus source over the whole domain, in mol/s
+    for the declared geometry.
     """
     dimension = len(cells)
     if dimension not in (1, 2, 3) or len(lengths_m) != dimension:

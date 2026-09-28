@@ -127,6 +127,19 @@ class DiffusionKernelTest(unittest.TestCase):
                     self.assertAlmostEqual(concentration, 2.0, delta=1e-9)
                 self.assertLess(abs(result.global_balance_mol_s), 1e-15)
 
+                rates = tuple(0.2 + 0.001 * index for index in range(count))
+                sources = tuple(3.0 * rate for rate in rates)
+                heterogeneous = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension,
+                    cells=(5,) * dimension,
+                    diffusivity_m2_s=1e-9,
+                    source_mol_m3_s=sources,
+                    reaction_rate_s1=rates,
+                    boundary_mol_m3=lambda _point: 3.0,
+                )
+                self.assertTrue(all(abs(value - 3.0) < 1e-9 for value in heterogeneous.concentrations_mol_m3))
+                self.assertLess(abs(heterogeneous.global_balance_mol_s), 1e-15)
+
     def test_first_order_reaction_matches_manufactured_one_dimensional_profile(self):
         diffusivity = 1e-9
         reaction_rate = 4e-9
@@ -163,7 +176,8 @@ class DiffusionKernelTest(unittest.TestCase):
                 steps=3,
             )
             without_reaction = solve_transient_diffusion(**common)
-            with_reaction = solve_transient_diffusion(**common, reaction_rate_s1=0.5)
+            rates = tuple(0.3 + 0.1 * (index % 3) for index in range(n**dimension))
+            with_reaction = solve_transient_diffusion(**common, reaction_rate_s1=rates)
             self.assertLess(math.fsum(with_reaction.final.concentrations_mol_m3),
                             math.fsum(without_reaction.final.concentrations_mol_m3))
             self.assertLess(max(abs(value) for value in with_reaction.step_balances_mol_s), 1e-9)
