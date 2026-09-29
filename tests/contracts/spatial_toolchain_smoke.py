@@ -388,6 +388,22 @@ def main() -> None:
         for earlier, later in zip(layered_results, layered_results[1:])
     ), layered_results
 
+    # A cell mesh with porous/solid layers cannot be solved as free liquid.
+    try:
+        solve_planar_stokes(
+            imported, viscosity_pa_s=1e-3,
+            wall_tags=("boundary:outer_wall",),
+            inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
+            traction_by_tag={
+                "boundary:inlet": ufl.as_vector((0.0, 0.0)),
+                "boundary:outlet": ufl.as_vector((0.0, 0.0)),
+            },
+        )
+    except ValueError as error:
+        assert "bulk-liquid-only" in str(error), error
+    else:
+        raise AssertionError("Multi-region mesh entered the Stokes kernel")
+
     stokes_results = []
     with tempfile.TemporaryDirectory() as directory:
         for refinement_factor in (1, 2, 4):

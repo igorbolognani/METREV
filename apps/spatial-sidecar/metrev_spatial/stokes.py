@@ -16,7 +16,7 @@ from mpi4py import MPI
 import numpy as np
 from petsc4py import PETSc
 import ufl
-from dolfinx import fem
+from dolfinx import fem, mesh as dolfinx_mesh
 from dolfinx.fem.petsc import LinearProblem
 
 
@@ -65,9 +65,27 @@ def solve_planar_stokes(
         raise ValueError("Tagged cells and exterior facets are required")
 
     groups = mesh_data.physical_groups
+    liquid = groups.get("region:bulk_liquid")
+    if liquid is None or liquid.dim != 2:
+        raise ValueError("A bulk-liquid cell group is required")
+    owned_cells = domain.topology.index_map(2).size_local
+    tagged_owned = mesh_data.cell_tags.indices < owned_cells
+    invalid_cells = (not np.array_equal(mesh_data.cell_tags.indices[tagged_owned], np.arange(owned_cells))
+                     or np.any(mesh_data.cell_tags.values[tagged_owned] != liquid.tag))
+    if domain.comm.allreduce(int(invalid_cells), op=MPI.SUM):
+        raise ValueError("Stokes development solve requires a bulk-liquid-only mesh")
+    if domain.comm.allreduce(owned_cells, op=MPI.SUM) == 0:
+        raise ValueError("Stokes mesh has no cells")
+    domain.topology.create_connectivity(1, 2)
+    exterior = dolfinx_mesh.exterior_facet_indices(domain.topology)
     for name in (*wall_tags, inlet_tag, outlet_tag):
-        if name not in groups or groups[name].dim != 1 or len(mesh_data.facet_tags.find(groups[name].tag)) == 0:
+        if name not in groups or groups[name].dim != 1:
             raise ValueError(f"Missing exterior facet group {name}")
+        facets = mesh_data.facet_tags.find(groups[name].tag)
+        if domain.comm.allreduce(len(facets), op=MPI.SUM) == 0:
+            raise ValueError(f"Missing exterior facet group {name}")
+        if domain.comm.allreduce(int(np.count_nonzero(~np.isin(facets, exterior))), op=MPI.SUM):
+            raise ValueError(f"Facet group {name} includes an interior interface")
     for tag, traction in traction_by_tag.items():
         if getattr(traction, "ufl_shape", None) != (2,):
             raise ValueError(f"Traction at {tag} must be a planar vector")
@@ -85,7 +103,7 @@ def solve_planar_stokes(
     wall_dofs = fem.locate_dofs_topological(
         (space.sub(0), velocity_space), 1, wall_facets
     )
-    if len(wall_dofs) == 0:
+    if domain.comm.allreduce(len(wall_dofs), op=MPI.SUM) == 0:
         raise ValueError("No no-slip velocity degrees of freedom on walls")
     boundary_condition = fem.dirichletbc(zero_velocity, wall_dofs, space.sub(0))
 
