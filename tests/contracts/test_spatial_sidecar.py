@@ -42,7 +42,7 @@ class SidecarTest(unittest.TestCase):
         layer["target_size_m"] = {**fixture["mesh"]["target_size_m"], "value": 0.0005}
         from metrev_spatial.__main__ import validate_mesh
         self.assertEqual(validate_mesh(fixture["mesh"])["layers"][1], layer)
-        for value, unit in ((0.003, "m"), (0.0005, "s"), (0, "m"), (0.000001, "m")):
+        for value, unit in ((0.003, "m"), (0.0005, "s"), (0, "m"), (0.000001, "m"), (1e-320, "m")):
             layer["target_size_m"].update(value=value, unit=unit)
             with self.assertRaises(ValueError):
                 validate_mesh(fixture["mesh"])

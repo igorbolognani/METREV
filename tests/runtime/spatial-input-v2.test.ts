@@ -33,6 +33,7 @@ describe('spatial-input-v2 admission boundary', () => {
       q(0.0005, 's'),
       q(0, 'm'),
       q(0.000001, 'm'),
+      q(1e-320, 'm'),
     ]) {
       const request = copy(meshRequest);
       request.mesh.layers[1].target_size_m = local;

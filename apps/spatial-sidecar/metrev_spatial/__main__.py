@@ -115,9 +115,12 @@ def validate_mesh(obj: object) -> dict:
             any(isinstance(f, bool) or not isinstance(f, int) or not 1 <= f <= 16 for f in factors) or
             any(a >= b for a, b in zip(factors, factors[1:]))):
         raise RequestError("Refinement factors must be strictly increasing integers in [1,16]")
-    estimate = sum(height * layer["width_m"]["value"] /
-                   ((layer.get("target_size_m", mesh["target_size_m"])["value"] / factors[-1]) ** 2)
-                   for layer in layers)
+    estimate = 0.0
+    for layer in layers:
+        size = layer.get("target_size_m", mesh["target_size_m"])["value"] / factors[-1]
+        if size == 0:
+            raise RequestError("Refined mesh size is below numerical resolution")
+        estimate += (height / size) * (layer["width_m"]["value"] / size)
     if estimate > 250_000:
         raise RequestError("Mesh estimate exceeds bounded development runtime")
     return mesh

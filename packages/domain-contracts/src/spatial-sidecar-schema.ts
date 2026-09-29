@@ -129,7 +129,7 @@ export const planarMeshSchema = z
     const estimate = mesh.layers.reduce((sum, layer) => {
       const size =
         (layer.target_size_m?.value ?? mesh.target_size_m.value) / factor;
-      return sum + (mesh.height_m.value * layer.width_m.value) / (size * size);
+      return sum + (mesh.height_m.value / size) * (layer.width_m.value / size);
     }, 0);
     if (width > 0 && estimate > 250_000)
       context.addIssue({
