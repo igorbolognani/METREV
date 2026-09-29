@@ -5,6 +5,7 @@ import {
 
 const meshSha256 = 'a'.repeat(64);
 const fieldSha256 = 'b'.repeat(64);
+const potentialFieldSha256 = 'd'.repeat(64);
 
 export function validSpatialSimulationResult(
   run: SpatialSimulationRunSnapshot,
@@ -107,7 +108,7 @@ export function validSpatialSimulationResult(
       },
       {
         role: 'interface',
-        tag: 'anode_biofilm',
+        tag: 'interface:anode:biofilm',
         from_domain_tag: 'anode',
         to_domain_tag: 'biofilm',
         normal: [1, 0],
@@ -116,7 +117,7 @@ export function validSpatialSimulationResult(
       },
       {
         role: 'interface',
-        tag: 'biofilm_liquid',
+        tag: 'interface:biofilm:liquid',
         from_domain_tag: 'biofilm',
         to_domain_tag: 'liquid',
         normal: [1, 0],
@@ -161,6 +162,33 @@ export function validSpatialSimulationResult(
           integration_measure: 'domain_area',
         },
       },
+      {
+        field_id: 'solid_potential_final',
+        variable_id: 'phi_s',
+        value_type: 'scalar',
+        unit: 'V',
+        association: 'mesh_cells',
+        domain_tags: ['anode', 'biofilm'],
+        artifact: {
+          uri: `metrev-artifact://sha256/${potentialFieldSha256}`,
+          sha256: potentialFieldSha256,
+          bytes: 4096,
+          format: 'hdf5',
+          media_type: 'application/x-hdf5',
+          dataset_path: '/fields/solid_potential',
+        },
+        sampled_at: '2026-09-28T09:00:00.000Z',
+        simulation_time_s: 60,
+        summary: {
+          sample_count: 240,
+          minimum: -0.2,
+          maximum: 0.8,
+          mean: 0.2,
+          integral: 0.004,
+          integral_unit: 'V*m2',
+          integration_measure: 'domain_area',
+        },
+      },
     ],
     conservation_residuals: [
       {
@@ -192,6 +220,6 @@ export function validSpatialSimulationResult(
     ],
     warnings: [],
     unsupported_physics: [],
-    artifact_hashes: [meshSha256, fieldSha256].sort(),
+    artifact_hashes: [meshSha256, fieldSha256, potentialFieldSha256].sort(),
   });
 }

@@ -124,7 +124,12 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
         expected_status: 'postprocessing',
         next_status: 'completed',
         progress: 100,
-        result: { ...result, fields: [{ ...result.fields[0], unit: 'V' }] },
+        result: {
+          ...result,
+          fields: result.fields.map((field, index) =>
+            index === 0 ? { ...field, unit: 'V' } : field,
+          ),
+        },
       }),
     ).rejects.toMatchObject({ code: 'invalid_transition' });
     expect((await repository.getOwnedRun(runId, ownerId))?.status).toBe(

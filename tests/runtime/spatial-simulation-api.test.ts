@@ -71,24 +71,27 @@ async function completeRun(
   const fieldDigest = fieldBytes
     ? createHash('sha256').update(fieldBytes).digest('hex')
     : null;
+  const fields = fixtureResult.fields.map((field) =>
+    fieldDigest && fieldBytes
+      ? {
+          ...field,
+          artifact: {
+            ...field.artifact,
+            uri: `metrev-artifact://sha256/${fieldDigest}`,
+            sha256: fieldDigest,
+            bytes: fieldBytes.byteLength,
+          },
+        }
+      : field,
+  );
   const result = spatialSimulationResultSchema.parse({
     ...fixtureResult,
-    fields: fixtureResult.fields.map((field) =>
-      fieldDigest && fieldBytes
-        ? {
-            ...field,
-            artifact: {
-              ...field.artifact,
-              uri: `metrev-artifact://sha256/${fieldDigest}`,
-              sha256: fieldDigest,
-              bytes: fieldBytes.byteLength,
-            },
-          }
-        : field,
-    ),
+    fields,
     artifact_hashes: [
-      fixtureResult.mesh.artifact.sha256,
-      fieldDigest ?? 'b'.repeat(64),
+      ...new Set([
+        fixtureResult.mesh.artifact.sha256,
+        ...fields.map((field) => field.artifact.sha256),
+      ]),
     ].sort(),
   });
   const completed = await repository.transition({

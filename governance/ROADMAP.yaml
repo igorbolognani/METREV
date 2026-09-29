@@ -350,9 +350,10 @@ work_items:
       - apps/
     blockers:
       - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider and the viewer is absent
-      - Persisted state fields bind to input-declared variable IDs, canonical units, scalar kind and eligible domains; derived/vector output authority and integral/scalar metric unit compatibility remain pending
+      - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
+      - Returned state fields must contain every requested variable and no unrequested variable; derived/vector output authority and integral/scalar metric unit compatibility remain pending
     gate_evidence:
-      GATE-CONTRACT: spatial-simulation-result-v1 rejects inconsistent domains, field references, hash lists and completion identity; seven focused tests pass
+      GATE-CONTRACT: spatial-simulation-result-v1 rejects inconsistent domains, field references, hash lists and completion identity; input-bound persistence also checks mesh topology and requested state outputs
       GATE-PROVENANCE: result and scalar outputs bind to run, model, input hash and content-addressed mesh/field references
       GATE-UNITS: field state units are checked against authority-validated immutable input before both completed and failed result persistence; integral and scalar metric unit compatibility remain open
   - id: P15

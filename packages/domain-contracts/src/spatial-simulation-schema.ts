@@ -551,6 +551,18 @@ export function spatialSimulationResultForInputSchema(
   const variables = new Map(
     input.variables.map((variable) => [variable.id, variable]),
   );
+  const layers = new Map(
+    input.geometry.layers.map((layer) => [layer.tag, layer]),
+  );
+  const boundaries = new Map(
+    Object.values(input.geometry.boundaries).map((boundary) => [
+      boundary.tag,
+      boundary,
+    ]),
+  );
+  const interfaces = new Map(
+    input.mesh.interfaces.map((face) => [face.tag, face]),
+  );
   // PostgreSQL jsonb can reorder object keys. Persisted runs carry the
   // original digest computed at admission before the JSONB round trip.
   const inputHash = admittedInputSha256 ?? spatialModelInputV2Sha256(input);
@@ -573,6 +585,107 @@ export function spatialSimulationResultForInputSchema(
         ['dimension'],
         'Result coordinates and dimension must match the input',
       );
+
+    const inputGroupTags = Object.keys(input.mesh.physical_groups).sort();
+    const resultGroupTags = Object.keys(result.mesh.physical_groups).sort();
+    if (
+      inputGroupTags.length !== resultGroupTags.length ||
+      inputGroupTags.some(
+        (tag, index) =>
+          tag !== resultGroupTags[index] ||
+          input.mesh.physical_groups[tag] !== result.mesh.physical_groups[tag],
+      )
+    )
+      issue(
+        ['mesh', 'physical_groups'],
+        'Result physical groups must preserve the admitted mesh tag-to-ID map',
+      );
+    if (
+      result.mesh.artifact.sha256 !== input.mesh.sha256 ||
+      result.mesh.geometry_version !== input.geometry.geometry_version ||
+      result.mesh.refinement_factor !== input.mesh.refinement_factor ||
+      result.mesh.request_sha256 !== input.mesh.input_sha256 ||
+      result.mesh.generated_with.version !== input.mesh.gmsh_version
+    )
+      issue(
+        ['mesh'],
+        'Result mesh identity must match the immutable admitted mesh',
+      );
+
+    const resultDomains = result.domains.filter(
+      (entry) => entry.role === 'domain',
+    );
+    const resultBoundaries = result.domains.filter(
+      (entry) => entry.role === 'boundary',
+    );
+    const resultInterfaces = result.domains.filter(
+      (entry) => entry.role === 'interface',
+    );
+    const expectedGroupCount =
+      input.geometry.layers.length + boundaries.size + interfaces.size;
+    if (
+      result.domains.length !== expectedGroupCount ||
+      resultDomains.length !== layers.size ||
+      resultBoundaries.length !== boundaries.size ||
+      resultInterfaces.length !== interfaces.size
+    )
+      issue(
+        ['domains'],
+        'Result domain roles must cover the admitted regions, boundaries and interfaces exactly once',
+      );
+
+    for (const [index, entry] of result.domains.entries()) {
+      if (entry.role === 'domain') {
+        const layer = layers.get(entry.tag);
+        const groupTag = `region:${entry.tag}`;
+        if (
+          !layer ||
+          entry.kind !== layer.kind ||
+          entry.physical_group_tag !== groupTag ||
+          entry.physical_group_id !== input.mesh.physical_groups[groupTag] ||
+          entry.component_id !== input.mesh.component_map[entry.tag]
+        )
+          issue(
+            ['domains', index],
+            'Result domain kind, component and physical group must match the admitted geometry',
+          );
+      } else if (entry.role === 'boundary') {
+        const boundary = boundaries.get(entry.tag);
+        const groupTag = `boundary:${entry.tag}`;
+        const expectedKind =
+          boundary?.role === 'electrode' ? 'electrode_contact' : boundary?.role;
+        if (
+          !boundary ||
+          entry.boundary_kind !== expectedKind ||
+          entry.component_id !== undefined ||
+          entry.physical_group_tag !== groupTag ||
+          entry.physical_group_id !== input.mesh.physical_groups[groupTag]
+        )
+          issue(
+            ['domains', index],
+            'Result boundary role and physical group must match the admitted geometry',
+          );
+      } else {
+        const face = interfaces.get(entry.physical_group_tag);
+        if (
+          !face ||
+          entry.tag !== face.tag ||
+          entry.from_domain_tag !== face.from_tag ||
+          entry.to_domain_tag !== face.to_tag ||
+          entry.physical_group_id !==
+            input.mesh.physical_groups[entry.physical_group_tag] ||
+          entry.normal.length !== face.normal.length ||
+          entry.normal.some((value, axis) => value !== face.normal[axis])
+        )
+          issue(
+            ['domains', index],
+            'Result interface orientation and physical group must match the admitted mesh',
+          );
+      }
+    }
+
+    const requestedOutputs = new Set(input.requested_outputs);
+    const returnedOutputs = new Set<string>();
     for (const [index, field] of result.fields.entries()) {
       const variable = variables.get(field.variable_id);
       if (!variable) {
@@ -582,6 +695,12 @@ export function spatialSimulationResultForInputSchema(
         );
         continue;
       }
+      if (!requestedOutputs.has(field.variable_id))
+        issue(
+          ['fields', index, 'variable_id'],
+          'Result fields must be limited to the requested output set',
+        );
+      returnedOutputs.add(field.variable_id);
       if (field.unit !== variable.unit)
         issue(
           ['fields', index, 'unit'],
@@ -599,6 +718,12 @@ export function spatialSimulationResultForInputSchema(
           'Current input variable kinds require scalar state fields',
         );
     }
+    for (const [index, variableId] of input.requested_outputs.entries())
+      if (!returnedOutputs.has(variableId))
+        issue(
+          ['requested_outputs', index],
+          `Requested output ${variableId} is missing from the result fields`,
+        );
   });
 }
 
