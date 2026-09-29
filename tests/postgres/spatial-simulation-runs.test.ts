@@ -127,7 +127,16 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
         result: {
           ...result,
           fields: result.fields.map((field, index) =>
-            index === 0 ? { ...field, unit: 'V' } : field,
+            index === 0 && field.value_type === 'scalar'
+              ? {
+                  ...field,
+                  unit: 'kg/m3',
+                  summary: { ...field.summary, integral_unit: 'kg/m' },
+                }
+              : field,
+          ),
+          scalar_outputs: result.scalar_outputs.map((output, index) =>
+            index === 0 ? { ...output, unit: 'kg/m3' } : output,
           ),
         },
       }),
