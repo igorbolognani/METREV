@@ -411,7 +411,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; an unresponsive asynchronous executor no longer blocks the worker's deadline, but native process termination is not provided
+      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; worker deadlines and cancellation terminate the isolated sidecar process group, while application solver admission remains pending
       - No spatial solver or production field store is registered; run creation and retries remain fail-closed without explicit admission, and deployment CPU/memory limits are still required
     gate_evidence:
       GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines and field-byte hash verification pass focused tests

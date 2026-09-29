@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -88,6 +88,21 @@ export interface SidecarProcessResult {
   artifactDirectory: string | null;
 }
 
+function killProcessTree(child: ChildProcess): void {
+  if (!child.pid) return;
+  if (process.platform === 'win32') {
+    child.kill('SIGKILL');
+    return;
+  }
+  try {
+    // detached:true makes the child the leader of its own POSIX process group.
+    process.kill(-child.pid, 'SIGKILL');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH')
+      child.kill('SIGKILL');
+  }
+}
+
 /** Worker-side boundary only. No Fastify request may launch a mesh synchronously. */
 export async function runSpatialSidecar(
   input: SpatialSidecarRequest,
@@ -124,6 +139,7 @@ export async function runSpatialSidecar(
       cwd: options.moduleDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, PYTHONPATH: options.moduleDirectory },
+      detached: process.platform !== 'win32',
     });
     let out = '';
     let err = '';
@@ -139,14 +155,14 @@ export async function runSpatialSidecar(
     };
     const cancel = () => {
       reason = 'cancelled';
-      child.kill('SIGKILL');
+      killProcessTree(child);
       finish(
         new SidecarTransportError('cancelled', 'Sidecar request was cancelled'),
       );
     };
     const timer = setTimeout(() => {
       reason = 'timeout';
-      child.kill('SIGKILL');
+      killProcessTree(child);
       finish(
         new SidecarTransportError('timeout', 'Sidecar exceeded its time limit'),
       );
@@ -159,7 +175,7 @@ export async function runSpatialSidecar(
     child.stdout.on('data', (data: Buffer) => {
       out += data.toString('utf8');
       if (out.length > 2_000_000) {
-        child.kill('SIGKILL');
+        killProcessTree(child);
         finish(
           new SidecarTransportError(
             'invalid_response',
