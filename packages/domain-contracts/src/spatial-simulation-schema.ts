@@ -156,7 +156,7 @@ const summarySchema = z
       });
   });
 
-const fieldArtifactSchema = z
+export const spatialFieldArtifactSchema = z
   .object({
     ...artifactReferenceObjectSchema.shape,
     dataset_path: z.string().trim().min(1).max(512),
@@ -171,7 +171,7 @@ const fieldCommonSchema = z.object({
   association: z.enum(['mesh_nodes', 'mesh_cells']),
   domain_tags: z.array(tag).min(1).max(64),
   component_id: identifier.optional(),
-  artifact: fieldArtifactSchema,
+  artifact: spatialFieldArtifactSchema,
   sampled_at: timestamp,
   simulation_time_s: z.number().finite().nonnegative().optional(),
 });

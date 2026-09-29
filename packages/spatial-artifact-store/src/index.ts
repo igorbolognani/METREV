@@ -12,6 +12,8 @@ import {
 } from '@metrev/domain-contracts';
 import { z } from 'zod';
 
+export { LocalSpatialFieldArtifactStore } from './field-store';
+
 const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const meshUriSchema = z
   .string()
