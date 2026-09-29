@@ -1,4 +1,4 @@
-# DOLFINx v0.10.0-r1 multiarch manifest digest; PDE support is not enabled.
+# DOLFINx v0.10.0-r1 multiarch manifest digest; numerical PDE solves remain test fixtures.
 FROM ghcr.io/fenics/dolfinx/dolfinx@sha256:25a4952542107766402a1de448ab1b387df70243e10f9d3f717d8c353f2acae4
 
 RUN apt-get update && apt-get install -y --no-install-recommends libglu1-mesa libxft2 \
