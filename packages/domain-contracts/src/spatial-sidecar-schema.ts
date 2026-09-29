@@ -25,6 +25,8 @@ export const planarMeshSchema = z
             kind: region,
             component_id: z.string().trim().min(1).optional(),
             width_m: spatialValueSchema,
+            /** Optional source-traced local maximum size; interface nodes use the finer neighbor. */
+            target_size_m: spatialValueSchema.optional(),
           })
           .strict(),
       )
@@ -70,6 +72,11 @@ export const planarMeshSchema = z
         (layer, index) =>
           [['layers', index, 'width_m'], layer.width_m] as const,
       ),
+      ...mesh.layers.flatMap((layer, index) =>
+        layer.target_size_m
+          ? [[['layers', index, 'target_size_m'], layer.target_size_m] as const]
+          : [],
+      ),
     ] as const) {
       if (value.unit !== 'm' || value.value <= 0)
         context.addIssue({
@@ -106,12 +113,25 @@ export const planarMeshSchema = z
       (sum, layer) => sum + layer.width_m.value,
       0,
     );
-    const finest =
-      mesh.target_size_m.value / Math.max(...mesh.refinement_factors);
-    if (
-      width > 0 &&
-      ((mesh.height_m.value / finest) * width) / finest > 250_000
-    )
+    mesh.layers.forEach((layer, index) => {
+      if (
+        layer.target_size_m &&
+        layer.target_size_m.value > mesh.target_size_m.value
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['layers', index, 'target_size_m'],
+          message:
+            'Local refinement size must not exceed the global target size',
+        });
+    });
+    const factor = Math.max(...mesh.refinement_factors);
+    const estimate = mesh.layers.reduce((sum, layer) => {
+      const size =
+        (layer.target_size_m?.value ?? mesh.target_size_m.value) / factor;
+      return sum + (mesh.height_m.value / size) * (layer.width_m.value / size);
+    }, 0);
+    if (width > 0 && estimate > 250_000)
       context.addIssue({
         code: 'custom',
         path: ['target_size_m'],

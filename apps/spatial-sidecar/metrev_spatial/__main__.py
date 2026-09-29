@@ -90,7 +90,7 @@ def validate_mesh(obj: object) -> dict:
     tags: set[str] = set()
     width = 0.0
     for layer in layers:
-        exact_keys(layer, {"tag", "kind", "width_m"}, {"component_id"})
+        exact_keys(layer, {"tag", "kind", "width_m"}, {"component_id", "target_size_m"})
         tag = layer["tag"]
         if (not isinstance(tag, str) or not tag.isascii() or not tag or len(tag) > 64 or
                 not tag[0].islower() or not all(c.islower() or c.isdigit() or c in "_-" for c in tag)
@@ -98,6 +98,8 @@ def validate_mesh(obj: object) -> dict:
             raise RequestError("Invalid or duplicate domain tag/kind")
         tags.add(tag)
         width += sourced_length(layer["width_m"])
+        if "target_size_m" in layer and sourced_length(layer["target_size_m"]) > target:
+            raise RequestError("Local refinement size must not exceed the global target size")
         if "component_id" in layer and (not isinstance(layer["component_id"], str) or
                                          not layer["component_id"].strip()):
             raise RequestError("Invalid component ID")
@@ -113,7 +115,13 @@ def validate_mesh(obj: object) -> dict:
             any(isinstance(f, bool) or not isinstance(f, int) or not 1 <= f <= 16 for f in factors) or
             any(a >= b for a, b in zip(factors, factors[1:]))):
         raise RequestError("Refinement factors must be strictly increasing integers in [1,16]")
-    if height * width / (target / factors[-1]) ** 2 > 250_000:
+    estimate = 0.0
+    for layer in layers:
+        size = layer.get("target_size_m", mesh["target_size_m"])["value"] / factors[-1]
+        if size == 0:
+            raise RequestError("Refined mesh size is below numerical resolution")
+        estimate += (height / size) * (layer["width_m"]["value"] / size)
+    if estimate > 250_000:
         raise RequestError("Mesh estimate exceeds bounded development runtime")
     return mesh
 
@@ -135,12 +143,16 @@ def create_planar_mesh(mesh: dict, output_dir: Path) -> tuple[dict, list[dict]]:
             gmsh.option.setNumber("Mesh.Algorithm", 6)
             gmsh.option.setNumber("Mesh.RandomFactor", 0)
             gmsh.model.add("metrev-planar-v1")
-            size = mesh["target_size_m"]["value"] / factor
+            sizes = [layer.get("target_size_m", mesh["target_size_m"])["value"] / factor
+                     for layer in layers]
             xs = [0.0]
             for layer in layers:
                 xs.append(xs[-1] + layer["width_m"]["value"])
-            bottom = [gmsh.model.geo.addPoint(x, 0, 0, size) for x in xs]
-            top = [gmsh.model.geo.addPoint(x, height, 0, size) for x in xs]
+            # Shared interface points use the smaller adjacent target. The
+            # same points are shared by both regions, preserving conforming facets.
+            point_sizes = [sizes[0], *(min(a, b) for a, b in zip(sizes, sizes[1:])), sizes[-1]]
+            bottom = [gmsh.model.geo.addPoint(x, 0, 0, h) for x, h in zip(xs, point_sizes)]
+            top = [gmsh.model.geo.addPoint(x, height, 0, h) for x, h in zip(xs, point_sizes)]
             vertical = [gmsh.model.geo.addLine(b, t) for b, t in zip(bottom, top)]
             floor = [gmsh.model.geo.addLine(bottom[i], bottom[i + 1]) for i in range(len(layers))]
             ceiling = [gmsh.model.geo.addLine(top[i], top[i + 1]) for i in range(len(layers))]

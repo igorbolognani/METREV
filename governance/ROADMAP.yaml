@@ -116,10 +116,11 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - A test-only synthetic exact three-layer scalar diffusion solve now checks nodal values and boundary/interface flux on tagged planar meshes at factors 1, 2, and 4; PDE convergence evidence, broader numerical cell geometries and product solver behavior remain pending
+      - A test-only synthetic exact three-layer scalar diffusion solve now checks nodal values and boundary/interface flux on tagged planar meshes at factors 1, 2, and 4; source-traced per-layer target sizes provide local refinement while sharing conforming interface points. PDE convergence evidence, broader numerical cell geometries and product solver behavior remain pending
       - P04 deployment gate, product authorization and durable artifact provider pending
     gate_evidence:
       GATE-MESH-REFINEMENT: Coarse/medium/fine meshes at refinement factors 1, 2, and 4 preserve per-region triangle-integrated area and physical boundary/interface lengths and positions against analytic planar geometry within a 1e-10 relative tolerance; a test-only tagged three-layer diffusion solve also checks exact nodal values and boundary/interface flux at each size; neither check claims PDE solution convergence
+      GATE-PROVENANCE: Per-layer local mesh sizes require source-traced positive SI lengths and are bound into the immutable input and mesh request digest; the pinned Gmsh fixture checks added biofilm cells and preserved physical groups
   - id: P06
     title: Implement a conservative spatial mathematical core
     phase: P2

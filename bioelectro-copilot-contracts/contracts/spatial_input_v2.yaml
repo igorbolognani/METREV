@@ -31,7 +31,8 @@ geometry:
   coordinates: { system: cartesian, axes: [x, y] }
   required: [height_m, layers, boundaries, target_size_m, refinement_factors]
   layer_required: [tag, kind, width_m]
-  layer_optional: [component_id]
+  layer_optional: [component_id, target_size_m]
+  local_refinement: A layer target_size_m is a positive source-traced length in m no larger than the global target_size_m; the finest refinement-factor mesh estimate remains bounded and neighboring layers share the finer interface point size.
   boundary_sides: [left, right, top, bottom]
   boundary_roles: [wall, inlet, outlet, electrode]
   interface_normal: [1, 0]
