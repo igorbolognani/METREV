@@ -93,6 +93,18 @@ export class SpatialSimulationRunError extends Error {
   }
 }
 
+function serializeResultManifest(result: unknown): string | null {
+  if (result === null || result === undefined) return null;
+  const json = JSON.stringify(result);
+  if (json === undefined) return null;
+  if (Buffer.byteLength(json, 'utf8') > MAX_RESULT_MANIFEST_BYTES)
+    throw new SpatialSimulationRunError(
+      'result_manifest_too_large',
+      'Spatial result metadata exceeds 2 MiB; keep field samples in artifacts and reduce verbose diagnostic histories',
+    );
+  return json;
+}
+
 export interface CreateSpatialSimulationRunResult {
   run: SpatialSimulationRunSnapshot;
   created: boolean;
@@ -517,15 +529,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
 
     const current = fromRecord(currentRecord);
     const next = assertTransition(current, input, currentRecord.inputSnapshot);
-    const resultJson = input.result ? JSON.stringify(input.result) : null;
-    if (
-      resultJson !== null &&
-      Buffer.byteLength(resultJson, 'utf8') > MAX_RESULT_MANIFEST_BYTES
-    )
-      throw new SpatialSimulationRunError(
-        'result_manifest_too_large',
-        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
-      );
+    const resultJson = serializeResultManifest(input.result);
 
     const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
       where: {
@@ -766,15 +770,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
       );
     const current = fromRecord(currentRecord);
     const next = assertTransition(current, input, currentRecord.inputSnapshot);
-    const resultJson = input.result ? JSON.stringify(input.result) : null;
-    if (
-      resultJson !== null &&
-      Buffer.byteLength(resultJson, 'utf8') > MAX_RESULT_MANIFEST_BYTES
-    )
-      throw new SpatialSimulationRunError(
-        'result_manifest_too_large',
-        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
-      );
+    const resultJson = serializeResultManifest(input.result);
     const terminal = ['completed', 'failed', 'cancelled'].includes(
       input.next_status,
     );
@@ -1101,15 +1097,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
         'A claimed run can only be transitioned by its active worker lease',
       );
     const next = assertTransition(record.snapshot, input, record.input);
-    if (
-      input.result &&
-      Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
-        MAX_RESULT_MANIFEST_BYTES
-    )
-      throw new SpatialSimulationRunError(
-        'result_manifest_too_large',
-        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
-      );
+    serializeResultManifest(input.result);
     record.snapshot = next;
     if (input.next_status === 'cancelled')
       record.cancelRequestedAt = next.updated_at;
@@ -1268,15 +1256,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
         'The worker no longer owns a live lease for this run',
       );
     const next = assertTransition(record.snapshot, input, record.input);
-    if (
-      input.result &&
-      Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
-        MAX_RESULT_MANIFEST_BYTES
-    )
-      throw new SpatialSimulationRunError(
-        'result_manifest_too_large',
-        'Spatial result metadata exceeds 2 MiB; move field samples into artifacts',
-      );
+    serializeResultManifest(input.result);
     record.snapshot = next;
     if (input.next_status === 'cancelled' && !record.cancelRequestedAt)
       record.cancelRequestedAt = next.updated_at;
