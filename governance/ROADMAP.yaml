@@ -152,7 +152,7 @@ work_items:
   - id: P07
     title: Implement 2D hydraulics
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P05
       - P06
@@ -173,7 +173,12 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - dependency gate pending; inspect depends_on and full source section
+      - A synthetic bulk-liquid channel verifies pressure-driven Stokes flow only; product hydraulics remains unregistered, and Darcy/Brinkman porous flow, Navier–Stokes regimes, hydraulic input admission, and case-runner integration are not implemented
+      - P05/P06 remain partial; velocity is not coupled to species transport, and product persistence/API/UI integration remains pending
+    gate_evidence:
+      GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; it does not establish a product hydraulic input contract
+      GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure and checks expected pressure drop plus integrated inlet/outlet flow across three mesh refinements
+      GATE-NONLINEAR-CONVERGENCE: the benchmark is linear Stokes, so nonlinear convergence is not applicable; its PETSc direct solve fails on nonconvergence, while coupled nonlinear product solvers remain unimplemented
   - id: P08
     title: Generalize anode/biofilm physics from 1D to real 2D
     phase: P2
