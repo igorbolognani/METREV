@@ -16,6 +16,11 @@ import math
 from typing import Callable
 
 
+# Each axis may supply a constant or one cell-centred value per volume.
+# The latter is a prescribed field, not a solved hydraulic state.
+Velocity = tuple[float, ...] | tuple[tuple[float, ...], ...]
+
+
 class DiffusionConvergenceError(RuntimeError):
     """The bounded linear solve did not meet its declared residual tolerance."""
 
@@ -103,7 +108,7 @@ def solve_stationary_diffusion(
     boundary_mol_m3: Callable[[tuple[float, ...]], float],
     boundary_diffusive_flux_mol_m2_s: Callable[[tuple[float, ...]], float | None] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
-    advection_velocity_m_s: tuple[float, ...] | None = None,
+    advection_velocity_m_s: Velocity | None = None,
     relative_tolerance: float = 1e-10,
     max_iterations: int | None = None,
     storage_rate_s1: float | tuple[float, ...] = 0.0,
@@ -131,11 +136,17 @@ def solve_stationary_diffusion(
     if count > 4096:
         raise ValueError("Verification mesh exceeds the 4096-cell bound")
     if advection_velocity_m_s is None:
-        velocity = (0.0,) * dimension
-    elif len(advection_velocity_m_s) == dimension:
-        velocity = advection_velocity_m_s
-    else:
+        velocity = ((0.0,) * count,) * dimension
+    elif len(advection_velocity_m_s) != dimension:
         raise ValueError("One advection velocity is required for every axis")
+    else:
+        velocity = tuple(
+            tuple(component) if isinstance(component, tuple) else (component,) * count
+            for component in advection_velocity_m_s
+        )
+    if any(len(axis) != count for axis in velocity):
+        raise ValueError("A cellwise velocity requires one value per cell on every axis")
+    has_advection = any(component != 0 for axis in velocity for component in axis)
     if isinstance(diffusivity_m2_s, tuple):
         if len(diffusivity_m2_s) == count:
             # Preserve the existing cellwise-isotropic input form.
@@ -158,7 +169,7 @@ def solve_stationary_diffusion(
         storage_rates = storage_rate_s1
     else:
         storage_rates = (storage_rate_s1,) * count
-    values = (*lengths_m, *diffusivities, *velocity, *storage_rates, relative_tolerance)
+    values = (*lengths_m, *diffusivities, *(v for axis in velocity for v in axis), *storage_rates, relative_tolerance)
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
         raise ValueError("Lengths, diffusivity, source and tolerance must be finite")
     if any(length <= 0 for length in lengths_m) or any(
@@ -207,12 +218,29 @@ def solve_stationary_diffusion(
     volume = math.prod(spacing)
     if volume == 0 or not math.isfinite(volume):
         raise ValueError("Cell volume is not numerically representable")
+    # This reduction represents incompressible prescribed flow. The same
+    # internal face averages and boundary face values used by the flux
+    # assembly must have zero net volumetric flux in every control volume.
+    velocity_scale = max(abs(value) / step for axis, step in zip(velocity, spacing)
+                         for value in axis)
+    for index in range(count):
+        divergence = []
+        for axis, (n, stride, step) in enumerate(zip(cells, strides, spacing)):
+            coordinate = index // stride % n
+            for side in (-1, 1):
+                adjacent = coordinate + side
+                face_velocity = (velocity[axis][index] + velocity[axis][index + side * stride]) / 2 \
+                    if 0 <= adjacent < n else velocity[axis][index]
+                divergence.append(side * face_velocity / step)
+        if abs(math.fsum(divergence)) > 1e-10 * max(velocity_scale, 1e-30):
+            raise ValueError("Prescribed velocity must be discretely divergence-free")
     diagonal = [storage_rates[index] + reaction_rates[index] for index in range(count)]
     rhs = source_values.copy()
     neighbors: list[list[tuple[int, float]]] = [[] for _ in range(count)]
     boundary_faces: list[tuple[int, float, float]] = []
     prescribed_diffusive_fluxes: list[tuple[float, float]] = []
     boundary_advective_fluxes: list[tuple[int, float, float | None, float]] = []
+    has_advective_inflow = False
 
     for index in range(count):
         coordinates = tuple(index // stride % n for stride, n in zip(strides, cells))
@@ -229,7 +257,9 @@ def solve_stationary_diffusion(
                     conductance = (2 * left * right / (left + right)) / (step * step)
                     diagonal[index] += conductance
                     neighbors[index].append((other, conductance))
-                    normal_velocity = side * velocity[axis]
+                    # Both cells use the same arithmetic face velocity with
+                    # opposite normals; internal advective flux cancels exactly.
+                    normal_velocity = side * (velocity[axis][index] + velocity[axis][other]) / 2
                     if normal_velocity >= 0:
                         diagonal[index] += normal_velocity / step
                     else:
@@ -258,13 +288,14 @@ def solve_stationary_diffusion(
                             raise ValueError("Prescribed outward diffusive flux must be finite")
                         rhs[index] -= prescribed_flux / step
                         prescribed_diffusive_fluxes.append((float(prescribed_flux), volume / step))
-                    normal_velocity = side * velocity[axis]
+                    normal_velocity = side * velocity[axis][index]
                     if normal_velocity >= 0:
                         # Advective outflow uses the cell state; only inflow
                         # takes its trace from the declared boundary value.
                         diagonal[index] += normal_velocity / step
                         boundary_advective_fluxes.append((index, normal_velocity, None, volume / step))
                     else:
+                        has_advective_inflow = True
                         rhs[index] -= normal_velocity * value / step
                         boundary_advective_fluxes.append((index, normal_velocity, float(value), volume / step))
 
@@ -273,7 +304,7 @@ def solve_stationary_diffusion(
         not boundary_faces
         and not any(rate > 0 for rate in storage_rates)
         and not any(rate > 0 for rate in reaction_rates)
-        and not any(component != 0 for component in velocity)
+        and not has_advective_inflow
     ):
         raise ValueError("Steady all-flux diffusion requires a reaction, storage or advective anchor")
 
@@ -294,7 +325,7 @@ def solve_stationary_diffusion(
     scale = max(abs(value) for value in rhs)
     if scale == 0:
         return DiffusionResult(tuple(solution), cells, 0, 0.0, 0.0)
-    if any(component != 0 for component in velocity):
+    if has_advection:
         solution, iterations = _solve_bicgstab(
             apply,
             rhs,
@@ -367,7 +398,7 @@ def solve_transient_diffusion(
     steps: int,
     boundary_diffusive_flux_mol_m2_s: Callable[[float, tuple[float, ...]], float | None] | None = None,
     reaction_rate_s1: float | tuple[float, ...] = 0.0,
-    advection_velocity_m_s: tuple[float, ...] | None = None,
+    advection_velocity_m_s: Velocity | None = None,
     relative_tolerance: float = 1e-10,
 ) -> TransientDiffusionResult:
     """Implicit-Euler fixture for ∂c/∂t + div(u c - D grad(c)) + k c = R.

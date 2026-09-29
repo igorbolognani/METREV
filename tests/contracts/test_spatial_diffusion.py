@@ -17,6 +17,64 @@ from metrev_spatial.diffusion import (  # noqa: E402
 
 
 class DiffusionKernelTest(unittest.TestCase):
+    def test_cellwise_shear_velocity_conserves_species_and_refines(self):
+        # Manufactured 2D flow u=(a*y, 0) is incompressible. The scalar
+        # reference c=1+x has u·grad(c)=a*y and zero Laplacian.
+        for dimension, levels in ((2, (8, 16, 32)), (3, (4, 8, 12))):
+            errors = []
+            for n in levels:
+                count = n ** dimension
+                y = tuple((index // n ** (dimension - 2) % n + 0.5) / n for index in range(count))
+                shear = tuple(0.2 * position for position in y)
+                result = solve_stationary_diffusion(
+                    lengths_m=(1.0,) * dimension, cells=(n,) * dimension,
+                    diffusivity_m2_s=0.05,
+                    source_mol_m3_s=shear,
+                    boundary_mol_m3=lambda point: 1.0 + point[0],
+                    advection_velocity_m_s=(shear,) + ((0.0,) * count,) * (dimension - 1),
+                )
+                errors.append(max(
+                    abs(value - (1.0 + (index // n ** (dimension - 1) + 0.5) / n))
+                    for index, value in enumerate(result.concentrations_mol_m3)
+                ))
+                self.assertLess(result.relative_residual, 1e-9)
+                self.assertLess(abs(result.global_balance_mol_s), 1e-8)
+                self.assertGreater(min(result.concentrations_mol_m3), 0)
+            self.assertLess(errors[1], errors[0] / 1.5)
+            self.assertLess(errors[2], errors[1] / 1.5)
+
+    def test_cellwise_velocity_transient_constant_state_and_invalid_fields(self):
+        n = 6
+        shear = tuple(0.1 * (index % n + 0.5) / n for index in range(n * n))
+        velocity = (shear, (0.0,) * (n * n))
+        result = solve_transient_diffusion(
+            lengths_m=(1.0, 1.0), cells=(n, n), diffusivity_m2_s=0.02,
+            source_mol_m3_s=0.0, initial_mol_m3=(2.0,) * (n * n),
+            boundary_mol_m3=lambda _time, _point: 2.0,
+            time_step_s=0.1, steps=3, advection_velocity_m_s=velocity,
+        )
+        self.assertLess(max(abs(value - 2) for value in result.final.concentrations_mol_m3), 1e-9)
+        self.assertLess(max(map(abs, result.step_balances_mol_s)), 1e-8)
+        for invalid in ((shear[:-1], (0.0,) * (n * n)),
+                        (shear, (float('nan'),) * (n * n)),
+                        (shear, (True,) * (n * n)), (shear,)):
+            with self.subTest(velocity=invalid), self.assertRaises(ValueError):
+                solve_stationary_diffusion(
+                    lengths_m=(1.0, 1.0), cells=(n, n), diffusivity_m2_s=0.02,
+                    source_mol_m3_s=0.0, boundary_mol_m3=lambda _point: 2.0,
+                    advection_velocity_m_s=invalid,
+                )
+
+        closed = tuple(0.0 if index // n in (0, n - 1) else 0.1
+                       for index in range(n * n))
+        with self.assertRaisesRegex(ValueError, 'discretely divergence-free'):
+            solve_stationary_diffusion(
+                lengths_m=(1.0, 1.0), cells=(n, n), diffusivity_m2_s=0.02,
+                source_mol_m3_s=0.0, boundary_mol_m3=lambda _point: 2.0,
+                boundary_diffusive_flux_mol_m2_s=lambda _point: 0.0,
+                advection_velocity_m_s=(closed, (0.0,) * (n * n)),
+            )
+
     def test_mixed_nonzero_flux_affine_fields_all_axes_and_dimensions(self):
         for dimension in (1, 2, 3):
             n = 6
