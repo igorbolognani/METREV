@@ -386,10 +386,11 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large artifact provider remain unverified
-      - The pluggable worker runtime and authenticated owner-scoped API are implemented; production executor admission, PDE solver, field-artifact provider and container CPU/memory limits remain pending
+      - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large durable artifact provider remain unverified
+      - The pluggable worker runtime and authenticated owner-scoped API are implemented; a development-only local field-artifact provider passes an API read roundtrip, while production executor admission, PDE solver, durable provider and container CPU/memory limits remain pending
     gate_evidence:
       GATE-PERSISTENCE: result metadata is capped at 2 MiB of UTF-8 JSON before persistence; schema-valid large diagnostic-history fixtures are rejected without advancing the run, with memory and PostgreSQL regression coverage
+      GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; durable production storage remains unverified
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2

@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 
 import type { SessionActor } from '@metrev/auth';
@@ -11,6 +14,7 @@ import {
   type SpatialSimulationRunSnapshot,
 } from '@metrev/domain-contracts';
 import { describe, expect, it } from 'vitest';
+import { LocalSpatialFieldArtifactStore } from '@metrev/spatial-artifact-store';
 
 import { buildApp } from '../../apps/api-server/src/app';
 import { validSpatialSimulationResult } from '../fixtures/spatial-simulation-result';
@@ -107,6 +111,48 @@ async function completeRun(
 }
 
 describe('spatial simulation API', () => {
+  it('serves persisted field bytes through the owner-scoped local provider', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'metrev-api-field-'));
+    const fieldBytes = Buffer.from('persisted spatial field fixture');
+    const spatialRuns = new MemorySpatialSimulationRunRepository();
+    const completed = await completeRun(
+      spatialRuns,
+      'local-field-provider',
+      fieldBytes,
+    );
+    const sourceFilePath = join(directory, 'field.vtu');
+    const store = new LocalSpatialFieldArtifactStore({
+      rootDirectory: join(directory, 'store'),
+    });
+    await writeFile(sourceFilePath, fieldBytes);
+    await store.storeField({
+      ownerId: analyst.userId,
+      runId: completed.id,
+      field: completed.result!.fields[0],
+      sourceFilePath,
+    });
+    let actor: SessionActor = analyst;
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      spatialSimulationRunRepository: spatialRuns,
+      spatialFieldArtifactReader: store,
+      rateLimit: false,
+      sessionResolver: async () => actor,
+    });
+    try {
+      const path = `/api/spatial-simulations/${completed.id}/fields/substrate_concentration_final`;
+      const response = await app.inject({ method: 'GET', url: path });
+      expect(response.statusCode).toBe(200);
+      expect(response.rawPayload).toEqual(fieldBytes);
+      actor = { ...analyst, userId: 'other-user' };
+      expect((await app.inject({ method: 'GET', url: path })).statusCode).toBe(
+        404,
+      );
+    } finally {
+      await app.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
   it('requires a session, scopes status to its owner, and gives viewers read access', async () => {
     let actor: SessionActor | null = analyst;
     const spatialRuns = new MemorySpatialSimulationRunRepository();
