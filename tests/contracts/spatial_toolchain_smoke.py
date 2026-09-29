@@ -1,13 +1,15 @@
-"""Pinned-container Gmsh -> DOLFINx/PETSc compatibility gate.
+"""Pinned-container Gmsh -> DOLFINx/PETSc numerical verification gate.
 
-This is a synthetic affine Poisson solve, not a METREV cell solver. Run only
-inside apps/spatial-sidecar/Dockerfile; the ordinary Python suite stays lean.
+The affine Poisson, layered diffusion and Stokes channel cases are synthetic
+fixtures, not a METREV cell solver. Run this only inside
+apps/spatial-sidecar/Dockerfile; the ordinary Python suite stays lean.
 """
 
 import json
 from pathlib import Path
 import tempfile
 
+import basix.ufl
 from mpi4py import MPI
 import numpy as np
 from petsc4py import PETSc
@@ -178,6 +180,207 @@ def solve_layered_diffusion(mesh_data, layers: list[dict], height: float) -> dic
     }
 
 
+def create_stokes_channel_mesh(path: Path, characteristic_length: float) -> None:
+    """Create a synthetic bulk-liquid channel with named no-slip/pressure boundaries."""
+    import gmsh
+
+    width_m = 0.01
+    length_m = 0.01
+    gmsh.initialize()
+    try:
+        gmsh.option.setNumber("General.Terminal", 0)
+        gmsh.option.setNumber("Mesh.MshFileVersion", 4.1)
+        gmsh.option.setNumber("Mesh.Binary", 0)
+        gmsh.option.setNumber("Mesh.Algorithm", 6)
+        gmsh.model.add("metrev-stokes-channel-fixture")
+        corners = [
+            gmsh.model.geo.addPoint(0.0, 0.0, 0.0, characteristic_length),
+            gmsh.model.geo.addPoint(width_m, 0.0, 0.0, characteristic_length),
+            gmsh.model.geo.addPoint(width_m, length_m, 0.0, characteristic_length),
+            gmsh.model.geo.addPoint(0.0, length_m, 0.0, characteristic_length),
+        ]
+        bottom, right, top, left = [
+            gmsh.model.geo.addLine(corners[index], corners[(index + 1) % 4])
+            for index in range(4)
+        ]
+        loop = gmsh.model.geo.addCurveLoop([bottom, right, top, left])
+        surface = gmsh.model.geo.addPlaneSurface([loop])
+        gmsh.model.geo.synchronize()
+
+        gmsh.model.addPhysicalGroup(2, [surface], 1)
+        gmsh.model.setPhysicalName(2, 1, "region:bulk_liquid")
+        gmsh.model.addPhysicalGroup(1, [left, right], 11)
+        gmsh.model.setPhysicalName(1, 11, "boundary:wall")
+        gmsh.model.addPhysicalGroup(1, [bottom], 12)
+        gmsh.model.setPhysicalName(1, 12, "boundary:inlet")
+        gmsh.model.addPhysicalGroup(1, [top], 13)
+        gmsh.model.setPhysicalName(1, 13, "boundary:outlet")
+        gmsh.model.mesh.generate(2)
+        gmsh.write(str(path))
+    finally:
+        gmsh.finalize()
+
+
+def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
+    """Solve a pressure-driven Taylor-Hood Stokes channel verification fixture."""
+    domain = mesh_data.mesh
+    assert domain.topology.dim == 2
+    viscosity_pa_s = 1e-3
+    pressure_drop_pa = 1e-7
+    space = fem.functionspace(
+        domain,
+        basix.ufl.mixed_element(
+            [
+                basix.ufl.element(
+                    "Lagrange", domain.basix_cell(), 2, shape=(domain.geometry.dim,)
+                ),
+                basix.ufl.element("Lagrange", domain.basix_cell(), 1),
+            ]
+        ),
+    )
+    velocity_space, _ = space.sub(0).collapse()
+    zero_velocity = fem.Function(velocity_space)
+    zero_velocity.x.array[:] = 0.0
+    wall = mesh_data.physical_groups["boundary:wall"]
+    wall_facets = mesh_data.facet_tags.find(wall.tag)
+    wall_dofs = fem.locate_dofs_topological(
+        (space.sub(0), velocity_space), domain.topology.dim - 1, wall_facets
+    )
+    boundary_condition = fem.dirichletbc(zero_velocity, wall_dofs, space.sub(0))
+
+    trial_velocity, trial_pressure = ufl.TrialFunctions(space)
+    test_velocity, test_pressure = ufl.TestFunctions(space)
+    normal = ufl.FacetNormal(domain)
+    dx = ufl.Measure("dx", domain=domain)
+    ds = ufl.Measure("ds", domain=domain, subdomain_data=mesh_data.facet_tags)
+    inlet = mesh_data.physical_groups["boundary:inlet"]
+    outlet = mesh_data.physical_groups["boundary:outlet"]
+    viscosity = fem.Constant(domain, PETSc.ScalarType(viscosity_pa_s))
+    inlet_pressure = fem.Constant(domain, PETSc.ScalarType(pressure_drop_pa))
+    outlet_pressure = fem.Constant(domain, PETSc.ScalarType(0.0))
+    cross_channel_coordinate = ufl.SpatialCoordinate(domain)[0]
+    exact_shear_rate = (
+        inlet_pressure
+        * (width_m - 2.0 * cross_channel_coordinate)
+        / (2.0 * viscosity * length_m)
+    )
+
+    def exact_traction(boundary_pressure):
+        return ufl.as_vector(
+            (
+                -boundary_pressure * normal[0]
+                + viscosity * exact_shear_rate * normal[1],
+                -boundary_pressure * normal[1]
+                + viscosity * exact_shear_rate * normal[0],
+            )
+        )
+
+    bilinear = (
+        2.0 * viscosity * ufl.inner(
+            ufl.sym(ufl.grad(trial_velocity)), ufl.sym(ufl.grad(test_velocity))
+        )
+        - trial_pressure * ufl.div(test_velocity)
+        - test_pressure * ufl.div(trial_velocity)
+    ) * dx
+    linear = ufl.dot(exact_traction(inlet_pressure), test_velocity) * ds(inlet.tag)
+    linear += ufl.dot(exact_traction(outlet_pressure), test_velocity) * ds(outlet.tag)
+    problem = LinearProblem(
+        bilinear,
+        linear,
+        bcs=[boundary_condition],
+        petsc_options_prefix=f"metrev_stokes_channel_{len(mesh_data.cell_tags.values)}_",
+        petsc_options={
+            "ksp_type": "preonly",
+            "pc_type": "lu",
+            "ksp_error_if_not_converged": True,
+        },
+    )
+    solution = problem.solve()
+    solved_velocity, solved_pressure = solution.split()
+    solved_velocity = solved_velocity.collapse()
+    solved_pressure = solved_pressure.collapse()
+    solved_velocity.x.scatter_forward()
+    solved_pressure.x.scatter_forward()
+
+    exact_velocity = fem.Function(velocity_space)
+    exact_velocity.interpolate(
+        lambda x: np.asarray(
+            [
+                np.zeros_like(x[0]),
+                pressure_drop_pa
+                * x[0]
+                * (width_m - x[0])
+                / (2.0 * viscosity_pa_s * length_m),
+            ]
+        )
+    )
+    exact_pressure_space, _ = space.sub(1).collapse()
+    exact_pressure = fem.Function(exact_pressure_space)
+    exact_pressure.interpolate(
+        lambda x: pressure_drop_pa * (1.0 - x[1] / length_m)
+    )
+    exact_velocity.x.scatter_forward()
+    exact_pressure.x.scatter_forward()
+
+    def global_integral(form) -> float:
+        local = fem.assemble_scalar(fem.form(form))
+        return domain.comm.allreduce(float(local), op=MPI.SUM)
+
+    velocity_error = np.sqrt(
+        max(
+            0.0,
+            global_integral(
+                ufl.inner(solved_velocity - exact_velocity, solved_velocity - exact_velocity)
+                * dx
+            ),
+        )
+    )
+    velocity_norm = np.sqrt(
+        global_integral(ufl.inner(exact_velocity, exact_velocity) * dx)
+    )
+    pressure_error = np.sqrt(
+        max(
+            0.0,
+            global_integral((solved_pressure - exact_pressure) ** 2 * dx),
+        )
+    )
+    pressure_norm = np.sqrt(global_integral(exact_pressure**2 * dx))
+
+    inlet_measure = global_integral(1.0 * ds(inlet.tag))
+    outlet_measure = global_integral(1.0 * ds(outlet.tag))
+    mean_inlet_pressure = global_integral(solved_pressure * ds(inlet.tag)) / inlet_measure
+    mean_outlet_pressure = global_integral(solved_pressure * ds(outlet.tag)) / outlet_measure
+    inlet_outward_flux = global_integral(ufl.dot(solved_velocity, normal) * ds(inlet.tag))
+    outlet_outward_flux = global_integral(ufl.dot(solved_velocity, normal) * ds(outlet.tag))
+    inlet_flow = -inlet_outward_flux
+    outlet_flow = outlet_outward_flux
+    expected_flow = pressure_drop_pa * width_m**3 / (
+        12.0 * viscosity_pa_s * length_m
+    )
+    flow_balance_error = abs(inlet_flow - outlet_flow) / expected_flow
+    pressure_drop_error = abs(
+        (mean_inlet_pressure - mean_outlet_pressure) - pressure_drop_pa
+    ) / pressure_drop_pa
+    relative_velocity_error = velocity_error / velocity_norm
+    relative_pressure_error = pressure_error / pressure_norm
+
+    assert relative_velocity_error < 1e-7, relative_velocity_error
+    assert relative_pressure_error < 1e-7, relative_pressure_error
+    assert flow_balance_error < 1e-8, flow_balance_error
+    assert pressure_drop_error < 1e-7, pressure_drop_error
+    assert inlet_flow > 0.0 and outlet_flow > 0.0
+    return {
+        "cell_count": len(mesh_data.cell_tags.values),
+        "relative_velocity_l2_error": relative_velocity_error,
+        "relative_pressure_l2_error": relative_pressure_error,
+        "relative_flow_balance_error": flow_balance_error,
+        "relative_pressure_drop_error": pressure_drop_error,
+        "inlet_flow_m2_s_per_depth": inlet_flow,
+        "outlet_flow_m2_s_per_depth": outlet_flow,
+        "expected_flow_m2_s_per_depth": expected_flow,
+    }
+
+
 def create_tetrahedral_mesh(path: Path) -> None:
     import gmsh
 
@@ -229,6 +432,22 @@ def main() -> None:
         for earlier, later in zip(layered_results, layered_results[1:])
     ), layered_results
 
+    stokes_results = []
+    with tempfile.TemporaryDirectory() as directory:
+        for refinement_factor in (1, 2, 4):
+            mesh_file = Path(directory) / f"stokes-channel-{refinement_factor}.msh"
+            create_stokes_channel_mesh(
+                mesh_file, characteristic_length=0.002 / refinement_factor
+            )
+            channel = gmshio.read_from_msh(mesh_file, MPI.COMM_WORLD, gdim=2)
+            result = solve_stokes_poiseuille(channel, width_m=0.01, length_m=0.01)
+            result["refinement_factor"] = refinement_factor
+            stokes_results.append(result)
+    assert all(
+        earlier["cell_count"] < later["cell_count"]
+        for earlier, later in zip(stokes_results, stokes_results[1:])
+    ), stokes_results
+
     assert imported.cell_tags is not None
     assert imported.facet_tags is not None
     assert imported.mesh.topology.dim == 2
@@ -262,6 +481,7 @@ def main() -> None:
                 "affine_max_error_2d": error_2d,
                 "triangle_count": cells_2d,
                 "layered_diffusion_refinements": layered_results,
+                "stokes_poiseuille_refinements": stokes_results,
                 "affine_max_error_3d": error_3d,
                 "tetrahedron_count": cells_3d,
             }
