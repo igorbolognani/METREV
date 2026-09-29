@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 const digestPattern = /^[a-f0-9]{64}$/;
 const identifierPattern = /^[a-zA-Z0-9_-]{1,160}$/;
+const fieldIdSchema = z.string().trim().min(1).max(160);
 
 type Field = SpatialSimulationResult['fields'][number];
 const fieldManifestSchema = z
@@ -22,7 +23,7 @@ const fieldManifestSchema = z
     version: z.literal('spatial-field-artifact-v1'),
     owner_sha256: z.string().regex(digestPattern),
     run_id: z.string().regex(identifierPattern),
-    field_id: z.string().regex(identifierPattern),
+    field_id: fieldIdSchema,
     artifact: spatialFieldArtifactSchema,
     manifest_sha256: z.string().regex(digestPattern),
   })
@@ -142,7 +143,7 @@ export class LocalSpatialFieldArtifactStore {
       ownerSha.slice(0, 2),
       ownerSha,
       runId,
-      `${fieldId}.json`,
+      `${digest(`metrev-field-id-v1:${fieldId}`)}.json`,
     );
   }
 
@@ -155,7 +156,7 @@ export class LocalSpatialFieldArtifactStore {
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
     const field = spatialFieldManifestSchema.parse(input.field);
-    const fieldId = identity(field.field_id, 'field ID');
+    const fieldId = fieldIdSchema.parse(field.field_id);
     if (field.artifact.bytes > this.maxFieldBytes)
       throw new SpatialArtifactStoreError(
         'size_limit',
@@ -209,7 +210,7 @@ export class LocalSpatialFieldArtifactStore {
   }): Promise<Readable> {
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
-    const fieldId = identity(input.fieldId, 'field ID');
+    const fieldId = fieldIdSchema.parse(input.fieldId);
     const manifest = await this.loadManifest(
       this.manifestPath(ownerSha, runId, fieldId),
     );

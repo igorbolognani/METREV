@@ -33,6 +33,7 @@ describe('local spatial field artifacts', () => {
       status: 'completed',
     } as never;
     const field = validSpatialSimulationResult(run).fields[0];
+    field.field_id = 'substrate.field:final';
     field.artifact = {
       ...field.artifact,
       sha256,
