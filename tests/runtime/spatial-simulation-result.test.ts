@@ -110,7 +110,9 @@ describe('spatial simulation result contract', () => {
       expect(
         schema.safeParse({
           ...valid,
-          fields: [{ ...valid.fields[0], ...patch }],
+          fields: valid.fields.map((field, index) =>
+            index === 0 ? { ...field, ...patch } : field,
+          ),
         }).success,
       ).toBe(false);
     }
@@ -133,8 +135,121 @@ describe('spatial simulation result contract', () => {
               { axis: 'y', summary },
             ],
           },
+          ...valid.fields.slice(1),
         ],
       }).success,
+    ).toBe(false);
+  });
+
+  it('binds result domains, boundaries and interfaces to the immutable mesh topology', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const valid = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const bound = spatialSimulationResultForInputSchema(input.input_snapshot);
+    const swappedGroups = {
+      ...valid,
+      mesh: {
+        ...valid.mesh,
+        physical_groups: {
+          ...valid.mesh.physical_groups,
+          'region:anode': 2,
+          'region:biofilm': 1,
+        },
+      },
+      domains: valid.domains.map((domain) =>
+        domain.physical_group_tag === 'region:anode'
+          ? { ...domain, physical_group_id: 2 }
+          : domain.physical_group_tag === 'region:biofilm'
+            ? { ...domain, physical_group_id: 1 }
+            : domain,
+      ),
+    };
+
+    expect(spatialSimulationResultSchema.safeParse(swappedGroups).success).toBe(
+      true,
+    );
+    expect(bound.safeParse(swappedGroups).success).toBe(false);
+
+    const swappedComponents = {
+      ...valid,
+      domains: valid.domains.map((domain) =>
+        domain.role === 'domain' && domain.tag === 'anode'
+          ? { ...domain, component_id: 'case/biofilm' }
+          : domain,
+      ),
+    };
+    const reversedInterface = {
+      ...valid,
+      domains: valid.domains.map((domain) =>
+        domain.role === 'interface' && domain.tag === 'interface:anode:biofilm'
+          ? {
+              ...domain,
+              from_domain_tag: 'biofilm',
+              to_domain_tag: 'anode',
+              normal: [-1, 0],
+              tag: 'interface:biofilm:anode',
+            }
+          : domain,
+      ),
+    };
+    const wrongBoundaryRole = {
+      ...valid,
+      domains: valid.domains.map((domain) =>
+        domain.role === 'boundary' && domain.tag === 'inlet'
+          ? { ...domain, boundary_kind: 'outlet' as const }
+          : domain,
+      ),
+    };
+
+    for (const candidate of [
+      swappedComponents,
+      reversedInterface,
+      wrongBoundaryRole,
+    ]) {
+      expect(spatialSimulationResultSchema.safeParse(candidate).success).toBe(
+        true,
+      );
+      expect(bound.safeParse(candidate).success).toBe(false);
+    }
+  });
+
+  it('requires every requested output and rejects unrequested state fields', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const valid = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const schema = spatialSimulationResultForInputSchema(input.input_snapshot);
+    const withFields = (fields: typeof valid.fields) => ({
+      ...valid,
+      fields,
+      artifact_hashes: [
+        valid.mesh.artifact.sha256,
+        ...fields.map((field) => field.artifact.sha256),
+      ].sort(),
+    });
+
+    expect(
+      schema.safeParse(
+        withFields(
+          valid.fields.filter((field) => field.variable_id !== 'phi_s'),
+        ),
+      ).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse(
+        withFields(
+          valid.fields.map((field) =>
+            field.variable_id === 'phi_s'
+              ? { ...field, variable_id: 'temperature', unit: 'K' }
+              : field,
+          ),
+        ),
+      ).success,
     ).toBe(false);
   });
 
@@ -165,7 +280,9 @@ describe('spatial simulation result contract', () => {
     expect(
       bound.safeParse({
         ...valid,
-        fields: [{ ...valid.fields[0], unit: 'V' }],
+        fields: valid.fields.map((field, index) =>
+          index === 0 ? { ...field, unit: 'V' } : field,
+        ),
       }).success,
     ).toBe(false);
   });
@@ -231,7 +348,12 @@ describe('spatial simulation result contract', () => {
             expected_status: 'postprocessing',
             next_status,
             progress: next_status === 'completed' ? 100 : 90,
-            result: { ...valid, fields: [{ ...valid.fields[0], unit: 'V' }] },
+            result: {
+              ...valid,
+              fields: valid.fields.map((field, index) =>
+                index === 0 ? { ...field, unit: 'V' } : field,
+              ),
+            },
             ...(next_status === 'failed'
               ? { failure: { code: 'test_failure', message: 'Fixture' } }
               : {}),
