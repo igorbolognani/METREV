@@ -545,12 +545,18 @@ export const spatialSimulationResultSchema = z
       fieldUnit: string,
       path: (string | number)[],
     ) => {
+      const axisymmetricPhysicalMeasure =
+        result.coordinate_system === 'axisymmetric' &&
+        ['domain_volume', 'boundary_area'].includes(
+          summary.integration_measure,
+        );
       if (
-        fieldMeasureDimension[summary.integration_measure] !== result.dimension
+        fieldMeasureDimension[summary.integration_measure] !==
+        (axisymmetricPhysicalMeasure ? 3 : result.dimension)
       )
         issue(
           [...path, 'integration_measure'],
-          'Integration measure dimension must match the spatial result',
+          'Integration measure dimension must match the spatial or axisymmetric physical dimension',
         );
       const expectedUnit = summaryUnit(fieldUnit, summary);
       if (!expectedUnit)
