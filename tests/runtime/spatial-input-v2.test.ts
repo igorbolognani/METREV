@@ -20,6 +20,56 @@ import {
 const valid = validSpatialInput;
 
 describe('spatial-input-v2 admission boundary', () => {
+  it('declares a 2D velocity vector only from matching x/y state components', () => {
+    const candidate = {
+      ...valid(),
+      variables: [
+        ...valid().variables,
+        { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
+        { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
+      ],
+      vector_outputs: [
+        {
+          id: 'liquid_velocity',
+          components: [
+            { axis: 'x', variable_id: 'ux' },
+            { axis: 'y', variable_id: 'uy' },
+          ],
+        },
+      ],
+      requested_outputs: ['liquid_velocity'],
+    };
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(true);
+    for (const patch of [
+      {
+        components: [
+          { axis: 'x', variable_id: 'uy' },
+          { axis: 'y', variable_id: 'ux' },
+        ],
+      },
+      { id: 'ux' },
+      {
+        components: [
+          { axis: 'x', variable_id: 'ux' },
+          { axis: 'y', variable_id: 'missing' },
+        ],
+      },
+    ])
+      expect(
+        spatialModelInputV2Schema.safeParse({
+          ...candidate,
+          vector_outputs: [{ ...candidate.vector_outputs[0], ...patch }],
+        }).success,
+      ).toBe(false);
+    expect(
+      spatialModelInputV2Schema.safeParse({
+        ...candidate,
+        variables: candidate.variables.map((v) =>
+          v.id === 'uy' ? { ...v, domain_tags: ['anode'] } : v,
+        ),
+      }).success,
+    ).toBe(false);
+  });
   it('binds source-traced local mesh sizes into the admitted request and rejects invalid refinements', () => {
     const candidate = valid();
     candidate.geometry.layers[1].target_size_m = q(0.0005, 'm');

@@ -222,12 +222,23 @@ const scalarOutputSchema = z
     source_kind: z.literal('modeled'),
     source_ref: identifier,
     derivation: z
-      .object({
-        kind: z.literal('field_summary'),
-        field_id: identifier,
-        statistic: z.enum(['minimum', 'maximum', 'mean', 'integral']),
-      })
-      .strict()
+      .discriminatedUnion('kind', [
+        z
+          .object({
+            kind: z.literal('field_summary'),
+            field_id: identifier,
+            statistic: z.enum(['minimum', 'maximum', 'mean', 'integral']),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal('field_component_summary'),
+            field_id: identifier,
+            axis: z.enum(['x', 'y', 'z', 'r']),
+            statistic: z.enum(['minimum', 'maximum', 'mean', 'integral']),
+          })
+          .strict(),
+      ])
       .optional(),
   })
   .strict();
@@ -665,19 +676,37 @@ export const spatialSimulationResultSchema = z
       const sourceField = result.fields.find(
         (field) => field.field_id === derivation.field_id,
       );
-      if (!sourceField || sourceField.value_type !== 'scalar') {
+      if (
+        !sourceField ||
+        (derivation.kind === 'field_summary' &&
+          sourceField.value_type !== 'scalar') ||
+        (derivation.kind === 'field_component_summary' &&
+          sourceField.value_type !== 'vector')
+      ) {
         issue(
           ['scalar_outputs', index, 'derivation', 'field_id'],
-          'A field-summary metric must reference a declared scalar field',
+          'A metric must reference a field of its declared derivation kind',
         );
       } else {
-        const expectedValue = summaryValue(
-          sourceField.summary,
-          derivation.statistic,
-        );
+        const summary =
+          sourceField.value_type === 'scalar'
+            ? sourceField.summary
+            : sourceField.components.find(
+                (component) =>
+                  derivation.kind === 'field_component_summary' &&
+                  component.axis === derivation.axis,
+              )?.summary;
+        if (!summary) {
+          issue(
+            ['scalar_outputs', index, 'derivation', 'axis'],
+            'Vector metric axis must identify a declared component',
+          );
+          continue;
+        }
+        const expectedValue = summaryValue(summary, derivation.statistic);
         const expectedUnit =
           derivation.statistic === 'integral'
-            ? sourceField.summary.integral_unit
+            ? summary.integral_unit
             : sourceField.unit;
         if (output.unit !== expectedUnit)
           issue(
@@ -737,10 +766,7 @@ export const spatialSimulationResultSchema = z
       );
   });
 
-/** Bind state-field metadata to the immutable, authority-validated input.
- * Structural parsing alone cannot establish the meaning of an arbitrary variable ID.
- * Derived/vector outputs need their own authority before this v2 persistence path accepts them.
- */
+/** Bind scalar states and explicitly composed vector views to immutable input. */
 export function spatialSimulationResultForInputSchema(
   candidate: SpatialModelInputV2,
   admittedInputSha256?: string,
@@ -748,6 +774,9 @@ export function spatialSimulationResultForInputSchema(
   const input = spatialModelInputV2Schema.parse(candidate);
   const variables = new Map(
     input.variables.map((variable) => [variable.id, variable]),
+  );
+  const vectors = new Map(
+    (input.vector_outputs ?? []).map((vector) => [vector.id, vector]),
   );
   const layers = new Map(
     input.geometry.layers.map((layer) => [layer.tag, layer]),
@@ -891,10 +920,11 @@ export function spatialSimulationResultForInputSchema(
     const returnedOutputs = new Set<string>();
     for (const [index, field] of result.fields.entries()) {
       const variable = variables.get(field.variable_id);
-      if (!variable) {
+      const vector = vectors.get(field.variable_id);
+      if (!variable && !vector) {
         issue(
           ['fields', index, 'variable_id'],
-          'Result field requires an input-declared variable',
+          'Result field requires an input-declared variable or vector view',
         );
         continue;
       }
@@ -904,17 +934,43 @@ export function spatialSimulationResultForInputSchema(
           'Result fields must be limited to the requested output set',
         );
       returnedOutputs.add(field.variable_id);
-      if (field.unit !== variable.unit)
+      if (vector) {
+        const components = vector.components.map(({ variable_id }) =>
+          variables.get(variable_id),
+        );
+        if (field.value_type !== 'vector')
+          issue(
+            ['fields', index, 'value_type'],
+            'Declared vector views require vector fields',
+          );
+        if (field.unit !== components[0]?.unit)
+          issue(
+            ['fields', index, 'unit'],
+            'Vector field unit must match its component state variables',
+          );
+        if (
+          field.domain_tags.some((tag) =>
+            components.some(
+              (component) => !component?.domain_tags.includes(tag),
+            ),
+          )
+        )
+          issue(
+            ['fields', index, 'domain_tags'],
+            'Vector field must be defined in every component state domain',
+          );
+        continue;
+      }
+      if (field.unit !== variable!.unit)
         issue(
           ['fields', index, 'unit'],
-          `Expected canonical variable unit ${variable.unit}`,
+          `Expected canonical variable unit ${variable!.unit}`,
         );
-      if (field.domain_tags.some((tag) => !variable.domain_tags.includes(tag)))
+      if (field.domain_tags.some((tag) => !variable!.domain_tags.includes(tag)))
         issue(
           ['fields', index, 'domain_tags'],
           'Result field exceeds its declared variable domains',
         );
-      // Every currently authoritative v2 kind is a scalar (including velocity_x/y).
       if (field.value_type !== 'scalar')
         issue(
           ['fields', index, 'value_type'],

@@ -21,6 +21,8 @@ required_fields:
   - boundary_conditions
   - circuit
   - requested_outputs
+optional_fields:
+  - vector_outputs
 scientific_value:
   required: [value, unit, source_kind, source_ref]
   optional: [source_locator, conditions, uncertainty, uncertainty_unit]
@@ -61,6 +63,9 @@ fields:
   forms: [constant, piecewise, sampled, artifact]
   artifact_formats: [XDMF, HDF5, VTU]
   validation: Canonical units and bounds; piecewise tags within owned domains; sample coordinates inside their physical region.
+vector_outputs:
+  form: An optional id and ordered x/y component variable IDs; x must name velocity_x and y velocity_y, both in the same canonical unit with at least one shared eligible region. Vector IDs cannot shadow state IDs.
+  admission: requested_outputs may name a scalar state or a declared vector view; every requested output must appear in an input-bound result.
 species:
   required: [id, valence, molecular_diffusivity]
   optional:

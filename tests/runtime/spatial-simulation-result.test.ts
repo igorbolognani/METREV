@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { MemorySpatialSimulationRunRepository } from '@metrev/database';
 import {
   createSpatialSimulationRunInputSchema,
+  spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
   spatialSimulationResultSchema,
   spatialSimulationResultForInputSchema,
@@ -11,6 +12,7 @@ import {
 
 import { validSpatialSimulationResult } from '../fixtures/spatial-simulation-result';
 import { createSpatialSimulationRunInput } from '../fixtures/spatial-simulation-run';
+import { validSpatialInput } from '../fixtures/spatial-input-v2';
 
 const meshSha256 = 'a'.repeat(64);
 const input = createSpatialSimulationRunInput({
@@ -80,6 +82,166 @@ async function completeRun(
 }
 
 describe('spatial simulation result contract', () => {
+  it('binds and persists a requested vector field with component metrics', async () => {
+    const snapshot = spatialModelInputV2Schema.parse({
+      ...validSpatialInput(),
+      variables: [
+        ...validSpatialInput().variables,
+        { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
+        { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
+      ],
+      vector_outputs: [
+        {
+          id: 'liquid_velocity',
+          components: [
+            { axis: 'x', variable_id: 'ux' },
+            { axis: 'y', variable_id: 'uy' },
+          ],
+        },
+      ],
+      requested_outputs: ['liquid_velocity'],
+    });
+    const inputSha = spatialModelInputV2Sha256(snapshot);
+    const runInput = createSpatialSimulationRunInput({
+      ownerId: 'vector-owner',
+      idempotencyKey: 'vector-output',
+    });
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet({
+      ...runInput,
+      input_snapshot: snapshot,
+      input_sha256: inputSha,
+    });
+    const base = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const { summary: _scalarSummary, ...fieldCommon } = base
+      .fields[0] as Extract<
+      (typeof base.fields)[number],
+      { value_type: 'scalar' }
+    >;
+    const vector = {
+      ...fieldCommon,
+      field_id: 'velocity_final',
+      variable_id: 'liquid_velocity',
+      value_type: 'vector' as const,
+      unit: 'm/s',
+      domain_tags: ['liquid'],
+      components: [
+        {
+          axis: 'x' as const,
+          summary: {
+            sample_count: 120,
+            minimum: 0,
+            maximum: 0.02,
+            mean: 0.01,
+            integral: 0.000001,
+            integral_unit: 'm3/s',
+            integration_measure: 'domain_area' as const,
+          },
+        },
+        {
+          axis: 'y' as const,
+          summary: {
+            sample_count: 120,
+            minimum: 0,
+            maximum: 0.04,
+            mean: 0.02,
+            integral: 0.000002,
+            integral_unit: 'm3/s',
+            integration_measure: 'domain_area' as const,
+          },
+        },
+      ],
+    };
+    const result = {
+      ...base,
+      fields: [vector],
+      scalar_outputs: [
+        {
+          metric_id: 'mean_y_velocity',
+          value: 0.02,
+          unit: 'm/s',
+          source_kind: 'modeled' as const,
+          source_ref: base.model_id,
+          derivation: {
+            kind: 'field_component_summary' as const,
+            field_id: 'velocity_final',
+            axis: 'y' as const,
+            statistic: 'mean' as const,
+          },
+        },
+      ],
+      artifact_hashes: [
+        base.mesh.artifact.sha256,
+        vector.artifact.sha256,
+      ].sort(),
+    };
+    const schema = spatialSimulationResultForInputSchema(snapshot);
+    expect(schema.safeParse(result).success).toBe(true);
+    expect(schema.safeParse({ ...result, fields: [] }).success).toBe(false);
+    expect(
+      schema.safeParse({
+        ...result,
+        fields: [{ ...vector, domain_tags: ['anode'] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({ ...result, fields: [{ ...vector, unit: 'Pa' }] })
+        .success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        ...result,
+        scalar_outputs: [{ ...result.scalar_outputs[0], value: 0.03 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        ...result,
+        scalar_outputs: [
+          {
+            ...result.scalar_outputs[0],
+            derivation: { ...result.scalar_outputs[0].derivation, axis: 'z' },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        ...result,
+        fields: [{ ...vector, variable_id: 'ux' }],
+      }).success,
+    ).toBe(false);
+    for (const [expected_status, next_status, progress] of [
+      ['queued', 'preparing_geometry', 10],
+      ['preparing_geometry', 'meshing', 20],
+      ['meshing', 'solving', 30],
+      ['solving', 'postprocessing', 90],
+    ] as const) {
+      await repository.transition({
+        run_id: run.id,
+        owner_id: runInput.owner_id,
+        expected_status,
+        next_status,
+        progress,
+        ...(next_status === 'solving' ? { mesh_sha256: meshSha256 } : {}),
+      });
+    }
+    const completed = await repository.transition({
+      run_id: run.id,
+      owner_id: runInput.owner_id,
+      expected_status: 'postprocessing',
+      next_status: 'completed',
+      progress: 100,
+      result,
+    });
+    expect(completed?.result?.fields[0]).toMatchObject({
+      variable_id: 'liquid_velocity',
+      value_type: 'vector',
+    });
+  });
   it('accepts compact field references, physical domains, units and numerical diagnostics', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
     const completed = await completeRun(repository);
