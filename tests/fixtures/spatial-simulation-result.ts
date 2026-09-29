@@ -132,6 +132,11 @@ export function validSpatialSimulationResult(
         unit: 'mol/m3',
         source_kind: 'modeled',
         source_ref: run.model_id,
+        derivation: {
+          kind: 'field_summary',
+          field_id: 'substrate_concentration_final',
+          statistic: 'maximum',
+        },
       },
     ],
     fields: [

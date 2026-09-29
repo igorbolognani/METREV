@@ -221,8 +221,95 @@ const scalarOutputSchema = z
     unit,
     source_kind: z.literal('modeled'),
     source_ref: identifier,
+    derivation: z
+      .object({
+        kind: z.literal('field_summary'),
+        field_id: identifier,
+        statistic: z.enum(['minimum', 'maximum', 'mean', 'integral']),
+      })
+      .strict(),
   })
   .strict();
+
+const fieldMeasureDimension: Record<
+  z.infer<typeof summarySchema>['integration_measure'],
+  number
+> = {
+  domain_length: 1,
+  domain_area: 2,
+  domain_volume: 3,
+  boundary_length: 2,
+  boundary_area: 3,
+};
+
+const fieldMeasureLengthPower: Record<
+  z.infer<typeof summarySchema>['integration_measure'],
+  number
+> = {
+  domain_length: 1,
+  domain_area: 2,
+  domain_volume: 3,
+  boundary_length: 1,
+  boundary_area: 2,
+};
+
+// The current spatial variable authority uses this closed set of canonical
+// units. Keep the dimensional algebra here deliberately limited to those
+// units; adding a new state unit requires adding its SI dimensions here.
+const fieldUnitDimensions: Record<string, Record<string, number>> = {
+  'mol/m3': { mol: 1, m: -3 },
+  V: { V: 1 },
+  Pa: { Pa: 1 },
+  'm/s': { m: 1, s: -1 },
+  K: { K: 1 },
+  'kg/m3': { kg: 1, m: -3 },
+  m: { m: 1 },
+};
+
+const unitSymbolOrder = ['mol', 'kg', 'V', 'Pa', 'A', 'K', 'm', 's'];
+
+function integratedUnit(
+  fieldUnit: string,
+  measureLengthPower: number,
+): string | null {
+  const fieldDimensions = fieldUnitDimensions[fieldUnit];
+  if (!fieldDimensions) return null;
+  const dimensions: Record<string, number> = {
+    ...fieldDimensions,
+    m: (fieldDimensions.m ?? 0) + measureLengthPower,
+  };
+  const formatSide = (sign: 1 | -1) =>
+    unitSymbolOrder
+      .filter((symbol) => (dimensions[symbol] ?? 0) * sign > 0)
+      .map((symbol) => {
+        const power = Math.abs(dimensions[symbol]);
+        return `${symbol}${power === 1 ? '' : power}`;
+      });
+  const numerator = formatSide(1).join('*') || '1';
+  const denominator = formatSide(-1).join('*');
+  return denominator ? `${numerator}/${denominator}` : numerator;
+}
+
+function summaryValue(
+  summary: z.infer<typeof summarySchema>,
+  statistic: z.infer<typeof scalarOutputSchema>['derivation']['statistic'],
+): number {
+  return statistic === 'minimum' ||
+    statistic === 'maximum' ||
+    statistic === 'mean'
+    ? summary[statistic]
+    : summary.integral;
+}
+
+function summaryUnit(
+  fieldUnit: string,
+  summary: z.infer<typeof summarySchema>,
+): string | null {
+  return integratedUnit(
+    fieldUnit,
+    fieldMeasureLengthPower[summary.integration_measure],
+  );
+}
 
 const conservationResidualSchema = z
   .object({
@@ -445,6 +532,30 @@ export const spatialSimulationResultSchema = z
 
     const fieldIds = new Set<string>();
     const artifactDigests = new Set([result.mesh.artifact.sha256]);
+    const validateSummary = (
+      summary: z.infer<typeof summarySchema>,
+      fieldUnit: string,
+      path: (string | number)[],
+    ) => {
+      if (
+        fieldMeasureDimension[summary.integration_measure] !== result.dimension
+      )
+        issue(
+          [...path, 'integration_measure'],
+          'Integration measure dimension must match the spatial result',
+        );
+      const expectedUnit = summaryUnit(fieldUnit, summary);
+      if (!expectedUnit)
+        issue(
+          [...path, 'integral_unit'],
+          `No dimensional rule is registered for field unit ${fieldUnit}`,
+        );
+      else if (summary.integral_unit !== expectedUnit)
+        issue(
+          [...path, 'integral_unit'],
+          `Expected integral unit ${expectedUnit} for ${fieldUnit} over ${summary.integration_measure}`,
+        );
+    };
     for (const [index, field] of result.fields.entries()) {
       if (fieldIds.has(field.field_id))
         issue(['fields', index, 'field_id'], 'Field IDs must be unique');
@@ -489,15 +600,70 @@ export const spatialSimulationResultSchema = z
             ['fields', index, 'components'],
             'Vector axes must match the result coordinate system and dimension',
           );
+        for (const [componentIndex, component] of field.components.entries())
+          validateSummary(component.summary, field.unit, [
+            'fields',
+            index,
+            'components',
+            componentIndex,
+            'summary',
+          ]);
+      } else {
+        validateSummary(field.summary, field.unit, [
+          'fields',
+          index,
+          'summary',
+        ]);
       }
     }
 
-    for (const [index, output] of result.scalar_outputs.entries())
+    const metricIds = new Set<string>();
+    for (const [index, output] of result.scalar_outputs.entries()) {
+      if (metricIds.has(output.metric_id))
+        issue(
+          ['scalar_outputs', index, 'metric_id'],
+          'Metric IDs must be unique',
+        );
+      metricIds.add(output.metric_id);
       if (output.source_ref !== result.model_id)
         issue(
           ['scalar_outputs', index, 'source_ref'],
           'Modeled scalar provenance must identify the producing model',
         );
+      const sourceField = result.fields.find(
+        (field) => field.field_id === output.derivation.field_id,
+      );
+      if (!sourceField || sourceField.value_type !== 'scalar') {
+        issue(
+          ['scalar_outputs', index, 'derivation', 'field_id'],
+          'A field-summary metric must reference a declared scalar field',
+        );
+      } else {
+        const expectedValue = summaryValue(
+          sourceField.summary,
+          output.derivation.statistic,
+        );
+        const expectedUnit =
+          output.derivation.statistic === 'integral'
+            ? sourceField.summary.integral_unit
+            : sourceField.unit;
+        if (output.unit !== expectedUnit)
+          issue(
+            ['scalar_outputs', index, 'unit'],
+            `Expected ${expectedUnit} for the declared field statistic`,
+          );
+        const scale = Math.max(
+          1,
+          Math.abs(expectedValue),
+          Math.abs(output.value),
+        );
+        if (Math.abs(output.value - expectedValue) > 1e-12 * scale)
+          issue(
+            ['scalar_outputs', index, 'value'],
+            'A field-summary metric must equal its declared source statistic',
+          );
+      }
+    }
 
     for (const [index, residual] of result.conservation_residuals.entries()) {
       if (

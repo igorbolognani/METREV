@@ -92,6 +92,77 @@ describe('spatial simulation result contract', () => {
     expect(completed.result?.mesh.mesh_quality.cell_count).toBe(480);
   });
 
+  it('binds integral units and scalar metrics to dimensionally compatible field summaries', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const result = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const firstField = result.fields[0];
+    if (firstField?.value_type !== 'scalar')
+      throw new Error('Expected scalar fixture field');
+
+    expect(spatialSimulationResultSchema.safeParse(result).success).toBe(true);
+    expect(
+      spatialSimulationResultSchema.safeParse({
+        ...result,
+        fields: result.fields.map((field, index) =>
+          index === 0 && field.value_type === 'scalar'
+            ? {
+                ...field,
+                summary: { ...field.summary, integral_unit: 'mol/m3' },
+              }
+            : field,
+        ),
+      }).success,
+    ).toBe(false);
+    expect(
+      spatialSimulationResultSchema.safeParse({
+        ...result,
+        fields: result.fields.map((field, index) =>
+          index === 0 && field.value_type === 'scalar'
+            ? {
+                ...field,
+                summary: {
+                  ...field.summary,
+                  integration_measure: 'domain_volume',
+                },
+              }
+            : field,
+        ),
+      }).success,
+    ).toBe(false);
+
+    for (const patch of [
+      { unit: 'V' },
+      { value: 0.7 },
+      {
+        derivation: {
+          kind: 'field_summary' as const,
+          field_id: 'missing',
+          statistic: 'maximum' as const,
+        },
+      },
+      {
+        derivation: {
+          kind: 'field_summary' as const,
+          field_id: firstField.field_id,
+          statistic: 'integral' as const,
+        },
+      },
+    ]) {
+      expect(
+        spatialSimulationResultSchema.safeParse({
+          ...result,
+          scalar_outputs: result.scalar_outputs.map((output, index) =>
+            index === 0 ? { ...output, ...patch } : output,
+          ),
+        }).success,
+      ).toBe(false);
+    }
+  });
+
   it('binds field IDs, canonical units and eligible domains to the authoritative input', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
     const { run } = await repository.createOrGet(input);
@@ -340,6 +411,21 @@ describe('spatial simulation result contract', () => {
         progress: 90,
       });
       const valid = validSpatialSimulationResult(current!);
+      const inputBoundUnitMismatch = {
+        ...valid,
+        fields: valid.fields.map((field, index) =>
+          index === 0 && field.value_type === 'scalar'
+            ? {
+                ...field,
+                unit: 'kg/m3',
+                summary: { ...field.summary, integral_unit: 'kg/m' },
+              }
+            : field,
+        ),
+        scalar_outputs: valid.scalar_outputs.map((output, index) =>
+          index === 0 ? { ...output, unit: 'kg/m3' } : output,
+        ),
+      };
       for (const next_status of ['completed', 'failed'] as const) {
         await expect(
           transition({
@@ -348,12 +434,7 @@ describe('spatial simulation result contract', () => {
             expected_status: 'postprocessing',
             next_status,
             progress: next_status === 'completed' ? 100 : 90,
-            result: {
-              ...valid,
-              fields: valid.fields.map((field, index) =>
-                index === 0 ? { ...field, unit: 'V' } : field,
-              ),
-            },
+            result: inputBoundUnitMismatch,
             ...(next_status === 'failed'
               ? { failure: { code: 'test_failure', message: 'Fixture' } }
               : {}),
