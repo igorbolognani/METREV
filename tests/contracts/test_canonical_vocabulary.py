@@ -545,6 +545,8 @@ def test_spatial_v2_external_contract_and_unit_authority() -> None:
     )
     assert set(declared_kinds) == set(authority["boundary_semantics"])
     assert contract["geometry"]["version"] == "planar-layers-v1"
+    assert contract["geometry"]["layer_optional"] == ["component_id", "target_size_m"]
+    assert "source-traced" in contract["geometry"]["local_refinement"]
     assert contract["scientific_value"]["required"] == [
         "value", "unit", "source_kind", "source_ref"
     ]
