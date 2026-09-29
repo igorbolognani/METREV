@@ -133,6 +133,41 @@ describe('spatial simulation result contract', () => {
         ),
       }).success,
     ).toBe(false);
+    const axisymmetricResult = {
+      ...result,
+      coordinate_system: 'axisymmetric' as const,
+      fields: result.fields.map((field, index) =>
+        field.value_type === 'scalar'
+          ? {
+              ...field,
+              summary: {
+                ...field.summary,
+                integration_measure:
+                  index === 0
+                    ? ('domain_volume' as const)
+                    : ('boundary_area' as const),
+                integral_unit: index === 0 ? 'mol' : 'V*m2',
+              },
+            }
+          : field,
+      ),
+    };
+    expect(
+      spatialSimulationResultSchema.safeParse(axisymmetricResult).success,
+    ).toBe(true);
+    expect(
+      spatialSimulationResultSchema.safeParse({
+        ...axisymmetricResult,
+        fields: axisymmetricResult.fields.map((field, index) =>
+          index === 0 && field.value_type === 'scalar'
+            ? {
+                ...field,
+                summary: { ...field.summary, integral_unit: 'mol/m' },
+              }
+            : field,
+        ),
+      }).success,
+    ).toBe(false);
 
     for (const patch of [
       { unit: 'V' },
