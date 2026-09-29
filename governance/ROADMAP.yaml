@@ -351,11 +351,11 @@ work_items:
     blockers:
       - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider and the viewer is absent
       - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
-      - Returned state fields must contain every requested variable and no unrequested variable; derived/vector output authority and integral/scalar metric unit compatibility remain pending
+      - Returned state fields must contain every requested variable and no unrequested variable; independent derived metrics and vector output authority remain pending
     gate_evidence:
-      GATE-CONTRACT: spatial-simulation-result-v1 rejects inconsistent domains, field references, hash lists and completion identity; input-bound persistence also checks mesh topology and requested state outputs
+      GATE-CONTRACT: spatial-simulation-result-v2 rejects inconsistent domains, field references, hash lists, metric derivations and completion identity; v1 result snapshots remain readable, while new input-bound persistence requires v2 and checks mesh topology and requested state outputs
       GATE-PROVENANCE: result and scalar outputs bind to run, model, input hash and content-addressed mesh/field references
-      GATE-UNITS: field state units are checked against authority-validated immutable input before both completed and failed result persistence; integral and scalar metric unit compatibility remain open
+      GATE-UNITS: field state units are checked against authority-validated immutable input before completed or failed persistence; integral units are checked against field units and Cartesian mesh dimension, while axisymmetric domain-volume and boundary-area integrals use the physical 3D measure; scalar summaries must declare a source field statistic and match its value and unit
   - id: P15
     title: Correct persistence before large spatial results arrive
     phase: P2

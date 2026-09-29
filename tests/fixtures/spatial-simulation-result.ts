@@ -11,7 +11,7 @@ export function validSpatialSimulationResult(
   run: SpatialSimulationRunSnapshot,
 ) {
   return spatialSimulationResultSchema.parse({
-    contract_version: 'spatial-simulation-result-v1',
+    contract_version: 'spatial-simulation-result-v2',
     run_id: run.id,
     evaluation_id: run.evaluation_id,
     model_id: run.model_id,
@@ -132,6 +132,11 @@ export function validSpatialSimulationResult(
         unit: 'mol/m3',
         source_kind: 'modeled',
         source_ref: run.model_id,
+        derivation: {
+          kind: 'field_summary',
+          field_id: 'substrate_concentration_final',
+          statistic: 'maximum',
+        },
       },
     ],
     fields: [
