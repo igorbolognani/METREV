@@ -5,6 +5,7 @@ import {
   createSpatialSimulationRunInputSchema,
   retrySpatialSimulationRunInputSchema,
   spatialSimulationResultSchema,
+  spatialSimulationResultForInputSchema,
   spatialSimulationRunLeaseInputSchema,
   spatialSimulationRunSnapshotSchema,
   transitionSpatialSimulationRunInputSchema,
@@ -236,6 +237,7 @@ function assertSameIdempotentRequest(
 function assertTransition(
   current: SpatialSimulationRunSnapshot,
   input: ReturnType<typeof transitionSpatialSimulationRunInputSchema.parse>,
+  inputSnapshot?: unknown,
 ): SpatialSimulationRunSnapshot {
   if (
     current.cancellation_requested &&
@@ -350,6 +352,24 @@ function assertTransition(
       'invalid_transition',
       'Result manifest does not match the immutable run and verified mesh',
     );
+
+  if (input.result) {
+    const parsedInput = spatialModelInputV2Schema.safeParse(inputSnapshot);
+    if (!parsedInput.success)
+      throw new SpatialSimulationRunError(
+        'invalid_transition',
+        'Result persistence requires a valid immutable input snapshot',
+      );
+    const boundResult = spatialSimulationResultForInputSchema(
+      parsedInput.data,
+      current.input_sha256,
+    ).safeParse(input.result);
+    if (!boundResult.success)
+      throw new SpatialSimulationRunError(
+        'invalid_transition',
+        `Result field contract does not match its input: ${boundResult.error.issues.map((issue) => issue.message).join('; ')}`,
+      );
+  }
 
   const now = new Date(
     Math.max(Date.now(), Date.parse(current.updated_at) + 1),
@@ -496,7 +516,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
     if (!currentRecord) return null;
 
     const current = fromRecord(currentRecord);
-    const next = assertTransition(current, input);
+    const next = assertTransition(current, input, currentRecord.inputSnapshot);
     const resultJson = input.result ? JSON.stringify(input.result) : null;
     if (
       resultJson !== null &&
@@ -745,7 +765,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
         'The worker no longer owns a live lease for this run',
       );
     const current = fromRecord(currentRecord);
-    const next = assertTransition(current, input);
+    const next = assertTransition(current, input, currentRecord.inputSnapshot);
     const resultJson = input.result ? JSON.stringify(input.result) : null;
     if (
       resultJson !== null &&
@@ -1080,7 +1100,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
         'lease_lost',
         'A claimed run can only be transitioned by its active worker lease',
       );
-    const next = assertTransition(record.snapshot, input);
+    const next = assertTransition(record.snapshot, input, record.input);
     if (
       input.result &&
       Buffer.byteLength(JSON.stringify(input.result), 'utf8') >
@@ -1247,7 +1267,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
         'lease_lost',
         'The worker no longer owns a live lease for this run',
       );
-    const next = assertTransition(record.snapshot, input);
+    const next = assertTransition(record.snapshot, input, record.input);
     if (
       input.result &&
       Buffer.byteLength(JSON.stringify(input.result), 'utf8') >

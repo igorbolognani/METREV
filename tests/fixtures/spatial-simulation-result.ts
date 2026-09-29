@@ -136,7 +136,7 @@ export function validSpatialSimulationResult(
     fields: [
       {
         field_id: 'substrate_concentration_final',
-        variable_id: 'substrate_concentration',
+        variable_id: 'substrate_c',
         value_type: 'scalar',
         unit: 'mol/m3',
         association: 'mesh_cells',
