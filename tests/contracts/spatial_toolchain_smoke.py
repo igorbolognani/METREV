@@ -257,6 +257,24 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
     outlet = mesh_data.physical_groups["boundary:outlet"]
     viscosity = fem.Constant(domain, PETSc.ScalarType(viscosity_pa_s))
     inlet_pressure = fem.Constant(domain, PETSc.ScalarType(pressure_drop_pa))
+    outlet_pressure = fem.Constant(domain, PETSc.ScalarType(0.0))
+    cross_channel_coordinate = ufl.SpatialCoordinate(domain)[0]
+    exact_shear_rate = (
+        inlet_pressure
+        * (width_m - 2.0 * cross_channel_coordinate)
+        / (2.0 * viscosity * length_m)
+    )
+
+    def exact_traction(boundary_pressure):
+        return ufl.as_vector(
+            (
+                -boundary_pressure * normal[0]
+                + viscosity * exact_shear_rate * normal[1],
+                -boundary_pressure * normal[1]
+                + viscosity * exact_shear_rate * normal[0],
+            )
+        )
+
     bilinear = (
         2.0 * viscosity * ufl.inner(
             ufl.sym(ufl.grad(trial_velocity)), ufl.sym(ufl.grad(test_velocity))
@@ -264,9 +282,8 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
         - trial_pressure * ufl.div(test_velocity)
         - test_pressure * ufl.div(trial_velocity)
     ) * dx
-    linear = (
-        -inlet_pressure * ufl.dot(normal, test_velocity) * ds(inlet.tag)
-    )
+    linear = ufl.dot(exact_traction(inlet_pressure), test_velocity) * ds(inlet.tag)
+    linear += ufl.dot(exact_traction(outlet_pressure), test_velocity) * ds(outlet.tag)
     problem = LinearProblem(
         bilinear,
         linear,
@@ -358,9 +375,9 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
         "relative_pressure_l2_error": relative_pressure_error,
         "relative_flow_balance_error": flow_balance_error,
         "relative_pressure_drop_error": pressure_drop_error,
-        "inlet_flow_m3_s_per_depth": inlet_flow,
-        "outlet_flow_m3_s_per_depth": outlet_flow,
-        "expected_flow_m3_s_per_depth": expected_flow,
+        "inlet_flow_m2_s_per_depth": inlet_flow,
+        "outlet_flow_m2_s_per_depth": outlet_flow,
+        "expected_flow_m2_s_per_depth": expected_flow,
     }
 
 
