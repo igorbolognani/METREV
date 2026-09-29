@@ -12,6 +12,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SIDECAR = ROOT / "apps" / "spatial-sidecar"
+sys.path.insert(0, str(SIDECAR))
 FIXTURE = ROOT / "tests" / "fixtures" / "planar-mesh-request.json"
 MESH_AREA_RELATIVE_TOLERANCE = 1e-10
 
@@ -34,6 +35,46 @@ class SidecarTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             response, _ = self.call(fixture, directory)
         self.assertEqual(response["code"], "invalid_request")
+
+    def test_source_traced_layer_refinement_is_bounded(self):
+        fixture = json.loads(FIXTURE.read_text())
+        layer = fixture["mesh"]["layers"][1]
+        layer["target_size_m"] = {**fixture["mesh"]["target_size_m"], "value": 0.0005}
+        from metrev_spatial.__main__ import validate_mesh
+        self.assertEqual(validate_mesh(fixture["mesh"])["layers"][1], layer)
+        for value, unit in ((0.003, "m"), (0.0005, "s"), (0, "m"), (0.000001, "m")):
+            layer["target_size_m"].update(value=value, unit=unit)
+            with self.assertRaises(ValueError):
+                validate_mesh(fixture["mesh"])
+
+    @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
+    def test_local_refinement_increases_biofilm_resolution_without_changing_tags(self):
+        from metrev_spatial.__main__ import create_planar_mesh
+        fixture = json.loads(FIXTURE.read_text())["mesh"]
+        fixture["refinement_factors"] = [1]
+        with tempfile.TemporaryDirectory() as directory:
+            baseline_groups, baseline = create_planar_mesh(fixture, Path(directory) / "uniform")
+            fixture["layers"][1]["target_size_m"] = {**fixture["target_size_m"], "value": 0.0004}
+            groups, local = create_planar_mesh(fixture, Path(directory) / "local")
+            self.assertEqual(groups, baseline_groups)
+            import gmsh
+            def region_cells(path):
+                gmsh.initialize()
+                try:
+                    gmsh.option.setNumber("General.Terminal", 0)
+                    gmsh.open(str(path))
+                    tagged = {}
+                    for _, tag in gmsh.model.getPhysicalGroups(2):
+                        name = gmsh.model.getPhysicalName(2, tag)
+                        tagged[name] = sum(len(elements) for surface in gmsh.model.getEntitiesForPhysicalGroup(2, tag)
+                                           for elements in gmsh.model.mesh.getElements(2, surface)[1])
+                    return tagged
+                finally:
+                    gmsh.finalize()
+            uniform = region_cells(Path(directory) / "uniform" / baseline[0]["path"])
+            refined = region_cells(Path(directory) / "local" / local[0]["path"])
+            self.assertEqual(set(refined), set(uniform))
+            self.assertGreater(refined["region:biofilm"], uniform["region:biofilm"])
 
     @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
     def test_three_real_meshes_and_physical_groups(self):

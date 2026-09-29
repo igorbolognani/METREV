@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   spatialModelInputSchema,
   spatialModelInputV2Schema,
+  spatialSidecarRequestSchema,
   spatialVariableAuthority,
 } from '@metrev/domain-contracts';
 import { meshReferenceFromSidecar } from '@metrev/spatial-sidecar-client';
@@ -19,6 +20,27 @@ import {
 const valid = validSpatialInput;
 
 describe('spatial-input-v2 admission boundary', () => {
+  it('binds source-traced local mesh sizes into the admitted request and rejects invalid refinements', () => {
+    const candidate = valid();
+    candidate.geometry.layers[1].target_size_m = q(0.0005, 'm');
+    candidate.mesh.request.mesh.layers[1].target_size_m = q(0.0005, 'm');
+    candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(true);
+    candidate.geometry.layers[1].target_size_m.value = 0.0006;
+    expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(false);
+    for (const local of [
+      q(0.003, 'm'),
+      q(0.0005, 's'),
+      q(0, 'm'),
+      q(0.000001, 'm'),
+    ]) {
+      const request = copy(meshRequest);
+      request.mesh.layers[1].target_size_m = local;
+      expect(spatialSidecarRequestSchema.safeParse(request).success).toBe(
+        false,
+      );
+    }
+  });
   it('joins a tagged planar mesh to source-backed state and circuit declarations without enabling a solver', () => {
     const parsed = spatialModelInputV2Schema.parse(valid());
     expect(parsed.mesh.physical_groups['interface:biofilm:liquid']).toBe(203);

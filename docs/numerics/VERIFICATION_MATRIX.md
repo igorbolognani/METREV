@@ -16,6 +16,8 @@
 
 For each new PDE capability, record mesh/time levels, observable, norms, tolerances, residual units, solver options and run artifact hash in a versioned benchmark. Promotion follows `governance/SCIENTIFIC_MATURITY.yaml` and `governance/ACCEPTANCE_GATES.yaml`.
 
+The planar Gmsh recipe accepts an optional source-traced target size per layer, no larger than the global target. Interface points use the finer neighboring size, so physical groups and conforming shared facets remain intact. The pinned Gmsh check compares targeted biofilm cell count to the same uniform recipe. This is mesh-resolution evidence, not PDE convergence or a product solver.
+
 The isolated scalar finite-volume kernel additionally verifies a first-order linear disappearance term: a manufactured 1D profile refines at three grids; a spatially constant source/loss equilibrium is checked in 1D/2D/3D; transient reaction, storage and boundary flux close the global balance in 1D/2D/3D. These fixtures do not satisfy cell-level reaction, charge or coupled-interface gates.
 
 The same kernel verifies a constant, grid-aligned diagonal diffusion tensor through affine fields in 1D/2D/3D and manufactured-source refinement in 2D/3D. It has no off-diagonal tensor terms or unstructured-mesh discretization.
