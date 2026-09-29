@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 import tempfile
 
-import basix.ufl
 from mpi4py import MPI
 import numpy as np
 from petsc4py import PETSc
@@ -19,6 +18,7 @@ from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import gmsh as gmshio
 
 from metrev_spatial.__main__ import run
+from metrev_spatial.stokes import solve_planar_stokes
 
 
 def solve_affine(mesh_data, gradient: tuple[float, ...]) -> tuple[float, int]:
@@ -221,43 +221,15 @@ def create_stokes_channel_mesh(path: Path, characteristic_length: float) -> None
         gmsh.finalize()
 
 
-def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
+def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float,
+                           viscosity_pa_s: float, pressure_drop_pa: float) -> dict:
     """Solve a pressure-driven Taylor-Hood Stokes channel verification fixture."""
     domain = mesh_data.mesh
     assert domain.topology.dim == 2
-    viscosity_pa_s = 1e-3
-    pressure_drop_pa = 1e-7
-    space = fem.functionspace(
-        domain,
-        basix.ufl.mixed_element(
-            [
-                basix.ufl.element(
-                    "Lagrange", domain.basix_cell(), 2, shape=(domain.geometry.dim,)
-                ),
-                basix.ufl.element("Lagrange", domain.basix_cell(), 1),
-            ]
-        ),
-    )
-    velocity_space, _ = space.sub(0).collapse()
-    zero_velocity = fem.Function(velocity_space)
-    zero_velocity.x.array[:] = 0.0
-    wall = mesh_data.physical_groups["boundary:wall"]
-    wall_facets = mesh_data.facet_tags.find(wall.tag)
-    wall_dofs = fem.locate_dofs_topological(
-        (space.sub(0), velocity_space), domain.topology.dim - 1, wall_facets
-    )
-    boundary_condition = fem.dirichletbc(zero_velocity, wall_dofs, space.sub(0))
-
-    trial_velocity, trial_pressure = ufl.TrialFunctions(space)
-    test_velocity, test_pressure = ufl.TestFunctions(space)
     normal = ufl.FacetNormal(domain)
     dx = ufl.Measure("dx", domain=domain)
-    ds = ufl.Measure("ds", domain=domain, subdomain_data=mesh_data.facet_tags)
-    inlet = mesh_data.physical_groups["boundary:inlet"]
-    outlet = mesh_data.physical_groups["boundary:outlet"]
     viscosity = fem.Constant(domain, PETSc.ScalarType(viscosity_pa_s))
     inlet_pressure = fem.Constant(domain, PETSc.ScalarType(pressure_drop_pa))
-    outlet_pressure = fem.Constant(domain, PETSc.ScalarType(0.0))
     cross_channel_coordinate = ufl.SpatialCoordinate(domain)[0]
     exact_shear_rate = (
         inlet_pressure
@@ -275,32 +247,16 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
             )
         )
 
-    bilinear = (
-        2.0 * viscosity * ufl.inner(
-            ufl.sym(ufl.grad(trial_velocity)), ufl.sym(ufl.grad(test_velocity))
-        )
-        - trial_pressure * ufl.div(test_velocity)
-        - test_pressure * ufl.div(trial_velocity)
-    ) * dx
-    linear = ufl.dot(exact_traction(inlet_pressure), test_velocity) * ds(inlet.tag)
-    linear += ufl.dot(exact_traction(outlet_pressure), test_velocity) * ds(outlet.tag)
-    problem = LinearProblem(
-        bilinear,
-        linear,
-        bcs=[boundary_condition],
-        petsc_options_prefix=f"metrev_stokes_channel_{len(mesh_data.cell_tags.values)}_",
-        petsc_options={
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "ksp_error_if_not_converged": True,
+    solved = solve_planar_stokes(
+        mesh_data, viscosity_pa_s=viscosity_pa_s,
+        wall_tags=("boundary:wall",), inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
+        traction_by_tag={
+            "boundary:inlet": exact_traction(inlet_pressure),
+            "boundary:outlet": exact_traction(fem.Constant(domain, PETSc.ScalarType(0.0))),
         },
     )
-    solution = problem.solve()
-    solved_velocity, solved_pressure = solution.split()
-    solved_velocity = solved_velocity.collapse()
-    solved_pressure = solved_pressure.collapse()
-    solved_velocity.x.scatter_forward()
-    solved_pressure.x.scatter_forward()
+    solved_velocity, solved_pressure = solved.velocity, solved.pressure
+    velocity_space = solved_velocity.function_space
 
     exact_velocity = fem.Function(velocity_space)
     exact_velocity.interpolate(
@@ -314,7 +270,7 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
             ]
         )
     )
-    exact_pressure_space, _ = space.sub(1).collapse()
+    exact_pressure_space = solved_pressure.function_space
     exact_pressure = fem.Function(exact_pressure_space)
     exact_pressure.interpolate(
         lambda x: pressure_drop_pa * (1.0 - x[1] / length_m)
@@ -346,14 +302,10 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
     )
     pressure_norm = np.sqrt(global_integral(exact_pressure**2 * dx))
 
-    inlet_measure = global_integral(1.0 * ds(inlet.tag))
-    outlet_measure = global_integral(1.0 * ds(outlet.tag))
-    mean_inlet_pressure = global_integral(solved_pressure * ds(inlet.tag)) / inlet_measure
-    mean_outlet_pressure = global_integral(solved_pressure * ds(outlet.tag)) / outlet_measure
-    inlet_outward_flux = global_integral(ufl.dot(solved_velocity, normal) * ds(inlet.tag))
-    outlet_outward_flux = global_integral(ufl.dot(solved_velocity, normal) * ds(outlet.tag))
-    inlet_flow = -inlet_outward_flux
-    outlet_flow = outlet_outward_flux
+    mean_inlet_pressure = solved.mean_inlet_pressure_pa
+    mean_outlet_pressure = solved.mean_outlet_pressure_pa
+    inlet_flow = solved.inlet_flow_m2_s_per_depth
+    outlet_flow = solved.outlet_flow_m2_s_per_depth
     expected_flow = pressure_drop_pa * width_m**3 / (
         12.0 * viscosity_pa_s * length_m
     )
@@ -369,6 +321,8 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
     assert flow_balance_error < 1e-8, flow_balance_error
     assert pressure_drop_error < 1e-7, pressure_drop_error
     assert inlet_flow > 0.0 and outlet_flow > 0.0
+    assert solved.linear_converged_reason > 0
+    assert solved.divergence_l2_per_s < 1e-8
     return {
         "cell_count": len(mesh_data.cell_tags.values),
         "relative_velocity_l2_error": relative_velocity_error,
@@ -378,6 +332,8 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float) -> dict:
         "inlet_flow_m2_s_per_depth": inlet_flow,
         "outlet_flow_m2_s_per_depth": outlet_flow,
         "expected_flow_m2_s_per_depth": expected_flow,
+        "divergence_l2_per_s": solved.divergence_l2_per_s,
+        "linear_iterations": solved.linear_iterations,
     }
 
 
@@ -440,9 +396,35 @@ def main() -> None:
                 mesh_file, characteristic_length=0.002 / refinement_factor
             )
             channel = gmshio.read_from_msh(mesh_file, MPI.COMM_WORLD, gdim=2)
-            result = solve_stokes_poiseuille(channel, width_m=0.01, length_m=0.01)
+            viscosity_pa_s = 2e-3 if refinement_factor == 2 else 1e-3
+            pressure_drop_pa = 2e-7 if refinement_factor == 4 else 1e-7
+            result = solve_stokes_poiseuille(
+                channel, width_m=0.01, length_m=0.01,
+                viscosity_pa_s=viscosity_pa_s, pressure_drop_pa=pressure_drop_pa,
+            )
             result["refinement_factor"] = refinement_factor
             stokes_results.append(result)
+            if refinement_factor == 1:
+                for override in (
+                    {"viscosity_pa_s": 0.0},
+                    {"inlet_tag": "missing:inlet", "traction_by_tag": {
+                        "missing:inlet": ufl.as_vector((0.0, 0.0)),
+                        "boundary:outlet": ufl.as_vector((0.0, 0.0)),
+                    }},
+                ):
+                    options = dict(
+                        viscosity_pa_s=1e-3, wall_tags=("boundary:wall",),
+                        inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
+                        traction_by_tag={"boundary:inlet": ufl.as_vector((0.0, 0.0)),
+                                         "boundary:outlet": ufl.as_vector((0.0, 0.0))},
+                    )
+                    options.update(override)
+                    try:
+                        solve_planar_stokes(channel, **options)
+                    except ValueError:
+                        pass
+                    else:
+                        raise AssertionError(f"Invalid Stokes input accepted: {override}")
     assert all(
         earlier["cell_count"] < later["cell_count"]
         for earlier, later in zip(stokes_results, stokes_results[1:])

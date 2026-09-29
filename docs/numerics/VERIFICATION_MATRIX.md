@@ -22,6 +22,8 @@ The isolated scalar finite-volume kernel additionally verifies a first-order lin
 
 Prescribed cellwise incompressible velocity is face-averaged on internal finite-volume faces and checked for zero discrete divergence per cell. A synthetic shear field and scalar concentration/source pair refine at three 2D and 3D grid levels, with true solver residual <1e-9 and integrated balance <1e-8 mol/s; a transient constant state remains invariant. No solved hydraulic field is transferred from the Gmsh/DOLFINx fixture or a case run.
 
+The reusable tagged-mesh Stokes development component applies full declared traction and no-slip walls, records PETSc convergence, divergence L2, inlet/outlet fluxes and pressure means. The synthetic planar Poiseuille check varies viscosity and pressure drop across three mesh levels and requires relative field and flow errors below 1e-7 and flow imbalance below 1e-8. The component has no product hydraulic admission or porous interface.
+
 The same kernel verifies a constant, grid-aligned diagonal diffusion tensor through affine fields in 1D/2D/3D and manufactured-source refinement in 2D/3D. It has no off-diagonal tensor terms or unstructured-mesh discretization.
 
 Prescribed outward diffusive-flux boundaries are checked as a no-flux limit with reaction in steady 1D/2D/3D and with implicit transient loss/storage in 1D/2D/3D. Mixed Dirichlet/flux faces and a steady unanchored all-Neumann problem remain unsupported.
