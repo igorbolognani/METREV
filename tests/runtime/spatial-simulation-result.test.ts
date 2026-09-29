@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { MemorySpatialSimulationRunRepository } from '@metrev/database';
 import {
   createSpatialSimulationRunInputSchema,
+  spatialModelInputV2Sha256,
   spatialSimulationResultSchema,
+  spatialSimulationResultForInputSchema,
   type SpatialSimulationRunSnapshot,
 } from '@metrev/domain-contracts';
 
@@ -89,6 +91,168 @@ describe('spatial simulation result contract', () => {
     expect(completed.result?.conservation_residuals[0]?.passed).toBe(true);
     expect(completed.result?.mesh.mesh_quality.cell_count).toBe(480);
   });
+
+  it('binds field IDs, canonical units and eligible domains to the authoritative input', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const valid = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const schema = spatialSimulationResultForInputSchema(input.input_snapshot);
+    expect(schema.safeParse(valid).success).toBe(true);
+    for (const patch of [
+      { variable_id: 'undeclared' },
+      { unit: 'V' },
+      { unit: 'mmol/m3' },
+      { domain_tags: ['anode'] },
+    ]) {
+      expect(
+        schema.safeParse({
+          ...valid,
+          fields: [{ ...valid.fields[0], ...patch }],
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      schema.safeParse({ ...valid, input_sha256: 'e'.repeat(64) }).success,
+    ).toBe(false);
+    const { summary, ...common } = valid.fields[0] as Extract<
+      (typeof valid.fields)[number],
+      { value_type: 'scalar' }
+    >;
+    expect(
+      schema.safeParse({
+        ...valid,
+        fields: [
+          {
+            ...common,
+            value_type: 'vector',
+            components: [
+              { axis: 'x', summary },
+              { axis: 'y', summary },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('uses the admitted digest after persisted JSON changes object key order', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const valid = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const reloadedInput = JSON.parse(
+      JSON.stringify(input.input_snapshot, (_key, value: unknown) =>
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? Object.fromEntries(Object.entries(value).reverse())
+          : value,
+      ),
+    ) as typeof input.input_snapshot;
+
+    expect(spatialModelInputV2Sha256(reloadedInput)).not.toBe(run.input_sha256);
+    const bound = spatialSimulationResultForInputSchema(
+      reloadedInput,
+      run.input_sha256,
+    );
+    expect(bound.safeParse(valid).success).toBe(true);
+    expect(
+      bound.safeParse({ ...valid, input_sha256: 'e'.repeat(64) }).success,
+    ).toBe(false);
+    expect(
+      bound.safeParse({
+        ...valid,
+        fields: [{ ...valid.fields[0], unit: 'V' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([false, true])(
+    'rejects incompatible persisted fields for leased=%s without changing state',
+    async (leased) => {
+      const repository = new MemorySpatialSimulationRunRepository();
+      const { run } = await repository.createOrGet(input);
+      const claim = leased
+        ? await repository.claimNextQueued({
+            worker_id: 'unit-worker',
+            ...workerVersions,
+            lease_duration_ms: 30_000,
+          })
+        : null;
+      const transition = (
+        candidate: Parameters<typeof repository.transition>[0],
+      ) =>
+        claim
+          ? repository.transitionClaimed({
+              ...candidate,
+              worker_id: 'unit-worker',
+              lease_token: claim.leaseToken,
+            })
+          : repository.transition(candidate);
+      if (!leased)
+        await transition({
+          run_id: run.id,
+          owner_id: input.owner_id,
+          expected_status: 'queued',
+          next_status: 'preparing_geometry',
+          progress: 10,
+        });
+      await transition({
+        run_id: run.id,
+        owner_id: input.owner_id,
+        expected_status: 'preparing_geometry',
+        next_status: 'meshing',
+        progress: 20,
+      });
+      await transition({
+        run_id: run.id,
+        owner_id: input.owner_id,
+        expected_status: 'meshing',
+        next_status: 'solving',
+        progress: 30,
+        mesh_sha256: meshSha256,
+      });
+      const current = await transition({
+        run_id: run.id,
+        owner_id: input.owner_id,
+        expected_status: 'solving',
+        next_status: 'postprocessing',
+        progress: 90,
+      });
+      const valid = validSpatialSimulationResult(current!);
+      for (const next_status of ['completed', 'failed'] as const) {
+        await expect(
+          transition({
+            run_id: run.id,
+            owner_id: input.owner_id,
+            expected_status: 'postprocessing',
+            next_status,
+            progress: next_status === 'completed' ? 100 : 90,
+            result: { ...valid, fields: [{ ...valid.fields[0], unit: 'V' }] },
+            ...(next_status === 'failed'
+              ? { failure: { code: 'test_failure', message: 'Fixture' } }
+              : {}),
+          }),
+        ).rejects.toMatchObject({ code: 'invalid_transition' });
+        expect(
+          (await repository.getOwnedRun(run.id, input.owner_id))?.status,
+        ).toBe('postprocessing');
+      }
+      await expect(
+        transition({
+          run_id: run.id,
+          owner_id: input.owner_id,
+          expected_status: 'postprocessing',
+          next_status: 'completed',
+          progress: 100,
+          result: valid,
+        }),
+      ).resolves.toMatchObject({ status: 'completed' });
+    },
+  );
 
   it('rejects a field hash or physical-group map that is not represented by the result manifest', async () => {
     const repository = new MemorySpatialSimulationRunRepository();

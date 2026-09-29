@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
+  type SpatialModelInputV2,
 } from './spatial-model-v2-schema';
 
 const identifier = z.string().trim().min(1).max(160);
@@ -537,6 +538,69 @@ export const spatialSimulationResultSchema = z
         'Artifact digest list must match the mesh and field references',
       );
   });
+
+/** Bind state-field metadata to the immutable, authority-validated input.
+ * Structural parsing alone cannot establish the meaning of an arbitrary variable ID.
+ * Derived/vector outputs need their own authority before this v2 persistence path accepts them.
+ */
+export function spatialSimulationResultForInputSchema(
+  candidate: SpatialModelInputV2,
+  admittedInputSha256?: string,
+) {
+  const input = spatialModelInputV2Schema.parse(candidate);
+  const variables = new Map(
+    input.variables.map((variable) => [variable.id, variable]),
+  );
+  // PostgreSQL jsonb can reorder object keys. Persisted runs carry the
+  // original digest computed at admission before the JSONB round trip.
+  const inputHash = admittedInputSha256 ?? spatialModelInputV2Sha256(input);
+  return spatialSimulationResultSchema.superRefine((result, context) => {
+    const issue = (path: (string | number)[], message: string) =>
+      context.addIssue({ code: 'custom', path, message });
+    if (
+      result.input_sha256 !== inputHash ||
+      result.input_contract_version !== input.contract_version
+    )
+      issue(
+        ['input_sha256'],
+        'Result must bind to the immutable spatial input snapshot',
+      );
+    if (
+      result.dimension !== input.dimension ||
+      result.coordinate_system !== input.coordinate_system
+    )
+      issue(
+        ['dimension'],
+        'Result coordinates and dimension must match the input',
+      );
+    for (const [index, field] of result.fields.entries()) {
+      const variable = variables.get(field.variable_id);
+      if (!variable) {
+        issue(
+          ['fields', index, 'variable_id'],
+          'Result field requires an input-declared variable',
+        );
+        continue;
+      }
+      if (field.unit !== variable.unit)
+        issue(
+          ['fields', index, 'unit'],
+          `Expected canonical variable unit ${variable.unit}`,
+        );
+      if (field.domain_tags.some((tag) => !variable.domain_tags.includes(tag)))
+        issue(
+          ['fields', index, 'domain_tags'],
+          'Result field exceeds its declared variable domains',
+        );
+      // Every currently authoritative v2 kind is a scalar (including velocity_x/y).
+      if (field.value_type !== 'scalar')
+        issue(
+          ['fields', index, 'value_type'],
+          'Current input variable kinds require scalar state fields',
+        );
+    }
+  });
+}
 
 export const spatialSimulationRunStatusSchema = z.enum([
   'queued',

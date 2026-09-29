@@ -117,6 +117,20 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
       failure: null,
       completed_at: new Date().toISOString(),
     });
+    await expect(
+      repository.transition({
+        run_id: runId,
+        owner_id: ownerId,
+        expected_status: 'postprocessing',
+        next_status: 'completed',
+        progress: 100,
+        result: { ...result, fields: [{ ...result.fields[0], unit: 'V' }] },
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_transition' });
+    expect((await repository.getOwnedRun(runId, ownerId))?.status).toBe(
+      'postprocessing',
+    );
+
     const completed = await repository.transition({
       run_id: runId,
       owner_id: ownerId,
