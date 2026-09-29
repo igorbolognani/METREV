@@ -164,4 +164,65 @@ describe('isolated numerical sidecar boundary', () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it.skipIf(process.platform === 'win32')(
+    'terminates descendants when a sidecar process is cancelled',
+    async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'metrev-sidecar-tree-'));
+      const launcher = join(directory, 'launch-descendant');
+      const startedFile = join(directory, 'descendant-started');
+      const escapedFile = join(directory, 'descendant-survived');
+      const descendant = [
+        'import pathlib, time',
+        `pathlib.Path(${JSON.stringify(startedFile)}).write_text("started")`,
+        'time.sleep(0.5)',
+        `pathlib.Path(${JSON.stringify(escapedFile)}).write_text("survived")`,
+      ].join('\n');
+      await writeFile(
+        launcher,
+        [
+          '#!/usr/bin/env python3',
+          'import subprocess, sys, time',
+          `subprocess.Popen([sys.executable, "-c", ${JSON.stringify(descendant)}])`,
+          'time.sleep(10)',
+        ].join('\n'),
+      );
+      await chmod(launcher, 0o700);
+      const controller = new AbortController();
+      const health = {
+        protocol_version: 'spatial-sidecar-v1' as const,
+        request_id: fixture.request_id,
+        operation: 'health' as const,
+      };
+      try {
+        const pending = runSpatialSidecar(health, {
+          pythonExecutable: launcher,
+          moduleDirectory,
+          artifactRoot: directory,
+          timeoutMs: 5000,
+          signal: controller.signal,
+        });
+        const deadline = Date.now() + 2000;
+        while (Date.now() < deadline) {
+          try {
+            await readFile(startedFile);
+            break;
+          } catch {
+            await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+          }
+        }
+        await expect(readFile(startedFile)).resolves.toBeDefined();
+        controller.abort();
+        await expect(pending).rejects.toMatchObject({ code: 'cancelled' });
+        await new Promise((resolveWait) => setTimeout(resolveWait, 650));
+        await expect(readFile(escapedFile)).rejects.toMatchObject({
+          code: 'ENOENT',
+        });
+      } finally {
+        controller.abort();
+        await rm(directory, { recursive: true, force: true });
+      }
+    },
+    5_000,
+  );
 });
