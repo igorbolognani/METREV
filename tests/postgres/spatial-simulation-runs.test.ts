@@ -148,7 +148,7 @@ describe('PostgreSQL spatial simulation run lifecycle', () => {
       id: runId,
       status: 'completed',
       progress: 100,
-      result: { contract_version: 'spatial-simulation-result-v1' },
+      result: { contract_version: 'spatial-simulation-result-v2' },
     });
 
     const reloaded = await repository.getOwnedRun(runId, ownerId);

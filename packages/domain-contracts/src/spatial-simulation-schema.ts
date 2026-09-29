@@ -227,9 +227,14 @@ const scalarOutputSchema = z
         field_id: identifier,
         statistic: z.enum(['minimum', 'maximum', 'mean', 'integral']),
       })
-      .strict(),
+      .strict()
+      .optional(),
   })
   .strict();
+
+type ScalarOutputDerivation = NonNullable<
+  z.infer<typeof scalarOutputSchema>['derivation']
+>;
 
 const fieldMeasureDimension: Record<
   z.infer<typeof summarySchema>['integration_measure'],
@@ -292,7 +297,7 @@ function integratedUnit(
 
 function summaryValue(
   summary: z.infer<typeof summarySchema>,
-  statistic: z.infer<typeof scalarOutputSchema>['derivation']['statistic'],
+  statistic: ScalarOutputDerivation['statistic'],
 ): number {
   return statistic === 'minimum' ||
     statistic === 'maximum' ||
@@ -433,7 +438,10 @@ const unsupportedPhysicsSchema = z
 /** Metadata and external references only. Field samples and mesh nodes stay in artifacts. */
 export const spatialSimulationResultSchema = z
   .object({
-    contract_version: z.literal('spatial-simulation-result-v1'),
+    contract_version: z.enum([
+      'spatial-simulation-result-v1',
+      'spatial-simulation-result-v2',
+    ]),
     run_id: identifier,
     evaluation_id: identifier.nullable(),
     model_id: identifier,
@@ -600,20 +608,22 @@ export const spatialSimulationResultSchema = z
             ['fields', index, 'components'],
             'Vector axes must match the result coordinate system and dimension',
           );
-        for (const [componentIndex, component] of field.components.entries())
-          validateSummary(component.summary, field.unit, [
+        if (result.contract_version === 'spatial-simulation-result-v2')
+          for (const [componentIndex, component] of field.components.entries())
+            validateSummary(component.summary, field.unit, [
+              'fields',
+              index,
+              'components',
+              componentIndex,
+              'summary',
+            ]);
+      } else {
+        if (result.contract_version === 'spatial-simulation-result-v2')
+          validateSummary(field.summary, field.unit, [
             'fields',
             index,
-            'components',
-            componentIndex,
             'summary',
           ]);
-      } else {
-        validateSummary(field.summary, field.unit, [
-          'fields',
-          index,
-          'summary',
-        ]);
       }
     }
 
@@ -630,8 +640,24 @@ export const spatialSimulationResultSchema = z
           ['scalar_outputs', index, 'source_ref'],
           'Modeled scalar provenance must identify the producing model',
         );
+      if (result.contract_version === 'spatial-simulation-result-v1') {
+        if (output.derivation !== undefined)
+          issue(
+            ['scalar_outputs', index, 'derivation'],
+            'The v1 result contract does not accept v2 derivation metadata',
+          );
+        continue;
+      }
+      const derivation = output.derivation;
+      if (derivation === undefined) {
+        issue(
+          ['scalar_outputs', index, 'derivation'],
+          'A v2 scalar output must declare its source field statistic',
+        );
+        continue;
+      }
       const sourceField = result.fields.find(
-        (field) => field.field_id === output.derivation.field_id,
+        (field) => field.field_id === derivation.field_id,
       );
       if (!sourceField || sourceField.value_type !== 'scalar') {
         issue(
@@ -641,10 +667,10 @@ export const spatialSimulationResultSchema = z
       } else {
         const expectedValue = summaryValue(
           sourceField.summary,
-          output.derivation.statistic,
+          derivation.statistic,
         );
         const expectedUnit =
-          output.derivation.statistic === 'integral'
+          derivation.statistic === 'integral'
             ? sourceField.summary.integral_unit
             : sourceField.unit;
         if (output.unit !== expectedUnit)
@@ -735,6 +761,11 @@ export function spatialSimulationResultForInputSchema(
   return spatialSimulationResultSchema.superRefine((result, context) => {
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: 'custom', path, message });
+    if (result.contract_version !== 'spatial-simulation-result-v2')
+      issue(
+        ['contract_version'],
+        'New input-bound runs must use spatial-simulation-result-v2',
+      );
     if (
       result.input_sha256 !== inputHash ||
       result.input_contract_version !== input.contract_version

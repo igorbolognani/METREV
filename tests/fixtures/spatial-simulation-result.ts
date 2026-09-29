@@ -11,7 +11,7 @@ export function validSpatialSimulationResult(
   run: SpatialSimulationRunSnapshot,
 ) {
   return spatialSimulationResultSchema.parse({
-    contract_version: 'spatial-simulation-result-v1',
+    contract_version: 'spatial-simulation-result-v2',
     run_id: run.id,
     evaluation_id: run.evaluation_id,
     model_id: run.model_id,

@@ -151,6 +151,7 @@ describe('spatial simulation result contract', () => {
           statistic: 'integral' as const,
         },
       },
+      { derivation: undefined },
     ]) {
       expect(
         spatialSimulationResultSchema.safeParse({
@@ -161,6 +162,34 @@ describe('spatial simulation result contract', () => {
         }).success,
       ).toBe(false);
     }
+  });
+
+  it('keeps v1 snapshots readable while requiring v2 for new input-bound results', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await repository.createOrGet(input);
+    const result = validSpatialSimulationResult({
+      ...run,
+      mesh_sha256: meshSha256,
+    });
+    const legacy = {
+      ...result,
+      contract_version: 'spatial-simulation-result-v1' as const,
+      scalar_outputs: result.scalar_outputs.map(
+        ({ derivation: _derivation, ...output }) => output,
+      ),
+      fields: result.fields.map((field, index) =>
+        index === 0 && field.value_type === 'scalar'
+          ? { ...field, summary: { ...field.summary, integral_unit: 'mol/m3' } }
+          : field,
+      ),
+    };
+
+    expect(spatialSimulationResultSchema.safeParse(legacy).success).toBe(true);
+    expect(
+      spatialSimulationResultForInputSchema(input.input_snapshot).safeParse(
+        legacy,
+      ).success,
+    ).toBe(false);
   });
 
   it('binds field IDs, canonical units and eligible domains to the authoritative input', async () => {
