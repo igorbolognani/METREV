@@ -10,7 +10,7 @@ export const spatialTransportConcentrationSchema = spatialValueSchema.refine(
   'Boundary concentration must be nonnegative and expressed in mol/m3',
 );
 
-/** Restricted steady neutral-scalar transport driven by the Darcy setup. */
+/** Shared neutral-scalar setup; the containing contract binds its hydraulic regime. */
 export const spatialDarcyTransportSetupSchema = z
   .object({
     regime: z.literal('steady_advection_diffusion'),
