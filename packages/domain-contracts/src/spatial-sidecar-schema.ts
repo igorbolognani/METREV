@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { spatialValueSchema } from './spatial-model-schema';
+import {
+  spatialStokesSetupSchema,
+  spatialStokesTractionSchema,
+  spatialStokesViscositySchema,
+} from './spatial-stokes-schema';
 
 const region = z.enum([
   'bulk_liquid',
@@ -139,7 +144,102 @@ export const planarMeshSchema = z
       });
   });
 
-export const spatialSidecarRequestSchema = z.discriminatedUnion('operation', [
+const planarMeshRequestSchema = z
+  .object({
+    protocol_version: z.literal('spatial-sidecar-v1'),
+    request_id: z.string().uuid(),
+    operation: z.literal('planar_mesh'),
+    mesh: planarMeshSchema,
+  })
+  .strict();
+
+const planarStokesRequestSchema = z
+  .object({
+    protocol_version: z.literal('spatial-sidecar-v1'),
+    request_id: z.string().uuid(),
+    operation: z.literal('planar_stokes'),
+    mesh_request: planarMeshRequestSchema,
+    mesh_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    refinement_factor: z.number().int().positive(),
+    model_input_contract_version: z.literal('spatial-input-v2'),
+    model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    setup: spatialStokesSetupSchema,
+    viscosity: spatialStokesViscositySchema,
+  })
+  .strict()
+  .superRefine((request, context) => {
+    if (
+      !request.mesh_request.mesh.refinement_factors.includes(
+        request.refinement_factor,
+      )
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['refinement_factor'],
+        message: 'Requested refinement is absent from the mesh recipe',
+      });
+    const mesh = request.mesh_request.mesh;
+    if (
+      mesh.layers.length !== 1 ||
+      mesh.layers[0].kind !== 'bulk_liquid' ||
+      mesh.layers[0].tag !== request.setup.domain_tag
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup', 'domain_tag'],
+        message:
+          'Planar Stokes sidecar accepts exactly one matching bulk-liquid layer',
+      });
+    const walls = Object.values(mesh.boundaries)
+      .filter((boundary) => boundary.role === 'wall')
+      .map((boundary) => boundary.tag);
+    if (
+      walls.length !== 2 ||
+      new Set(walls).size !== 2 ||
+      walls.some((tag) => !request.setup.wall_tags.includes(tag))
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup', 'wall_tags'],
+        message: 'No-slip wall tags must match the two wall facets',
+      });
+    if (
+      Object.values(mesh.boundaries).filter(
+        (boundary) =>
+          boundary.role === 'inlet' && boundary.tag === request.setup.inlet.tag,
+      ).length !== 1
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup', 'inlet', 'tag'],
+        message: 'Inlet tag must match an exterior inlet facet',
+      });
+    if (
+      Object.values(mesh.boundaries).filter(
+        (boundary) =>
+          boundary.role === 'outlet' &&
+          boundary.tag === request.setup.outlet.tag,
+      ).length !== 1
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup', 'outlet', 'tag'],
+        message: 'Outlet tag must match an exterior outlet facet',
+      });
+    for (const port of ['inlet', 'outlet'] as const) {
+      const parsed = spatialStokesTractionSchema.safeParse(
+        request.setup[port].traction_pa,
+      );
+      if (!parsed.success)
+        context.addIssue({
+          code: 'custom',
+          path: ['setup', port, 'traction_pa'],
+          message: 'Both full traction components require Pa',
+        });
+    }
+  });
+
+export const spatialSidecarRequestSchema = z.union([
   z
     .object({
       protocol_version: z.literal('spatial-sidecar-v1'),
@@ -147,14 +247,8 @@ export const spatialSidecarRequestSchema = z.discriminatedUnion('operation', [
       operation: z.literal('health'),
     })
     .strict(),
-  z
-    .object({
-      protocol_version: z.literal('spatial-sidecar-v1'),
-      request_id: z.string().uuid(),
-      operation: z.literal('planar_mesh'),
-      mesh: planarMeshSchema,
-    })
-    .strict(),
+  planarMeshRequestSchema,
+  planarStokesRequestSchema,
 ]);
 
 const runtimeMetadata = z
@@ -181,6 +275,27 @@ const meshArtifact = z
   })
   .strict();
 
+const stokesFileArtifact = z
+  .object({
+    path: z.enum(['stokes-solution.xdmf', 'stokes-solution.h5']),
+    format: z.enum(['xdmf', 'hdf5']),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    bytes: z.number().int().positive(),
+  })
+  .strict();
+
+const stokesFieldDataset = z
+  .object({
+    variable_id: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    field_name: z.enum(['pressure', 'velocity_x', 'velocity_y']),
+    dataset_path: z
+      .string()
+      .regex(/^\/Function\/(pressure|velocity_x|velocity_y)\/0$/),
+    unit: z.enum(['Pa', 'm/s']),
+    domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+  })
+  .strict();
+
 export const spatialSidecarResponseSchema = z.union([
   z
     .object({
@@ -192,6 +307,90 @@ export const spatialSidecarResponseSchema = z.union([
       capabilities: z.array(z.string()),
     })
     .strict(),
+  z
+    .object({
+      protocol_version: z.literal('spatial-sidecar-v1'),
+      request_id: z.string().uuid(),
+      status: z.literal('ok'),
+      operation: z.literal('planar_stokes'),
+      metadata: runtimeMetadata,
+      model_input_contract_version: z.literal('spatial-input-v2'),
+      model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      mesh: meshArtifact,
+      field_datasets: z.tuple([
+        stokesFieldDataset,
+        stokesFieldDataset,
+        stokesFieldDataset,
+      ]),
+      physical_groups: z.record(z.number().int().positive()),
+      diagnostics: z
+        .object({
+          inlet_flow_m2_s_per_depth: z.number().finite(),
+          outlet_flow_m2_s_per_depth: z.number().finite(),
+          relative_flow_balance: z.number().finite().nonnegative(),
+          mean_inlet_pressure_pa: z.number().finite(),
+          mean_outlet_pressure_pa: z.number().finite(),
+          pressure_drop_pa: z.number().finite(),
+          divergence_l2_per_s: z.number().finite().nonnegative(),
+          linear_iterations: z.number().int().nonnegative(),
+          linear_converged_reason: z.number().int().positive(),
+        })
+        .strict(),
+      solution_artifacts: z.tuple([stokesFileArtifact, stokesFileArtifact]),
+    })
+    .strict()
+    .superRefine((response, context) => {
+      const [xdmf, hdf5] = response.solution_artifacts;
+      if (xdmf.path !== 'stokes-solution.xdmf' || xdmf.format !== 'xdmf')
+        context.addIssue({
+          code: 'custom',
+          path: ['solution_artifacts', 0],
+          message: 'First Stokes artifact must be the XDMF manifest',
+        });
+      if (hdf5.path !== 'stokes-solution.h5' || hdf5.format !== 'hdf5')
+        context.addIssue({
+          code: 'custom',
+          path: ['solution_artifacts', 1],
+          message: 'Second Stokes artifact must be the HDF5 field data',
+        });
+      const datasets = new Map(
+        response.field_datasets.map((field) => [field.field_name, field]),
+      );
+      for (const fieldName of ['pressure', 'velocity_x', 'velocity_y'] as const)
+        if (!datasets.has(fieldName))
+          context.addIssue({
+            code: 'custom',
+            path: ['field_datasets'],
+            message: `Missing ${fieldName} field dataset binding`,
+          });
+      for (const field of response.field_datasets)
+        if (field.dataset_path !== `/Function/${field.field_name}/0`)
+          context.addIssue({
+            code: 'custom',
+            path: ['field_datasets'],
+            message: 'Field name and HDF5 dataset path must agree',
+          });
+      if (
+        new Set(response.field_datasets.map(({ variable_id }) => variable_id))
+          .size !== 3
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_datasets'],
+          message:
+            'Stokes state variables must bind to distinct field datasets',
+        });
+      if (
+        datasets.get('pressure')?.unit !== 'Pa' ||
+        datasets.get('velocity_x')?.unit !== 'm/s' ||
+        datasets.get('velocity_y')?.unit !== 'm/s'
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_datasets'],
+          message: 'Stokes datasets must preserve pressure and velocity units',
+        });
+    }),
   z
     .object({
       protocol_version: z.literal('spatial-sidecar-v1'),
@@ -225,6 +424,7 @@ export const spatialSidecarResponseSchema = z.union([
         'invalid_request',
         'dependency_unavailable',
         'mesh_failure',
+        'solver_failure',
         'unsupported_operation',
         'internal_error',
       ]),

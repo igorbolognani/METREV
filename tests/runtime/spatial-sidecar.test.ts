@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   planarMeshSchema,
+  spatialModelInputV2Sha256,
+  spatialSidecarResponseSchema,
   spatialSidecarRequestSchema,
 } from '@metrev/domain-contracts';
 import {
@@ -15,8 +17,10 @@ import {
 } from '@metrev/electrochem-models';
 import {
   runSpatialSidecar,
+  planarStokesRequestFromInput,
   SidecarTransportError,
 } from '@metrev/spatial-sidecar-client';
+import { stokesChannelInput } from '../fixtures/spatial-input-v2';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const moduleDirectory = join(root, 'apps/spatial-sidecar');
@@ -104,6 +108,163 @@ describe('isolated numerical sidecar boundary', () => {
     } finally {
       await rm(artifactRoot, { recursive: true, force: true });
     }
+  });
+
+  it('binds the restricted Stokes operation to an admitted input and mesh artifact', async () => {
+    const input = stokesChannelInput();
+    const request = planarStokesRequestFromInput(input, fixture.request_id);
+    expect(spatialSidecarRequestSchema.parse(request)).toMatchObject({
+      operation: 'planar_stokes',
+      model_input_contract_version: 'spatial-input-v2',
+      model_input_sha256: spatialModelInputV2Sha256(input),
+      mesh_sha256: input.mesh.sha256,
+      setup: input.stokes_development,
+      viscosity: input.material_fields[0].field.value,
+    });
+    expect(() =>
+      planarStokesRequestFromInput({ ...input, stokes_development: undefined }),
+    ).toThrow(/does not declare the Stokes development regime/);
+
+    const artifactRoot = await mkdtemp(join(tmpdir(), 'metrev-stokes-test-'));
+    const options = {
+      pythonExecutable: 'python3',
+      moduleDirectory,
+      artifactRoot,
+      timeoutMs: 20_000,
+    };
+    try {
+      const mesh = await runSpatialSidecar(input.mesh.request, options);
+      if (mesh.response.status === 'error') {
+        expect(mesh.response.code).toBe('dependency_unavailable');
+        return;
+      }
+      const selectedMesh = mesh.response.artifacts.find(
+        (artifact) =>
+          artifact.refinement_factor === input.mesh.refinement_factor,
+      );
+      expect(selectedMesh).toBeDefined();
+      input.mesh.sha256 = selectedMesh!.sha256;
+      const boundRequest = planarStokesRequestFromInput(input);
+      const result = await runSpatialSidecar(boundRequest, options);
+      if (result.response.status === 'error') {
+        expect(result.response.code).toBe('dependency_unavailable');
+        return;
+      }
+      expect(result.response.operation).toBe('planar_stokes');
+      expect(
+        result.response.field_datasets.map((field) => field.variable_id),
+      ).toEqual(['p', 'ux', 'uy']);
+      expect(result.artifactDirectory).toBeTruthy();
+    } finally {
+      await rm(artifactRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('requires paired XDMF/HDF5 manifests and declared Stokes dataset bindings', () => {
+    const response = {
+      protocol_version: 'spatial-sidecar-v1',
+      request_id: fixture.request_id,
+      status: 'ok',
+      operation: 'planar_stokes',
+      metadata: {
+        sidecar_version: '0.1.0',
+        protocol_version: 'spatial-sidecar-v1',
+        python_version: '3.12.0',
+        gmsh_version: '4.15.2',
+        dolfinx_version: '0.10.0',
+        petsc_version: '3.22.0',
+      },
+      model_input_sha256: 'a'.repeat(64),
+      model_input_contract_version: 'spatial-input-v2',
+      mesh: {
+        refinement_factor: 1,
+        format: 'msh4',
+        path: 'mesh-1.msh',
+        sha256: 'b'.repeat(64),
+        bytes: 256,
+        node_count: 25,
+        cell_count: 32,
+        min_quality: 0.5,
+      },
+      physical_groups: {
+        'region:liquid': 1,
+        'boundary:west': 101,
+        'boundary:east': 102,
+        'boundary:inlet': 103,
+        'boundary:outlet': 104,
+      },
+      diagnostics: {
+        inlet_flow_m2_s_per_depth: 1e-8,
+        outlet_flow_m2_s_per_depth: 1e-8,
+        relative_flow_balance: 1e-12,
+        mean_inlet_pressure_pa: 1,
+        mean_outlet_pressure_pa: 0,
+        pressure_drop_pa: 1,
+        divergence_l2_per_s: 1e-12,
+        linear_iterations: 1,
+        linear_converged_reason: 2,
+      },
+      solution_artifacts: [
+        {
+          path: 'stokes-solution.xdmf',
+          format: 'xdmf',
+          sha256: 'c'.repeat(64),
+          bytes: 512,
+        },
+        {
+          path: 'stokes-solution.h5',
+          format: 'hdf5',
+          sha256: 'd'.repeat(64),
+          bytes: 1024,
+        },
+      ],
+      field_datasets: [
+        {
+          variable_id: 'p',
+          field_name: 'pressure',
+          dataset_path: '/Function/pressure/0',
+          unit: 'Pa',
+          domain_tag: 'liquid',
+        },
+        {
+          variable_id: 'ux',
+          field_name: 'velocity_x',
+          dataset_path: '/Function/velocity_x/0',
+          unit: 'm/s',
+          domain_tag: 'liquid',
+        },
+        {
+          variable_id: 'uy',
+          field_name: 'velocity_y',
+          dataset_path: '/Function/velocity_y/0',
+          unit: 'm/s',
+          domain_tag: 'liquid',
+        },
+      ],
+    } as const;
+    expect(spatialSidecarResponseSchema.safeParse(response).success).toBe(true);
+    expect(
+      spatialSidecarResponseSchema.safeParse({
+        ...response,
+        solution_artifacts: [
+          response.solution_artifacts[0],
+          { ...response.solution_artifacts[1], format: 'xdmf' },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      spatialSidecarResponseSchema.safeParse({
+        ...response,
+        field_datasets: [
+          response.field_datasets[0],
+          {
+            ...response.field_datasets[1],
+            dataset_path: '/Function/velocity_y/0',
+          },
+          response.field_datasets[2],
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it('cancels an already aborted invocation before spawning', async () => {

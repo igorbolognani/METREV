@@ -1,7 +1,7 @@
 """One JSON request on stdin, one JSON response on stdout.
 
 The caller owns authorization, persistence, the output directory and cancellation.
-Only the planar mesh operation writes files. Runtime logs go to stderr.
+Mesh and restricted planar Stokes operations write files. Runtime logs go to stderr.
 """
 
 from __future__ import annotations
@@ -16,7 +16,10 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import sys
+import xml.etree.ElementTree as ET
+import uuid
 
 from . import PROTOCOL_VERSION, SIDECAR_VERSION
 
@@ -26,6 +29,14 @@ BOUNDARY_ROLES = {"wall", "inlet", "outlet", "electrode"}
 
 
 class RequestError(ValueError):
+    pass
+
+
+class SolverError(RuntimeError):
+    pass
+
+
+class DependencyError(RuntimeError):
     pass
 
 
@@ -71,7 +82,8 @@ def sourced_length(obj: object) -> float:
         raise RequestError("Each length needs an explicit scientific source")
     if ("uncertainty" in value) != ("uncertainty_unit" in value):
         raise RequestError("Uncertainty requires a matching unit")
-    if "uncertainty" in value and (value["uncertainty_unit"] != "m" or
+    if "uncertainty" in value and (isinstance(value["uncertainty"], bool) or
+            value["uncertainty_unit"] != "m" or
             not isinstance(value["uncertainty"], (int, float)) or value["uncertainty"] < 0):
         raise RequestError("Invalid length uncertainty")
     return float(number)
@@ -198,6 +210,203 @@ def create_planar_mesh(mesh: dict, output_dir: Path) -> tuple[dict, list[dict]]:
     return physical_groups, artifacts
 
 
+def validate_source_value(obj: object, unit: str, *, positive: bool = False) -> dict:
+    value = exact_keys(obj, {"value", "unit", "source_kind", "source_ref"},
+                       {"source_locator", "conditions", "uncertainty", "uncertainty_unit"})
+    number = value["value"]
+    if (isinstance(number, bool) or not isinstance(number, (int, float)) or
+            not math.isfinite(number) or value["unit"] != unit or (positive and number <= 0)):
+        raise RequestError(f"Expected {'positive ' if positive else ''}finite value in {unit}")
+    if value["source_kind"] not in {"measured", "literature", "default", "assumption", "test_fixture"} or \
+            not isinstance(value["source_ref"], str) or not value["source_ref"].strip():
+        raise RequestError("Scientific values require an allowed source kind and non-empty source reference")
+    if ("uncertainty" in value) != ("uncertainty_unit" in value):
+        raise RequestError("Uncertainty requires a matching unit")
+    if "uncertainty" in value and (isinstance(value["uncertainty"], bool) or
+            not isinstance(value["uncertainty"], (int, float)) or
+            not math.isfinite(value["uncertainty"]) or value["uncertainty"] < 0 or value["uncertainty_unit"] != unit):
+        raise RequestError("Invalid uncertainty for scientific value")
+    return value
+
+
+def validate_planar_stokes_request(obj: object) -> dict:
+    request = exact_keys(obj, {"protocol_version", "request_id", "operation", "mesh_request",
+                               "mesh_sha256", "refinement_factor", "model_input_contract_version",
+                               "model_input_sha256",
+                               "setup", "viscosity"})
+    if request["protocol_version"] != PROTOCOL_VERSION or request["operation"] != "planar_stokes":
+        raise RequestError("Unsupported planar Stokes request")
+    digest_pattern = re.compile(r"^[a-f0-9]{64}$")
+    try:
+        if str(uuid.UUID(request["request_id"])) != request["request_id"].lower():
+            raise ValueError
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise RequestError("Stokes request ID is malformed") from exc
+    if (not isinstance(request["mesh_sha256"], str) or not digest_pattern.fullmatch(request["mesh_sha256"]) or
+            not isinstance(request["model_input_sha256"], str) or not digest_pattern.fullmatch(request["model_input_sha256"])):
+        raise RequestError("Stokes request IDs and input/mesh hashes are malformed")
+    mesh_request = exact_keys(request["mesh_request"],
+                              {"protocol_version", "request_id", "operation", "mesh"})
+    try:
+        if str(uuid.UUID(mesh_request["request_id"])) != mesh_request["request_id"].lower():
+            raise ValueError
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise RequestError("Nested mesh request ID is malformed") from exc
+    if mesh_request["protocol_version"] != PROTOCOL_VERSION or mesh_request["operation"] != "planar_mesh":
+        raise RequestError("Stokes requires the admitted planar mesh request")
+    if request["model_input_contract_version"] != "spatial-input-v2":
+        raise RequestError("Unsupported spatial model input contract version")
+    mesh = validate_mesh(mesh_request["mesh"])
+    setup = exact_keys(request["setup"], {"regime", "equation_ref", "domain_tag", "viscosity_parameter_id",
+                                         "pressure_variable", "velocity_variables", "wall_tags", "inlet", "outlet"})
+    if (setup["regime"] != "steady_stokes" or setup["equation_ref"] != "EQ-FL-002" or
+            setup["viscosity_parameter_id"] != "dynamic_viscosity_pa_s"):
+        raise RequestError("Unsupported or unbound Stokes equation setup")
+    if len(mesh["layers"]) != 1 or mesh["layers"][0]["kind"] != "bulk_liquid" or \
+            mesh["layers"][0]["tag"] != setup["domain_tag"]:
+        raise RequestError("Stokes sidecar accepts exactly one matching bulk-liquid layer")
+    refinement_factor = request["refinement_factor"]
+    if (isinstance(refinement_factor, bool) or not isinstance(refinement_factor, int) or
+            refinement_factor not in mesh["refinement_factors"]):
+        raise RequestError("Requested mesh refinement is absent from the admitted recipe")
+    validate_source_value(request["viscosity"], "Pa*s", positive=True)
+    velocity = exact_keys(setup["velocity_variables"], {"x", "y"})
+    if not all(isinstance(value, str) and value.strip() for value in
+               (setup["domain_tag"], setup["pressure_variable"], velocity["x"], velocity["y"])):
+        raise RequestError("Stokes state and domain identifiers must be non-empty")
+    if len({setup["pressure_variable"], velocity["x"], velocity["y"]}) != 3:
+        raise RequestError("Pressure and velocity states must have distinct identifiers")
+    inlet = exact_keys(setup["inlet"], {"tag", "traction_pa"})
+    outlet = exact_keys(setup["outlet"], {"tag", "traction_pa"})
+    for port in (inlet, outlet):
+        values = port["traction_pa"]
+        if not isinstance(values, list) or len(values) != 2:
+            raise RequestError("Both port tractions require explicit x and y components")
+        for value in values:
+            validate_source_value(value, "Pa")
+    boundaries = mesh["boundaries"]
+    walls = [item["tag"] for item in boundaries.values() if item["role"] == "wall"]
+    declared_walls = setup["wall_tags"]
+    if (not isinstance(declared_walls, list) or len(set(declared_walls)) != 2 or
+            set(declared_walls) != set(walls)):
+        raise RequestError("No-slip wall tags must match the two declared wall facets")
+    if (inlet["tag"] == outlet["tag"] or
+            not any(item["role"] == "inlet" and item["tag"] == inlet["tag"] for item in boundaries.values()) or
+            not any(item["role"] == "outlet" and item["tag"] == outlet["tag"] for item in boundaries.values())):
+        raise RequestError("Stokes inlet and outlet tags must match the geometry roles")
+    return request
+
+
+def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> dict:
+    try:
+        from mpi4py import MPI
+        import ufl
+        from dolfinx.io import XDMFFile, gmsh as gmshio
+        from .stokes import solve_planar_stokes
+    except Exception as exc:
+        raise DependencyError(f"DOLFINx/PETSc Stokes dependencies are unavailable: {exc}") from exc
+    mesh_request = request["mesh_request"]
+    physical_groups, mesh_artifacts = create_planar_mesh(mesh_request["mesh"], output_dir)
+    mesh_record = next((item for item in mesh_artifacts
+                        if item["refinement_factor"] == request["refinement_factor"]), None)
+    if mesh_record is None or mesh_record["sha256"] != request["mesh_sha256"]:
+        raise RuntimeError("Rebuilt mesh hash differs from the admitted mesh artifact")
+    mesh_path = output_dir / mesh_record["path"]
+    try:
+        mesh_data = gmshio.read_from_msh(mesh_path, MPI.COMM_WORLD, gdim=2)
+        setup = request["setup"]
+        inlet_values = [value["value"] for value in setup["inlet"]["traction_pa"]]
+        outlet_values = [value["value"] for value in setup["outlet"]["traction_pa"]]
+        result = solve_planar_stokes(
+            mesh_data,
+            liquid_region_tag=f"region:{setup['domain_tag']}",
+            viscosity_pa_s=float(request["viscosity"]["value"]),
+            wall_tags=tuple(f"boundary:{tag}" for tag in setup["wall_tags"]),
+            inlet_tag=f"boundary:{setup['inlet']['tag']}",
+            outlet_tag=f"boundary:{setup['outlet']['tag']}",
+            traction_by_tag={
+                f"boundary:{setup['inlet']['tag']}": ufl.as_vector(inlet_values),
+                f"boundary:{setup['outlet']['tag']}": ufl.as_vector(outlet_values),
+            },
+        )
+    except (ValueError, KeyError) as exc:
+        raise RequestError(str(exc)) from exc
+    except Exception as exc:
+        raise SolverError(f"Stokes solve failed: {exc}") from exc
+
+    xdmf_path = output_dir / "stokes-solution.xdmf"
+    try:
+        velocity_x, _ = result.velocity.sub(0).collapse()
+        velocity_y, _ = result.velocity.sub(1).collapse()
+        velocity_x.name = "velocity_x"
+        velocity_y.name = "velocity_y"
+        result.pressure.name = "pressure"
+        with XDMFFile(mesh_data.mesh.comm, str(xdmf_path), "w") as xdmf:
+            xdmf.write_mesh(mesh_data.mesh)
+            xdmf.write_function(velocity_x, 0.0)
+            xdmf.write_function(velocity_y, 0.0)
+            xdmf.write_function(result.pressure, 0.0)
+    except Exception as exc:
+        raise SolverError(f"Unable to write Stokes XDMF/HDF5 fields: {exc}") from exc
+    expected_datasets = {
+        "pressure": (request["setup"]["pressure_variable"], "Pa"),
+        "velocity_x": (request["setup"]["velocity_variables"]["x"], "m/s"),
+        "velocity_y": (request["setup"]["velocity_variables"]["y"], "m/s"),
+    }
+    try:
+        root = ET.parse(xdmf_path).getroot()
+        field_datasets = []
+        for attribute in root.findall(".//Attribute"):
+            field_name = attribute.attrib.get("Name")
+            if field_name not in expected_datasets:
+                continue
+            data_item = attribute.find("DataItem")
+            dataset_ref = (data_item.text or "").strip() if data_item is not None else ""
+            dataset_path = dataset_ref.split(":", 1)[-1]
+            expected_path = f"/Function/{field_name}/0"
+            if dataset_path != expected_path:
+                raise ValueError(f"Unexpected XDMF dataset path for {field_name}")
+            variable_id, unit = expected_datasets[field_name]
+            field_datasets.append({"variable_id": variable_id, "field_name": field_name,
+                                   "dataset_path": dataset_path, "unit": unit,
+                                   "domain_tag": request["setup"]["domain_tag"]})
+        if {item["field_name"] for item in field_datasets} != set(expected_datasets):
+            raise ValueError("XDMF output does not bind all requested Stokes states")
+    except (ET.ParseError, OSError, ValueError) as exc:
+        raise SolverError(f"Unable to verify Stokes XDMF field bindings: {exc}") from exc
+    solution_files = []
+    for path, artifact_format in ((xdmf_path, "xdmf"), (output_dir / "stokes-solution.h5", "hdf5")):
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            raise SolverError(f"Stokes {artifact_format} output was not written") from exc
+        if not content:
+            raise SolverError(f"Stokes {artifact_format} output is empty")
+        solution_files.append({"path": path.name, "format": artifact_format,
+                               "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)})
+    for artifact in mesh_artifacts:
+        if artifact["path"] != mesh_record["path"]:
+            (output_dir / artifact["path"]).unlink(missing_ok=True)
+    diagnostics = {
+        "inlet_flow_m2_s_per_depth": result.inlet_flow_m2_s_per_depth,
+        "outlet_flow_m2_s_per_depth": result.outlet_flow_m2_s_per_depth,
+        "relative_flow_balance": result.relative_flow_balance,
+        "mean_inlet_pressure_pa": result.mean_inlet_pressure_pa,
+        "mean_outlet_pressure_pa": result.mean_outlet_pressure_pa,
+        "pressure_drop_pa": result.mean_inlet_pressure_pa - result.mean_outlet_pressure_pa,
+        "divergence_l2_per_s": result.divergence_l2_per_s,
+        "linear_iterations": result.linear_iterations,
+        "linear_converged_reason": result.linear_converged_reason,
+    }
+    return {"protocol_version": PROTOCOL_VERSION, "request_id": request["request_id"], "status": "ok",
+            "operation": "planar_stokes", "metadata": meta,
+            "model_input_contract_version": request["model_input_contract_version"],
+            "model_input_sha256": request["model_input_sha256"],
+            "mesh": mesh_record, "physical_groups": physical_groups,
+            "diagnostics": diagnostics, "solution_artifacts": solution_files,
+            "field_datasets": field_datasets}
+
+
 def run(raw: bytes, output_dir: Path | None) -> dict:
     request_id = "00000000-0000-4000-8000-000000000000"
     meta = metadata()
@@ -205,25 +414,44 @@ def run(raw: bytes, output_dir: Path | None) -> dict:
         if len(raw) > MAX_REQUEST_BYTES:
             raise RequestError("Request exceeds 1 MiB")
         request = json.loads(raw)
-        exact_keys(request, {"protocol_version", "request_id", "operation"}, {"mesh"})
-        if (not isinstance(request["request_id"], str) or len(request["request_id"]) != 36):
-            raise RequestError("Invalid request ID")
+        base_keys = {"protocol_version", "request_id", "operation"}
+        exact_keys(request, base_keys, {"mesh", "mesh_request", "mesh_sha256",
+                                       "refinement_factor", "model_input_contract_version",
+                                       "model_input_sha256", "setup", "viscosity"})
+        try:
+            if str(uuid.UUID(request["request_id"])) != request["request_id"].lower():
+                raise ValueError
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise RequestError("Invalid request ID") from exc
         request_id = request["request_id"]
         if request["protocol_version"] != PROTOCOL_VERSION:
             raise RequestError("Unsupported protocol version")
         operation = request["operation"]
         if operation == "health":
-            if "mesh" in request:
-                raise RequestError("Health request cannot contain a mesh")
+            if set(request) != {"protocol_version", "request_id", "operation"}:
+                raise RequestError("Health request cannot contain additional fields")
             try:
                 gmsh_ready = bool(meta["gmsh_version"] and load_gmsh())
             except Exception:
                 gmsh_ready = False
+            try:
+                importlib.import_module("dolfinx")
+                importlib.import_module("petsc4py")
+                stokes_ready = gmsh_ready
+            except Exception:
+                stokes_ready = False
             return {"protocol_version": PROTOCOL_VERSION, "request_id": request_id, "status": "ok",
                     "operation": "health", "metadata": meta,
-                    "capabilities": ["planar_mesh"] if gmsh_ready else []}
+                    "capabilities": (["planar_mesh"] if gmsh_ready else []) +
+                    (["planar_stokes"] if stokes_ready else [])}
+        if operation == "planar_stokes":
+            request = validate_planar_stokes_request(request)
+            if output_dir is None:
+                raise RequestError("Stokes operation requires a private output directory")
+            return solve_planar_stokes_request(request, output_dir, meta)
         if operation != "planar_mesh":
             return failure(request_id, "unsupported_operation", "No solver for this operation", meta)
+        request = exact_keys(request, base_keys | {"mesh"})
         mesh = validate_mesh(request.get("mesh"))
         if output_dir is None:
             raise RequestError("Mesh operation requires an output directory")
@@ -243,6 +471,10 @@ def run(raw: bytes, output_dir: Path | None) -> dict:
                                for a, b in zip(layers, layers[1:])], "artifacts": artifacts}
     except (RequestError, ValueError, TypeError, json.JSONDecodeError) as exc:
         return failure(request_id, "invalid_request", str(exc), meta)
+    except DependencyError as exc:
+        return failure(request_id, "dependency_unavailable", str(exc), meta)
+    except SolverError as exc:
+        return failure(request_id, "solver_failure", str(exc), meta)
     except RuntimeError as exc:
         return failure(request_id, "mesh_failure", str(exc), meta)
     except Exception as exc:

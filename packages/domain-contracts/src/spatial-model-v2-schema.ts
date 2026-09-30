@@ -10,6 +10,7 @@ import {
   planarMeshSchema,
   spatialSidecarRequestSchema,
 } from './spatial-sidecar-schema';
+import { spatialStokesSetupSchema } from './spatial-stokes-schema';
 
 export { spatialVariableAuthority };
 
@@ -136,31 +137,6 @@ const boundarySchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-/** Restricted development setup: one bulk-liquid region, no porous interface. */
-const stokesSetupSchema = z
-  .object({
-    regime: z.literal('steady_stokes'),
-    equation_ref: z.literal('EQ-FL-002'),
-    domain_tag: identifier,
-    viscosity_parameter_id: z.literal('dynamic_viscosity_pa_s'),
-    pressure_variable: identifier,
-    velocity_variables: z.object({ x: identifier, y: identifier }).strict(),
-    wall_tags: z.tuple([sourceRef, sourceRef]),
-    inlet: z
-      .object({
-        tag: sourceRef,
-        traction_pa: z.tuple([spatialValueSchema, spatialValueSchema]),
-      })
-      .strict(),
-    outlet: z
-      .object({
-        tag: sourceRef,
-        traction_pa: z.tuple([spatialValueSchema, spatialValueSchema]),
-      })
-      .strict(),
-  })
-  .strict();
-
 type Bounds = { min?: number; max?: number; exclusive_min?: number };
 const outsideBounds = (value: number, bounds: Bounds) =>
   (bounds.min !== undefined && value < bounds.min) ||
@@ -270,7 +246,7 @@ export const spatialModelInputV2Schema = z
         .strict(),
     ),
     boundary_conditions: z.array(boundarySchema),
-    stokes_development: stokesSetupSchema.optional(),
+    stokes_development: spatialStokesSetupSchema.optional(),
     circuit: z.discriminatedUnion('kind', [
       z
         .object({
