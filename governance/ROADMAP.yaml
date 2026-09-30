@@ -175,12 +175,13 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - A synthetic bulk-liquid channel verifies pressure-driven Stokes flow only; product hydraulics remains unregistered, and Darcy/Brinkman porous flow, Navier–Stokes regimes, hydraulic input admission, and case-runner integration are not implemented
+      - A reusable tagged-mesh bulk-liquid 2D Stokes development component accepts positive viscosity, named no-slip walls and explicit inlet/outlet full traction; product hydraulics remains unregistered, and Darcy/Brinkman porous flow, Navier–Stokes regimes, source-backed hydraulic input admission and case-runner integration are not implemented
       - P05/P06 remain partial; velocity is not coupled to species transport, and product persistence/API/UI integration remains pending
     gate_evidence:
       GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; it does not establish a product hydraulic input contract
       GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure and checks expected pressure drop plus integrated inlet/outlet flow across three mesh refinements
       GATE-NONLINEAR-CONVERGENCE: the benchmark is linear Stokes, so nonlinear convergence is not applicable; its PETSc direct solve fails on nonconvergence, while coupled nonlinear product solvers remain unimplemented
+      GATE-LIMITING-CASE: parameterized synthetic Poiseuille flow on three tagged refinements checks analytic velocity and pressure, positive inlet/outlet flow, pressure drop, PETSc convergence reason and divergence diagnostics; viscosity and pressure drop are varied without claiming product hydraulics
   - id: P08
     title: Generalize anode/biofilm physics from 1D to real 2D
     phase: P2
