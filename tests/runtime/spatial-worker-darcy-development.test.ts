@@ -340,6 +340,7 @@ describe('development Darcy transport worker adapter', () => {
       let app: Awaited<ReturnType<typeof buildApp>> | undefined;
       try {
         const artifactRoot = join(root, 'sidecar-output');
+        await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
         const pythonShim = join(root, 'docker-python');
         const shellQuote = (value: string) =>
           `'${value.replaceAll("'", "'\\''")}'`;
