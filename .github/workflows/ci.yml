@@ -200,6 +200,11 @@ jobs:
         env:
           METREV_SPATIAL_DOCKER_IMAGE: metrev-spatial-toolchain
 
+      - name: Verify native Stokes worker and authenticated field API roundtrip
+        run: pnpm exec vitest run tests/runtime/spatial-worker-stokes-development.test.ts -t "pinned native Stokes sidecar"
+        env:
+          METREV_SPATIAL_DOCKER_IMAGE: metrev-spatial-toolchain
+
   validate-local:
     runs-on: ubuntu-latest
     needs: validate

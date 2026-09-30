@@ -19,6 +19,7 @@ import {
 } from '@metrev/spatial-artifact-store';
 import type { SpatialSidecarRequest } from '@metrev/domain-contracts';
 import type { SidecarProcessOptions } from '@metrev/spatial-sidecar-client';
+import { runSpatialSidecar } from '@metrev/spatial-sidecar-client';
 import { describe, expect, it } from 'vitest';
 
 import { buildApp } from '../../apps/api-server/src/app';
@@ -300,6 +301,208 @@ describe('development Stokes worker adapter', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE)(
+    'executes the pinned native Stokes sidecar through the worker and authenticated API',
+    async () => {
+      const nativeImage = process.env.METREV_SPATIAL_DOCKER_IMAGE;
+      if (!nativeImage || !/^[A-Za-z0-9._:/-]+$/.test(nativeImage))
+        throw new Error('A valid pinned sidecar image is required');
+
+      const root = await mkdtemp(
+        join(tmpdir(), 'metrev-stokes-native-worker-'),
+      );
+      let app: Awaited<ReturnType<typeof buildApp>> | undefined;
+      try {
+        const artifactRoot = join(root, 'sidecar-output');
+        await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
+        const pythonShim = join(root, 'docker-python');
+        const shellQuote = (value: string) =>
+          `'${value.replaceAll("'", "'\\''")}'`;
+        await writeFile(
+          pythonShim,
+          [
+            '#!/bin/sh',
+            'set -u',
+            'if [ "${1:-}" != "-m" ] || [ "${2:-}" != "metrev_spatial" ]; then exit 64; fi',
+            'shift 2',
+            'output_dir="${2:?missing sidecar output directory}"',
+            'log_id="${output_dir##*/}"',
+            `log_root=${shellQuote(root)}`,
+            'stdout_file="$log_root/$log_id.stdout"',
+            'stderr_file="$log_root/$log_id.stderr"',
+            `docker run --pull=never --rm --interactive --network none --cpus=2 --memory=4g --pids-limit=256 --user "$(id -u):$(id -g)" --env HOME=/tmp --env XDG_CACHE_HOME=/tmp/.cache --mount ${shellQuote(`type=bind,source=${artifactRoot},target=${artifactRoot}`)} ${shellQuote(nativeImage)} "$@" > "$stdout_file" 2> "$stderr_file"`,
+            'status=$?',
+            'cp "$stdout_file" "$log_root/latest.stdout"',
+            'cp "$stderr_file" "$log_root/latest.stderr"',
+            'cat "$stdout_file"',
+            'cat "$stderr_file" >&2',
+            'exit "$status"',
+            '',
+          ].join('\n'),
+          { mode: 0o700 },
+        );
+
+        const sidecarOptions = {
+          pythonExecutable: pythonShim,
+          moduleDirectory: root,
+          artifactRoot,
+          timeoutMs: 120_000,
+        };
+        const inputCandidate = stokesChannelInput();
+        inputCandidate.mesh.input_sha256 = digestRequest(
+          inputCandidate.mesh.request,
+        );
+        const setup = inputCandidate.stokes_development;
+        if (!setup) throw new Error('Stokes input fixture has no setup');
+        setup.inlet.traction_pa[1].value = 1e-7;
+        const meshRun = await runSpatialSidecar(
+          inputCandidate.mesh.request,
+          sidecarOptions,
+        );
+        if (
+          meshRun.response.status !== 'ok' ||
+          meshRun.response.operation !== 'planar_mesh' ||
+          !meshRun.artifactDirectory
+        )
+          throw new Error('Pinned sidecar failed to generate the Stokes mesh');
+        const meshArtifact = meshRun.response.artifacts.find(
+          ({ refinement_factor }) =>
+            refinement_factor === inputCandidate.mesh.refinement_factor,
+        );
+        if (!meshArtifact)
+          throw new Error('Pinned sidecar omitted the Stokes mesh');
+        const meshBytes = await readFile(
+          join(meshRun.artifactDirectory, meshArtifact.path),
+        );
+        const gmshVersion = meshRun.response.metadata.gmsh_version;
+        const sidecarVersion = meshRun.response.metadata.sidecar_version;
+        if (!gmshVersion || !sidecarVersion)
+          throw new Error('Pinned sidecar omitted runtime versions');
+        inputCandidate.mesh.sha256 = sha256(meshBytes);
+        inputCandidate.mesh.gmsh_version = gmshVersion;
+        inputCandidate.mesh.sidecar_version = sidecarVersion;
+        inputCandidate.mesh.physical_groups = meshRun.response.physical_groups;
+        inputCandidate.mesh.component_map = meshRun.response.component_map;
+        inputCandidate.mesh.interfaces = meshRun.response.interfaces;
+        const input = spatialModelInputV2Schema.parse(inputCandidate);
+
+        const meshStore = new LocalSpatialArtifactStore({
+          rootDirectory: join(root, 'meshes'),
+        });
+        const fieldStore = new LocalSpatialFieldArtifactStore({
+          rootDirectory: join(root, 'fields'),
+        });
+        const nativeExecutor = new StokesDevelopmentExecutor({
+          ...sidecarOptions,
+          meshArtifactStore: meshStore,
+          fieldArtifactStore: fieldStore,
+        });
+        const executionErrors: unknown[] = [];
+        const executor = {
+          solverVersion: nativeExecutor.solverVersion,
+          runtimeVersion: nativeExecutor.runtimeVersion,
+          supports: nativeExecutor.supports.bind(nativeExecutor),
+          execute: async (
+            ...args: Parameters<typeof nativeExecutor.execute>
+          ) => {
+            try {
+              return await nativeExecutor.execute(...args);
+            } catch (error) {
+              executionErrors.push(error);
+              throw error;
+            }
+          },
+        };
+        const repository = new MemorySpatialSimulationRunRepository();
+        const { run } = await repository.createOrGet({
+          owner_id: ownerId,
+          evaluation_id: null,
+          idempotency_key: 'stokes-native-worker-test',
+          model_id: input.model_id,
+          system: input.system,
+          dimension: input.dimension,
+          input_contract_version: input.contract_version,
+          input_sha256: spatialModelInputV2Sha256(input),
+          solver_version: executor.solverVersion,
+          runtime_version: executor.runtimeVersion,
+          mesh_request_sha256: input.mesh.input_sha256,
+          input_snapshot: input,
+        });
+        const cycle = await runSpatialSimulationWorkerCycle({
+          repository,
+          executor,
+          workerId: 'stokes-native-test-worker',
+        });
+        let nativeSidecarLogs = '';
+        if (cycle.failed > 0) {
+          const [stdout, stderr] = await Promise.all([
+            readFile(join(root, 'latest.stdout'), 'utf8').catch(
+              () => 'unavailable',
+            ),
+            readFile(join(root, 'latest.stderr'), 'utf8').catch(
+              () => 'unavailable',
+            ),
+          ]);
+          nativeSidecarLogs = `\nNative sidecar stdout:\n${stdout.slice(-4_000)}\nNative sidecar stderr:\n${stderr.slice(-4_000)}`;
+        }
+        expect(
+          cycle,
+          `Native worker error: ${
+            executionErrors[0] instanceof Error
+              ? (executionErrors[0].stack ?? executionErrors[0].message)
+              : String(executionErrors[0] ?? 'unknown failure')
+          }${nativeSidecarLogs}`,
+        ).toMatchObject({ claimed: 1, completed: 1, failed: 0 });
+        const completed = await repository.getOwnedRun(run.id, ownerId);
+        expect(completed).toMatchObject({
+          status: 'completed',
+          result: {
+            contract_version: 'spatial-simulation-result-v2',
+            linear_solver_diagnostics: [
+              { solver_id: 'stokes_saddle_point', status: 'converged' },
+            ],
+            conservation_residuals: [
+              { balance_id: 'stokes_flow_balance', passed: true },
+            ],
+          },
+        });
+        const pressure = completed?.result?.fields.find(
+          ({ variable_id }) => variable_id === 'p',
+        );
+        if (!pressure || pressure.value_type !== 'scalar')
+          throw new Error('Native Stokes run omitted the pressure field');
+
+        let actorId = ownerId;
+        app = await buildApp({
+          repository: new MemoryEvaluationRepository(),
+          spatialSimulationRunRepository: repository,
+          spatialFieldArtifactReader: fieldStore,
+          rateLimit: false,
+          sessionResolver: async () => ({
+            userId: actorId,
+            email: 'stokes-native-owner@example.invalid',
+            role: 'ANALYST',
+            sessionId: 'stokes-native-session',
+            sessionToken: 'stokes-native-token',
+          }),
+        });
+        const path = `/api/spatial-simulations/${run.id}/fields/${pressure.field_id}`;
+        const apiResponse = await app.inject({ method: 'GET', url: path });
+        expect(apiResponse.statusCode).toBe(200);
+        expect(apiResponse.rawPayload.byteLength).toBe(pressure.artifact.bytes);
+        expect(sha256(apiResponse.rawPayload)).toBe(pressure.artifact.sha256);
+        actorId = 'different-stokes-owner';
+        expect(
+          (await app.inject({ method: 'GET', url: path })).statusCode,
+        ).toBe(404);
+      } finally {
+        await app?.close();
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+    180_000,
+  );
 
   it('rejects physics and output declarations outside the restricted Stokes scope', () => {
     const executor = new StokesDevelopmentExecutor({
