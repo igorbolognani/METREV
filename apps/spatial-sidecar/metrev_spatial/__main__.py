@@ -761,6 +761,52 @@ def solve_planar_darcy_transport_request(request: dict, output_dir: Path, meta: 
     except (ET.ParseError, OSError, ValueError) as exc:
         raise SolverError(f"Unable to verify Darcy transport XDMF field bindings: {exc}") from exc
 
+    try:
+        dx = ufl.Measure("dx", domain=mesh_data.mesh)
+        local_area = fem.assemble_scalar(fem.form(1.0 * dx))
+        area = mesh_data.mesh.comm.allreduce(float(local_area), op=MPI.SUM)
+        if not math.isfinite(area) or area <= 0:
+            raise ValueError("Darcy transport mesh must have positive area")
+        integral_units = {"Pa": "Pa*m2", "m/s": "m3/s", "mol/m3": "mol/m"}
+        field_summaries = []
+        for name, field in fields.items():
+            variable_id, unit = expected_datasets[name]
+            index_map = field.function_space.dofmap.index_map
+            local_dof_count = index_map.size_local * field.function_space.dofmap.index_map_bs
+            local_values = field.x.array[:local_dof_count]
+            if local_values.size == 0:
+                local_minimum = math.inf
+                local_maximum = -math.inf
+            else:
+                local_minimum = float(local_values.min())
+                local_maximum = float(local_values.max())
+            minimum = mesh_data.mesh.comm.allreduce(local_minimum, op=MPI.MIN)
+            maximum = mesh_data.mesh.comm.allreduce(local_maximum, op=MPI.MAX)
+            local_integral = fem.assemble_scalar(fem.form(field * dx))
+            integral = mesh_data.mesh.comm.allreduce(float(local_integral), op=MPI.SUM)
+            sample_count = mesh_data.mesh.comm.allreduce(local_dof_count, op=MPI.SUM)
+            mean = integral / area
+            if (sample_count <= 0 or not all(math.isfinite(value) for value in
+                                             (minimum, maximum, mean, integral)) or
+                    minimum > mean or mean > maximum):
+                raise ValueError(f"Invalid finite-element summary for {name}")
+            field_summaries.append({
+                "field_name": name,
+                "variable_id": variable_id,
+                "unit": unit,
+                "domain_tag": setup["domain_tag"],
+                "association": "mesh_nodes",
+                "sample_count": int(sample_count),
+                "minimum": minimum,
+                "maximum": maximum,
+                "mean": mean,
+                "integral": integral,
+                "integration_measure": "domain_area",
+                "integral_unit": integral_units[unit],
+            })
+    except Exception as exc:
+        raise SolverError(f"Unable to summarize Darcy transport fields: {exc}") from exc
+
     solution_files = []
     for path, artifact_format in ((xdmf_path, "xdmf"),
                                   (output_dir / "darcy-transport-solution.h5", "hdf5")):
@@ -795,13 +841,31 @@ def solve_planar_darcy_transport_request(request: dict, output_dir: Path, meta: 
         "transport_linear_iterations": transport.linear_iterations,
         "transport_linear_converged_reason": transport.linear_converged_reason,
     }
+    solver_diagnostics = [
+        {
+            "solver_id": "darcy_pressure",
+            "method": "petsc_preonly_lu",
+            "status": "converged",
+            "iterations": flow.linear_iterations,
+            "converged_reason": flow.linear_converged_reason,
+        },
+        {
+            "solver_id": "neutral_scalar_transport",
+            "method": "petsc_preonly_lu",
+            "status": "converged",
+            "iterations": transport.linear_iterations,
+            "converged_reason": transport.linear_converged_reason,
+        },
+    ]
     return {"protocol_version": PROTOCOL_VERSION, "request_id": request["request_id"],
             "status": "ok", "operation": "planar_darcy_transport", "metadata": meta,
             "model_input_contract_version": request["model_input_contract_version"],
             "model_input_sha256": request["model_input_sha256"],
             "field_representation": "lagrange_p1_interpolation", "mesh": mesh_record,
             "physical_groups": physical_groups, "diagnostics": diagnostics,
-            "solution_artifacts": solution_files, "field_datasets": field_datasets}
+            "solution_artifacts": solution_files, "field_datasets": field_datasets,
+            "field_summaries": field_summaries,
+            "solver_diagnostics": solver_diagnostics}
 
 
 def run(raw: bytes, output_dir: Path | None) -> dict:

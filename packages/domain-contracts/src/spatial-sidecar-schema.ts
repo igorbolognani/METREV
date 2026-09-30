@@ -488,6 +488,61 @@ const transportFieldDataset = z
   })
   .strict();
 
+const darcyTransportFieldSummary = z
+  .object({
+    field_name: z.enum([
+      'pressure',
+      'velocity_x',
+      'velocity_y',
+      'concentration',
+    ]),
+    variable_id: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    unit: z.enum(['Pa', 'm/s', 'mol/m3']),
+    domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    association: z.literal('mesh_nodes'),
+    sample_count: z.number().int().positive(),
+    minimum: z.number().finite(),
+    maximum: z.number().finite(),
+    mean: z.number().finite(),
+    integral: z.number().finite(),
+    integration_measure: z.literal('domain_area'),
+    integral_unit: z.enum(['Pa*m2', 'm3/s', 'mol/m']),
+  })
+  .strict()
+  .superRefine((summary, context) => {
+    if (
+      summary.minimum > summary.maximum ||
+      summary.mean < summary.minimum ||
+      summary.mean > summary.maximum
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['mean'],
+        message: 'Field statistics must satisfy minimum <= mean <= maximum',
+      });
+    const expectedIntegralUnit = {
+      Pa: 'Pa*m2',
+      'm/s': 'm3/s',
+      'mol/m3': 'mol/m',
+    }[summary.unit];
+    if (summary.integral_unit !== expectedIntegralUnit)
+      context.addIssue({
+        code: 'custom',
+        path: ['integral_unit'],
+        message: `Expected ${expectedIntegralUnit} for ${summary.unit} over domain area`,
+      });
+  });
+
+const darcyTransportSolverDiagnostic = z
+  .object({
+    solver_id: z.enum(['darcy_pressure', 'neutral_scalar_transport']),
+    method: z.literal('petsc_preonly_lu'),
+    status: z.literal('converged'),
+    iterations: z.number().int().positive(),
+    converged_reason: z.number().int().positive(),
+  })
+  .strict();
+
 export const spatialSidecarResponseSchema = z.union([
   z
     .object({
@@ -639,6 +694,18 @@ export const spatialSidecarResponseSchema = z.union([
           })
           .strict(),
       ]),
+      /** Additive development diagnostics; older v1 sidecars may omit them. */
+      field_summaries: z
+        .tuple([
+          darcyTransportFieldSummary,
+          darcyTransportFieldSummary,
+          darcyTransportFieldSummary,
+          darcyTransportFieldSummary,
+        ])
+        .optional(),
+      solver_diagnostics: z
+        .tuple([darcyTransportSolverDiagnostic, darcyTransportSolverDiagnostic])
+        .optional(),
     })
     .strict()
     .superRefine((response, context) => {
@@ -676,6 +743,64 @@ export const spatialSidecarResponseSchema = z.union([
           path: ['diagnostics'],
           message: 'Minimum concentration cannot exceed maximum concentration',
         });
+      if (
+        Boolean(response.field_summaries) !==
+        Boolean(response.solver_diagnostics)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_summaries'],
+          message:
+            'Field summaries and solver diagnostics must be supplied together',
+        });
+      if (response.field_summaries) {
+        const expectedSummaries = [
+          ['pressure', pressure, 'Pa*m2'],
+          ['velocity_x', velocityX, 'm3/s'],
+          ['velocity_y', velocityY, 'm3/s'],
+          ['concentration', concentration, 'mol/m'],
+        ] as const;
+        if (
+          response.field_summaries.some((summary, index) => {
+            const [fieldName, dataset, integralUnit] = expectedSummaries[index];
+            return (
+              summary.field_name !== fieldName ||
+              summary.variable_id !== dataset.variable_id ||
+              summary.unit !== dataset.unit ||
+              summary.domain_tag !== dataset.domain_tag ||
+              summary.integral_unit !== integralUnit ||
+              summary.sample_count !== response.mesh.node_count
+            );
+          })
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['field_summaries'],
+            message:
+              'Field summaries must bind the four exported nodal fields and their units',
+          });
+      }
+      if (response.solver_diagnostics) {
+        const [darcySolver, transportSolver] = response.solver_diagnostics;
+        if (
+          darcySolver.solver_id !== 'darcy_pressure' ||
+          transportSolver.solver_id !== 'neutral_scalar_transport' ||
+          darcySolver.iterations !==
+            response.diagnostics.darcy_linear_iterations ||
+          darcySolver.converged_reason !==
+            response.diagnostics.darcy_linear_converged_reason ||
+          transportSolver.iterations !==
+            response.diagnostics.transport_linear_iterations ||
+          transportSolver.converged_reason !==
+            response.diagnostics.transport_linear_converged_reason
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['solver_diagnostics'],
+            message:
+              'Solver diagnostics must match the Darcy and transport solve outcomes',
+          });
+      }
     }),
   z
     .object({

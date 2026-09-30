@@ -34,6 +34,147 @@ const fixture = JSON.parse(
   await readFile(join(root, 'tests/fixtures/planar-mesh-request.json'), 'utf8'),
 );
 
+function darcyTransportResponse() {
+  const digest = 'a'.repeat(64);
+  const fieldDatasets = [
+    {
+      variable_id: 'pressure',
+      field_name: 'pressure',
+      dataset_path: '/Function/pressure/0',
+      unit: 'Pa',
+      domain_tag: 'porous',
+    },
+    {
+      variable_id: 'velocity_x',
+      field_name: 'velocity_x',
+      dataset_path: '/Function/velocity_x/0',
+      unit: 'm/s',
+      domain_tag: 'porous',
+    },
+    {
+      variable_id: 'velocity_y',
+      field_name: 'velocity_y',
+      dataset_path: '/Function/velocity_y/0',
+      unit: 'm/s',
+      domain_tag: 'porous',
+    },
+    {
+      variable_id: 'concentration',
+      field_name: 'concentration',
+      dataset_path: '/Function/concentration/0',
+      unit: 'mol/m3',
+      domain_tag: 'porous',
+    },
+  ];
+  const summaries = [
+    ['pressure', 'pressure', 'Pa', 1, 3, 'Pa*m2'],
+    ['velocity_x', 'velocity_x', 'm/s', 1e-5, 3e-5, 'm3/s'],
+    ['velocity_y', 'velocity_y', 'm/s', -1e-8, 1e-8, 'm3/s'],
+    ['concentration', 'concentration', 'mol/m3', 0, 1, 'mol/m'],
+  ] as const;
+  return {
+    protocol_version: 'spatial-sidecar-v1',
+    request_id: '00000000-0000-4000-8000-000000000001',
+    status: 'ok',
+    operation: 'planar_darcy_transport',
+    metadata: {
+      sidecar_version: '0.2.0',
+      protocol_version: 'spatial-sidecar-v1',
+      python_version: '3.12.0',
+      gmsh_version: '4.15.2',
+      dolfinx_version: '0.10.0',
+      petsc_version: '3.23.0',
+    },
+    model_input_contract_version: 'spatial-input-v2',
+    model_input_sha256: digest,
+    field_representation: 'lagrange_p1_interpolation',
+    mesh: {
+      refinement_factor: 1,
+      format: 'msh4',
+      path: 'mesh-1.msh',
+      sha256: digest,
+      bytes: 100,
+      node_count: 3,
+      cell_count: 2,
+      min_quality: 0.5,
+    },
+    field_datasets: fieldDatasets,
+    physical_groups: {
+      'region:porous': 1,
+      'boundary:west': 101,
+      'boundary:east': 102,
+      'boundary:north': 103,
+      'boundary:south': 104,
+    },
+    diagnostics: {
+      inlet_flow_m2_s_per_depth: 1e-7,
+      outlet_flow_m2_s_per_depth: 1e-7,
+      relative_flow_balance: 0,
+      mean_inlet_pressure_pa: 3,
+      mean_outlet_pressure_pa: 1,
+      pressure_drop_pa: 2,
+      divergence_l2_per_s: 0,
+      darcy_linear_iterations: 1,
+      darcy_linear_converged_reason: 4,
+      inlet_species_rate_mol_m_s_per_depth: -1e-7,
+      outlet_species_rate_mol_m_s_per_depth: 1e-7,
+      wall_species_rate_mol_m_s_per_depth: 0,
+      relative_species_balance: 0,
+      peclet_number: 1,
+      minimum_concentration_mol_m3: 0,
+      maximum_concentration_mol_m3: 1,
+      transport_linear_iterations: 1,
+      transport_linear_converged_reason: 4,
+    },
+    solution_artifacts: [
+      {
+        path: 'darcy-transport-solution.xdmf',
+        format: 'xdmf',
+        sha256: digest,
+        bytes: 100,
+      },
+      {
+        path: 'darcy-transport-solution.h5',
+        format: 'hdf5',
+        sha256: 'b'.repeat(64),
+        bytes: 200,
+      },
+    ],
+    field_summaries: summaries.map(
+      ([field_name, variable_id, unit, minimum, maximum, integral_unit]) => ({
+        field_name,
+        variable_id,
+        unit,
+        domain_tag: 'porous',
+        association: 'mesh_nodes',
+        sample_count: 3,
+        minimum,
+        maximum,
+        mean: (minimum + maximum) / 2,
+        integral: (minimum + maximum) / 2,
+        integration_measure: 'domain_area',
+        integral_unit,
+      }),
+    ),
+    solver_diagnostics: [
+      {
+        solver_id: 'darcy_pressure',
+        method: 'petsc_preonly_lu',
+        status: 'converged',
+        iterations: 1,
+        converged_reason: 4,
+      },
+      {
+        solver_id: 'neutral_scalar_transport',
+        method: 'petsc_preonly_lu',
+        status: 'converged',
+        iterations: 1,
+        converged_reason: 4,
+      },
+    ],
+  };
+}
+
 describe('isolated numerical sidecar boundary', () => {
   it('keeps geometry, provenance and topology explicit', () => {
     expect(spatialSidecarRequestSchema.parse(fixture).operation).toBe(
@@ -77,6 +218,25 @@ describe('isolated numerical sidecar boundary', () => {
     );
     expect(unsupported.modulePlan.every((m) => !m.executableAtFidelity)).toBe(
       true,
+    );
+  });
+
+  it('validates Darcy transport summaries against exported states and solver outcomes', () => {
+    const response = darcyTransportResponse();
+    expect(spatialSidecarResponseSchema.safeParse(response).success).toBe(true);
+
+    const invalidSummary = structuredClone(response);
+    (
+      invalidSummary.field_summaries[3] as { integral_unit: string }
+    ).integral_unit = 'mol/m3';
+    expect(spatialSidecarResponseSchema.safeParse(invalidSummary).success).toBe(
+      false,
+    );
+
+    const invalidSolver = structuredClone(response);
+    invalidSolver.solver_diagnostics[1].iterations = 2;
+    expect(spatialSidecarResponseSchema.safeParse(invalidSolver).success).toBe(
+      false,
     );
   });
 
