@@ -356,7 +356,7 @@ describe('development Darcy transport worker adapter', () => {
             `log_root=${shellQuote(root)}`,
             'stdout_file="$log_root/$log_id.stdout"',
             'stderr_file="$log_root/$log_id.stderr"',
-            `docker run --pull=never --rm --interactive --network none --cpus=2 --memory=4g --pids-limit=256 --user "$(id -u):$(id -g)" --mount ${shellQuote(`type=bind,source=${artifactRoot},target=${artifactRoot}`)} ${shellQuote(nativeImage)} "$@" > "$stdout_file" 2> "$stderr_file"`,
+            `docker run --pull=never --rm --interactive --network none --cpus=2 --memory=4g --pids-limit=256 --user "$(id -u):$(id -g)" --env HOME=/tmp --env XDG_CACHE_HOME=/tmp/.cache --mount ${shellQuote(`type=bind,source=${artifactRoot},target=${artifactRoot}`)} ${shellQuote(nativeImage)} "$@" > "$stdout_file" 2> "$stderr_file"`,
             'status=$?',
             'cp "$stdout_file" "$log_root/latest.stdout"',
             'cp "$stderr_file" "$log_root/latest.stderr"',

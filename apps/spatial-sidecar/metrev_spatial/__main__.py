@@ -964,7 +964,18 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path)
     args = parser.parse_args()
     raw = sys.stdin.buffer.read(MAX_REQUEST_BYTES + 1)
-    response = run(raw, args.output_dir)
+    # Native Gmsh/DOLFINx/PETSc libraries can write directly to file descriptor
+    # 1. Keep those diagnostics off the one-line JSON protocol channel.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    saved_stdout = os.dup(sys.stdout.fileno())
+    try:
+        os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+        response = run(raw, args.output_dir)
+    finally:
+        sys.stdout.flush()
+        os.dup2(saved_stdout, sys.stdout.fileno())
+        os.close(saved_stdout)
     sys.stdout.write(json.dumps(response, allow_nan=False, separators=(",", ":")) + "\n")
 
 
