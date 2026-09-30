@@ -195,12 +195,12 @@ jobs:
             --mount type=bind,source="${{ github.workspace }}/tests",target=/opt/metrev-spatial/tests,readonly \
             metrev-spatial-toolchain /opt/metrev-spatial/tests/contracts/spatial_toolchain_smoke.py
 
-      - name: Verify native Darcy worker and authenticated field API roundtrip
+      - name: Verify bounded native Darcy worker and authenticated field API roundtrip
         run: pnpm exec vitest run tests/runtime/spatial-worker-darcy-development.test.ts -t "pinned native sidecar"
         env:
           METREV_SPATIAL_DOCKER_IMAGE: metrev-spatial-toolchain
 
-      - name: Verify native Stokes worker and authenticated field API roundtrip
+      - name: Verify bounded native Stokes worker and authenticated field API roundtrip
         run: pnpm exec vitest run tests/runtime/spatial-worker-stokes-development.test.ts -t "pinned native Stokes sidecar"
         env:
           METREV_SPATIAL_DOCKER_IMAGE: metrev-spatial-toolchain

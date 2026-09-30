@@ -344,35 +344,15 @@ describe('development Darcy transport worker adapter', () => {
       try {
         const artifactRoot = join(root, 'sidecar-output');
         await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
-        const pythonShim = join(root, 'docker-python');
-        const shellQuote = (value: string) =>
-          `'${value.replaceAll("'", "'\\''")}'`;
-        await writeFile(
-          pythonShim,
-          [
-            '#!/bin/sh',
-            'set -u',
-            'if [ "${1:-}" != "-m" ] || [ "${2:-}" != "metrev_spatial" ]; then exit 64; fi',
-            'shift 2',
-            'output_dir="${2:?missing sidecar output directory}"',
-            'log_id="${output_dir##*/}"',
-            `log_root=${shellQuote(root)}`,
-            'stdout_file="$log_root/$log_id.stdout"',
-            'stderr_file="$log_root/$log_id.stderr"',
-            `docker run --pull=never --rm --interactive --network none --cpus=2 --memory=4g --pids-limit=256 --user "$(id -u):$(id -g)" --env HOME=/tmp --env XDG_CACHE_HOME=/tmp/.cache --mount ${shellQuote(`type=bind,source=${artifactRoot},target=${artifactRoot}`)} ${shellQuote(nativeImage)} "$@" > "$stdout_file" 2> "$stderr_file"`,
-            'status=$?',
-            'cp "$stdout_file" "$log_root/latest.stdout"',
-            'cp "$stderr_file" "$log_root/latest.stderr"',
-            'cat "$stdout_file"',
-            'cat "$stderr_file" >&2',
-            'exit "$status"',
-            '',
-          ].join('\n'),
-          { mode: 0o700 },
-        );
-
         const sidecarOptions = {
-          pythonExecutable: pythonShim,
+          pythonExecutable: '/unused-host-interpreter',
+          container: {
+            image: nativeImage,
+            cpus: 2,
+            memoryMiB: 4096,
+            pidsLimit: 256,
+            temporaryMiB: 512,
+          },
           moduleDirectory: root,
           artifactRoot,
           timeoutMs: 120_000,
@@ -477,18 +457,7 @@ describe('development Darcy transport worker adapter', () => {
           executor,
           workerId: 'darcy-native-test-worker',
         });
-        let nativeSidecarLogs = '';
-        if (cycle.failed > 0) {
-          const [stdout, stderr] = await Promise.all([
-            readFile(join(root, 'latest.stdout'), 'utf8').catch(
-              () => 'unavailable',
-            ),
-            readFile(join(root, 'latest.stderr'), 'utf8').catch(
-              () => 'unavailable',
-            ),
-          ]);
-          nativeSidecarLogs = `\nNative sidecar stdout:\n${stdout.slice(-4_000)}\nNative sidecar stderr:\n${stderr.slice(-4_000)}`;
-        }
+        const nativeSidecarLogs = '';
         expect(
           cycle,
           `Native worker error: ${

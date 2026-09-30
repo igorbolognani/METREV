@@ -163,7 +163,7 @@ stokes_transport_development:
       inlet,
       outlet,
     ]
-  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Stokes P2 velocity is transferred from the exact same-domain Darcy solve.
+  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Stokes P2 velocity is transferred from the exact same-domain Stokes solve.
   material: The declared species has source-traced constant positive effective_diffusivity in m2/s and zero valence.
   states: Requested species concentration and x/y velocity states are bound to one bulk-liquid region; transport velocity IDs must equal the Stokes output IDs.
   facets: Nonnegative source-backed inlet and outlet concentrations use the matching opposing Stokes ports; zero flow is admitted and reverse flow is rejected at runtime; two other exterior facets are impermeable walls.

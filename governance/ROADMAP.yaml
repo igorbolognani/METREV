@@ -92,7 +92,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; coupled physics and a production solver adapter remain absent
+      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; same-domain neutral scalar transport is verified for restricted Stokes and Darcy operations, while reactive/ionic multi-region coupling and a production solver adapter remain absent
       - The worker and authenticated API exist; product authorization for mesh artifacts, a production artifact provider and a deployed solver remain pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
@@ -175,7 +175,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Restricted bulk-liquid Stokes and homogeneous single-porous-domain Darcy operations write hash-checked pressure/velocity fields and verify analytic fixtures independently. A separate development operation now transfers solved Darcy velocity to one neutral passive scalar on the same porous mesh and checks an analytic advection–diffusion profile and species-flux balance. Product hydraulics remains unregistered; bulk/porous interface coupling, heterogeneous Darcy/Brinkman, Navier–Stokes regimes, reactive or ionic transport coupling and case-runner integration remain unimplemented
+      - Restricted bulk-liquid Stokes and homogeneous single-porous-domain Darcy operations write hash-checked pressure/velocity fields and verify analytic fixtures independently. Development operations transfer solved Darcy velocity on a porous mesh or actual P2 Stokes velocity on a liquid mesh to one neutral passive scalar, with analytic advection–diffusion, constant-tracer and zero-flow diffusion fixtures and measured species-flux balance. Product hydraulics remains unregistered; bulk/porous interface coupling, heterogeneous Darcy/Brinkman, Navier–Stokes regimes, reactive or ionic transport coupling and case-runner integration remain unimplemented
       - P05/P06 remain partial; the new transport fixture does not establish multi-region interface conservation, and production field persistence/API/UI integration remains pending
     gate_evidence:
       GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. A typed worker request is bound to that input and the selected regenerated mesh digest; it does not establish product hydraulic input or solver admission
@@ -391,7 +391,7 @@ work_items:
       - apps/
     blockers:
       - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large durable artifact provider remain unverified
-      - The pluggable worker runtime, authenticated owner-scoped API and explicit development-only Darcy and single-liquid Stokes executors are implemented; CI exercises both through the pinned DOLFINx/PETSc/Gmsh worker and verified field API, while product solver admission, durable storage and deployment CPU/memory limits remain pending
+      - The pluggable worker runtime, authenticated owner-scoped API and explicit development-only Darcy and single-liquid Stokes executors are implemented; CI exercises both through the pinned DOLFINx/PETSc/Gmsh worker and verified field API, while an explicit bounded Docker sidecar transport is implemented; product solver admission, durable production storage and deployed worker limits remain pending
     gate_evidence:
       GATE-PERSISTENCE: result metadata is capped at 2 MiB of UTF-8 JSON before persistence; schema-valid large diagnostic-history fixtures are rejected without advancing the run, with memory and PostgreSQL regression coverage
       GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; CI checks this route with output from the pinned native worker sidecar, while durable production storage remains unverified
@@ -418,10 +418,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; the worker emits structured per-run lifecycle events and persists stable, sanitized sidecar failure reasons. Worker deadlines and cancellation terminate the isolated sidecar process group, while deployment CPU/memory limits and application solver admission remain pending
-      - No product spatial solver or production field store is registered; API run admission remains fail-closed by default, and deployment CPU/memory limits are still required
+      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; the worker emits structured per-run lifecycle events and persists stable, sanitized sidecar failure reasons. Worker deadlines and cancellation terminate the isolated sidecar process group, while per-run Docker CPU/memory/PID/temp limits are implemented and deployed worker limits and application solver admission remain pending
+      - No product spatial solver or production field store is registered; API run admission remains fail-closed by default, and the bounded Docker sidecar profile is implemented; deployed worker and database resource enforcement still require an operational target
     gate_evidence:
-      GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines, service shutdown (including claim races), strict operational configuration and field-byte hash verification pass focused tests
+      GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines, service shutdown (including claim races), strict operational configuration, container invocation and named-container cleanup on success/failure/abort/timeout, and field-byte hash verification pass focused tests
   - id: P17
     title: Integrate 2D with the actual case runner
     phase: P2

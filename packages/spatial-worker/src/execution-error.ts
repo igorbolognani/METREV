@@ -18,6 +18,11 @@ const sidecarFailures = {
     code: 'spatial_sidecar_invalid_response',
     message: 'The spatial solver returned invalid protocol data',
   },
+  container_cleanup: {
+    code: 'spatial_container_cleanup_failed',
+    message:
+      'The spatial solver container could not be confirmed stopped and removed',
+  },
   artifact_integrity: {
     code: 'spatial_artifact_integrity_failure',
     message: 'The spatial solver artifacts failed integrity validation',

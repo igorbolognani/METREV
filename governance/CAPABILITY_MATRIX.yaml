@@ -234,3 +234,29 @@ feature_coverage:
     macro_stack: absent
     micro_porous_electrode: absent
     nano_interface: absent
+# These isolated development operations do not change model/catalog eligibility.
+development_operations:
+  - operation: planar_stokes
+    dimension: 2
+    scope: single_liquid_flow_with_optional_neutral_same_mesh_transport
+    product_admission: false
+    worker_source: packages/spatial-worker/src/stokes-development-executor.ts
+    native_verification_source: tests/contracts/spatial_toolchain_smoke.py
+    native_worker_test: tests/runtime/spatial-worker-stokes-development.test.ts
+    experimental_maturity: none
+  - operation: planar_darcy
+    dimension: 2
+    scope: homogeneous_single_porous_flow_component_only
+    product_admission: false
+    worker_source: null
+    native_verification_source: tests/contracts/spatial_toolchain_smoke.py
+    native_worker_test: null
+    experimental_maturity: none
+  - operation: planar_darcy_transport
+    dimension: 2
+    scope: homogeneous_single_porous_flow_with_neutral_same_mesh_transport
+    product_admission: false
+    worker_source: packages/spatial-worker/src/darcy-development-executor.ts
+    native_verification_source: tests/contracts/spatial_toolchain_smoke.py
+    native_worker_test: tests/runtime/spatial-worker-darcy-development.test.ts
+    experimental_maturity: none

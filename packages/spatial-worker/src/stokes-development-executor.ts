@@ -19,6 +19,8 @@ import {
   runSpatialSidecar,
   type SidecarProcessOptions,
   type SidecarProcessResult,
+  type SpatialSidecarContainerOptions,
+  validateSpatialContainerOptions,
 } from '@metrev/spatial-sidecar-client';
 
 import type {
@@ -42,6 +44,7 @@ export interface StokesDevelopmentExecutorOptions {
   moduleDirectory: string;
   artifactRoot: string;
   timeoutMs: number;
+  container?: SpatialSidecarContainerOptions;
   meshArtifactStore: LocalSpatialArtifactStore;
   fieldArtifactStore: LocalSpatialFieldArtifactStore;
   /** Override only for isolated tests; normal runs use the process-isolated client. */
@@ -330,6 +333,7 @@ export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
       options.timeoutMs > 120_000
     )
       throw new RangeError('Invalid development sidecar process configuration');
+    if (options.container) validateSpatialContainerOptions(options.container);
     this.options = {
       ...options,
       moduleDirectory: resolve(options.moduleDirectory),
@@ -387,6 +391,9 @@ export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
           artifactRoot: this.options.artifactRoot,
           timeoutMs: this.options.timeoutMs,
           signal: context.signal,
+          ...(this.options.container
+            ? { container: this.options.container }
+            : {}),
         });
       } catch (error) {
         throw normalizeSpatialSimulationExecutionError(error);
