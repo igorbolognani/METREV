@@ -21,7 +21,7 @@ from dolfinx import fem, mesh
 from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import gmsh as gmshio
 
-from metrev_spatial.__main__ import run
+from metrev_spatial.__main__ import create_planar_mesh, run
 from metrev_spatial.darcy import solve_planar_darcy
 from metrev_spatial.darcy_transport import solve_planar_darcy_transport
 from metrev_spatial.stokes import solve_planar_stokes
@@ -379,6 +379,58 @@ def create_tetrahedral_mesh(path: Path) -> None:
         gmsh.write(str(path))
     finally:
         gmsh.finalize()
+
+
+def run_scalar_source_loss_refinements(fixture_mesh: dict) -> list[dict]:
+    """Native P1 reaction/source verification; no biological or electrochemical calibration."""
+    recipe = json.loads(json.dumps(fixture_mesh))
+    recipe["layers"] = [recipe["layers"][2]]
+    recipe["boundaries"]["left"] = {"tag": "west", "role": "wall"}
+    recipe["boundaries"]["right"] = {"tag": "east", "role": "wall"}
+    recipe["refinement_factors"] = [1, 2, 4]
+    length = recipe["height_m"]["value"]
+    width = recipe["layers"][0]["width_m"]["value"]
+    recipe["target_size_m"]["value"] = min(length, width) / 16
+    diffusivity = 1e-9
+    loss = diffusivity / length**2
+    results = []
+    with tempfile.TemporaryDirectory() as directory:
+        _, artifacts = create_planar_mesh(recipe, Path(directory))
+        for artifact in artifacts:
+            mesh_data = gmshio.read_from_msh(Path(directory) / artifact["path"], MPI.COMM_WORLD, gdim=2)
+            velocity = fem.Function(fem.functionspace(mesh_data.mesh, ("Lagrange", 2, (2,))))
+            dx = ufl.Measure("dx", domain=mesh_data.mesh)
+            def integrated(form):
+                return mesh_data.mesh.comm.allreduce(float(fem.assemble_scalar(fem.form(form))), op=MPI.SUM)
+            for mode, coefficients in (("loss", (0.0, loss)), ("source", (loss, 0.0)), ("equilibrium", (loss, loss))):
+                inlet, outlet = (1.0, 1.0) if mode == "equilibrium" else (1.0, 0.25)
+                solved = solve_planar_scalar_transport(
+                    mesh_data, velocity=velocity, domain_tag=recipe["layers"][0]["tag"],
+                    inlet_tag="inlet", outlet_tag="outlet", wall_tags=("west", "east"),
+                    inlet_concentration_mol_m3=inlet, outlet_concentration_mol_m3=outlet,
+                    effective_diffusivity_m2_s=diffusivity, characteristic_length_m=length,
+                    linear_source_loss=coefficients,
+                )
+                # Compare against the analytic function at quadrature, not its P1 interpolation.
+                y = ufl.SpatialCoordinate(mesh_data.mesh)[1] / length
+                analytic = (inlet * ufl.sinh(1-y) / math.sinh(1) + outlet * ufl.sinh(y) / math.sinh(1)) if mode == "loss" else (inlet + (outlet-inlet)*y + y*(1-y)/2) if mode == "source" else 1.0
+                l2 = math.sqrt(integrated((solved.concentration - analytic)**2 * dx) / (length * width))
+                assert solved.minimum_concentration_mol_m3 >= -1e-9
+                assert solved.linear_converged_reason > 0
+                assert math.isclose(solved.production_rate_mol_m_s_per_depth, coefficients[0] * length * width, rel_tol=1e-10, abs_tol=1e-30)
+                assert math.isclose(solved.consumption_rate_mol_m_s_per_depth, coefficients[1] * integrated(solved.concentration * dx), rel_tol=1e-10, abs_tol=1e-30)
+                if mode == "equilibrium":
+                    assert l2 < 1e-10 and solved.relative_species_balance < 1e-10
+                elif artifact["refinement_factor"] == 4:
+                    assert l2 < 2e-3 and solved.relative_species_balance < 1e-2
+                results.append({"mode": mode, "refinement": artifact["refinement_factor"], "l2": l2,
+                                "species_balance": solved.relative_species_balance,
+                                "production": solved.production_rate_mol_m_s_per_depth,
+                                "consumption": solved.consumption_rate_mol_m_s_per_depth})
+    for mode in ("loss", "source"):
+        errors = [entry["l2"] for entry in results if entry["mode"] == mode]
+        assert errors[1] < errors[0] * 0.8 and errors[2] < errors[1] * 0.8, results
+    return results
 
 
 def run_planar_stokes_sidecar(fixture_mesh: dict, with_transport: bool = False) -> dict:
@@ -994,6 +1046,7 @@ def main() -> None:
     assert volume_group.dim == 3 and volume_group.tag in imported_3d.cell_tags.values
     assert boundary_group.dim == 2 and boundary_group.tag in imported_3d.facet_tags.values
     error_3d, cells_3d = solve_affine(imported_3d, (1.0, 2.0, 3.0))
+    source_loss_refinements = run_scalar_source_loss_refinements(fixture_data["mesh"])
     sidecar_stokes = run_planar_stokes_sidecar(fixture_data["mesh"])
     sidecar_stokes_transport = run_planar_stokes_sidecar(fixture_data["mesh"], with_transport=True)
     sidecar_darcy = run_planar_darcy_sidecar(fixture_data["mesh"])
@@ -1003,6 +1056,7 @@ def main() -> None:
         json.dumps(
             {
                 "status": "ok",
+                "scalar_source_loss_refinements": source_loss_refinements,
                 "affine_max_error_2d": error_2d,
                 "triangle_count": cells_2d,
                 "layered_diffusion_refinements": layered_results,

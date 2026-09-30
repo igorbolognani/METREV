@@ -5,6 +5,7 @@ import {
   spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
   spatialSimulationResultForInputSchema,
+  spatialSpeciesBudgetResidual,
   type SpatialModelInputV2,
   type SpatialSidecarRequest,
   type SpatialSidecarResponse,
@@ -256,14 +257,19 @@ function resultFromResponse(input: {
               balance_id: 'stokes_species_balance',
               kind: 'species_mass' as const,
               scope: 'global' as const,
-              absolute_residual: Math.abs(
-                response.transport_diagnostics
-                  .inlet_species_rate_mol_m_s_per_depth +
-                  response.transport_diagnostics
-                    .outlet_species_rate_mol_m_s_per_depth +
-                  response.transport_diagnostics
-                    .wall_species_rate_mol_m_s_per_depth,
-              ),
+              species_budget: response.transport_diagnostics.species_budget,
+              absolute_residual: response.transport_diagnostics.species_budget
+                ? spatialSpeciesBudgetResidual(
+                    response.transport_diagnostics.species_budget,
+                  ).absolute
+                : Math.abs(
+                    response.transport_diagnostics
+                      .inlet_species_rate_mol_m_s_per_depth +
+                      response.transport_diagnostics
+                        .outlet_species_rate_mol_m_s_per_depth +
+                      response.transport_diagnostics
+                        .wall_species_rate_mol_m_s_per_depth,
+                  ),
               unit: 'mol/(m*s)',
               relative_residual:
                 response.transport_diagnostics.relative_species_balance,
@@ -318,7 +324,7 @@ function resultFromResponse(input: {
 
 /** Development-only adapter for the single bulk-liquid steady Stokes limit. */
 export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
-  readonly solverVersion = 'stokes-development-v0.2.0';
+  readonly solverVersion = 'stokes-development-v0.3.0';
   readonly runtimeVersion = 'spatial-sidecar-v1';
   private readonly options: StokesDevelopmentExecutorOptions;
   private readonly sidecarRunner: StokesSidecarRunner;

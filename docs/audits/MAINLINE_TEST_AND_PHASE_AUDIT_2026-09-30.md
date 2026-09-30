@@ -176,3 +176,9 @@ Ten preserved divergent histories:
 
 The current maintenance changes do not alter scientific equations, scientific
 parameter values, product solver admission or experimental maturity.
+
+## Executed mainline consolidation and branch recovery
+
+PR #110 consolidated the approved #108/#109 tree into main. PR #111 added this audit, a main-base PR guard and the tested atomic archive workflow; all six CI jobs and CodeQL passed before merging each PR. Main at `793ff09` also passed CI and CodeQL. The successful post-CI archive run `36744204329` removed the 70 audited historical branches and its own merged maintenance branch after preserving each exact head as a tag under `archive/2026-09-30/`. A live remote inventory after execution contains only main. Creating the next implementation PR will add one active short-lived branch.
+
+The ten divergent historical patches were preserved, not silently integrated into main. Their recovery tags remain available for deliberate future comparison. New work targets main directly; a successfully tested merge archives its completed branch without removing an open PR head or base, protected branch, changed historical head or mismatched archive tag.

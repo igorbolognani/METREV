@@ -222,6 +222,26 @@ class SidecarTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_planar_darcy_transport_request(malformed)
 
+    def test_source_loss_coefficients_are_explicit_sourced_and_bounded(self):
+        from metrev_spatial.__main__ import validate_planar_darcy_transport_request
+        request = self.darcy_transport_request()
+        source = {"source_kind": "test_fixture", "source_ref": "test-fixture://linear-source-loss"}
+        law = {"law": "constant_source_first_order_loss",
+               "source_rate_mol_m3_s": {**source, "value": 0.0, "unit": "mol/(m3*s)"},
+               "loss_rate_per_s": {**source, "value": 1e-6, "unit": "1/s"}}
+        request["transport_setup"]["linear_source_loss"] = law
+        self.assertIs(validate_planar_darcy_transport_request(request), request)
+        for mode in ("missing", "unit", "negative", "source", "law", "extra"):
+            malformed = json.loads(json.dumps(request))
+            candidate = malformed["transport_setup"]["linear_source_loss"]
+            if mode == "missing": del candidate["loss_rate_per_s"]
+            if mode == "unit": candidate["loss_rate_per_s"]["unit"] = "s"
+            if mode == "negative": candidate["source_rate_mol_m3_s"]["value"] = -1
+            if mode == "source": candidate["loss_rate_per_s"]["source_ref"] = ""
+            if mode == "law": candidate["law"] = "biological_network"
+            if mode == "extra": candidate["default"] = 1
+            with self.assertRaises(ValueError): validate_planar_darcy_transport_request(malformed)
+
     @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
     def test_single_liquid_channel_retains_all_exterior_physical_groups(self):
         fixture = json.loads(FIXTURE.read_text())

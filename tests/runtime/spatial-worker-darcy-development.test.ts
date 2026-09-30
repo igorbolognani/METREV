@@ -1,3 +1,4 @@
+import { linearSourceLoss } from '../fixtures/linear-source-loss';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -332,9 +333,9 @@ describe('development Darcy transport worker adapter', () => {
     }
   });
 
-  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE)(
-    'executes the pinned native sidecar through the worker and authenticated API',
-    async () => {
+  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE).each([false, true])(
+    'executes the pinned native sidecar through the worker and authenticated API (source_loss=%s)',
+    async (withReaction) => {
       const nativeImage = process.env.METREV_SPATIAL_DOCKER_IMAGE;
       if (!nativeImage || !/^[A-Za-z0-9._:/-]+$/.test(nativeImage))
         throw new Error('A valid pinned sidecar image is required');
@@ -360,6 +361,12 @@ describe('development Darcy transport worker adapter', () => {
         const inputCandidate = spatialModelInputV2Schema.parse(
           darcyTransportInput(),
         );
+        if (withReaction) {
+          const transport = inputCandidate.darcy_transport_development!;
+          transport.inlet.concentration_mol_m3.value = 1;
+          transport.outlet.concentration_mol_m3.value = 1;
+          transport.linear_source_loss = linearSourceLoss(1e-6, 1e-6);
+        }
         inputCandidate.geometry.layers[0].width_m.value = 0.01;
         inputCandidate.geometry.target_size_m.value = 0.00025;
         inputCandidate.mesh.request.mesh.layers[0].width_m.value = 0.01;
@@ -481,6 +488,12 @@ describe('development Darcy transport worker adapter', () => {
             ],
           },
         });
+        if (withReaction)
+          expect(
+            completed?.result?.conservation_residuals.find(
+              (residual) => residual.kind === 'species_mass',
+            )?.species_budget?.production_rate,
+          ).toBeGreaterThan(0);
         const field = completed?.result?.fields.find(
           ({ variable_id }) => variable_id === 'neutral_tracer_c',
         );

@@ -130,7 +130,7 @@ darcy_transport_development:
   optional: true
   requires: darcy_development
   regime: steady_advection_diffusion
-  scope: One homogeneous porous region carrying one neutral passive scalar; no reactions, electromigration, bulk coupling or product solver admission.
+  scope: One homogeneous porous region carrying one neutral scalar with optional declared constant production and first-order loss; no reaction networks, electromigration, bulk coupling or product solver admission.
   required:
     [
       regime,
@@ -142,7 +142,7 @@ darcy_transport_development:
       inlet,
       outlet,
     ]
-  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Darcy superficial velocity is transferred from the exact same-domain Darcy solve.
+  equation_ref: EQ-SP-001 with optional declared s - k*c scalar production/loss and no electromigration; Darcy superficial velocity is transferred from the exact same-domain Darcy solve.
   material: The declared species has source-traced constant positive effective_diffusivity in m2/s and zero valence.
   states: Requested species concentration and x/y velocity states are bound to one porous region; transport velocity IDs must equal the Darcy output IDs.
   facets: Nonnegative source-backed inlet and outlet concentrations use the matching positive-flow Darcy ports; two other exterior facets are impermeable walls.
@@ -151,7 +151,7 @@ stokes_transport_development:
   optional: true
   requires: stokes_development
   regime: steady_advection_diffusion
-  scope: One homogeneous bulk-liquid region carrying one neutral passive scalar; no reactions, electromigration, porous coupling or product solver admission.
+  scope: One homogeneous bulk-liquid region carrying one neutral scalar with optional declared constant production and first-order loss; no reaction networks, electromigration, porous coupling or product solver admission.
   required:
     [
       regime,
@@ -163,7 +163,7 @@ stokes_transport_development:
       inlet,
       outlet,
     ]
-  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Stokes P2 velocity is transferred from the exact same-domain Stokes solve.
+  equation_ref: EQ-SP-001 with optional declared s - k*c scalar production/loss and no electromigration; Stokes P2 velocity is transferred from the exact same-domain Stokes solve.
   material: The declared species has source-traced constant positive effective_diffusivity in m2/s and zero valence.
   states: Requested species concentration and x/y velocity states are bound to one bulk-liquid region; transport velocity IDs must equal the Stokes output IDs.
   facets: Nonnegative source-backed inlet and outlet concentrations use the matching opposing Stokes ports; zero flow is admitted and reverse flow is rejected at runtime; two other exterior facets are impermeable walls.
@@ -175,3 +175,23 @@ compatibility:
   persisted_0d: Retains its existing normalized case contract and reader; spatial-input-v2 is opt-in and has no 0D migration.
   spatial_input_v1: Continues to parse as a legacy research data contract; no automatic upgrade without physical geometry.
   runtime: A valid v2 payload is not eligible for 2D execution until the solver, numerical verification, artifact authorization and case runner gates pass.
+
+linear_source_loss_development:
+  applies_to: [darcy_transport_development, stokes_transport_development]
+  optional: true
+  law: constant_source_first_order_loss
+  required_sourced_coefficients:
+    source_rate_mol_m3_s: Nonnegative constant in mol/(m3*s), source_kind and source_ref required.
+    loss_rate_per_s: Nonnegative constant in 1/s, source_kind and source_ref required.
+  absent_law: Source-free transport; coefficients are not invented.
+  budget: Measured outward inlet/outlet/wall flux, production and consumption in mol/(m*s) per unit Cartesian 2D depth; persisted residual must match these terms and the declared input.
+  exclusions:
+    [
+      stoichiometric_networks,
+      electrochemical_kinetics,
+      biological_kinetics,
+      ionic_migration,
+      transient_storage,
+      multidomain_coupling,
+      product_admission,
+    ]

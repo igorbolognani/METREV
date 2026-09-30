@@ -9,6 +9,7 @@ import {
   spatialModelInputV2Sha256,
   spatialSidecarRequestSchema,
   spatialSidecarResponseSchema,
+  spatialSpeciesBudgetMatchesLaw,
   type SpatialSidecarRequest,
   type SpatialSidecarResponse,
 } from '@metrev/domain-contracts';
@@ -498,6 +499,46 @@ export async function runSpatialSidecar(
         throw new SidecarTransportError(
           'artifact_integrity',
           'Hydraulic mesh physical groups do not match the admitted recipe',
+        );
+      const transportSetup =
+        'transport_setup' in hydraulicRequest
+          ? hydraulicRequest.transport_setup
+          : undefined;
+      const budget =
+        hydraulicResponse.operation === 'planar_stokes'
+          ? hydraulicResponse.transport_diagnostics?.species_budget
+          : hydraulicResponse.operation === 'planar_darcy_transport'
+            ? hydraulicResponse.diagnostics.species_budget
+            : undefined;
+      const law = transportSetup?.linear_source_loss;
+      const concentrationSummary =
+        'field_summaries' in hydraulicResponse
+          ? hydraulicResponse.field_summaries?.find(
+              (field) => field.field_name === 'concentration',
+            )
+          : undefined;
+      const area =
+        hydraulicRequest.mesh_request.mesh.height_m.value *
+        hydraulicRequest.mesh_request.mesh.layers.reduce(
+          (sum, layer) => sum + layer.width_m.value,
+          0,
+        );
+      if (
+        Boolean(law) !== Boolean(budget) ||
+        (law &&
+          budget &&
+          (!concentrationSummary ||
+            !spatialSpeciesBudgetMatchesLaw(
+              budget,
+              law,
+              transportSetup!.concentration_variable,
+              area,
+              concentrationSummary.integral,
+            )))
+      )
+        throw new SidecarTransportError(
+          'artifact_integrity',
+          'Reaction budget must bind the declared source/loss and integrated concentration',
         );
       const expectedDatasets: Array<{
         variable_id: string;

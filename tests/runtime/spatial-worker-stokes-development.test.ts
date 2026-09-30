@@ -1,3 +1,4 @@
+import { linearSourceLoss } from '../fixtures/linear-source-loss';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -375,9 +376,13 @@ describe('development Stokes worker adapter', () => {
     },
   );
 
-  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE).each([false, true])(
-    'executes the pinned native Stokes sidecar through the worker and authenticated API (transport=%s)',
-    async (withTransport) => {
+  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE).each([
+    { withTransport: false, withReaction: false },
+    { withTransport: true, withReaction: false },
+    { withTransport: true, withReaction: true },
+  ])(
+    'executes the pinned native Stokes sidecar through the worker and authenticated API (transport=$withTransport, source_loss=$withReaction)',
+    async ({ withTransport, withReaction }) => {
       const nativeImage = process.env.METREV_SPATIAL_DOCKER_IMAGE;
       if (!nativeImage || !/^[A-Za-z0-9._:/-]+$/.test(nativeImage))
         throw new Error('A valid pinned sidecar image is required');
@@ -414,7 +419,9 @@ describe('development Stokes worker adapter', () => {
         if (withTransport) {
           const transport = inputCandidate.stokes_transport_development!;
           transport.inlet.concentration_mol_m3.value = 1;
-          transport.outlet.concentration_mol_m3.value = 2;
+          transport.outlet.concentration_mol_m3.value = withReaction ? 1 : 2;
+          if (withReaction)
+            transport.linear_source_loss = linearSourceLoss(1e-6, 1e-6);
         }
         const meshRun = await runSpatialSidecar(
           inputCandidate.mesh.request,
@@ -527,6 +534,14 @@ describe('development Stokes worker adapter', () => {
             ],
           },
         });
+        if (withReaction) {
+          const budget = completed?.result?.conservation_residuals.find(
+            (residual) => residual.kind === 'species_mass',
+          )?.species_budget;
+          expect(budget?.production_rate).toBeGreaterThan(0);
+          expect(budget?.consumption_rate).toBeGreaterThan(0);
+          expect(budget?.unit).toBe('mol/(m*s)');
+        }
         const pressure = completed?.result?.fields.find(
           ({ variable_id }) => variable_id === (withTransport ? 'c' : 'p'),
         );

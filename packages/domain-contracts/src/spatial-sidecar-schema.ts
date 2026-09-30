@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  spatialSpeciesBudgetSchema,
+  spatialSpeciesBudgetResidual,
+} from './spatial-species-budget';
 
 import { spatialValueSchema } from './spatial-model-schema';
 import {
@@ -742,6 +746,7 @@ export const spatialSidecarResponseSchema = z.union([
           outlet_species_rate_mol_m_s_per_depth: z.number().finite(),
           wall_species_rate_mol_m_s_per_depth: z.number().finite(),
           relative_species_balance: z.number().finite().nonnegative(),
+          species_budget: spatialSpeciesBudgetSchema.optional(),
           peclet_number: z.number().finite().nonnegative(),
           minimum_concentration_mol_m3: z.number().finite().nonnegative(),
           maximum_concentration_mol_m3: z.number().finite().nonnegative(),
@@ -782,6 +787,25 @@ export const spatialSidecarResponseSchema = z.union([
     })
     .strict()
     .superRefine((response, context) => {
+      const budget = response.diagnostics.species_budget;
+      const d = response.diagnostics;
+      if (
+        budget &&
+        (budget.inlet_outward_rate !== d.inlet_species_rate_mol_m_s_per_depth ||
+          budget.outlet_outward_rate !==
+            d.outlet_species_rate_mol_m_s_per_depth ||
+          budget.wall_outward_rate !== d.wall_species_rate_mol_m_s_per_depth ||
+          Math.abs(
+            spatialSpeciesBudgetResidual(budget).relative -
+              d.relative_species_balance,
+          ) > 1e-12)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['diagnostics', 'species_budget'],
+          message:
+            'Reaction species budget must match measured rates and balance',
+        });
       const [pressure, velocityX, velocityY, concentration] =
         response.field_datasets;
       const expected = [
@@ -910,6 +934,7 @@ export const spatialSidecarResponseSchema = z.union([
           outlet_species_rate_mol_m_s_per_depth: z.number().finite(),
           wall_species_rate_mol_m_s_per_depth: z.number().finite(),
           relative_species_balance: z.number().finite().nonnegative(),
+          species_budget: spatialSpeciesBudgetSchema.optional(),
           peclet_number: z.number().finite().nonnegative(),
           minimum_concentration_mol_m3: z.number().finite(),
           maximum_concentration_mol_m3: z.number().finite(),
@@ -1056,12 +1081,26 @@ export const spatialSidecarResponseSchema = z.union([
           transport.outlet_species_rate_mol_m_s_per_depth,
           transport.wall_species_rate_mol_m_s_per_depth,
         ];
-        const balance =
-          Math.abs(rates.reduce((sum, rate) => sum + rate, 0)) /
-          Math.max(
-            rates.reduce((sum, rate) => sum + Math.abs(rate), 0),
-            1e-30,
-          );
+        const budget = transport.species_budget;
+        if (
+          budget &&
+          (budget.inlet_outward_rate !== rates[0] ||
+            budget.outlet_outward_rate !== rates[1] ||
+            budget.wall_outward_rate !== rates[2])
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['transport_diagnostics', 'species_budget'],
+            message:
+              'Species budget must use the measured outward boundary rates',
+          });
+        const balance = budget
+          ? spatialSpeciesBudgetResidual(budget).relative
+          : Math.abs(rates.reduce((sum, rate) => sum + rate, 0)) /
+            Math.max(
+              rates.reduce((sum, rate) => sum + Math.abs(rate), 0),
+              1e-30,
+            );
         const concentrationSummary = response.field_summaries?.find(
           (summary) => summary.field_name === 'concentration',
         );
