@@ -23,6 +23,7 @@ required_fields:
   - requested_outputs
 optional_fields:
   - vector_outputs
+  - stokes_development
 scientific_value:
   required: [value, unit, source_kind, source_ref]
   optional: [source_locator, conditions, uncertainty, uncertainty_unit]
@@ -80,6 +81,27 @@ boundary_kinds:
   exterior_without_value: [symmetry, circuit_coupling]
   internal: [interface_continuity]
   rule: A tag must be a physical facet or ordered interface, never a region. Units and supported operators come from state_and_boundary_units.
+stokes_development:
+  optional: true
+  regime: steady_stokes
+  scope: One bulk-liquid-only planar mesh; no porous or electrode coupling and no product solver admission.
+  required:
+    [
+      regime,
+      equation_ref,
+      domain_tag,
+      viscosity_parameter_id,
+      pressure_variable,
+      velocity_variables,
+      wall_tags,
+      inlet,
+      outlet,
+    ]
+  equation_ref: EQ-FL-002 in docs/numerics/GOVERNING_EQUATIONS.md; steady incompressible symmetric-stress Stokes momentum and continuity.
+  viscosity: A source-traced constant dynamic_viscosity_pa_s material field on the sole bulk-liquid region; no inferred liquid properties.
+  states: Requested pressure, velocity_x and velocity_y variables declared only on that region; no overlapping generic state boundary conditions.
+  facets: Exactly two exterior walls, one inlet and one outlet matching the planar geometry and tagged mesh.
+  port_traction: Explicit x/y full Cauchy traction components σ·n, where n is the outward liquid normal, with unit Pa and source provenance at both inlet and outlet; enter the weak-form right hand side with positive sign. Zero traction is allowed.
 circuit:
   MFC: { kind: external_load, unit: ohm, sign: generated_power }
   MEC: { kind: applied_voltage, unit: V, sign: consumed_electrical_power }
