@@ -7,6 +7,7 @@ import {
   spatialModelInputV2Sha256,
   spatialSimulationResultSchema,
   spatialSimulationResultForInputSchema,
+  spatialSimulationRunSnapshotSchema,
   type SpatialSimulationRunSnapshot,
 } from '@metrev/domain-contracts';
 
@@ -252,6 +253,62 @@ describe('spatial simulation result contract', () => {
     );
     expect(completed.result?.conservation_residuals[0]?.passed).toBe(true);
     expect(completed.result?.mesh.mesh_quality.cell_count).toBe(480);
+  });
+
+  it('retains direct linear-solver termination separately from nonlinear history', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const completed = await completeRun(repository);
+    const linearSolverDiagnostics = [
+      {
+        solver_id: 'darcy_pressure',
+        method: 'petsc_preonly_lu',
+        status: 'converged' as const,
+        iterations: 3,
+        termination_reason: 'petsc_ksp_converged',
+        termination_code: 4,
+      },
+      {
+        solver_id: 'neutral_scalar_transport',
+        method: 'petsc_preonly_lu',
+        status: 'converged' as const,
+        iterations: 2,
+        termination_reason: 'petsc_ksp_converged',
+        termination_code: 4,
+      },
+    ];
+    const withLinearDiagnostics = {
+      ...completed.result!,
+      linear_solver_diagnostics: linearSolverDiagnostics,
+    };
+
+    expect(
+      spatialSimulationResultSchema.safeParse(withLinearDiagnostics).success,
+    ).toBe(true);
+    expect(
+      spatialSimulationResultSchema.safeParse({
+        ...withLinearDiagnostics,
+        linear_solver_diagnostics: [
+          ...linearSolverDiagnostics,
+          linearSolverDiagnostics[0],
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      spatialSimulationRunSnapshotSchema.safeParse({
+        ...completed,
+        result: {
+          ...withLinearDiagnostics,
+          linear_solver_diagnostics: [
+            {
+              ...linearSolverDiagnostics[0],
+              status: 'not_converged',
+              termination_reason: 'petsc_ksp_diverged',
+              termination_code: -3,
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it('binds integral units and scalar metrics to dimensionally compatible field summaries', async () => {
