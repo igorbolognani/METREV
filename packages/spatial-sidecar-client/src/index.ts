@@ -31,6 +31,14 @@ export function planarStokesRequestFromInput(
   );
   if (!viscosity || viscosity.field.kind !== 'constant')
     throw new RangeError('Stokes sidecar requires constant declared viscosity');
+  const transport = input.stokes_transport_development;
+  const diffusivity = input.species.find(
+    (species) => species.id === transport?.species_id,
+  )?.effective_diffusivity;
+  if (transport && diffusivity?.kind !== 'constant')
+    throw new RangeError(
+      'Stokes transport requires constant source-backed diffusivity',
+    );
   return spatialSidecarRequestSchema.parse({
     protocol_version: 'spatial-sidecar-v1',
     request_id: requestId,
@@ -42,6 +50,9 @@ export function planarStokesRequestFromInput(
     model_input_sha256: spatialModelInputV2Sha256(input),
     setup,
     viscosity: viscosity.field.value,
+    ...(transport && diffusivity?.kind === 'constant'
+      ? { transport_setup: transport, effective_diffusivity: diffusivity.value }
+      : {}),
   }) as Extract<SpatialSidecarRequest, { operation: 'planar_stokes' }>;
 }
 
@@ -464,14 +475,19 @@ export async function runSpatialSidecar(
           unit: 'm/s',
         },
       ];
-      if (hydraulicRequest.operation === 'planar_darcy_transport')
+      if (
+        hydraulicRequest.operation === 'planar_darcy_transport' ||
+        (hydraulicRequest.operation === 'planar_stokes' &&
+          hydraulicRequest.transport_setup)
+      )
         expectedDatasets.push({
-          variable_id: hydraulicRequest.transport_setup.concentration_variable,
+          variable_id: hydraulicRequest.transport_setup!.concentration_variable,
           field_name: 'concentration',
           dataset_path: '/Function/concentration/0',
           unit: 'mol/m3',
         });
       if (
+        hydraulicResponse.field_datasets.length !== expectedDatasets.length ||
         expectedDatasets.some(
           (expected) =>
             !hydraulicResponse.field_datasets.some(

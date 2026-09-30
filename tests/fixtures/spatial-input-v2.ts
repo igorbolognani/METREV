@@ -293,3 +293,36 @@ export const darcyTransportInput = () => {
     },
   };
 };
+
+export function stokesTransportInput() {
+  const input = stokesChannelInput();
+  const tracer = darcyTransportInput();
+  return {
+    ...input,
+    species: tracer.species,
+    variables: [
+      ...input.variables,
+      {
+        id: 'c',
+        kind: 'species_concentration' as const,
+        unit: 'mol/m3',
+        domain_tags: ['liquid'],
+        species_id: tracer.species[0].id,
+      },
+    ],
+    requested_outputs: [...input.requested_outputs, 'c'],
+    stokes_transport_development: {
+      ...tracer.darcy_transport_development!,
+      domain_tag: 'liquid',
+      concentration_variable: 'c',
+      inlet: {
+        ...tracer.darcy_transport_development!.inlet,
+        tag: input.stokes_development!.inlet.tag,
+      },
+      outlet: {
+        ...tracer.darcy_transport_development!.outlet,
+        tag: input.stokes_development!.outlet.tag,
+      },
+    },
+  };
+}

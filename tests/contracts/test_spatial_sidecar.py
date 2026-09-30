@@ -107,6 +107,30 @@ class SidecarTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_planar_stokes_request(malformed)
 
+    def test_stokes_transport_request_preserves_sources_and_same_mesh_bindings(self):
+        from metrev_spatial.__main__ import validate_planar_stokes_request, RequestError
+        request = self.stokes_request()
+        source = {"source_kind": "test_fixture", "source_ref": "test-fixture://neutral-scalar"}
+        request["transport_setup"] = {
+            "regime": "steady_advection_diffusion", "equation_ref": "EQ-SP-001",
+            "domain_tag": "liquid", "species_id": "tracer", "concentration_variable": "c",
+            "velocity_variables": {"x": "ux", "y": "uy"},
+            "inlet": {"tag": "inlet", "concentration_mol_m3": {**source, "value": 1, "unit": "mol/m3"}},
+            "outlet": {"tag": "outlet", "concentration_mol_m3": {**source, "value": 2, "unit": "mol/m3"}},
+        }
+        request["effective_diffusivity"] = {**source, "value": 1e-9, "unit": "m2/s"}
+        self.assertIs(validate_planar_stokes_request(request), request)
+        for variant in ("missing", "velocity", "unit", "source", "state", "extra"):
+            invalid = json.loads(json.dumps(request))
+            if variant == "missing": del invalid["effective_diffusivity"]
+            if variant == "velocity": invalid["transport_setup"]["velocity_variables"]["x"] = "other"
+            if variant == "unit": invalid["effective_diffusivity"]["unit"] = "m/s"
+            if variant == "source": invalid["transport_setup"]["inlet"]["concentration_mol_m3"]["source_ref"] = ""
+            if variant == "state": invalid["transport_setup"]["concentration_variable"] = "p"
+            if variant == "extra": invalid["transport_setup"]["inlet"]["ignored"] = 1
+            with self.subTest(variant=variant), self.assertRaises(RequestError):
+                validate_planar_stokes_request(invalid)
+
     def darcy_request(self):
         fixture = json.loads(FIXTURE.read_text())
         mesh = fixture["mesh"]

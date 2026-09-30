@@ -251,6 +251,7 @@ export const spatialModelInputV2Schema = z
     stokes_development: spatialStokesSetupSchema.optional(),
     darcy_development: spatialDarcySetupSchema.optional(),
     darcy_transport_development: spatialDarcyTransportSetupSchema.optional(),
+    stokes_transport_development: spatialDarcyTransportSetupSchema.optional(),
     circuit: z.discriminatedUnion('kind', [
       z
         .object({
@@ -688,34 +689,44 @@ export const spatialModelInputV2Schema = z
             'Darcy pressure boundary requires Pa',
           );
     }
-    const darcyTransport = input.darcy_transport_development;
+    const darcyTransport =
+      input.darcy_transport_development ?? input.stokes_transport_development;
+    const flow = input.darcy_transport_development ? darcy : stokes;
+    const transportPath = input.darcy_transport_development
+      ? 'darcy_transport_development'
+      : 'stokes_transport_development';
+    if (input.darcy_transport_development && input.stokes_transport_development)
+      issue(
+        ['stokes_transport_development'],
+        'Only one hydraulic transport setup is permitted',
+      );
     if (darcyTransport) {
-      const path = ['darcy_transport_development'] as (string | number)[];
-      if (!darcy)
-        issue(
-          path,
-          'Darcy-driven species transport requires a declared Darcy setup',
-        );
+      const path = [transportPath] as (string | number)[];
+      if (!flow)
+        issue(path, 'Species transport requires its declared hydraulic setup');
       if (
-        stokes ||
-        !darcy ||
-        darcyTransport.domain_tag !== darcy.domain_tag ||
-        darcyTransport.velocity_variables.x !== darcy.velocity_variables.x ||
-        darcyTransport.velocity_variables.y !== darcy.velocity_variables.y
+        !flow ||
+        darcyTransport.domain_tag !== flow.domain_tag ||
+        darcyTransport.velocity_variables.x !== flow.velocity_variables.x ||
+        darcyTransport.velocity_variables.y !== flow.velocity_variables.y
       )
         issue(
           [...path, 'velocity_variables'],
-          'Transport velocity must bind to the same restricted Darcy domain and states',
+          'Transport velocity must bind to the same declared hydraulic domain and states',
         );
       const layer = domains.get(darcyTransport.domain_tag);
       if (
         layers.length !== 1 ||
         !layer ||
-        !['anode', 'biofilm', 'separator'].includes(layer.kind)
+        !(
+          transportPath === 'darcy_transport_development'
+            ? ['anode', 'biofilm', 'separator']
+            : ['bulk_liquid']
+        ).includes(layer.kind)
       )
         issue(
           [...path, 'domain_tag'],
-          'Darcy transport requires the single declared porous domain',
+          'Transport requires its single declared liquid or porous domain',
         );
       const transportedSpecies = input.species.find(
         (entry) => entry.id === darcyTransport.species_id,
@@ -727,7 +738,7 @@ export const spatialModelInputV2Schema = z
       )
         issue(
           [...path, 'species_id'],
-          'Restricted Darcy transport accepts one declared neutral species',
+          'Restricted hydraulic transport accepts one declared neutral species',
         );
       if (
         !transportedSpecies?.effective_diffusivity ||
@@ -737,7 +748,7 @@ export const spatialModelInputV2Schema = z
       )
         issue(
           [...path, 'species_id'],
-          'Darcy transport requires source-traced constant positive effective diffusivity',
+          'Transport requires source-traced constant positive effective diffusivity',
         );
       const concentration = variables.get(
         darcyTransport.concentration_variable,
@@ -753,7 +764,7 @@ export const spatialModelInputV2Schema = z
       )
         issue(
           [...path, 'concentration_variable'],
-          'Transport concentration must be the requested state of the declared neutral species in the Darcy domain',
+          'Transport concentration must be the requested state of the declared neutral species in the hydraulic domain',
         );
       if (
         input.reaction_laws.some((law) =>
@@ -764,7 +775,7 @@ export const spatialModelInputV2Schema = z
       )
         issue(
           [...path, 'species_id'],
-          'Restricted Darcy transport does not include species reaction terms',
+          'Restricted hydraulic transport does not include species reaction terms',
         );
       const inletBoundary = boundarySides.find(
         ([, boundary]) => boundary.tag === darcyTransport.inlet.tag,
@@ -773,16 +784,30 @@ export const spatialModelInputV2Schema = z
         ([, boundary]) => boundary.tag === darcyTransport.outlet.tag,
       );
       if (
-        !darcy ||
-        darcyTransport.inlet.tag !== darcy.inlet.tag ||
-        darcyTransport.outlet.tag !== darcy.outlet.tag ||
+        !flow ||
+        darcyTransport.inlet.tag !== flow.inlet.tag ||
+        darcyTransport.outlet.tag !== flow.outlet.tag ||
         inletBoundary?.[1].role !== 'inlet' ||
         outletBoundary?.[1].role !== 'outlet' ||
-        darcy.inlet.pressure_pa.value <= darcy.outlet.pressure_pa.value
+        (transportPath === 'darcy_transport_development' &&
+          darcy &&
+          darcy.inlet.pressure_pa.value <= darcy.outlet.pressure_pa.value)
       )
         issue(
           [...path, 'inlet'],
-          'Transport concentration ports must match the positive-flow Darcy inlet and outlet',
+          'Transport concentration ports must match the declared hydraulic inlet and outlet',
+        );
+      if (
+        !(
+          (inletBoundary?.[0] === 'left' && outletBoundary?.[0] === 'right') ||
+          (inletBoundary?.[0] === 'right' && outletBoundary?.[0] === 'left') ||
+          (inletBoundary?.[0] === 'top' && outletBoundary?.[0] === 'bottom') ||
+          (inletBoundary?.[0] === 'bottom' && outletBoundary?.[0] === 'top')
+        )
+      )
+        issue(
+          [...path, 'inlet'],
+          'Transport requires opposing hydraulic ports',
         );
       for (const port of ['inlet', 'outlet'] as const)
         if (

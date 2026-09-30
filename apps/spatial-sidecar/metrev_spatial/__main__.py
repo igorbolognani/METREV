@@ -229,11 +229,41 @@ def validate_source_value(obj: object, unit: str, *, positive: bool = False) -> 
     return value
 
 
+def validate_hydraulic_transport_setup(request: dict) -> None:
+    transport = exact_keys(request["transport_setup"],
+                           {"regime", "equation_ref", "domain_tag", "species_id",
+                            "concentration_variable", "velocity_variables", "inlet", "outlet"})
+    flow = request["setup"]
+    if transport["regime"] != "steady_advection_diffusion" or transport["equation_ref"] != "EQ-SP-001":
+        raise RequestError("Unsupported neutral transport equation")
+    identifiers = (transport["species_id"], transport["concentration_variable"])
+    if any(not isinstance(value, str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value) for value in identifiers):
+        raise RequestError("Transport species and state identifiers are malformed")
+    if transport["domain_tag"] != flow["domain_tag"] or \
+            exact_keys(transport["velocity_variables"], {"x", "y"}) != flow["velocity_variables"]:
+        raise RequestError("Transport must consume the same-domain solved velocity")
+    if len({flow["pressure_variable"], *flow["velocity_variables"].values(), transport["concentration_variable"]}) != 4:
+        raise RequestError("Transport concentration state must be distinct from hydraulic states")
+    for name in ("inlet", "outlet"):
+        port = exact_keys(transport[name], {"tag", "concentration_mol_m3"})
+        if port["tag"] != flow[name]["tag"]:
+            raise RequestError("Transport ports must match the hydraulic ports")
+        validate_source_value(port["concentration_mol_m3"], "mol/m3")
+        if port["concentration_mol_m3"]["value"] < 0:
+            raise RequestError("Transport concentrations cannot be negative")
+    sides = request["mesh_request"]["mesh"]["boundaries"]
+    inlet_side = next(side for side, boundary in sides.items() if boundary["tag"] == flow["inlet"]["tag"])
+    outlet_side = next(side for side, boundary in sides.items() if boundary["tag"] == flow["outlet"]["tag"])
+    if {inlet_side, outlet_side} not in ({"left", "right"}, {"top", "bottom"}):
+        raise RequestError("Transport requires opposing hydraulic ports")
+    validate_source_value(request["effective_diffusivity"], "m2/s", positive=True)
+
+
 def validate_planar_stokes_request(obj: object) -> dict:
     request = exact_keys(obj, {"protocol_version", "request_id", "operation", "mesh_request",
                                "mesh_sha256", "refinement_factor", "model_input_contract_version",
                                "model_input_sha256",
-                               "setup", "viscosity"})
+                               "setup", "viscosity"}, {"transport_setup", "effective_diffusivity"})
     if request["protocol_version"] != PROTOCOL_VERSION or request["operation"] != "planar_stokes":
         raise RequestError("Unsupported planar Stokes request")
     digest_pattern = re.compile(r"^[a-f0-9]{64}$")
@@ -294,6 +324,10 @@ def validate_planar_stokes_request(obj: object) -> dict:
             not any(item["role"] == "inlet" and item["tag"] == inlet["tag"] for item in boundaries.values()) or
             not any(item["role"] == "outlet" and item["tag"] == outlet["tag"] for item in boundaries.values())):
         raise RequestError("Stokes inlet and outlet tags must match the geometry roles")
+    if ("transport_setup" in request) != ("effective_diffusivity" in request):
+        raise RequestError("Transport setup and diffusivity must be supplied together")
+    if "transport_setup" in request:
+        validate_hydraulic_transport_setup(request)
     return request
 
 
@@ -438,6 +472,31 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
     except Exception as exc:
         raise SolverError(f"Stokes solve failed: {exc}") from exc
 
+    transport = None
+    if "transport_setup" in request:
+        try:
+            from .scalar_transport import solve_planar_scalar_transport
+            if result.inlet_flow_m2_s_per_depth < -1e-15 or result.outlet_flow_m2_s_per_depth < -1e-15:
+                raise ValueError("Stokes transport requires nonnegative inlet-to-outlet flow")
+            mesh = mesh_request["mesh"]
+            inlet_side = next(side for side, boundary in mesh["boundaries"].items() if boundary["tag"] == setup["inlet"]["tag"])
+            length = (math.fsum(layer["width_m"]["value"] for layer in mesh["layers"])
+                      if inlet_side in ("left", "right") else mesh["height_m"]["value"])
+            transport_setup = request["transport_setup"]
+            transport = solve_planar_scalar_transport(
+                mesh_data, velocity=result.velocity, domain_tag=setup["domain_tag"],
+                inlet_tag=setup["inlet"]["tag"], outlet_tag=setup["outlet"]["tag"],
+                wall_tags=tuple(setup["wall_tags"]),
+                inlet_concentration_mol_m3=transport_setup["inlet"]["concentration_mol_m3"]["value"],
+                outlet_concentration_mol_m3=transport_setup["outlet"]["concentration_mol_m3"]["value"],
+                effective_diffusivity_m2_s=request["effective_diffusivity"]["value"],
+                characteristic_length_m=length,
+            )
+        except (ValueError, KeyError, StopIteration) as exc:
+            raise RequestError(str(exc)) from exc
+        except Exception as exc:
+            raise SolverError(f"Stokes scalar transfer failed: {exc}") from exc
+
     xdmf_path = output_dir / "stokes-solution.xdmf"
     try:
         def scalar_component(index: int):
@@ -463,6 +522,9 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             xdmf.write_function(exported_velocity_x, 0.0)
             xdmf.write_function(exported_velocity_y, 0.0)
             xdmf.write_function(exported_pressure, 0.0)
+            if transport is not None:
+                transport.concentration.name = "concentration"
+                xdmf.write_function(transport.concentration, 0.0)
     except Exception as exc:
         raise SolverError(f"Unable to write Stokes XDMF/HDF5 fields: {exc}") from exc
     expected_datasets = {
@@ -470,6 +532,8 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
         "velocity_x": (request["setup"]["velocity_variables"]["x"], "m/s"),
         "velocity_y": (request["setup"]["velocity_variables"]["y"], "m/s"),
     }
+    if transport is not None:
+        expected_datasets["concentration"] = (request["transport_setup"]["concentration_variable"], "mol/m3")
     try:
         root = ET.parse(xdmf_path).getroot()
         field_datasets = []
@@ -498,12 +562,14 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
         area = mesh_data.mesh.comm.allreduce(float(local_area), op=MPI.SUM)
         if not math.isfinite(area) or area <= 0:
             raise ValueError("Stokes mesh must have positive area")
-        integral_units = {"Pa": "Pa*m2", "m/s": "m3/s"}
+        integral_units = {"Pa": "Pa*m2", "m/s": "m3/s", "mol/m3": "mol/m"}
         fields_by_name = {
             "pressure": exported_pressure,
             "velocity_x": exported_velocity_x,
             "velocity_y": exported_velocity_y,
         }
+        if transport is not None:
+            fields_by_name["concentration"] = transport.concentration
         field_summaries = []
         for name, field in fields_by_name.items():
             variable_id, unit = expected_datasets[name]
@@ -579,6 +645,22 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
         "iterations": result.linear_iterations,
         "converged_reason": result.linear_converged_reason,
     }]
+    transport_diagnostics = {}
+    if transport is not None:
+        transport_diagnostics = {"transport_diagnostics": {
+            "inlet_species_rate_mol_m_s_per_depth": transport.inlet_species_rate_mol_m_s_per_depth,
+            "outlet_species_rate_mol_m_s_per_depth": transport.outlet_species_rate_mol_m_s_per_depth,
+            "wall_species_rate_mol_m_s_per_depth": transport.wall_species_rate_mol_m_s_per_depth,
+            "relative_species_balance": transport.relative_species_balance,
+            "peclet_number": transport.peclet_number,
+            "minimum_concentration_mol_m3": transport.minimum_concentration_mol_m3,
+            "maximum_concentration_mol_m3": transport.maximum_concentration_mol_m3,
+            "linear_iterations": transport.linear_iterations,
+            "linear_converged_reason": transport.linear_converged_reason,
+        }}
+        solver_diagnostics.append({"solver_id": "neutral_scalar_transport", "method": "petsc_preonly_lu",
+                                   "status": "converged", "iterations": transport.linear_iterations,
+                                   "converged_reason": transport.linear_converged_reason})
     return {"protocol_version": PROTOCOL_VERSION, "request_id": request["request_id"], "status": "ok",
             "operation": "planar_stokes", "metadata": meta,
             "model_input_contract_version": request["model_input_contract_version"],
@@ -587,7 +669,7 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             "mesh": mesh_record, "physical_groups": physical_groups,
             "diagnostics": diagnostics, "solution_artifacts": solution_files,
             "field_datasets": field_datasets, "field_summaries": field_summaries,
-            "solver_diagnostics": solver_diagnostics}
+            "solver_diagnostics": solver_diagnostics, **transport_diagnostics}
 
 
 def solve_planar_darcy_request(request: dict, output_dir: Path, meta: dict) -> dict:

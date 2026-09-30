@@ -174,6 +174,8 @@ const planarStokesRequestSchema = z
     model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
     setup: spatialStokesSetupSchema,
     viscosity: spatialStokesViscositySchema,
+    transport_setup: spatialDarcyTransportSetupSchema.optional(),
+    effective_diffusivity: spatialEffectiveDiffusivitySchema.optional(),
   })
   .strict()
   .superRefine((request, context) => {
@@ -187,6 +189,45 @@ const planarStokesRequestSchema = z
         path: ['refinement_factor'],
         message: 'Requested refinement is absent from the mesh recipe',
       });
+    if (
+      Boolean(request.transport_setup) !==
+      Boolean(request.effective_diffusivity)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['transport_setup'],
+        message: 'Transport setup and diffusivity must be supplied together',
+      });
+    if (request.transport_setup) {
+      const transport = request.transport_setup;
+      const flow = request.setup;
+      if (
+        transport.domain_tag !== flow.domain_tag ||
+        transport.velocity_variables.x !== flow.velocity_variables.x ||
+        transport.velocity_variables.y !== flow.velocity_variables.y ||
+        transport.inlet.tag !== flow.inlet.tag ||
+        transport.outlet.tag !== flow.outlet.tag
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_setup'],
+          message:
+            'Transport must bind to the same Stokes domain, velocity states and ports',
+        });
+      if (
+        new Set([
+          flow.pressure_variable,
+          flow.velocity_variables.x,
+          flow.velocity_variables.y,
+          transport.concentration_variable,
+        ]).size !== 4
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_setup', 'concentration_variable'],
+          message: 'Hydraulic and concentration state IDs must be distinct',
+        });
+    }
     const mesh = request.mesh_request.mesh;
     if (
       mesh.layers.length !== 1 ||
@@ -199,6 +240,28 @@ const planarStokesRequestSchema = z
         message:
           'Planar Stokes sidecar accepts exactly one matching bulk-liquid layer',
       });
+    if (request.transport_setup) {
+      const sides = Object.entries(mesh.boundaries);
+      const inlet = sides.find(
+        ([, b]) => b.tag === request.setup.inlet.tag,
+      )?.[0];
+      const outlet = sides.find(
+        ([, b]) => b.tag === request.setup.outlet.tag,
+      )?.[0];
+      if (
+        !(
+          (inlet === 'left' && outlet === 'right') ||
+          (inlet === 'right' && outlet === 'left') ||
+          (inlet === 'top' && outlet === 'bottom') ||
+          (inlet === 'bottom' && outlet === 'top')
+        )
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_setup'],
+          message: 'Transport requires opposing hydraulic ports',
+        });
+    }
     const walls = Object.values(mesh.boundaries)
       .filter((boundary) => boundary.role === 'wall')
       .map((boundary) => boundary.tag);
@@ -488,7 +551,7 @@ const transportFieldDataset = z
   })
   .strict();
 
-const darcyTransportFieldSummary = z
+const scalarTransportFieldSummary = z
   .object({
     field_name: z.enum([
       'pressure',
@@ -542,42 +605,6 @@ const darcyTransportSolverDiagnostic = z
     converged_reason: z.number().int().positive(),
   })
   .strict();
-
-const stokesFieldSummary = z
-  .object({
-    field_name: z.enum(['pressure', 'velocity_x', 'velocity_y']),
-    variable_id: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
-    unit: z.enum(['Pa', 'm/s']),
-    domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
-    association: z.literal('mesh_nodes'),
-    sample_count: z.number().int().positive(),
-    minimum: z.number().finite(),
-    maximum: z.number().finite(),
-    mean: z.number().finite(),
-    integral: z.number().finite(),
-    integration_measure: z.literal('domain_area'),
-    integral_unit: z.enum(['Pa*m2', 'm3/s']),
-  })
-  .strict()
-  .superRefine((summary, context) => {
-    if (
-      summary.minimum > summary.maximum ||
-      summary.mean < summary.minimum ||
-      summary.mean > summary.maximum
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['mean'],
-        message: 'Field statistics must satisfy minimum <= mean <= maximum',
-      });
-    const expectedIntegralUnit = summary.unit === 'Pa' ? 'Pa*m2' : 'm3/s';
-    if (summary.integral_unit !== expectedIntegralUnit)
-      context.addIssue({
-        code: 'custom',
-        path: ['integral_unit'],
-        message: `Expected ${expectedIntegralUnit} for ${summary.unit} over domain area`,
-      });
-  });
 
 const stokesSolverDiagnostic = z
   .object({
@@ -743,10 +770,10 @@ export const spatialSidecarResponseSchema = z.union([
       /** Additive development diagnostics; older v1 sidecars may omit them. */
       field_summaries: z
         .tuple([
-          darcyTransportFieldSummary,
-          darcyTransportFieldSummary,
-          darcyTransportFieldSummary,
-          darcyTransportFieldSummary,
+          scalarTransportFieldSummary,
+          scalarTransportFieldSummary,
+          scalarTransportFieldSummary,
+          scalarTransportFieldSummary,
         ])
         .optional(),
       solver_diagnostics: z
@@ -859,11 +886,10 @@ export const spatialSidecarResponseSchema = z.union([
       model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
       field_representation: z.literal('lagrange_p1_interpolation'),
       mesh: meshArtifact,
-      field_datasets: z.tuple([
-        stokesFieldDataset,
-        stokesFieldDataset,
-        stokesFieldDataset,
-      ]),
+      field_datasets: z
+        .array(z.union([stokesFieldDataset, transportFieldDataset]))
+        .min(3)
+        .max(4),
       physical_groups: z.record(z.number().int().positive()),
       diagnostics: z
         .object({
@@ -878,12 +904,39 @@ export const spatialSidecarResponseSchema = z.union([
           linear_converged_reason: z.number().int().positive(),
         })
         .strict(),
+      transport_diagnostics: z
+        .object({
+          inlet_species_rate_mol_m_s_per_depth: z.number().finite(),
+          outlet_species_rate_mol_m_s_per_depth: z.number().finite(),
+          wall_species_rate_mol_m_s_per_depth: z.number().finite(),
+          relative_species_balance: z.number().finite().nonnegative(),
+          peclet_number: z.number().finite().nonnegative(),
+          minimum_concentration_mol_m3: z.number().finite(),
+          maximum_concentration_mol_m3: z.number().finite(),
+          linear_iterations: z.number().int().positive(),
+          linear_converged_reason: z.number().int().positive(),
+        })
+        .strict()
+        .optional(),
       solution_artifacts: z.tuple([stokesFileArtifact, stokesFileArtifact]),
       /** Additive diagnostics consumed by the durable result-v2 worker. */
       field_summaries: z
-        .tuple([stokesFieldSummary, stokesFieldSummary, stokesFieldSummary])
+        .array(scalarTransportFieldSummary)
+        .min(3)
+        .max(4)
         .optional(),
-      solver_diagnostics: z.tuple([stokesSolverDiagnostic]).optional(),
+      solver_diagnostics: z
+        .array(
+          z.union([
+            stokesSolverDiagnostic,
+            darcyTransportSolverDiagnostic.refine(
+              (solver) => solver.solver_id === 'neutral_scalar_transport',
+            ),
+          ]),
+        )
+        .min(1)
+        .max(2)
+        .optional(),
     })
     .strict()
     .superRefine((response, context) => {
@@ -919,7 +972,7 @@ export const spatialSidecarResponseSchema = z.union([
           });
       if (
         new Set(response.field_datasets.map(({ variable_id }) => variable_id))
-          .size !== 3
+          .size !== response.field_datasets.length
       )
         context.addIssue({
           code: 'custom',
@@ -952,8 +1005,21 @@ export const spatialSidecarResponseSchema = z.union([
           ['pressure', datasets.get('pressure'), 'Pa*m2'],
           ['velocity_x', datasets.get('velocity_x'), 'm3/s'],
           ['velocity_y', datasets.get('velocity_y'), 'm3/s'],
-        ] as const;
+        ] as Array<
+          readonly [
+            string,
+            (typeof response.field_datasets)[number] | undefined,
+            string,
+          ]
+        >;
+        if (response.transport_diagnostics)
+          expectedSummaries.push([
+            'concentration',
+            datasets.get('concentration'),
+            'mol/m',
+          ]);
         if (
+          response.field_summaries.length !== expectedSummaries.length ||
           response.field_summaries.some((summary, index) => {
             const [fieldName, dataset, integralUnit] = expectedSummaries[index];
             return (
@@ -973,7 +1039,85 @@ export const spatialSidecarResponseSchema = z.union([
               'Field summaries must bind the three exported Stokes fields and their units',
           });
       }
+      const transport = response.transport_diagnostics;
+      if (
+        Boolean(transport) !== datasets.has('concentration') ||
+        response.field_datasets.length !== (transport ? 4 : 3)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_diagnostics'],
+          message:
+            'Concentration requires transport diagnostics and exactly four fields',
+        });
+      if (transport) {
+        const rates = [
+          transport.inlet_species_rate_mol_m_s_per_depth,
+          transport.outlet_species_rate_mol_m_s_per_depth,
+          transport.wall_species_rate_mol_m_s_per_depth,
+        ];
+        const balance =
+          Math.abs(rates.reduce((sum, rate) => sum + rate, 0)) /
+          Math.max(
+            rates.reduce((sum, rate) => sum + Math.abs(rate), 0),
+            1e-30,
+          );
+        const concentrationSummary = response.field_summaries?.find(
+          (summary) => summary.field_name === 'concentration',
+        );
+        if (
+          Math.abs(balance - transport.relative_species_balance) > 1e-12 ||
+          concentrationSummary?.minimum !==
+            transport.minimum_concentration_mol_m3 ||
+          concentrationSummary?.maximum !==
+            transport.maximum_concentration_mol_m3
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['transport_diagnostics'],
+            message:
+              'Transport balance and extrema must match measured fluxes and field summary',
+          });
+      }
+      if (
+        transport &&
+        (transport.minimum_concentration_mol_m3 >
+          transport.maximum_concentration_mol_m3 ||
+          !response.field_summaries ||
+          !response.solver_diagnostics)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_diagnostics'],
+          message:
+            'Transport requires valid extrema, summaries and direct solver diagnostics',
+        });
       if (response.solver_diagnostics) {
+        if (
+          response.solver_diagnostics.length !== (transport ? 2 : 1) ||
+          response.solver_diagnostics[0].solver_id !== 'stokes_saddle_point'
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['solver_diagnostics'],
+            message:
+              'Stokes and optional scalar solver diagnostics must be ordered and complete',
+          });
+        if (transport) {
+          const scalar = response.solver_diagnostics[1];
+          if (
+            !scalar ||
+            scalar.solver_id !== 'neutral_scalar_transport' ||
+            scalar.iterations !== transport.linear_iterations ||
+            scalar.converged_reason !== transport.linear_converged_reason
+          )
+            context.addIssue({
+              code: 'custom',
+              path: ['solver_diagnostics'],
+              message:
+                'Scalar solver diagnostics must match the transport solve',
+            });
+        }
         const [solver] = response.solver_diagnostics;
         if (
           solver.iterations !== response.diagnostics.linear_iterations ||
