@@ -5,9 +5,12 @@ fixtures, not a METREV cell solver. Run this only inside
 apps/spatial-sidecar/Dockerfile; the ordinary Python suite stays lean.
 """
 
+import hashlib
 import json
 from pathlib import Path
 import tempfile
+import uuid
+import xml.etree.ElementTree as ET
 
 from mpi4py import MPI
 import numpy as np
@@ -363,6 +366,86 @@ def create_tetrahedral_mesh(path: Path) -> None:
         gmsh.finalize()
 
 
+def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
+    """Exercise request admission, mesh identity and XDMF/HDF5 output binding."""
+    mesh_recipe = json.loads(json.dumps(fixture_mesh))
+    mesh_recipe["layers"] = [mesh_recipe["layers"][2]]
+    mesh_recipe["boundaries"]["left"] = {"tag": "west", "role": "wall"}
+    mesh_recipe["boundaries"]["right"] = {"tag": "east", "role": "wall"}
+    mesh_recipe["refinement_factors"] = [1]
+    mesh_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_mesh",
+        "mesh": mesh_recipe,
+    }
+    source = {"value": 0.0, "unit": "Pa", "source_kind": "test_fixture",
+              "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+    stokes_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_stokes",
+        "mesh_request": mesh_request,
+        "mesh_sha256": "0" * 64,
+        "refinement_factor": 1,
+        "model_input_contract_version": "spatial-input-v2",
+        "model_input_sha256": "1" * 64,
+        "setup": {
+            "regime": "steady_stokes",
+            "equation_ref": "EQ-FL-002",
+            "domain_tag": "liquid",
+            "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+            "pressure_variable": "pressure",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "wall_tags": ["west", "east"],
+            "inlet": {"tag": "inlet", "traction_pa": [{**source}, {**source, "value": 1e-7}]},
+            "outlet": {"tag": "outlet", "traction_pa": [{**source}, {**source}]},
+        },
+        "viscosity": {"value": 1e-3, "unit": "Pa*s", "source_kind": "test_fixture",
+                      "source_ref": "tests/contracts/spatial_toolchain_smoke.py"},
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        mesh_directory = root / "mesh"
+        mesh_response = run(
+            json.dumps(mesh_request, separators=(",", ":")).encode(), mesh_directory
+        )
+        assert mesh_response["status"] == "ok", mesh_response
+        stokes_request["mesh_sha256"] = mesh_response["artifacts"][0]["sha256"]
+        solution_directory = root / "solution"
+        response = run(
+            json.dumps(stokes_request, separators=(",", ":")).encode(), solution_directory
+        )
+        assert response["status"] == "ok", response
+        assert response["model_input_contract_version"] == "spatial-input-v2"
+        assert response["field_representation"] == "lagrange_p1_interpolation"
+        assert response["model_input_sha256"] == stokes_request["model_input_sha256"]
+        assert response["mesh"]["sha256"] == stokes_request["mesh_sha256"]
+        assert response["diagnostics"]["linear_converged_reason"] > 0
+        assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["relative_flow_balance"] < 1e-8
+        xdmf = solution_directory / "stokes-solution.xdmf"
+        hdf5 = solution_directory / "stokes-solution.h5"
+        assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
+        data_paths = {
+            item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
+            for item in ET.parse(xdmf).getroot().findall(".//Attribute")
+        }
+        assert data_paths == {
+            "velocity_x": "/Function/velocity_x/0",
+            "velocity_y": "/Function/velocity_y/0",
+            "pressure": "/Function/pressure/0",
+        }, data_paths
+        for artifact in (response["mesh"], *response["solution_artifacts"]):
+            data = (solution_directory / artifact["path"]).read_bytes()
+            assert len(data) == artifact["bytes"]
+            assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        return {"cell_count": response["mesh"]["cell_count"],
+                "relative_flow_balance": response["diagnostics"]["relative_flow_balance"],
+                "field_dataset_names": [field["field_name"] for field in response["field_datasets"]]}
+
+
 def main() -> None:
     fixture = Path(__file__).resolve().parents[1] / "fixtures" / "planar-mesh-request.json"
     fixture_data = json.loads(fixture.read_text())
@@ -471,6 +554,7 @@ def main() -> None:
     assert volume_group.dim == 3 and volume_group.tag in imported_3d.cell_tags.values
     assert boundary_group.dim == 2 and boundary_group.tag in imported_3d.facet_tags.values
     error_3d, cells_3d = solve_affine(imported_3d, (1.0, 2.0, 3.0))
+    sidecar_stokes = run_planar_stokes_sidecar(fixture_data["mesh"])
 
     print(
         json.dumps(
@@ -480,6 +564,7 @@ def main() -> None:
                 "triangle_count": cells_2d,
                 "layered_diffusion_refinements": layered_results,
                 "stokes_poiseuille_refinements": stokes_results,
+                "stokes_sidecar_operation": sidecar_stokes,
                 "affine_max_error_3d": error_3d,
                 "tetrahedron_count": cells_3d,
             }
