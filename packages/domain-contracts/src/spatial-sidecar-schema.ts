@@ -30,7 +30,7 @@ export const planarMeshSchema = z
           })
           .strict(),
       )
-      .min(2)
+      .min(1)
       .max(16),
     boundaries: z
       .object({

@@ -136,6 +136,30 @@ const boundarySchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
+/** Restricted development setup: one bulk-liquid region, no porous interface. */
+const stokesSetupSchema = z
+  .object({
+    regime: z.literal('steady_stokes'),
+    domain_tag: identifier,
+    viscosity_parameter_id: z.literal('dynamic_viscosity_pa_s'),
+    pressure_variable: identifier,
+    velocity_variables: z.object({ x: identifier, y: identifier }).strict(),
+    wall_tags: z.tuple([sourceRef, sourceRef]),
+    inlet: z
+      .object({
+        tag: sourceRef,
+        traction_pa: z.tuple([spatialValueSchema, spatialValueSchema]),
+      })
+      .strict(),
+    outlet: z
+      .object({
+        tag: sourceRef,
+        traction_pa: z.tuple([spatialValueSchema, spatialValueSchema]),
+      })
+      .strict(),
+  })
+  .strict();
+
 type Bounds = { min?: number; max?: number; exclusive_min?: number };
 const outsideBounds = (value: number, bounds: Bounds) =>
   (bounds.min !== undefined && value < bounds.min) ||
@@ -245,6 +269,7 @@ export const spatialModelInputV2Schema = z
         .strict(),
     ),
     boundary_conditions: z.array(boundarySchema),
+    stokes_development: stokesSetupSchema.optional(),
     circuit: z.discriminatedUnion('kind', [
       z
         .object({
@@ -519,6 +544,81 @@ export const spatialModelInputV2Schema = z
           'Vector components require a shared physical domain',
         );
     });
+    const stokes = input.stokes_development;
+    if (stokes) {
+      const path = ['stokes_development'] as (string | number)[];
+      if (
+        layers.length !== 1 ||
+        layers[0].tag !== stokes.domain_tag ||
+        layers[0].kind !== 'bulk_liquid'
+      )
+        issue(
+          [...path, 'domain_tag'],
+          'Development Stokes requires exactly one bulk-liquid region',
+        );
+      const viscosity = input.material_fields.find(
+        (entry) =>
+          entry.parameter_id === stokes.viscosity_parameter_id &&
+          entry.domain_tag === stokes.domain_tag,
+      );
+      if (!viscosity || viscosity.field.kind !== 'constant')
+        issue(
+          [...path, 'viscosity_parameter_id'],
+          'A source-traced constant dynamic viscosity is required in the liquid domain',
+        );
+      for (const [id, kind, key] of [
+        [stokes.pressure_variable, 'pressure', 'pressure_variable'],
+        [stokes.velocity_variables.x, 'velocity_x', 'velocity_variables'],
+        [stokes.velocity_variables.y, 'velocity_y', 'velocity_variables'],
+      ] as const) {
+        const variable = variables.get(id);
+        if (
+          !variable ||
+          variable.kind !== kind ||
+          variable.domain_tags.length !== 1 ||
+          variable.domain_tags[0] !== stokes.domain_tag ||
+          !input.requested_outputs.includes(id)
+        )
+          issue(
+            [...path, key],
+            `Declared ${kind} must be requested in the liquid domain`,
+          );
+        if (
+          input.boundary_conditions.some(
+            (condition) => condition.variable === id,
+          )
+        )
+          issue(
+            [...path, key],
+            'Stokes state boundaries must come only from the explicit hydraulic setup',
+          );
+      }
+      const wallSet = new Set(stokes.wall_tags);
+      const declaredWalls = boundarySides
+        .filter(([, boundary]) => boundary.role === 'wall')
+        .map(([, boundary]) => boundary.tag);
+      if (
+        wallSet.size !== 2 ||
+        declaredWalls.length !== 2 ||
+        declaredWalls.some((tag) => !wallSet.has(tag)) ||
+        boundarySides.length !== 4 ||
+        boundaries.get(stokes.inlet.tag)?.role !== 'inlet' ||
+        boundaries.get(stokes.outlet.tag)?.role !== 'outlet' ||
+        stokes.inlet.tag === stokes.outlet.tag
+      )
+        issue(
+          [...path, 'wall_tags'],
+          'All exterior facets must be two walls, one inlet and one outlet',
+        );
+      for (const port of ['inlet', 'outlet'] as const)
+        stokes[port].traction_pa.forEach((component, index) => {
+          if (component.unit !== 'Pa')
+            issue(
+              [...path, port, 'traction_pa', index, 'unit'],
+              'Full Cauchy traction component requires Pa',
+            );
+        });
+    }
     input.variables.forEach((entry, index) => {
       const path = ['variables', index] as (string | number)[];
       const spec = variableSpecs[entry.kind];

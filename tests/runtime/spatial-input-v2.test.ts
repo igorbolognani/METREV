@@ -19,6 +19,52 @@ import {
 
 const valid = validSpatialInput;
 
+function stokesChannelInput() {
+  const candidate = valid();
+  candidate.geometry.layers = [candidate.geometry.layers[2]];
+  candidate.geometry.boundaries.left = { tag: 'west', role: 'wall' };
+  candidate.geometry.boundaries.right = { tag: 'east', role: 'wall' };
+  candidate.mesh.request.mesh = copy(candidate.geometry);
+  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+  candidate.mesh.physical_groups = {
+    'region:liquid': 1,
+    'boundary:west': 11,
+    'boundary:east': 12,
+    'boundary:inlet': 13,
+    'boundary:outlet': 14,
+  };
+  candidate.mesh.component_map = { liquid: 'case/reactor' };
+  candidate.mesh.interfaces = [];
+  candidate.material_fields = [
+    {
+      parameter_id: 'dynamic_viscosity_pa_s',
+      domain_tag: 'liquid',
+      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
+    },
+  ];
+  candidate.variables = [
+    { id: 'p', kind: 'pressure', domain_tags: ['liquid'], unit: 'Pa' },
+    { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
+    { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
+  ];
+  candidate.initial_conditions = [];
+  candidate.boundary_conditions = [];
+  candidate.requested_outputs = ['p', 'ux', 'uy'];
+  return {
+    ...candidate,
+    stokes_development: {
+      regime: 'steady_stokes',
+      domain_tag: 'liquid',
+      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
+      pressure_variable: 'p',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      wall_tags: ['west', 'east'],
+      inlet: { tag: 'inlet', traction_pa: [q(0, 'Pa'), q(1, 'Pa')] },
+      outlet: { tag: 'outlet', traction_pa: [q(0, 'Pa'), q(0, 'Pa')] },
+    },
+  };
+}
+
 describe('spatial-input-v2 admission boundary', () => {
   it('declares a 2D velocity vector only from matching x/y state components', () => {
     const candidate = {
@@ -69,6 +115,51 @@ describe('spatial-input-v2 admission boundary', () => {
         ),
       }).success,
     ).toBe(false);
+  });
+
+  it('declares source-backed single-liquid Stokes data, including the zero-drive limiting case', () => {
+    const input = stokesChannelInput();
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+    input.stokes_development.inlet.traction_pa[1] = q(0, 'Pa');
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+  });
+
+  it('rejects unsupported hydraulic regions, missing viscosity, ambiguous states and boundary tractions', () => {
+    const changes = [
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.material_fields = [];
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.material_fields[0].field.value.unit = 'm2/s';
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.stokes_development.velocity_variables.y = 'ux';
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.requested_outputs = ['p', 'ux'];
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.stokes_development.inlet.traction_pa[1] = q(1, 'm/s');
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.stokes_development.wall_tags = ['west', 'inlet'];
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.boundary_conditions = [
+          { kind: 'dirichlet', tag: 'inlet', variable: 'p', value: q(1, 'Pa') },
+        ];
+      },
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.geometry.layers[0].kind = 'biofilm';
+        input.mesh.request.mesh.layers[0].kind = 'biofilm';
+        input.mesh.input_sha256 = digestRequest(input.mesh.request);
+      },
+    ];
+    for (const change of changes) {
+      const input = stokesChannelInput();
+      change(input);
+      expect(spatialModelInputV2Schema.safeParse(input).success).toBe(false);
+    }
   });
   it('binds source-traced local mesh sizes into the admitted request and rejects invalid refinements', () => {
     const candidate = valid();

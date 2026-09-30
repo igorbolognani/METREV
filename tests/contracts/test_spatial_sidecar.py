@@ -48,6 +48,23 @@ class SidecarTest(unittest.TestCase):
                 validate_mesh(fixture["mesh"])
 
     @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
+    def test_single_liquid_channel_retains_all_exterior_physical_groups(self):
+        fixture = json.loads(FIXTURE.read_text())
+        fixture["mesh"]["layers"] = [fixture["mesh"]["layers"][2]]
+        fixture["mesh"]["boundaries"]["left"] = {"tag": "west", "role": "wall"}
+        fixture["mesh"]["boundaries"]["right"] = {"tag": "east", "role": "wall"}
+        fixture["mesh"]["refinement_factors"] = [1]
+        with tempfile.TemporaryDirectory() as directory:
+            response, _ = self.call(fixture, directory)
+            self.assertEqual(response["status"], "ok", response)
+            self.assertEqual(response["interfaces"], [])
+            self.assertEqual(set(response["physical_groups"]), {
+                "region:liquid", "boundary:west", "boundary:east",
+                "boundary:inlet", "boundary:outlet",
+            })
+            self.assertGreater(response["artifacts"][0]["cell_count"], 0)
+
+    @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
     def test_local_refinement_increases_biofilm_resolution_without_changing_tags(self):
         from metrev_spatial.__main__ import create_planar_mesh
         fixture = json.loads(FIXTURE.read_text())["mesh"]
