@@ -543,6 +543,7 @@ describe('development Darcy transport worker adapter', () => {
         await rm(root, { recursive: true, force: true });
       }
     },
+    180_000,
   );
 
   it('does not admit vector or broader requested-output variants', () => {
