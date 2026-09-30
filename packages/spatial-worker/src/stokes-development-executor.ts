@@ -19,6 +19,8 @@ import {
   runSpatialSidecar,
   type SidecarProcessOptions,
   type SidecarProcessResult,
+  type SpatialSidecarContainerOptions,
+  validateSpatialContainerOptions,
 } from '@metrev/spatial-sidecar-client';
 
 import type {
@@ -42,6 +44,7 @@ export interface StokesDevelopmentExecutorOptions {
   moduleDirectory: string;
   artifactRoot: string;
   timeoutMs: number;
+  container?: SpatialSidecarContainerOptions;
   meshArtifactStore: LocalSpatialArtifactStore;
   fieldArtifactStore: LocalSpatialFieldArtifactStore;
   /** Override only for isolated tests; normal runs use the process-isolated client. */
@@ -73,7 +76,7 @@ function isSupportedStokesInput(input: SpatialModelInputV2): boolean {
     !setup ||
     input.darcy_development !== undefined ||
     input.darcy_transport_development !== undefined ||
-    input.species.length > 0 ||
+    input.species.length !== (input.stokes_transport_development ? 1 : 0) ||
     input.reaction_laws.length > 0 ||
     input.initial_conditions.length > 0 ||
     input.boundary_conditions.length > 0 ||
@@ -94,6 +97,9 @@ function isSupportedStokesInput(input: SpatialModelInputV2): boolean {
     setup.pressure_variable,
     setup.velocity_variables.x,
     setup.velocity_variables.y,
+    ...(input.stokes_transport_development
+      ? [input.stokes_transport_development.concentration_variable]
+      : []),
   ].sort();
   const requestedOutputs = [...input.requested_outputs].sort();
   return (
@@ -157,6 +163,19 @@ function assertResponseBindsToInput(
       canonicalJson(input.mesh.physical_groups)
   )
     throw new Error('Stokes output does not match the admitted input');
+  const transport = response.transport_diagnostics;
+  if (
+    Boolean(input.stokes_transport_development) !== Boolean(transport) ||
+    (transport &&
+      (transport.relative_species_balance > 0.01 ||
+        transport.minimum_concentration_mol_m3 <
+          -1e-9 * Math.max(1, transport.maximum_concentration_mol_m3) ||
+        response.diagnostics.inlet_flow_m2_s_per_depth < -1e-15 ||
+        response.diagnostics.outlet_flow_m2_s_per_depth < -1e-15))
+  )
+    throw new Error(
+      'Stokes scalar transport diagnostics exceed the admitted scope or conservation tolerance',
+    );
   if (
     response.diagnostics.relative_flow_balance > FLOW_BALANCE_TOLERANCE ||
     response.diagnostics.linear_converged_reason <= 0 ||
@@ -231,6 +250,28 @@ function resultFromResponse(input: {
         tolerance: FLOW_BALANCE_TOLERANCE,
         passed: true,
       },
+      ...(response.transport_diagnostics
+        ? [
+            {
+              balance_id: 'stokes_species_balance',
+              kind: 'species_mass' as const,
+              scope: 'global' as const,
+              absolute_residual: Math.abs(
+                response.transport_diagnostics
+                  .inlet_species_rate_mol_m_s_per_depth +
+                  response.transport_diagnostics
+                    .outlet_species_rate_mol_m_s_per_depth +
+                  response.transport_diagnostics
+                    .wall_species_rate_mol_m_s_per_depth,
+              ),
+              unit: 'mol/(m*s)',
+              relative_residual:
+                response.transport_diagnostics.relative_species_balance,
+              tolerance: 0.01,
+              passed: true,
+            },
+          ]
+        : []),
     ],
     convergence: [
       {
@@ -258,7 +299,7 @@ function resultFromResponse(input: {
         code: 'restricted_development_physics',
         severity: 'info' as const,
         message:
-          'This result covers one bulk-liquid domain with steady Stokes flow and declared boundary tractions; species transport, porous coupling, electrochemistry, and circuit closure are not evaluated.',
+          'This result covers one bulk-liquid domain with steady Stokes flow and declared boundary tractions; optional neutral species transport consumes the solved velocity on that mesh. Porous coupling, reactions, electromigration, electrochemistry and circuit closure are not evaluated.',
       },
     ],
     unsupported_physics: [],
@@ -277,7 +318,7 @@ function resultFromResponse(input: {
 
 /** Development-only adapter for the single bulk-liquid steady Stokes limit. */
 export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
-  readonly solverVersion = 'stokes-development-v0.1.0';
+  readonly solverVersion = 'stokes-development-v0.2.0';
   readonly runtimeVersion = 'spatial-sidecar-v1';
   private readonly options: StokesDevelopmentExecutorOptions;
   private readonly sidecarRunner: StokesSidecarRunner;
@@ -292,6 +333,7 @@ export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
       options.timeoutMs > 120_000
     )
       throw new RangeError('Invalid development sidecar process configuration');
+    if (options.container) validateSpatialContainerOptions(options.container);
     this.options = {
       ...options,
       moduleDirectory: resolve(options.moduleDirectory),
@@ -349,6 +391,9 @@ export class StokesDevelopmentExecutor implements SpatialSimulationExecutor {
           artifactRoot: this.options.artifactRoot,
           timeoutMs: this.options.timeoutMs,
           signal: context.signal,
+          ...(this.options.container
+            ? { container: this.options.container }
+            : {}),
         });
       } catch (error) {
         throw normalizeSpatialSimulationExecutionError(error);

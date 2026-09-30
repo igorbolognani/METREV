@@ -110,6 +110,23 @@ def validate() -> None:
         assert set(feature) == required_scales
         assert all(status in {"absent", "partial", "restricted", "restricted_1D_component",
                               "implemented", "development_only"} for status in feature.values())
+    sidecar_contract = (ROOT / "packages/domain-contracts/src/spatial-sidecar-schema.ts").read_text()
+    sidecar_runtime = (ROOT / "apps/spatial-sidecar/metrev_spatial/__main__.py").read_text()
+    operations = matrix["development_operations"]
+    assert len({item["operation"] for item in operations}) == len(operations)
+    for operation in operations:
+        identifier = operation["operation"]
+        assert sidecar_contract.count(f"operation: z.literal('{identifier}')") == 2, identifier
+        assert identifier in sidecar_runtime, identifier
+        assert operation["dimension"] == 2 and operation["product_admission"] is False
+        assert operation["experimental_maturity"] == "none"
+        verification = (ROOT / operation["native_verification_source"]).read_text()
+        assert identifier in verification
+        if operation["worker_source"]:
+            assert identifier in (ROOT / operation["worker_source"]).read_text()
+            assert (ROOT / operation["native_worker_test"]).is_file()
+        else:
+            assert operation["native_worker_test"] is None
     runtime = (ROOT / "packages/electrochem-models/src/index.ts").read_text()
     case_runner = (ROOT / "apps/api-server/src/services/case-evaluation.ts").read_text()
     for identifier, model in models.items():

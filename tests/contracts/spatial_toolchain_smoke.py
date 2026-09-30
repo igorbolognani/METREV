@@ -25,6 +25,7 @@ from metrev_spatial.__main__ import run
 from metrev_spatial.darcy import solve_planar_darcy
 from metrev_spatial.darcy_transport import solve_planar_darcy_transport
 from metrev_spatial.stokes import solve_planar_stokes
+from metrev_spatial.scalar_transport import solve_planar_scalar_transport
 
 
 def solve_affine(mesh_data, gradient: tuple[float, ...]) -> tuple[float, int]:
@@ -261,6 +262,17 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float,
             "boundary:outlet": exact_traction(fem.Constant(domain, PETSc.ScalarType(0.0))),
         },
     )
+    tracer = solve_planar_scalar_transport(
+        mesh_data, velocity=solved.velocity, domain_tag="bulk_liquid",
+        inlet_tag="inlet", outlet_tag="outlet", wall_tags=("wall",),
+        inlet_concentration_mol_m3=1.0, outlet_concentration_mol_m3=1.0,
+        effective_diffusivity_m2_s=1e-9, characteristic_length_m=length_m,
+    )
+    assert tracer.minimum_concentration_mol_m3 >= 1.0 - 1e-6
+    assert tracer.maximum_concentration_mol_m3 <= 1.0 + 1e-6
+    assert tracer.relative_species_balance < 1e-8
+    assert abs(tracer.inlet_species_rate_mol_m_s_per_depth + solved.inlet_flow_m2_s_per_depth) < 1e-8 * solved.inlet_flow_m2_s_per_depth
+    assert abs(tracer.outlet_species_rate_mol_m_s_per_depth - solved.outlet_flow_m2_s_per_depth) < 1e-8 * solved.outlet_flow_m2_s_per_depth
     solved_velocity, solved_pressure = solved.velocity, solved.pressure
     velocity_space = solved_velocity.function_space
 
@@ -369,7 +381,7 @@ def create_tetrahedral_mesh(path: Path) -> None:
         gmsh.finalize()
 
 
-def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
+def run_planar_stokes_sidecar(fixture_mesh: dict, with_transport: bool = False) -> dict:
     """Exercise request admission, mesh identity and XDMF/HDF5 output binding."""
     mesh_recipe = json.loads(json.dumps(fixture_mesh))
     mesh_recipe["layers"] = [mesh_recipe["layers"][2]]
@@ -407,6 +419,17 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
         "viscosity": {"value": 1e-3, "unit": "Pa*s", "source_kind": "test_fixture",
                       "source_ref": "tests/contracts/spatial_toolchain_smoke.py"},
     }
+    if with_transport:
+        # Exact zero-flow diffusion limit: all full tractions explicitly zero.
+        stokes_request["setup"]["inlet"]["traction_pa"][1]["value"] = 0.0
+        scalar_source = {"source_kind": "test_fixture", "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+        stokes_request["transport_setup"] = {
+            "regime": "steady_advection_diffusion", "equation_ref": "EQ-SP-001", "domain_tag": "liquid",
+            "species_id": "tracer", "concentration_variable": "c", "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "inlet", "concentration_mol_m3": {**scalar_source, "value": 1, "unit": "mol/m3"}},
+            "outlet": {"tag": "outlet", "concentration_mol_m3": {**scalar_source, "value": 2, "unit": "mol/m3"}},
+        }
+        stokes_request["effective_diffusivity"] = {**scalar_source, "value": 1e-9, "unit": "m2/s"}
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         mesh_directory = root / "mesh"
@@ -425,11 +448,15 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
         assert response["model_input_sha256"] == stokes_request["model_input_sha256"]
         assert response["mesh"]["sha256"] == stokes_request["mesh_sha256"]
         assert response["diagnostics"]["linear_converged_reason"] > 0
-        assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
-        assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
+        if with_transport:
+            assert abs(response["diagnostics"]["inlet_flow_m2_s_per_depth"]) < 1e-15
+            assert abs(response["diagnostics"]["outlet_flow_m2_s_per_depth"]) < 1e-15
+        else:
+            assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
+            assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
         assert response["diagnostics"]["relative_flow_balance"] < 1e-8
         summaries = {item["field_name"]: item for item in response["field_summaries"]}
-        assert set(summaries) == {"pressure", "velocity_x", "velocity_y"}
+        assert set(summaries) == ({"pressure", "velocity_x", "velocity_y", "concentration"} if with_transport else {"pressure", "velocity_x", "velocity_y"})
         assert all(
             summary["sample_count"] == response["mesh"]["node_count"]
             and summary["minimum"] <= summary["mean"] <= summary["maximum"]
@@ -439,13 +466,29 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
         assert summaries["pressure"]["integral_unit"] == "Pa*m2"
         assert summaries["velocity_x"]["integral_unit"] == "m3/s"
         assert summaries["velocity_y"]["integral_unit"] == "m3/s"
-        assert response["solver_diagnostics"] == [{
+        assert response["solver_diagnostics"][:1] == [{
             "solver_id": "stokes_saddle_point",
             "method": "petsc_preonly_lu",
             "status": "converged",
             "iterations": response["diagnostics"]["linear_iterations"],
             "converged_reason": response["diagnostics"]["linear_converged_reason"],
         }]
+        if with_transport:
+            summary = summaries["concentration"]
+            assert abs(summary["mean"] - 1.5) < 1e-8
+            assert abs(summary["minimum"] - 1.0) < 1e-8
+            assert abs(summary["maximum"] - 2.0) < 1e-8
+            diagnostics = response["transport_diagnostics"]
+            assert diagnostics["peclet_number"] < 1e-10
+            assert diagnostics["relative_species_balance"] < 1e-8
+            assert diagnostics["linear_converged_reason"] > 0
+            assert response["solver_diagnostics"][1]["solver_id"] == "neutral_scalar_transport"
+            # c increases from bottom to top; diffusive flux exits the inlet.
+            width = mesh_recipe["layers"][0]["width_m"]["value"]
+            height = mesh_recipe["height_m"]["value"]
+            rate = 1e-9 * width / height
+            assert abs(diagnostics["inlet_species_rate_mol_m_s_per_depth"] - rate) < 1e-8 * rate
+            assert abs(diagnostics["outlet_species_rate_mol_m_s_per_depth"] + rate) < 1e-8 * rate
         xdmf = solution_directory / "stokes-solution.xdmf"
         hdf5 = solution_directory / "stokes-solution.h5"
         assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
@@ -453,11 +496,13 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
             item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
             for item in ET.parse(xdmf).getroot().findall(".//Attribute")
         }
-        assert data_paths == {
+        expected_paths = {
             "velocity_x": "/Function/velocity_x/0",
             "velocity_y": "/Function/velocity_y/0",
             "pressure": "/Function/pressure/0",
-        }, data_paths
+        }
+        if with_transport: expected_paths["concentration"] = "/Function/concentration/0"
+        assert data_paths == expected_paths, data_paths
         for artifact in (response["mesh"], *response["solution_artifacts"]):
             data = (solution_directory / artifact["path"]).read_bytes()
             assert len(data) == artifact["bytes"]
@@ -950,6 +995,7 @@ def main() -> None:
     assert boundary_group.dim == 2 and boundary_group.tag in imported_3d.facet_tags.values
     error_3d, cells_3d = solve_affine(imported_3d, (1.0, 2.0, 3.0))
     sidecar_stokes = run_planar_stokes_sidecar(fixture_data["mesh"])
+    sidecar_stokes_transport = run_planar_stokes_sidecar(fixture_data["mesh"], with_transport=True)
     sidecar_darcy = run_planar_darcy_sidecar(fixture_data["mesh"])
     sidecar_darcy_transport = run_planar_darcy_transport_sidecar(fixture_data["mesh"])
 
@@ -962,6 +1008,7 @@ def main() -> None:
                 "layered_diffusion_refinements": layered_results,
                 "stokes_poiseuille_refinements": stokes_results,
                 "stokes_sidecar_operation": sidecar_stokes,
+                "stokes_scalar_transfer": sidecar_stokes_transport,
                 "darcy_sidecar_operation": sidecar_darcy,
                 "darcy_transport_sidecar_operation": sidecar_darcy_transport,
                 "affine_max_error_3d": error_3d,

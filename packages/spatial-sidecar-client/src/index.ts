@@ -13,6 +13,18 @@ import {
   type SpatialSidecarResponse,
 } from '@metrev/domain-contracts';
 
+import {
+  spatialContainerExecutionPlan,
+  removeSpatialContainer,
+  validateSpatialContainerOptions,
+  type SpatialSidecarContainerOptions,
+} from './container';
+export {
+  spatialContainerExecutionPlan,
+  validateSpatialContainerOptions,
+} from './container';
+export type { SpatialSidecarContainerOptions } from './container';
+
 /** Translate an admitted v2 case to the deliberately narrow Stokes sidecar request. */
 export function planarStokesRequestFromInput(
   candidate: unknown,
@@ -31,6 +43,14 @@ export function planarStokesRequestFromInput(
   );
   if (!viscosity || viscosity.field.kind !== 'constant')
     throw new RangeError('Stokes sidecar requires constant declared viscosity');
+  const transport = input.stokes_transport_development;
+  const diffusivity = input.species.find(
+    (species) => species.id === transport?.species_id,
+  )?.effective_diffusivity;
+  if (transport && diffusivity?.kind !== 'constant')
+    throw new RangeError(
+      'Stokes transport requires constant source-backed diffusivity',
+    );
   return spatialSidecarRequestSchema.parse({
     protocol_version: 'spatial-sidecar-v1',
     request_id: requestId,
@@ -42,6 +62,9 @@ export function planarStokesRequestFromInput(
     model_input_sha256: spatialModelInputV2Sha256(input),
     setup,
     viscosity: viscosity.field.value,
+    ...(transport && diffusivity?.kind === 'constant'
+      ? { transport_setup: transport, effective_diffusivity: diffusivity.value }
+      : {}),
   }) as Extract<SpatialSidecarRequest, { operation: 'planar_stokes' }>;
 }
 
@@ -192,7 +215,8 @@ export type SidecarTransportCode =
   | 'cancelled'
   | 'process_failure'
   | 'invalid_response'
-  | 'artifact_integrity';
+  | 'artifact_integrity'
+  | 'container_cleanup';
 
 export class SidecarTransportError extends Error {
   constructor(
@@ -211,6 +235,8 @@ export interface SidecarProcessOptions {
   artifactRoot: string;
   timeoutMs: number;
   signal?: AbortSignal;
+  /** Explicit isolated execution. No fallback to the host interpreter. */
+  container?: SpatialSidecarContainerOptions;
 }
 
 export interface SidecarProcessResult {
@@ -252,6 +278,7 @@ export async function runSpatialSidecar(
       'Sidecar request was cancelled',
     );
 
+  if (options.container) validateSpatialContainerOptions(options.container);
   const artifactDirectory =
     request.operation === 'planar_mesh' ||
     request.operation === 'planar_stokes' ||
@@ -268,13 +295,30 @@ export async function runSpatialSidecar(
     'metrev_spatial',
     ...(artifactDirectory ? ['--output-dir', artifactDirectory] : []),
   ];
+  let containerPlan: ReturnType<typeof spatialContainerExecutionPlan> | null =
+    null;
+  try {
+    if (options.container)
+      containerPlan = spatialContainerExecutionPlan(
+        options.container,
+        artifactDirectory,
+      );
+  } catch (error) {
+    if (artifactDirectory)
+      await rm(artifactDirectory, { recursive: true, force: true });
+    throw error;
+  }
   const stdout = await new Promise<string>((resolveOutput, rejectOutput) => {
-    const child = spawn(options.pythonExecutable, args, {
-      cwd: options.moduleDirectory,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PYTHONPATH: options.moduleDirectory },
-      detached: process.platform !== 'win32',
-    });
+    const child = spawn(
+      containerPlan?.command ?? options.pythonExecutable,
+      containerPlan?.args ?? args,
+      {
+        cwd: options.moduleDirectory,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, PYTHONPATH: options.moduleDirectory },
+        detached: process.platform !== 'win32',
+      },
+    );
     let out = '';
     let err = '';
     let settled = false;
@@ -336,11 +380,27 @@ export async function runSpatialSidecar(
       /* close/error event reports process failure */
     });
     child.stdin.end(payload);
-  }).catch(async (error: unknown) => {
-    if (artifactDirectory)
-      await rm(artifactDirectory, { recursive: true, force: true });
-    throw error;
-  });
+  })
+    .finally(async () => {
+      if (containerPlan) {
+        try {
+          await removeSpatialContainer(
+            containerPlan.command,
+            containerPlan.name,
+          );
+        } catch {
+          throw new SidecarTransportError(
+            'container_cleanup',
+            'The spatial container could not be confirmed removed',
+          );
+        }
+      }
+    })
+    .catch(async (error: unknown) => {
+      if (artifactDirectory)
+        await rm(artifactDirectory, { recursive: true, force: true });
+      throw error;
+    });
 
   let response: SpatialSidecarResponse;
   try {
@@ -464,14 +524,19 @@ export async function runSpatialSidecar(
           unit: 'm/s',
         },
       ];
-      if (hydraulicRequest.operation === 'planar_darcy_transport')
+      if (
+        hydraulicRequest.operation === 'planar_darcy_transport' ||
+        (hydraulicRequest.operation === 'planar_stokes' &&
+          hydraulicRequest.transport_setup)
+      )
         expectedDatasets.push({
-          variable_id: hydraulicRequest.transport_setup.concentration_variable,
+          variable_id: hydraulicRequest.transport_setup!.concentration_variable,
           field_name: 'concentration',
           dataset_path: '/Function/concentration/0',
           unit: 'mol/m3',
         });
       if (
+        hydraulicResponse.field_datasets.length !== expectedDatasets.length ||
         expectedDatasets.some(
           (expected) =>
             !hydraulicResponse.field_datasets.some(

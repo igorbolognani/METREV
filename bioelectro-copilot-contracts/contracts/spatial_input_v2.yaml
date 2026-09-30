@@ -26,6 +26,7 @@ optional_fields:
   - stokes_development
   - darcy_development
   - darcy_transport_development
+  - stokes_transport_development
 scientific_value:
   required: [value, unit, source_kind, source_ref]
   optional: [source_locator, conditions, uncertainty, uncertainty_unit]
@@ -146,6 +147,27 @@ darcy_transport_development:
   states: Requested species concentration and x/y velocity states are bound to one porous region; transport velocity IDs must equal the Darcy output IDs.
   facets: Nonnegative source-backed inlet and outlet concentrations use the matching positive-flow Darcy ports; two other exterior facets are impermeable walls.
   verification: Pinned planar fixture compares concentration with the homogeneous 1D advection-diffusion solution and checks integrated species flux balance; no cell-scale biological kinetics are inferred.
+stokes_transport_development:
+  optional: true
+  requires: stokes_development
+  regime: steady_advection_diffusion
+  scope: One homogeneous bulk-liquid region carrying one neutral passive scalar; no reactions, electromigration, porous coupling or product solver admission.
+  required:
+    [
+      regime,
+      equation_ref,
+      domain_tag,
+      species_id,
+      concentration_variable,
+      velocity_variables,
+      inlet,
+      outlet,
+    ]
+  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Stokes P2 velocity is transferred from the exact same-domain Stokes solve.
+  material: The declared species has source-traced constant positive effective_diffusivity in m2/s and zero valence.
+  states: Requested species concentration and x/y velocity states are bound to one bulk-liquid region; transport velocity IDs must equal the Stokes output IDs.
+  facets: Nonnegative source-backed inlet and outlet concentrations use the matching opposing Stokes ports; zero flow is admitted and reverse flow is rejected at runtime; two other exterior facets are impermeable walls.
+  verification: Pinned planar fixture compares concentration with the zero-flow affine diffusion solution; a solved Poiseuille velocity transports a constant tracer across three mesh refinements and checks integrated species flux balance; no cell-scale biological kinetics are inferred.
 circuit:
   MFC: { kind: external_load, unit: ohm, sign: generated_power }
   MEC: { kind: applied_voltage, unit: V, sign: consumed_electrical_power }
