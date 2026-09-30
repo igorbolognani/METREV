@@ -25,6 +25,7 @@ optional_fields:
   - vector_outputs
   - stokes_development
   - darcy_development
+  - darcy_transport_development
 scientific_value:
   required: [value, unit, source_kind, source_ref]
   optional: [source_locator, conditions, uncertainty, uncertainty_unit]
@@ -124,6 +125,27 @@ darcy_development:
   states: Requested pressure, velocity_x and velocity_y variables declared only on that region; no overlapping generic state boundary conditions.
   facets: Exactly two opposing exterior pressure ports, one inlet and one outlet matching geometry, and two no-flow wall facets.
   port_pressure: Explicit source-backed pressure_pa values with unit Pa at both inlet and outlet; equal pressure is the zero-flow limiting case.
+darcy_transport_development:
+  optional: true
+  requires: darcy_development
+  regime: steady_advection_diffusion
+  scope: One homogeneous porous region carrying one neutral passive scalar; no reactions, electromigration, bulk coupling or product solver admission.
+  required:
+    [
+      regime,
+      equation_ref,
+      domain_tag,
+      species_id,
+      concentration_variable,
+      velocity_variables,
+      inlet,
+      outlet,
+    ]
+  equation_ref: EQ-SP-001 with zero reaction and no electromigration; Darcy superficial velocity is transferred from the exact same-domain Darcy solve.
+  material: The declared species has source-traced constant positive effective_diffusivity in m2/s and zero valence.
+  states: Requested species concentration and x/y velocity states are bound to one porous region; transport velocity IDs must equal the Darcy output IDs.
+  facets: Nonnegative source-backed inlet and outlet concentrations use the matching positive-flow Darcy ports; two other exterior facets are impermeable walls.
+  verification: Pinned planar fixture compares concentration with the homogeneous 1D advection-diffusion solution and checks integrated species flux balance; no cell-scale biological kinetics are inferred.
 circuit:
   MFC: { kind: external_load, unit: ohm, sign: generated_power }
   MEC: { kind: applied_voltage, unit: V, sign: consumed_electrical_power }

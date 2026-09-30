@@ -252,3 +252,42 @@ export const darcyPorousInput = () => {
     },
   };
 };
+
+export const darcyTransportInput = () => {
+  const input = darcyPorousInput();
+  input.species = [
+    {
+      id: 'neutral_tracer',
+      valence: q(0, '1'),
+      molecular_diffusivity: {
+        kind: 'constant',
+        value: q(1e-9, 'm2/s'),
+      },
+      effective_diffusivity: {
+        kind: 'constant',
+        value: q(1e-9, 'm2/s'),
+      },
+    },
+  ];
+  input.variables.push({
+    id: 'neutral_tracer_c',
+    kind: 'species_concentration',
+    species_id: 'neutral_tracer',
+    domain_tags: ['porous'],
+    unit: 'mol/m3',
+  });
+  input.requested_outputs.push('neutral_tracer_c');
+  return {
+    ...input,
+    darcy_transport_development: {
+      regime: 'steady_advection_diffusion' as const,
+      equation_ref: 'EQ-SP-001' as const,
+      domain_tag: 'porous',
+      species_id: 'neutral_tracer',
+      concentration_variable: 'neutral_tracer_c',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      inlet: { tag: 'west', concentration_mol_m3: q(2, 'mol/m3') },
+      outlet: { tag: 'east', concentration_mol_m3: q(1, 'mol/m3') },
+    },
+  };
+};
