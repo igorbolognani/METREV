@@ -6,7 +6,13 @@ import { createSpatialSimulationRunInput } from '../fixtures/spatial-simulation-
 import {
   runSpatialSimulationWorkerCycle,
   type SpatialSimulationExecutor,
+  type SpatialSimulationWorkerLogEvent,
 } from '../../packages/spatial-worker/src/worker';
+import {
+  normalizeSpatialSimulationExecutionError,
+  SpatialSimulationExecutionError,
+} from '../../packages/spatial-worker/src/execution-error';
+import { SidecarTransportError } from '../../packages/spatial-sidecar-client/src';
 
 const ownerId = 'spatial-worker-owner';
 const meshSha = 'a'.repeat(64);
@@ -77,6 +83,61 @@ describe('spatial simulation worker', () => {
     });
   });
 
+  it('emits structured claim, progress, and completion events', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await queueRun(repository);
+    const events: SpatialSimulationWorkerLogEvent[] = [];
+    const cycle = await runSpatialSimulationWorkerCycle({
+      repository,
+      executor: successfulExecutor(),
+      workerId: 'spatial-worker-structured-log-test',
+      logger: { emit: (event) => events.push(event) },
+    });
+
+    expect(cycle.completed).toBe(1);
+    expect(events.map((event) => event.event)).toEqual([
+      'spatial_run_claimed',
+      'spatial_run_progress',
+      'spatial_run_progress',
+      'spatial_run_progress',
+      'spatial_run_completed',
+    ]);
+    expect(events[0]).toMatchObject({
+      run_id: run.id,
+      worker_id: 'spatial-worker-structured-log-test',
+      solver_version: workerVersions.solverVersion,
+      runtime_version: workerVersions.runtimeVersion,
+    });
+    expect(events[1]).toMatchObject({
+      status: 'meshing',
+      progress: 20,
+    });
+    expect(events.at(-1)).toMatchObject({ run_id: run.id });
+    expect(
+      events.every((event) => Number.isFinite(Date.parse(event.occurred_at))),
+    ).toBe(true);
+  });
+
+  it('does not let a broken logger alter durable worker outcomes', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await queueRun(repository);
+    const cycle = await runSpatialSimulationWorkerCycle({
+      repository,
+      executor: successfulExecutor(),
+      workerId: 'spatial-worker-broken-logger-test',
+      logger: {
+        emit() {
+          throw new Error('log sink unavailable');
+        },
+      },
+    });
+
+    expect(cycle.completed).toBe(1);
+    await expect(
+      repository.getOwnedRun(run.id, ownerId),
+    ).resolves.toMatchObject({ status: 'completed', progress: 100 });
+  });
+
   it('stores a structured failure when the configured executor fails', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
     const { run } = await queueRun(repository);
@@ -103,6 +164,85 @@ describe('spatial simulation worker', () => {
       },
     });
   });
+
+  it('persists typed failure reasons and emits their stable codes', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    const { run } = await queueRun(repository);
+    const events: SpatialSimulationWorkerLogEvent[] = [];
+    const cycle = await runSpatialSimulationWorkerCycle({
+      repository,
+      workerId: 'spatial-worker-classified-failure-test',
+      logger: { emit: (event) => events.push(event) },
+      executor: {
+        ...workerVersions,
+        supports: () => true,
+        async execute() {
+          throw new SpatialSimulationExecutionError(
+            'solver_nonconverged',
+            'The Stokes solver did not converge within the configured tolerance',
+          );
+        },
+      },
+    });
+
+    expect(cycle.failed).toBe(1);
+    await expect(
+      repository.getOwnedRun(run.id, ownerId),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      failure: {
+        code: 'solver_nonconverged',
+        message:
+          'The Stokes solver did not converge within the configured tolerance',
+      },
+    });
+    expect(events.at(-1)).toMatchObject({
+      event: 'spatial_run_failed',
+      run_id: run.id,
+      failure_code: 'solver_nonconverged',
+    });
+  });
+
+  it.each([
+    [
+      'timeout',
+      'spatial_sidecar_timeout',
+      'The spatial solver exceeded its process time limit',
+    ],
+    [
+      'cancelled',
+      'spatial_sidecar_cancelled',
+      'The spatial solver process was cancelled',
+    ],
+    [
+      'process_failure',
+      'spatial_sidecar_process_failure',
+      'The spatial solver process exited unexpectedly',
+    ],
+    [
+      'invalid_response',
+      'spatial_sidecar_invalid_response',
+      'The spatial solver returned invalid protocol data',
+    ],
+    [
+      'artifact_integrity',
+      'spatial_artifact_integrity_failure',
+      'The spatial solver artifacts failed integrity validation',
+    ],
+  ] as const)(
+    'maps sidecar %s errors to safe persistent failure detail',
+    (transportCode, code, message) => {
+      const error = normalizeSpatialSimulationExecutionError(
+        new SidecarTransportError(
+          transportCode,
+          'python traceback with local paths',
+        ),
+      );
+      expect(error).toBeInstanceOf(SpatialSimulationExecutionError);
+      expect(error).toMatchObject({ code, message });
+      expect((error as Error).message).not.toContain('local paths');
+    },
+  );
 
   it('aborts cooperatively and records an analyst cancellation', async () => {
     const repository = new MemorySpatialSimulationRunRepository();
