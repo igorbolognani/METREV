@@ -1,0 +1,58 @@
+name: Archive audited historical branches
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Archive the audited heads and remove only unchanged inactive branches.
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: metrev-audited-branch-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out verified main with full archive history
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Inspect the offline archive plan
+        run: node scripts/archive-repository-branches.mjs
+
+      - name: Archive unchanged audited heads atomically before branch deletion
+        if: github.event_name == 'workflow_run' || inputs.execute
+        run: node scripts/archive-repository-branches.mjs --execute
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METREV_VERIFIED_MAIN_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Retain the archive transaction ledger
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: branch-archive-transactions
+          path: branch-archive-results.json
+          if-no-files-found: warn
