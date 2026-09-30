@@ -165,6 +165,8 @@ export const stokesChannelInput = () => {
       field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
     },
   ];
+  candidate.species = [];
+  candidate.reaction_laws = [];
   candidate.variables = [
     { id: 'p', kind: 'pressure', domain_tags: ['liquid'], unit: 'Pa' },
     { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },

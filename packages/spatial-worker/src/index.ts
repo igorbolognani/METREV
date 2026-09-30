@@ -19,6 +19,11 @@ export {
   type DarcyDevelopmentExecutorOptions,
   type SpatialSidecarRunner,
 } from './darcy-development-executor';
+export {
+  StokesDevelopmentExecutor,
+  type StokesDevelopmentExecutorOptions,
+  type StokesSidecarRunner,
+} from './stokes-development-executor';
 
 function positiveInteger(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);

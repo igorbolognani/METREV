@@ -543,6 +543,52 @@ const darcyTransportSolverDiagnostic = z
   })
   .strict();
 
+const stokesFieldSummary = z
+  .object({
+    field_name: z.enum(['pressure', 'velocity_x', 'velocity_y']),
+    variable_id: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    unit: z.enum(['Pa', 'm/s']),
+    domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    association: z.literal('mesh_nodes'),
+    sample_count: z.number().int().positive(),
+    minimum: z.number().finite(),
+    maximum: z.number().finite(),
+    mean: z.number().finite(),
+    integral: z.number().finite(),
+    integration_measure: z.literal('domain_area'),
+    integral_unit: z.enum(['Pa*m2', 'm3/s']),
+  })
+  .strict()
+  .superRefine((summary, context) => {
+    if (
+      summary.minimum > summary.maximum ||
+      summary.mean < summary.minimum ||
+      summary.mean > summary.maximum
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['mean'],
+        message: 'Field statistics must satisfy minimum <= mean <= maximum',
+      });
+    const expectedIntegralUnit = summary.unit === 'Pa' ? 'Pa*m2' : 'm3/s';
+    if (summary.integral_unit !== expectedIntegralUnit)
+      context.addIssue({
+        code: 'custom',
+        path: ['integral_unit'],
+        message: `Expected ${expectedIntegralUnit} for ${summary.unit} over domain area`,
+      });
+  });
+
+const stokesSolverDiagnostic = z
+  .object({
+    solver_id: z.literal('stokes_saddle_point'),
+    method: z.literal('petsc_preonly_lu'),
+    status: z.literal('converged'),
+    iterations: z.number().int().positive(),
+    converged_reason: z.number().int().positive(),
+  })
+  .strict();
+
 export const spatialSidecarResponseSchema = z.union([
   z
     .object({
@@ -833,6 +879,11 @@ export const spatialSidecarResponseSchema = z.union([
         })
         .strict(),
       solution_artifacts: z.tuple([stokesFileArtifact, stokesFileArtifact]),
+      /** Additive diagnostics consumed by the durable result-v2 worker. */
+      field_summaries: z
+        .tuple([stokesFieldSummary, stokesFieldSummary, stokesFieldSummary])
+        .optional(),
+      solver_diagnostics: z.tuple([stokesSolverDiagnostic]).optional(),
     })
     .strict()
     .superRefine((response, context) => {
@@ -886,6 +937,55 @@ export const spatialSidecarResponseSchema = z.union([
           path: ['field_datasets'],
           message: 'Stokes datasets must preserve pressure and velocity units',
         });
+      if (
+        Boolean(response.field_summaries) !==
+        Boolean(response.solver_diagnostics)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_summaries'],
+          message:
+            'Field summaries and solver diagnostics must be supplied together',
+        });
+      if (response.field_summaries) {
+        const expectedSummaries = [
+          ['pressure', datasets.get('pressure'), 'Pa*m2'],
+          ['velocity_x', datasets.get('velocity_x'), 'm3/s'],
+          ['velocity_y', datasets.get('velocity_y'), 'm3/s'],
+        ] as const;
+        if (
+          response.field_summaries.some((summary, index) => {
+            const [fieldName, dataset, integralUnit] = expectedSummaries[index];
+            return (
+              summary.field_name !== fieldName ||
+              summary.variable_id !== dataset?.variable_id ||
+              summary.unit !== dataset?.unit ||
+              summary.domain_tag !== dataset?.domain_tag ||
+              summary.integral_unit !== integralUnit ||
+              summary.sample_count !== response.mesh.node_count
+            );
+          })
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['field_summaries'],
+            message:
+              'Field summaries must bind the three exported Stokes fields and their units',
+          });
+      }
+      if (response.solver_diagnostics) {
+        const [solver] = response.solver_diagnostics;
+        if (
+          solver.iterations !== response.diagnostics.linear_iterations ||
+          solver.converged_reason !==
+            response.diagnostics.linear_converged_reason
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['solver_diagnostics'],
+            message: 'Solver diagnostics must match the Stokes solve outcome',
+          });
+      }
     }),
   z
     .object({
