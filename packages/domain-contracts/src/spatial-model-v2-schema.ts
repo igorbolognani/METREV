@@ -12,6 +12,7 @@ import {
 } from './spatial-sidecar-schema';
 import { spatialStokesSetupSchema } from './spatial-stokes-schema';
 import { spatialDarcySetupSchema } from './spatial-darcy-schema';
+import { spatialDarcyTransportSetupSchema } from './spatial-darcy-transport-schema';
 
 export { spatialVariableAuthority };
 
@@ -249,6 +250,7 @@ export const spatialModelInputV2Schema = z
     boundary_conditions: z.array(boundarySchema),
     stokes_development: spatialStokesSetupSchema.optional(),
     darcy_development: spatialDarcySetupSchema.optional(),
+    darcy_transport_development: spatialDarcyTransportSetupSchema.optional(),
     circuit: z.discriminatedUnion('kind', [
       z
         .object({
@@ -685,6 +687,122 @@ export const spatialModelInputV2Schema = z
             [...path, port, 'pressure_pa', 'unit'],
             'Darcy pressure boundary requires Pa',
           );
+    }
+    const darcyTransport = input.darcy_transport_development;
+    if (darcyTransport) {
+      const path = ['darcy_transport_development'] as (string | number)[];
+      if (!darcy)
+        issue(
+          path,
+          'Darcy-driven species transport requires a declared Darcy setup',
+        );
+      if (
+        stokes ||
+        !darcy ||
+        darcyTransport.domain_tag !== darcy.domain_tag ||
+        darcyTransport.velocity_variables.x !== darcy.velocity_variables.x ||
+        darcyTransport.velocity_variables.y !== darcy.velocity_variables.y
+      )
+        issue(
+          [...path, 'velocity_variables'],
+          'Transport velocity must bind to the same restricted Darcy domain and states',
+        );
+      const layer = domains.get(darcyTransport.domain_tag);
+      if (
+        layers.length !== 1 ||
+        !layer ||
+        !['anode', 'biofilm', 'separator'].includes(layer.kind)
+      )
+        issue(
+          [...path, 'domain_tag'],
+          'Darcy transport requires the single declared porous domain',
+        );
+      const transportedSpecies = input.species.find(
+        (entry) => entry.id === darcyTransport.species_id,
+      );
+      if (
+        !transportedSpecies ||
+        transportedSpecies.valence.unit !== '1' ||
+        transportedSpecies.valence.value !== 0
+      )
+        issue(
+          [...path, 'species_id'],
+          'Restricted Darcy transport accepts one declared neutral species',
+        );
+      if (
+        !transportedSpecies?.effective_diffusivity ||
+        transportedSpecies.effective_diffusivity.kind !== 'constant' ||
+        transportedSpecies.effective_diffusivity.value.unit !== 'm2/s' ||
+        transportedSpecies.effective_diffusivity.value.value <= 0
+      )
+        issue(
+          [...path, 'species_id'],
+          'Darcy transport requires source-traced constant positive effective diffusivity',
+        );
+      const concentration = variables.get(
+        darcyTransport.concentration_variable,
+      );
+      if (
+        !concentration ||
+        concentration.kind !== 'species_concentration' ||
+        concentration.species_id !== darcyTransport.species_id ||
+        concentration.domain_tags.length !== 1 ||
+        concentration.domain_tags[0] !== darcyTransport.domain_tag ||
+        concentration.unit !== 'mol/m3' ||
+        !input.requested_outputs.includes(darcyTransport.concentration_variable)
+      )
+        issue(
+          [...path, 'concentration_variable'],
+          'Transport concentration must be the requested state of the declared neutral species in the Darcy domain',
+        );
+      if (
+        input.reaction_laws.some((law) =>
+          law.stoichiometry.some(
+            (term) => term.species_id === darcyTransport.species_id,
+          ),
+        )
+      )
+        issue(
+          [...path, 'species_id'],
+          'Restricted Darcy transport does not include species reaction terms',
+        );
+      const inletBoundary = boundarySides.find(
+        ([, boundary]) => boundary.tag === darcyTransport.inlet.tag,
+      );
+      const outletBoundary = boundarySides.find(
+        ([, boundary]) => boundary.tag === darcyTransport.outlet.tag,
+      );
+      if (
+        !darcy ||
+        darcyTransport.inlet.tag !== darcy.inlet.tag ||
+        darcyTransport.outlet.tag !== darcy.outlet.tag ||
+        inletBoundary?.[1].role !== 'inlet' ||
+        outletBoundary?.[1].role !== 'outlet' ||
+        darcy.inlet.pressure_pa.value <= darcy.outlet.pressure_pa.value
+      )
+        issue(
+          [...path, 'inlet'],
+          'Transport concentration ports must match the positive-flow Darcy inlet and outlet',
+        );
+      for (const port of ['inlet', 'outlet'] as const)
+        if (
+          darcyTransport[port].concentration_mol_m3.unit !== 'mol/m3' ||
+          darcyTransport[port].concentration_mol_m3.value < 0
+        )
+          issue(
+            [...path, port, 'concentration_mol_m3'],
+            'Transport boundary concentration requires a nonnegative mol/m3 value',
+          );
+      if (
+        input.boundary_conditions.some(
+          (condition) =>
+            condition.variable === darcyTransport.concentration_variable,
+        )
+      )
+        issue(
+          [...path, 'concentration_variable'],
+          'Transport port concentrations must come only from the explicit development setup',
+        );
     }
     input.variables.forEach((entry, index) => {
       const path = ['variables', index] as (string | number)[];

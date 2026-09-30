@@ -11,6 +11,10 @@ import {
   spatialDarcyPermeabilitySchema,
   spatialDarcyViscositySchema,
 } from './spatial-darcy-schema';
+import {
+  spatialDarcyTransportSetupSchema,
+  spatialEffectiveDiffusivitySchema,
+} from './spatial-darcy-transport-schema';
 
 const region = z.enum([
   'bulk_liquid',
@@ -313,6 +317,108 @@ const planarDarcyRequestSchema = z
         });
   });
 
+const planarDarcyTransportRequestSchema = z
+  .object({
+    protocol_version: z.literal('spatial-sidecar-v1'),
+    request_id: z.string().uuid(),
+    operation: z.literal('planar_darcy_transport'),
+    mesh_request: planarMeshRequestSchema,
+    mesh_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    refinement_factor: z.number().int().positive(),
+    model_input_contract_version: z.literal('spatial-input-v2'),
+    model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    setup: spatialDarcySetupSchema,
+    transport_setup: spatialDarcyTransportSetupSchema,
+    viscosity: spatialDarcyViscositySchema,
+    permeability: spatialDarcyPermeabilitySchema,
+    effective_diffusivity: spatialEffectiveDiffusivitySchema,
+  })
+  .strict()
+  .superRefine((request, context) => {
+    const mesh = request.mesh_request.mesh;
+    if (!mesh.refinement_factors.includes(request.refinement_factor))
+      context.addIssue({
+        code: 'custom',
+        path: ['refinement_factor'],
+        message: 'Requested refinement is absent from the mesh recipe',
+      });
+    if (
+      mesh.layers.length !== 1 ||
+      !['anode', 'biofilm', 'separator'].includes(mesh.layers[0].kind) ||
+      mesh.layers[0].tag !== request.setup.domain_tag ||
+      request.transport_setup.domain_tag !== request.setup.domain_tag
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['transport_setup', 'domain_tag'],
+        message: 'Darcy transport accepts one matching porous domain',
+      });
+    if (
+      request.transport_setup.velocity_variables.x !==
+        request.setup.velocity_variables.x ||
+      request.transport_setup.velocity_variables.y !==
+        request.setup.velocity_variables.y
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['transport_setup', 'velocity_variables'],
+        message: 'Transport velocity must bind to the solved Darcy states',
+      });
+    const sides = Object.entries(mesh.boundaries);
+    const inlet = sides.find(
+      ([, boundary]) =>
+        boundary.tag === request.setup.inlet.tag && boundary.role === 'inlet',
+    );
+    const outlet = sides.find(
+      ([, boundary]) =>
+        boundary.tag === request.setup.outlet.tag && boundary.role === 'outlet',
+    );
+    const opposite =
+      (inlet?.[0] === 'left' && outlet?.[0] === 'right') ||
+      (inlet?.[0] === 'right' && outlet?.[0] === 'left') ||
+      (inlet?.[0] === 'top' && outlet?.[0] === 'bottom') ||
+      (inlet?.[0] === 'bottom' && outlet?.[0] === 'top');
+    if (
+      sides.filter(([, boundary]) => boundary.role === 'wall').length !== 2 ||
+      !inlet ||
+      !outlet ||
+      !opposite ||
+      request.transport_setup.inlet.tag !== request.setup.inlet.tag ||
+      request.transport_setup.outlet.tag !== request.setup.outlet.tag ||
+      request.setup.inlet.pressure_pa.value <=
+        request.setup.outlet.pressure_pa.value
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['transport_setup'],
+        message:
+          'Positive Darcy flow requires matching concentration ports, two no-flow walls and inlet pressure above outlet pressure',
+      });
+    const stateIds = [
+      request.setup.pressure_variable,
+      request.setup.velocity_variables.x,
+      request.setup.velocity_variables.y,
+      request.transport_setup.concentration_variable,
+    ];
+    if (new Set(stateIds).size !== stateIds.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['transport_setup', 'concentration_variable'],
+        message: 'Pressure, velocity and concentration states must be distinct',
+      });
+    for (const port of ['inlet', 'outlet'] as const)
+      if (
+        request.transport_setup[port].concentration_mol_m3.unit !== 'mol/m3' ||
+        request.transport_setup[port].concentration_mol_m3.value < 0
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['transport_setup', port, 'concentration_mol_m3'],
+          message:
+            'Boundary concentration must be nonnegative and expressed in mol/m3',
+        });
+  });
+
 export const spatialSidecarRequestSchema = z.union([
   z
     .object({
@@ -324,6 +430,7 @@ export const spatialSidecarRequestSchema = z.union([
   planarMeshRequestSchema,
   planarStokesRequestSchema,
   planarDarcyRequestSchema,
+  planarDarcyTransportRequestSchema,
 ]);
 
 const runtimeMetadata = z
@@ -367,6 +474,16 @@ const stokesFieldDataset = z
       .string()
       .regex(/^\/Function\/(pressure|velocity_x|velocity_y)\/0$/),
     unit: z.enum(['Pa', 'm/s']),
+    domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+  })
+  .strict();
+
+const transportFieldDataset = z
+  .object({
+    variable_id: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+    field_name: z.literal('concentration'),
+    dataset_path: z.literal('/Function/concentration/0'),
+    unit: z.literal('mol/m3'),
     domain_tag: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
   })
   .strict();
@@ -464,6 +581,102 @@ export const spatialSidecarResponseSchema = z.union([
       capabilities: z.array(z.string()),
     })
     .strict(),
+  z
+    .object({
+      protocol_version: z.literal('spatial-sidecar-v1'),
+      request_id: z.string().uuid(),
+      status: z.literal('ok'),
+      operation: z.literal('planar_darcy_transport'),
+      metadata: runtimeMetadata,
+      model_input_contract_version: z.literal('spatial-input-v2'),
+      model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      field_representation: z.literal('lagrange_p1_interpolation'),
+      mesh: meshArtifact,
+      field_datasets: z.tuple([
+        stokesFieldDataset,
+        stokesFieldDataset,
+        stokesFieldDataset,
+        transportFieldDataset,
+      ]),
+      physical_groups: z.record(z.number().int().positive()),
+      diagnostics: z
+        .object({
+          inlet_flow_m2_s_per_depth: z.number().finite(),
+          outlet_flow_m2_s_per_depth: z.number().finite(),
+          relative_flow_balance: z.number().finite().nonnegative(),
+          mean_inlet_pressure_pa: z.number().finite(),
+          mean_outlet_pressure_pa: z.number().finite(),
+          pressure_drop_pa: z.number().finite(),
+          divergence_l2_per_s: z.number().finite().nonnegative(),
+          darcy_linear_iterations: z.number().int().nonnegative(),
+          darcy_linear_converged_reason: z.number().int().positive(),
+          inlet_species_rate_mol_m_s_per_depth: z.number().finite(),
+          outlet_species_rate_mol_m_s_per_depth: z.number().finite(),
+          wall_species_rate_mol_m_s_per_depth: z.number().finite(),
+          relative_species_balance: z.number().finite().nonnegative(),
+          peclet_number: z.number().finite().nonnegative(),
+          minimum_concentration_mol_m3: z.number().finite().nonnegative(),
+          maximum_concentration_mol_m3: z.number().finite().nonnegative(),
+          transport_linear_iterations: z.number().int().nonnegative(),
+          transport_linear_converged_reason: z.number().int().positive(),
+        })
+        .strict(),
+      solution_artifacts: z.tuple([
+        z
+          .object({
+            path: z.literal('darcy-transport-solution.xdmf'),
+            format: z.literal('xdmf'),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            bytes: z.number().int().positive(),
+          })
+          .strict(),
+        z
+          .object({
+            path: z.literal('darcy-transport-solution.h5'),
+            format: z.literal('hdf5'),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            bytes: z.number().int().positive(),
+          })
+          .strict(),
+      ]),
+    })
+    .strict()
+    .superRefine((response, context) => {
+      const [pressure, velocityX, velocityY, concentration] =
+        response.field_datasets;
+      const expected = [
+        ['pressure', '/Function/pressure/0', 'Pa'],
+        ['velocity_x', '/Function/velocity_x/0', 'm/s'],
+        ['velocity_y', '/Function/velocity_y/0', 'm/s'],
+        ['concentration', '/Function/concentration/0', 'mol/m3'],
+      ];
+      const actual = [pressure, velocityX, velocityY, concentration];
+      if (
+        actual.some(
+          (field, index) =>
+            field.field_name !== expected[index][0] ||
+            field.dataset_path !== expected[index][1] ||
+            field.unit !== expected[index][2],
+        ) ||
+        new Set(actual.map(({ variable_id }) => variable_id)).size !== 4 ||
+        new Set(actual.map(({ domain_tag }) => domain_tag)).size !== 1
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_datasets'],
+          message:
+            'Darcy transport fields require four distinct states, one domain and canonical XDMF datasets',
+        });
+      if (
+        response.diagnostics.minimum_concentration_mol_m3 >
+        response.diagnostics.maximum_concentration_mol_m3
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['diagnostics'],
+          message: 'Minimum concentration cannot exceed maximum concentration',
+        });
+    }),
   z
     .object({
       protocol_version: z.literal('spatial-sidecar-v1'),

@@ -10,6 +10,7 @@ export * from './research-schemas';
 export * from './schemas';
 export * from './spatial-model-schema';
 export * from './spatial-darcy-schema';
+export * from './spatial-darcy-transport-schema';
 export * from './spatial-sidecar-schema';
 export * from './spatial-stokes-schema';
 export * from './spatial-model-v2-schema';

@@ -362,6 +362,44 @@ def validate_planar_darcy_request(obj: object) -> dict:
     return request
 
 
+def validate_planar_darcy_transport_request(obj: object) -> dict:
+    keys = {"protocol_version", "request_id", "operation", "mesh_request", "mesh_sha256",
+            "refinement_factor", "model_input_contract_version", "model_input_sha256", "setup",
+            "transport_setup", "viscosity", "permeability", "effective_diffusivity"}
+    request = exact_keys(obj, keys)
+    flow_request = {key: request[key] for key in keys if key not in
+                    {"transport_setup", "effective_diffusivity"}}
+    flow_request["operation"] = "planar_darcy"
+    validate_planar_darcy_request(flow_request)
+    if request["operation"] != "planar_darcy_transport":
+        raise RequestError("Unsupported Darcy transport operation")
+    transport = exact_keys(request["transport_setup"],
+                           {"regime", "equation_ref", "domain_tag", "species_id",
+                            "concentration_variable", "velocity_variables", "inlet", "outlet"})
+    if transport["regime"] != "steady_advection_diffusion" or transport["equation_ref"] != "EQ-SP-001":
+        raise RequestError("Unsupported or unbound passive species transport setup")
+    flow = request["setup"]
+    if transport["domain_tag"] != flow["domain_tag"]:
+        raise RequestError("Darcy and species transport must share one porous domain")
+    velocity = exact_keys(transport["velocity_variables"], {"x", "y"})
+    if velocity != flow["velocity_variables"]:
+        raise RequestError("Species transport must consume the solved Darcy velocity states")
+    if transport["inlet"]["tag"] != flow["inlet"]["tag"] or \
+            transport["outlet"]["tag"] != flow["outlet"]["tag"]:
+        raise RequestError("Species concentration ports must match Darcy pressure ports")
+    if flow["inlet"]["pressure_pa"]["value"] <= flow["outlet"]["pressure_pa"]["value"]:
+        raise RequestError("Darcy transport requires positive inlet-to-outlet pressure drop")
+    if len({flow["pressure_variable"], velocity["x"], velocity["y"],
+            transport["concentration_variable"]}) != 4:
+        raise RequestError("Darcy and species transport state identifiers must be distinct")
+    for port in (transport["inlet"], transport["outlet"]):
+        validate_source_value(port["concentration_mol_m3"], "mol/m3")
+        if port["concentration_mol_m3"]["value"] < 0:
+            raise RequestError("Passive species concentration cannot be negative")
+    validate_source_value(request["effective_diffusivity"], "m2/s", positive=True)
+    return request
+
+
 def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> dict:
     try:
         from mpi4py import MPI
@@ -605,6 +643,167 @@ def solve_planar_darcy_request(request: dict, output_dir: Path, meta: dict) -> d
             "field_datasets": field_datasets}
 
 
+def solve_planar_darcy_transport_request(request: dict, output_dir: Path, meta: dict) -> dict:
+    try:
+        from mpi4py import MPI
+        import ufl
+        from dolfinx import fem
+        from dolfinx.io import XDMFFile, gmsh as gmshio
+        from .darcy import solve_planar_darcy
+        from .darcy_transport import solve_planar_darcy_transport
+    except Exception as exc:
+        raise DependencyError(f"DOLFINx/PETSc Darcy transport dependencies are unavailable: {exc}") from exc
+    mesh_request = request["mesh_request"]
+    physical_groups, mesh_artifacts = create_planar_mesh(mesh_request["mesh"], output_dir)
+    mesh_record = next((item for item in mesh_artifacts
+                        if item["refinement_factor"] == request["refinement_factor"]), None)
+    if mesh_record is None or mesh_record["sha256"] != request["mesh_sha256"]:
+        raise RuntimeError("Rebuilt Darcy transport mesh differs from the admitted mesh artifact")
+    mesh_path = output_dir / mesh_record["path"]
+    try:
+        mesh_data = gmshio.read_from_msh(mesh_path, MPI.COMM_WORLD, gdim=2)
+        setup = request["setup"]
+        flow = solve_planar_darcy(
+            mesh_data,
+            porous_region_tag=f"region:{setup['domain_tag']}",
+            permeability_m2=float(request["permeability"]["value"]),
+            viscosity_pa_s=float(request["viscosity"]["value"]),
+            inlet_tag=f"boundary:{setup['inlet']['tag']}",
+            outlet_tag=f"boundary:{setup['outlet']['tag']}",
+            inlet_pressure_pa=float(setup["inlet"]["pressure_pa"]["value"]),
+            outlet_pressure_pa=float(setup["outlet"]["pressure_pa"]["value"]),
+        )
+        sides = mesh_request["mesh"]["boundaries"]
+        inlet_side = next(side for side, boundary in sides.items()
+                          if boundary["tag"] == setup["inlet"]["tag"])
+        if inlet_side in ("left", "right"):
+            characteristic_length_m = math.fsum(
+                float(layer["width_m"]["value"]) for layer in mesh_request["mesh"]["layers"]
+            )
+        else:
+            characteristic_length_m = float(mesh_request["mesh"]["height_m"]["value"])
+        wall_tags = tuple(boundary["tag"] for boundary in sides.values()
+                          if boundary["role"] == "wall")
+        transport_setup = request["transport_setup"]
+        transport = solve_planar_darcy_transport(
+            mesh_data,
+            darcy_velocity=flow.velocity,
+            domain_tag=setup["domain_tag"],
+            inlet_tag=transport_setup["inlet"]["tag"],
+            outlet_tag=transport_setup["outlet"]["tag"],
+            wall_tags=wall_tags,
+            inlet_concentration_mol_m3=float(
+                transport_setup["inlet"]["concentration_mol_m3"]["value"]
+            ),
+            outlet_concentration_mol_m3=float(
+                transport_setup["outlet"]["concentration_mol_m3"]["value"]
+            ),
+            effective_diffusivity_m2_s=float(request["effective_diffusivity"]["value"]),
+            characteristic_length_m=characteristic_length_m,
+        )
+    except (ValueError, KeyError, StopIteration) as exc:
+        raise RequestError(str(exc)) from exc
+    except Exception as exc:
+        raise SolverError(f"Darcy transport solve failed: {exc}") from exc
+
+    xdmf_path = output_dir / "darcy-transport-solution.xdmf"
+    try:
+        def scalar_component(index: int):
+            collapsed = flow.velocity.sub(index).collapse()
+            return collapsed[0] if isinstance(collapsed, tuple) else collapsed
+
+        output_space = fem.functionspace(mesh_data.mesh, ("Lagrange", 1))
+        fields = {
+            "pressure": fem.Function(output_space),
+            "velocity_x": fem.Function(output_space),
+            "velocity_y": fem.Function(output_space),
+            "concentration": fem.Function(output_space),
+        }
+        fields["pressure"].interpolate(flow.pressure)
+        fields["velocity_x"].interpolate(scalar_component(0))
+        fields["velocity_y"].interpolate(scalar_component(1))
+        fields["concentration"].interpolate(transport.concentration)
+        for name, field in fields.items():
+            field.x.scatter_forward()
+            field.name = name
+        with XDMFFile(mesh_data.mesh.comm, str(xdmf_path), "w") as xdmf:
+            xdmf.write_mesh(mesh_data.mesh)
+            for field in fields.values():
+                xdmf.write_function(field, 0.0)
+    except Exception as exc:
+        raise SolverError(f"Unable to write Darcy transport XDMF/HDF5 fields: {exc}") from exc
+
+    expected_datasets = {
+        "pressure": (setup["pressure_variable"], "Pa"),
+        "velocity_x": (setup["velocity_variables"]["x"], "m/s"),
+        "velocity_y": (setup["velocity_variables"]["y"], "m/s"),
+        "concentration": (transport_setup["concentration_variable"], "mol/m3"),
+    }
+    try:
+        root = ET.parse(xdmf_path).getroot()
+        field_datasets = []
+        for attribute in root.findall(".//Attribute"):
+            field_name = attribute.attrib.get("Name")
+            if field_name not in expected_datasets:
+                continue
+            data_item = attribute.find("DataItem")
+            dataset_ref = (data_item.text or "").strip() if data_item is not None else ""
+            dataset_path = dataset_ref.split(":", 1)[-1]
+            expected_path = f"/Function/{field_name}/0"
+            if dataset_path != expected_path:
+                raise ValueError(f"Unexpected XDMF dataset path for {field_name}")
+            variable_id, unit = expected_datasets[field_name]
+            field_datasets.append({"variable_id": variable_id, "field_name": field_name,
+                                   "dataset_path": dataset_path, "unit": unit,
+                                   "domain_tag": setup["domain_tag"]})
+        if {item["field_name"] for item in field_datasets} != set(expected_datasets):
+            raise ValueError("XDMF output does not bind all Darcy transport states")
+    except (ET.ParseError, OSError, ValueError) as exc:
+        raise SolverError(f"Unable to verify Darcy transport XDMF field bindings: {exc}") from exc
+
+    solution_files = []
+    for path, artifact_format in ((xdmf_path, "xdmf"),
+                                  (output_dir / "darcy-transport-solution.h5", "hdf5")):
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            raise SolverError(f"Darcy transport {artifact_format} output was not written") from exc
+        if not content:
+            raise SolverError(f"Darcy transport {artifact_format} output is empty")
+        solution_files.append({"path": path.name, "format": artifact_format,
+                               "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)})
+    for artifact in mesh_artifacts:
+        if artifact["path"] != mesh_record["path"]:
+            (output_dir / artifact["path"]).unlink(missing_ok=True)
+    diagnostics = {
+        "inlet_flow_m2_s_per_depth": flow.inlet_flow_m2_s_per_depth,
+        "outlet_flow_m2_s_per_depth": flow.outlet_flow_m2_s_per_depth,
+        "relative_flow_balance": flow.relative_flow_balance,
+        "mean_inlet_pressure_pa": flow.mean_inlet_pressure_pa,
+        "mean_outlet_pressure_pa": flow.mean_outlet_pressure_pa,
+        "pressure_drop_pa": flow.mean_inlet_pressure_pa - flow.mean_outlet_pressure_pa,
+        "divergence_l2_per_s": flow.divergence_l2_per_s,
+        "darcy_linear_iterations": flow.linear_iterations,
+        "darcy_linear_converged_reason": flow.linear_converged_reason,
+        "inlet_species_rate_mol_m_s_per_depth": transport.inlet_species_rate_mol_m_s_per_depth,
+        "outlet_species_rate_mol_m_s_per_depth": transport.outlet_species_rate_mol_m_s_per_depth,
+        "wall_species_rate_mol_m_s_per_depth": transport.wall_species_rate_mol_m_s_per_depth,
+        "relative_species_balance": transport.relative_species_balance,
+        "peclet_number": transport.peclet_number,
+        "minimum_concentration_mol_m3": transport.minimum_concentration_mol_m3,
+        "maximum_concentration_mol_m3": transport.maximum_concentration_mol_m3,
+        "transport_linear_iterations": transport.linear_iterations,
+        "transport_linear_converged_reason": transport.linear_converged_reason,
+    }
+    return {"protocol_version": PROTOCOL_VERSION, "request_id": request["request_id"],
+            "status": "ok", "operation": "planar_darcy_transport", "metadata": meta,
+            "model_input_contract_version": request["model_input_contract_version"],
+            "model_input_sha256": request["model_input_sha256"],
+            "field_representation": "lagrange_p1_interpolation", "mesh": mesh_record,
+            "physical_groups": physical_groups, "diagnostics": diagnostics,
+            "solution_artifacts": solution_files, "field_datasets": field_datasets}
+
+
 def run(raw: bytes, output_dir: Path | None) -> dict:
     request_id = "00000000-0000-4000-8000-000000000000"
     meta = metadata()
@@ -615,7 +814,8 @@ def run(raw: bytes, output_dir: Path | None) -> dict:
         base_keys = {"protocol_version", "request_id", "operation"}
         exact_keys(request, base_keys, {"mesh", "mesh_request", "mesh_sha256",
                                        "refinement_factor", "model_input_contract_version",
-                                       "model_input_sha256", "setup", "viscosity", "permeability"})
+                                       "model_input_sha256", "setup", "transport_setup", "viscosity",
+                                       "permeability", "effective_diffusivity"})
         try:
             if str(uuid.UUID(request["request_id"])) != request["request_id"].lower():
                 raise ValueError
@@ -641,7 +841,7 @@ def run(raw: bytes, output_dir: Path | None) -> dict:
             return {"protocol_version": PROTOCOL_VERSION, "request_id": request_id, "status": "ok",
                     "operation": "health", "metadata": meta,
                     "capabilities": (["planar_mesh"] if gmsh_ready else []) +
-                    (["planar_stokes", "planar_darcy"] if stokes_ready else [])}
+                    (["planar_stokes", "planar_darcy", "planar_darcy_transport"] if stokes_ready else [])}
         if operation == "planar_stokes":
             request = validate_planar_stokes_request(request)
             if output_dir is None:
@@ -652,6 +852,11 @@ def run(raw: bytes, output_dir: Path | None) -> dict:
             if output_dir is None:
                 raise RequestError("Darcy operation requires a private output directory")
             return solve_planar_darcy_request(request, output_dir, meta)
+        if operation == "planar_darcy_transport":
+            request = validate_planar_darcy_transport_request(request)
+            if output_dir is None:
+                raise RequestError("Darcy transport operation requires a private output directory")
+            return solve_planar_darcy_transport_request(request, output_dir, meta)
         if operation != "planar_mesh":
             return failure(request_id, "unsupported_operation", "No solver for this operation", meta)
         request = exact_keys(request, base_keys | {"mesh"})

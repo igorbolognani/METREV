@@ -18,11 +18,13 @@ import {
 import {
   runSpatialSidecar,
   planarDarcyRequestFromInput,
+  planarDarcyTransportRequestFromInput,
   planarStokesRequestFromInput,
   SidecarTransportError,
 } from '@metrev/spatial-sidecar-client';
 import {
   darcyPorousInput,
+  darcyTransportInput,
   stokesChannelInput,
 } from '../fixtures/spatial-input-v2';
 
@@ -202,6 +204,74 @@ describe('isolated numerical sidecar boundary', () => {
     }
   });
 
+  it('binds the passive scalar solve to the exact Darcy velocity and source-backed diffusivity', async () => {
+    const input = darcyTransportInput();
+    const request = planarDarcyTransportRequestFromInput(
+      input,
+      fixture.request_id,
+    );
+    expect(spatialSidecarRequestSchema.parse(request)).toMatchObject({
+      operation: 'planar_darcy_transport',
+      model_input_contract_version: 'spatial-input-v2',
+      model_input_sha256: spatialModelInputV2Sha256(input),
+      mesh_sha256: input.mesh.sha256,
+      setup: input.darcy_development,
+      transport_setup: input.darcy_transport_development,
+      viscosity: input.material_fields[0].field.value,
+      permeability: input.material_fields[1].field.value,
+      effective_diffusivity: input.species[0].effective_diffusivity!.value,
+    });
+    expect(() =>
+      planarDarcyTransportRequestFromInput({
+        ...input,
+        darcy_transport_development: undefined,
+      }),
+    ).toThrow(/does not declare both Darcy and passive transport/);
+    for (const mutate of [
+      (candidate: typeof request) => {
+        candidate.transport_setup.velocity_variables.x = 'other';
+      },
+      (candidate: typeof request) => {
+        candidate.transport_setup.outlet.tag = 'west';
+      },
+      (candidate: typeof request) => {
+        candidate.effective_diffusivity.unit = 'm/s';
+      },
+      (candidate: typeof request) => {
+        candidate.setup.inlet.pressure_pa.value = 0;
+      },
+    ]) {
+      const malformed = structuredClone(request);
+      mutate(malformed);
+      expect(spatialSidecarRequestSchema.safeParse(malformed).success).toBe(
+        false,
+      );
+    }
+
+    const artifactRoot = await mkdtemp(
+      join(tmpdir(), 'metrev-darcy-transport-test-'),
+    );
+    try {
+      const result = await runSpatialSidecar(request, {
+        pythonExecutable: 'python3',
+        moduleDirectory,
+        artifactRoot,
+        timeoutMs: 30_000,
+      });
+      if (result.response.status === 'error') {
+        expect(result.response.code).toBe('dependency_unavailable');
+      } else {
+        expect(result.response.operation).toBe('planar_darcy_transport');
+        expect(
+          result.response.field_datasets.map((field) => field.variable_id),
+        ).toEqual(['p', 'ux', 'uy', 'neutral_tracer_c']);
+        expect(result.artifactDirectory).toBeTruthy();
+      }
+    } finally {
+      await rm(artifactRoot, { recursive: true, force: true });
+    }
+  });
+
   it('requires paired XDMF/HDF5 manifests and declared Stokes dataset bindings', () => {
     const response = {
       protocol_version: 'spatial-sidecar-v1',
@@ -340,6 +410,129 @@ describe('isolated numerical sidecar boundary', () => {
           },
           darcyResponse.solution_artifacts[1],
         ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires a complete input-bound Darcy plus neutral-scalar result manifest', () => {
+    const response = {
+      protocol_version: 'spatial-sidecar-v1',
+      request_id: fixture.request_id,
+      status: 'ok',
+      operation: 'planar_darcy_transport',
+      metadata: {
+        sidecar_version: '0.1.0',
+        protocol_version: 'spatial-sidecar-v1',
+        python_version: '3.12.0',
+        gmsh_version: '4.15.2',
+        dolfinx_version: '0.10.0',
+        petsc_version: '3.22.0',
+      },
+      model_input_sha256: 'a'.repeat(64),
+      model_input_contract_version: 'spatial-input-v2',
+      field_representation: 'lagrange_p1_interpolation',
+      mesh: {
+        refinement_factor: 1,
+        format: 'msh4',
+        path: 'mesh-1.msh',
+        sha256: 'b'.repeat(64),
+        bytes: 256,
+        node_count: 25,
+        cell_count: 32,
+        min_quality: 0.5,
+      },
+      physical_groups: {
+        'region:porous': 1,
+        'boundary:west': 101,
+        'boundary:east': 102,
+        'boundary:south': 103,
+        'boundary:north': 104,
+      },
+      diagnostics: {
+        inlet_flow_m2_s_per_depth: 1e-8,
+        outlet_flow_m2_s_per_depth: 1e-8,
+        relative_flow_balance: 1e-12,
+        mean_inlet_pressure_pa: 1,
+        mean_outlet_pressure_pa: 0,
+        pressure_drop_pa: 1,
+        divergence_l2_per_s: 1e-12,
+        darcy_linear_iterations: 1,
+        darcy_linear_converged_reason: 2,
+        inlet_species_rate_mol_m_s_per_depth: -1e-6,
+        outlet_species_rate_mol_m_s_per_depth: 1e-6,
+        wall_species_rate_mol_m_s_per_depth: 0,
+        relative_species_balance: 1e-12,
+        peclet_number: 1,
+        minimum_concentration_mol_m3: 1,
+        maximum_concentration_mol_m3: 2,
+        transport_linear_iterations: 1,
+        transport_linear_converged_reason: 2,
+      },
+      solution_artifacts: [
+        {
+          path: 'darcy-transport-solution.xdmf',
+          format: 'xdmf',
+          sha256: 'c'.repeat(64),
+          bytes: 512,
+        },
+        {
+          path: 'darcy-transport-solution.h5',
+          format: 'hdf5',
+          sha256: 'd'.repeat(64),
+          bytes: 1024,
+        },
+      ],
+      field_datasets: [
+        {
+          variable_id: 'p',
+          field_name: 'pressure',
+          dataset_path: '/Function/pressure/0',
+          unit: 'Pa',
+          domain_tag: 'porous',
+        },
+        {
+          variable_id: 'ux',
+          field_name: 'velocity_x',
+          dataset_path: '/Function/velocity_x/0',
+          unit: 'm/s',
+          domain_tag: 'porous',
+        },
+        {
+          variable_id: 'uy',
+          field_name: 'velocity_y',
+          dataset_path: '/Function/velocity_y/0',
+          unit: 'm/s',
+          domain_tag: 'porous',
+        },
+        {
+          variable_id: 'neutral_tracer_c',
+          field_name: 'concentration',
+          dataset_path: '/Function/concentration/0',
+          unit: 'mol/m3',
+          domain_tag: 'porous',
+        },
+      ],
+    } as const;
+    expect(spatialSidecarResponseSchema.safeParse(response).success).toBe(true);
+    expect(
+      spatialSidecarResponseSchema.safeParse({
+        ...response,
+        field_datasets: [
+          ...response.field_datasets.slice(0, 3),
+          {
+            ...response.field_datasets[3],
+            dataset_path: '/Function/velocity_x/0',
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      spatialSidecarResponseSchema.safeParse({
+        ...response,
+        diagnostics: {
+          ...response.diagnostics,
+          minimum_concentration_mol_m3: 3,
+        },
       }).success,
     ).toBe(false);
   });

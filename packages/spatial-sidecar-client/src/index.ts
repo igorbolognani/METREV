@@ -85,6 +85,63 @@ export function planarDarcyRequestFromInput(
   }) as Extract<SpatialSidecarRequest, { operation: 'planar_darcy' }>;
 }
 
+/** Bind the source-backed Darcy field directly into one neutral scalar transport solve. */
+export function planarDarcyTransportRequestFromInput(
+  candidate: unknown,
+  requestId = randomUUID(),
+): Extract<SpatialSidecarRequest, { operation: 'planar_darcy_transport' }> {
+  const input = spatialModelInputV2Schema.parse(candidate);
+  const setup = input.darcy_development;
+  const transportSetup = input.darcy_transport_development;
+  if (!setup || !transportSetup)
+    throw new RangeError(
+      'Input does not declare both Darcy and passive transport development regimes',
+    );
+  const viscosity = input.material_fields.find(
+    (entry) =>
+      entry.parameter_id === setup.viscosity_parameter_id &&
+      entry.domain_tag === setup.domain_tag,
+  );
+  const permeability = input.material_fields.find(
+    (entry) =>
+      entry.parameter_id === setup.permeability_parameter_id &&
+      entry.domain_tag === setup.domain_tag,
+  );
+  const species = input.species.find(
+    (entry) => entry.id === transportSetup.species_id,
+  );
+  if (!viscosity || viscosity.field.kind !== 'constant')
+    throw new RangeError(
+      'Darcy transport requires constant declared viscosity',
+    );
+  if (!permeability || permeability.field.kind !== 'constant')
+    throw new RangeError(
+      'Darcy transport requires constant declared permeability',
+    );
+  if (
+    !species?.effective_diffusivity ||
+    species.effective_diffusivity.kind !== 'constant'
+  )
+    throw new RangeError(
+      'Darcy transport requires constant declared effective diffusivity',
+    );
+  return spatialSidecarRequestSchema.parse({
+    protocol_version: 'spatial-sidecar-v1',
+    request_id: requestId,
+    operation: 'planar_darcy_transport',
+    mesh_request: input.mesh.request,
+    mesh_sha256: input.mesh.sha256,
+    refinement_factor: input.mesh.refinement_factor,
+    model_input_contract_version: input.contract_version,
+    model_input_sha256: spatialModelInputV2Sha256(input),
+    setup,
+    transport_setup: transportSetup,
+    viscosity: viscosity.field.value,
+    permeability: permeability.field.value,
+    effective_diffusivity: species.effective_diffusivity.value,
+  }) as Extract<SpatialSidecarRequest, { operation: 'planar_darcy_transport' }>;
+}
+
 /** Bind a validated request and matching sidecar manifest to a stored mesh URI.
  * The artifact store must still authorize the URI and verify its file hash before use.
  */
@@ -198,7 +255,8 @@ export async function runSpatialSidecar(
   const artifactDirectory =
     request.operation === 'planar_mesh' ||
     request.operation === 'planar_stokes' ||
-    request.operation === 'planar_darcy'
+    request.operation === 'planar_darcy' ||
+    request.operation === 'planar_darcy_transport'
       ? await (async () => {
           await mkdir(options.artifactRoot, { recursive: true });
           return mkdtemp(join(resolve(options.artifactRoot), 'metrev-mesh-'));
@@ -316,14 +374,27 @@ export async function runSpatialSidecar(
     const isPlanarDarcy =
       response.operation === 'planar_darcy' &&
       request.operation === 'planar_darcy';
-    if (isPlanarStokes || isPlanarDarcy) {
+    const isPlanarDarcyTransport =
+      response.operation === 'planar_darcy_transport' &&
+      request.operation === 'planar_darcy_transport';
+    if (isPlanarStokes || isPlanarDarcy || isPlanarDarcyTransport) {
       const hydraulicRequest = request as Extract<
         SpatialSidecarRequest,
-        { operation: 'planar_stokes' | 'planar_darcy' }
+        {
+          operation:
+            | 'planar_stokes'
+            | 'planar_darcy'
+            | 'planar_darcy_transport';
+        }
       >;
       const hydraulicResponse = response as Extract<
         SpatialSidecarResponse,
-        { operation: 'planar_stokes' | 'planar_darcy' }
+        {
+          operation:
+            | 'planar_stokes'
+            | 'planar_darcy'
+            | 'planar_darcy_transport';
+        }
       >;
       if (
         !artifactDirectory ||
@@ -368,7 +439,12 @@ export async function runSpatialSidecar(
           'artifact_integrity',
           'Hydraulic mesh physical groups do not match the admitted recipe',
         );
-      const expectedDatasets = [
+      const expectedDatasets: Array<{
+        variable_id: string;
+        field_name: string;
+        dataset_path: string;
+        unit: string;
+      }> = [
         {
           variable_id: hydraulicRequest.setup.pressure_variable,
           field_name: 'pressure',
@@ -388,6 +464,13 @@ export async function runSpatialSidecar(
           unit: 'm/s',
         },
       ];
+      if (hydraulicRequest.operation === 'planar_darcy_transport')
+        expectedDatasets.push({
+          variable_id: hydraulicRequest.transport_setup.concentration_variable,
+          field_name: 'concentration',
+          dataset_path: '/Function/concentration/0',
+          unit: 'mol/m3',
+        });
       if (
         expectedDatasets.some(
           (expected) =>

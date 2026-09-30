@@ -11,6 +11,7 @@ import {
   canonicalRequest,
   copy,
   darcyPorousInput,
+  darcyTransportInput,
   digestRequest,
   meshRequest,
   q,
@@ -153,6 +154,48 @@ describe('spatial-input-v2 admission boundary', () => {
     ];
     for (const mutate of invalid) {
       const candidate = darcyPorousInput();
+      mutate(candidate);
+      expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(
+        false,
+      );
+    }
+  });
+  it('admits Darcy-driven transport only for a neutral passive scalar bound to that flow', () => {
+    const input = darcyTransportInput();
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+    const invalid = [
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.velocity_variables.x = 'other';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.species[0].valence.value = 1;
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.species[0].effective_diffusivity!.kind = 'piecewise';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.inlet.concentration_mol_m3.unit =
+          'Pa';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.outlet.tag = 'west';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.reaction_laws.push({
+          id: 'tracer_reaction',
+          domain_tag: 'porous',
+          equation_ref: 'EQ-RX-001',
+          stoichiometry: [
+            { species_id: 'neutral_tracer', coefficient: q(-1, '1') },
+            { species_id: 'other_species', coefficient: q(1, '1') },
+          ],
+          electron_count: q(0, '1'),
+          proton_count: q(0, '1'),
+        });
+      },
+    ];
+    for (const mutate of invalid) {
+      const candidate = darcyTransportInput();
       mutate(candidate);
       expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(
         false,

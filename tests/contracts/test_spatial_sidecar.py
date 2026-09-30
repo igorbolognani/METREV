@@ -163,6 +163,41 @@ class SidecarTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_planar_darcy_request(malformed)
 
+    def darcy_transport_request(self):
+        request = self.darcy_request()
+        request["operation"] = "planar_darcy_transport"
+        source = {"source_kind": "test_fixture", "source_ref": "test-fixture://transport"}
+        request["transport_setup"] = {
+            "regime": "steady_advection_diffusion",
+            "equation_ref": "EQ-SP-001",
+            "domain_tag": "biofilm",
+            "species_id": "neutral_tracer",
+            "concentration_variable": "neutral_tracer_c",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "concentration_mol_m3": {"value": 2.0, "unit": "mol/m3", **source}},
+            "outlet": {"tag": "east", "concentration_mol_m3": {"value": 1.0, "unit": "mol/m3", **source}},
+        }
+        request["effective_diffusivity"] = {"value": 1e-9, "unit": "m2/s", **source}
+        return request
+
+    def test_darcy_transport_binds_neutral_species_to_positive_darcy_flow(self):
+        from metrev_spatial.__main__ import validate_planar_darcy_transport_request
+
+        request = self.darcy_transport_request()
+        self.assertIs(validate_planar_darcy_transport_request(request), request)
+        mutations = [
+            lambda body: body["transport_setup"]["velocity_variables"].update(x="unbound_velocity"),
+            lambda body: body["transport_setup"]["outlet"].update(tag="west"),
+            lambda body: body["transport_setup"]["inlet"]["concentration_mol_m3"].update(value=-1),
+            lambda body: body["effective_diffusivity"].update(unit="m/s"),
+            lambda body: body["setup"]["inlet"]["pressure_pa"].update(value=0),
+        ]
+        for mutate in mutations:
+            malformed = json.loads(json.dumps(request))
+            mutate(malformed)
+            with self.assertRaises(ValueError):
+                validate_planar_darcy_transport_request(malformed)
+
     @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
     def test_single_liquid_channel_retains_all_exterior_physical_groups(self):
         fixture = json.loads(FIXTURE.read_text())
