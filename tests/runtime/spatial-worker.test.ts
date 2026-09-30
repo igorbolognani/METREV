@@ -225,6 +225,11 @@ describe('spatial simulation worker', () => {
       'The spatial solver returned invalid protocol data',
     ],
     [
+      'container_cleanup',
+      'spatial_container_cleanup_failed',
+      'The spatial solver container could not be confirmed stopped and removed',
+    ],
+    [
       'artifact_integrity',
       'spatial_artifact_integrity_failure',
       'The spatial solver artifacts failed integrity validation',
