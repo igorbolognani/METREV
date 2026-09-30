@@ -19,10 +19,14 @@ import {
 } from '@metrev/spatial-artifact-store';
 import type { SpatialSidecarRequest } from '@metrev/domain-contracts';
 import type { SidecarProcessOptions } from '@metrev/spatial-sidecar-client';
+import { runSpatialSidecar } from '@metrev/spatial-sidecar-client';
 import { describe, expect, it } from 'vitest';
 
 import { buildApp } from '../../apps/api-server/src/app';
-import { darcyTransportInput } from '../fixtures/spatial-input-v2';
+import {
+  darcyTransportInput,
+  digestRequest,
+} from '../fixtures/spatial-input-v2';
 import { DarcyDevelopmentExecutor } from '../../packages/spatial-worker/src/darcy-development-executor';
 import type { SpatialSidecarRunner } from '../../packages/spatial-worker/src/darcy-development-executor';
 import { runSpatialSimulationWorkerCycle } from '../../packages/spatial-worker/src/worker';
@@ -327,6 +331,220 @@ describe('development Darcy transport worker adapter', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it.skipIf(!process.env.METREV_SPATIAL_DOCKER_IMAGE)(
+    'executes the pinned native sidecar through the worker and authenticated API',
+    async () => {
+      const nativeImage = process.env.METREV_SPATIAL_DOCKER_IMAGE;
+      if (!nativeImage || !/^[A-Za-z0-9._:/-]+$/.test(nativeImage))
+        throw new Error('A valid pinned sidecar image is required');
+
+      const root = await mkdtemp(join(tmpdir(), 'metrev-darcy-native-worker-'));
+      let app: Awaited<ReturnType<typeof buildApp>> | undefined;
+      try {
+        const artifactRoot = join(root, 'sidecar-output');
+        await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
+        const pythonShim = join(root, 'docker-python');
+        const shellQuote = (value: string) =>
+          `'${value.replaceAll("'", "'\\''")}'`;
+        await writeFile(
+          pythonShim,
+          [
+            '#!/bin/sh',
+            'set -u',
+            'if [ "${1:-}" != "-m" ] || [ "${2:-}" != "metrev_spatial" ]; then exit 64; fi',
+            'shift 2',
+            'output_dir="${2:?missing sidecar output directory}"',
+            'log_id="${output_dir##*/}"',
+            `log_root=${shellQuote(root)}`,
+            'stdout_file="$log_root/$log_id.stdout"',
+            'stderr_file="$log_root/$log_id.stderr"',
+            `docker run --pull=never --rm --interactive --network none --cpus=2 --memory=4g --pids-limit=256 --user "$(id -u):$(id -g)" --env HOME=/tmp --env XDG_CACHE_HOME=/tmp/.cache --mount ${shellQuote(`type=bind,source=${artifactRoot},target=${artifactRoot}`)} ${shellQuote(nativeImage)} "$@" > "$stdout_file" 2> "$stderr_file"`,
+            'status=$?',
+            'cp "$stdout_file" "$log_root/latest.stdout"',
+            'cp "$stderr_file" "$log_root/latest.stderr"',
+            'cat "$stdout_file"',
+            'cat "$stderr_file" >&2',
+            'exit "$status"',
+            '',
+          ].join('\n'),
+          { mode: 0o700 },
+        );
+
+        const sidecarOptions = {
+          pythonExecutable: pythonShim,
+          moduleDirectory: root,
+          artifactRoot,
+          timeoutMs: 120_000,
+        };
+        const inputCandidate = spatialModelInputV2Schema.parse(
+          darcyTransportInput(),
+        );
+        inputCandidate.geometry.layers[0].width_m.value = 0.01;
+        inputCandidate.geometry.target_size_m.value = 0.00025;
+        inputCandidate.mesh.request.mesh.layers[0].width_m.value = 0.01;
+        inputCandidate.mesh.request.mesh.target_size_m.value = 0.00025;
+        inputCandidate.mesh.input_sha256 = digestRequest(
+          inputCandidate.mesh.request,
+        );
+        const meshRun = await runSpatialSidecar(
+          inputCandidate.mesh.request,
+          sidecarOptions,
+        );
+        if (
+          meshRun.response.status !== 'ok' ||
+          meshRun.response.operation !== 'planar_mesh' ||
+          !meshRun.artifactDirectory
+        )
+          throw new Error(
+            'Pinned sidecar failed to generate the selected mesh',
+          );
+        const meshArtifact = meshRun.response.artifacts.find(
+          ({ refinement_factor }) => refinement_factor === 1,
+        );
+        if (!meshArtifact)
+          throw new Error('Pinned sidecar omitted mesh level 1');
+        const meshBytes = await readFile(
+          join(meshRun.artifactDirectory, meshArtifact.path),
+        );
+        const gmshVersion = meshRun.response.metadata.gmsh_version;
+        const sidecarVersion = meshRun.response.metadata.sidecar_version;
+        if (!gmshVersion || !sidecarVersion)
+          throw new Error('Pinned sidecar omitted runtime versions');
+
+        inputCandidate.mesh.sha256 = sha256(meshBytes);
+        inputCandidate.mesh.gmsh_version = gmshVersion;
+        inputCandidate.mesh.sidecar_version = sidecarVersion;
+        inputCandidate.mesh.physical_groups = meshRun.response.physical_groups;
+        inputCandidate.mesh.component_map = meshRun.response.component_map;
+        inputCandidate.mesh.interfaces = meshRun.response.interfaces;
+        const input = spatialModelInputV2Schema.parse(inputCandidate);
+        const permeability = input.material_fields.find(
+          ({ parameter_id }) => parameter_id === 'hydraulic_permeability_m2',
+        );
+        if (!permeability || permeability.field.kind !== 'constant')
+          throw new Error('Darcy input is missing constant permeability');
+        permeability.field.value.value = 1e-12;
+        const inletPressure = input.darcy_development?.inlet.pressure_pa;
+        if (!inletPressure)
+          throw new Error('Darcy input is missing inlet pressure');
+        inletPressure.value = 1;
+
+        const meshStore = new LocalSpatialArtifactStore({
+          rootDirectory: join(root, 'meshes'),
+        });
+        const fieldStore = new LocalSpatialFieldArtifactStore({
+          rootDirectory: join(root, 'fields'),
+        });
+        const nativeExecutor = new DarcyDevelopmentExecutor({
+          ...sidecarOptions,
+          meshArtifactStore: meshStore,
+          fieldArtifactStore: fieldStore,
+        });
+        const executionErrors: unknown[] = [];
+        const executor = {
+          solverVersion: nativeExecutor.solverVersion,
+          runtimeVersion: nativeExecutor.runtimeVersion,
+          supports: nativeExecutor.supports.bind(nativeExecutor),
+          execute: async (
+            ...args: Parameters<typeof nativeExecutor.execute>
+          ) => {
+            try {
+              return await nativeExecutor.execute(...args);
+            } catch (error) {
+              executionErrors.push(error);
+              throw error;
+            }
+          },
+        };
+        const repository = new MemorySpatialSimulationRunRepository();
+        const { run } = await repository.createOrGet({
+          owner_id: ownerId,
+          evaluation_id: null,
+          idempotency_key: 'darcy-native-worker-test',
+          model_id: input.model_id,
+          system: input.system,
+          dimension: input.dimension,
+          input_contract_version: input.contract_version,
+          input_sha256: spatialModelInputV2Sha256(input),
+          solver_version: executor.solverVersion,
+          runtime_version: executor.runtimeVersion,
+          mesh_request_sha256: input.mesh.input_sha256,
+          input_snapshot: input,
+        });
+        const cycle = await runSpatialSimulationWorkerCycle({
+          repository,
+          executor,
+          workerId: 'darcy-native-test-worker',
+        });
+        let nativeSidecarLogs = '';
+        if (cycle.failed > 0) {
+          const [stdout, stderr] = await Promise.all([
+            readFile(join(root, 'latest.stdout'), 'utf8').catch(
+              () => 'unavailable',
+            ),
+            readFile(join(root, 'latest.stderr'), 'utf8').catch(
+              () => 'unavailable',
+            ),
+          ]);
+          nativeSidecarLogs = `\nNative sidecar stdout:\n${stdout.slice(-4_000)}\nNative sidecar stderr:\n${stderr.slice(-4_000)}`;
+        }
+        expect(
+          cycle,
+          `Native worker error: ${
+            executionErrors[0] instanceof Error
+              ? (executionErrors[0].stack ?? executionErrors[0].message)
+              : String(executionErrors[0] ?? 'unknown failure')
+          }${nativeSidecarLogs}`,
+        ).toMatchObject({ claimed: 1, completed: 1, failed: 0 });
+        const completed = await repository.getOwnedRun(run.id, ownerId);
+        expect(completed).toMatchObject({
+          status: 'completed',
+          result: {
+            contract_version: 'spatial-simulation-result-v2',
+            linear_solver_diagnostics: [
+              { solver_id: 'darcy_pressure', status: 'converged' },
+              { solver_id: 'neutral_scalar_transport', status: 'converged' },
+            ],
+            conservation_residuals: [
+              { balance_id: 'darcy_flow_balance', passed: true },
+              { balance_id: 'neutral_species_mass_balance', passed: true },
+            ],
+          },
+        });
+        const field = completed?.result?.fields.find(
+          ({ variable_id }) => variable_id === 'neutral_tracer_c',
+        );
+        if (!field || field.value_type !== 'scalar')
+          throw new Error('Native run omitted neutral scalar field');
+
+        app = await buildApp({
+          repository: new MemoryEvaluationRepository(),
+          spatialSimulationRunRepository: repository,
+          spatialFieldArtifactReader: fieldStore,
+          rateLimit: false,
+          sessionResolver: async () => ({
+            userId: ownerId,
+            email: 'darcy-native-owner@example.invalid',
+            role: 'ANALYST',
+            sessionId: 'darcy-native-session',
+            sessionToken: 'darcy-native-token',
+          }),
+        });
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/spatial-simulations/${run.id}/fields/${field.field_id}`,
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.rawPayload.byteLength).toBe(field.artifact.bytes);
+        expect(sha256(response.rawPayload)).toBe(field.artifact.sha256);
+      } finally {
+        await app?.close();
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+    180_000,
+  );
 
   it('does not admit vector or broader requested-output variants', () => {
     const input = modelInput(Buffer.from('msh'));
