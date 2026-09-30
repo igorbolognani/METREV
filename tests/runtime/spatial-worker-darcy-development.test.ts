@@ -3,7 +3,11 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { MemorySpatialSimulationRunRepository } from '@metrev/database';
+import type { SessionActor } from '@metrev/auth';
+import {
+  MemoryEvaluationRepository,
+  MemorySpatialSimulationRunRepository,
+} from '@metrev/database';
 import {
   spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
@@ -17,6 +21,7 @@ import type { SpatialSidecarRequest } from '@metrev/domain-contracts';
 import type { SidecarProcessOptions } from '@metrev/spatial-sidecar-client';
 import { describe, expect, it } from 'vitest';
 
+import { buildApp } from '../../apps/api-server/src/app';
 import { darcyTransportInput } from '../fixtures/spatial-input-v2';
 import { DarcyDevelopmentExecutor } from '../../packages/spatial-worker/src/darcy-development-executor';
 import type { SpatialSidecarRunner } from '../../packages/spatial-worker/src/darcy-development-executor';
@@ -284,6 +289,35 @@ describe('development Darcy transport worker adapter', () => {
           datasetPath: firstField.artifact.dataset_path,
         }),
       ).rejects.toMatchObject({ code: 'integrity_failure' });
+
+      let actor: SessionActor = {
+        userId: ownerId,
+        email: 'darcy-owner@example.invalid',
+        role: 'ANALYST',
+        sessionId: 'darcy-development-session',
+        sessionToken: 'darcy-development-token',
+      };
+      const app = await buildApp({
+        repository: new MemoryEvaluationRepository(),
+        spatialSimulationRunRepository: repository,
+        spatialFieldArtifactReader: fieldStore,
+        rateLimit: false,
+        sessionResolver: async () => actor,
+      });
+      try {
+        const path = `/api/spatial-simulations/${run.id}/fields/${firstField.field_id}`;
+        const apiResponse = await app.inject({ method: 'GET', url: path });
+        expect(apiResponse.statusCode).toBe(200);
+        expect(apiResponse.rawPayload).toEqual(payloads.hdf5);
+
+        actor = { ...actor, userId: 'different-owner' };
+        expect(
+          (await app.inject({ method: 'GET', url: path })).statusCode,
+        ).toBe(404);
+      } finally {
+        await app.close();
+      }
+
       await expect(
         readFile(join(artifactDirectory, 'mesh-1.msh')),
       ).rejects.toMatchObject({
