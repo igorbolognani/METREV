@@ -141,3 +141,50 @@ export const validSpatialInput = () => ({
   circuit: { kind: 'external_load', resistance: q(1000, 'ohm') },
   requested_outputs: ['substrate_c', 'phi_s'],
 });
+
+export const stokesChannelInput = () => {
+  const candidate = validSpatialInput();
+  candidate.geometry.layers = [candidate.geometry.layers[2]];
+  candidate.geometry.boundaries.left = { tag: 'west', role: 'wall' };
+  candidate.geometry.boundaries.right = { tag: 'east', role: 'wall' };
+  candidate.mesh.request.mesh = copy(candidate.geometry);
+  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+  candidate.mesh.physical_groups = {
+    'region:liquid': 1,
+    'boundary:west': 101,
+    'boundary:east': 102,
+    'boundary:inlet': 103,
+    'boundary:outlet': 104,
+  };
+  candidate.mesh.component_map = { liquid: 'case/reactor' };
+  candidate.mesh.interfaces = [];
+  candidate.material_fields = [
+    {
+      parameter_id: 'dynamic_viscosity_pa_s',
+      domain_tag: 'liquid',
+      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
+    },
+  ];
+  candidate.variables = [
+    { id: 'p', kind: 'pressure', domain_tags: ['liquid'], unit: 'Pa' },
+    { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
+    { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
+  ];
+  candidate.initial_conditions = [];
+  candidate.boundary_conditions = [];
+  candidate.requested_outputs = ['p', 'ux', 'uy'];
+  return {
+    ...candidate,
+    stokes_development: {
+      regime: 'steady_stokes',
+      equation_ref: 'EQ-FL-002',
+      domain_tag: 'liquid',
+      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
+      pressure_variable: 'p',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      wall_tags: ['west', 'east'],
+      inlet: { tag: 'inlet', traction_pa: [q(0, 'Pa'), q(1, 'Pa')] },
+      outlet: { tag: 'outlet', traction_pa: [q(0, 'Pa'), q(0, 'Pa')] },
+    },
+  };
+};
