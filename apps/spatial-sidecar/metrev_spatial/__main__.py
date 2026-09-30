@@ -336,8 +336,12 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
 
     xdmf_path = output_dir / "stokes-solution.xdmf"
     try:
-        velocity_x, _ = result.velocity.sub(0).collapse()
-        velocity_y, _ = result.velocity.sub(1).collapse()
+        def scalar_component(index: int):
+            collapsed = result.velocity.sub(index).collapse()
+            return collapsed[0] if isinstance(collapsed, tuple) else collapsed
+
+        velocity_x = scalar_component(0)
+        velocity_y = scalar_component(1)
         velocity_x.name = "velocity_x"
         velocity_y.name = "velocity_y"
         result.pressure.name = "pressure"
