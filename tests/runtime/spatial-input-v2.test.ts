@@ -10,61 +10,17 @@ import { meshReferenceFromSidecar } from '@metrev/spatial-sidecar-client';
 import {
   canonicalRequest,
   copy,
+  darcyPorousInput,
+  darcyTransportInput,
   digestRequest,
   meshRequest,
   q,
   requestDigest,
+  stokesChannelInput,
   validSpatialInput,
 } from '../fixtures/spatial-input-v2';
 
 const valid = validSpatialInput;
-
-function stokesChannelInput() {
-  const candidate = valid();
-  candidate.geometry.layers = [candidate.geometry.layers[2]];
-  candidate.geometry.boundaries.left = { tag: 'west', role: 'wall' };
-  candidate.geometry.boundaries.right = { tag: 'east', role: 'wall' };
-  candidate.mesh.request.mesh = copy(candidate.geometry);
-  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
-  candidate.mesh.physical_groups = {
-    'region:liquid': 1,
-    'boundary:west': 11,
-    'boundary:east': 12,
-    'boundary:inlet': 13,
-    'boundary:outlet': 14,
-  };
-  candidate.mesh.component_map = { liquid: 'case/reactor' };
-  candidate.mesh.interfaces = [];
-  candidate.material_fields = [
-    {
-      parameter_id: 'dynamic_viscosity_pa_s',
-      domain_tag: 'liquid',
-      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
-    },
-  ];
-  candidate.variables = [
-    { id: 'p', kind: 'pressure', domain_tags: ['liquid'], unit: 'Pa' },
-    { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
-    { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
-  ];
-  candidate.initial_conditions = [];
-  candidate.boundary_conditions = [];
-  candidate.requested_outputs = ['p', 'ux', 'uy'];
-  return {
-    ...candidate,
-    stokes_development: {
-      regime: 'steady_stokes',
-      equation_ref: 'EQ-FL-002',
-      domain_tag: 'liquid',
-      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
-      pressure_variable: 'p',
-      velocity_variables: { x: 'ux', y: 'uy' },
-      wall_tags: ['west', 'east'],
-      inlet: { tag: 'inlet', traction_pa: [q(0, 'Pa'), q(1, 'Pa')] },
-      outlet: { tag: 'outlet', traction_pa: [q(0, 'Pa'), q(0, 'Pa')] },
-    },
-  };
-}
 
 describe('spatial-input-v2 admission boundary', () => {
   it('declares a 2D velocity vector only from matching x/y state components', () => {
@@ -163,6 +119,87 @@ describe('spatial-input-v2 admission boundary', () => {
       const input = stokesChannelInput();
       change(input);
       expect(spatialModelInputV2Schema.safeParse(input).success).toBe(false);
+    }
+  });
+
+  it('admits only a source-backed single-domain porous Darcy development setup', () => {
+    const input = darcyPorousInput();
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+    const invalid = [
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields = candidate.material_fields.filter(
+          (entry) => entry.parameter_id !== 'hydraulic_permeability_m2',
+        );
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields[0].field.value.unit = 'm2/s';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields[1].field.value.value = 0;
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.geometry.layers[0].kind = 'bulk_liquid';
+        candidate.mesh.request.mesh.layers[0].kind = 'bulk_liquid';
+        candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.outlet.tag = 'west';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.inlet.pressure_pa.unit = 'm/s';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.velocity_variables.y = 'ux';
+      },
+    ];
+    for (const mutate of invalid) {
+      const candidate = darcyPorousInput();
+      mutate(candidate);
+      expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(
+        false,
+      );
+    }
+  });
+  it('admits Darcy-driven transport only for a neutral passive scalar bound to that flow', () => {
+    const input = darcyTransportInput();
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+    const invalid = [
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.velocity_variables.x = 'other';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.species[0].valence.value = 1;
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.species[0].effective_diffusivity!.kind = 'piecewise';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.inlet.concentration_mol_m3.unit =
+          'Pa';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.darcy_transport_development.outlet.tag = 'west';
+      },
+      (candidate: ReturnType<typeof darcyTransportInput>) => {
+        candidate.reaction_laws.push({
+          id: 'tracer_reaction',
+          domain_tag: 'porous',
+          equation_ref: 'EQ-RX-001',
+          stoichiometry: [
+            { species_id: 'neutral_tracer', coefficient: q(-1, '1') },
+            { species_id: 'other_species', coefficient: q(1, '1') },
+          ],
+          electron_count: q(0, '1'),
+          proton_count: q(0, '1'),
+        });
+      },
+    ];
+    for (const mutate of invalid) {
+      const candidate = darcyTransportInput();
+      mutate(candidate);
+      expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(
+        false,
+      );
     }
   });
   it('binds source-traced local mesh sizes into the admitted request and rejects invalid refinements', () => {

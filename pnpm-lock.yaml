@@ -424,6 +424,12 @@ importers:
       '@metrev/domain-contracts':
         specifier: workspace:*
         version: link:../domain-contracts
+      '@metrev/spatial-artifact-store':
+        specifier: workspace:*
+        version: link:../spatial-artifact-store
+      '@metrev/spatial-sidecar-client':
+        specifier: workspace:*
+        version: link:../spatial-sidecar-client
       '@metrev/telemetry':
         specifier: workspace:*
         version: link:../telemetry

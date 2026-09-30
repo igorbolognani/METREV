@@ -430,6 +430,42 @@ const solverConvergenceSchema = z
       });
   });
 
+/** Direct linear-solver outcomes are distinct from nonlinear residual histories. */
+const linearSolverDiagnosticSchema = z
+  .object({
+    solver_id: identifier,
+    method: identifier,
+    status: z.enum(['converged', 'not_converged']),
+    iterations: z.number().int().nonnegative(),
+    termination_reason: identifier,
+    termination_code: z.number().int().optional(),
+  })
+  .strict()
+  .superRefine((solver, context) => {
+    if (
+      solver.status === 'converged' &&
+      solver.termination_code !== undefined &&
+      solver.termination_code <= 0
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['termination_code'],
+        message:
+          'A converged solver must have a positive termination code when one is supplied',
+      });
+    if (
+      solver.status === 'not_converged' &&
+      solver.termination_code !== undefined &&
+      solver.termination_code > 0
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['termination_code'],
+        message:
+          'A non-converged solver must not have a positive termination code',
+      });
+  });
+
 const warningSchema = z
   .object({
     code: identifier,
@@ -470,6 +506,11 @@ export const spatialSimulationResultSchema = z
     fields: z.array(spatialFieldManifestSchema).min(1).max(256),
     conservation_residuals: z.array(conservationResidualSchema).min(1).max(256),
     convergence: z.array(solverConvergenceSchema).min(1).max(128),
+    linear_solver_diagnostics: z
+      .array(linearSolverDiagnosticSchema)
+      .min(1)
+      .max(128)
+      .optional(),
     warnings: z.array(warningSchema).max(500),
     unsupported_physics: z.array(unsupportedPhysicsSchema).max(128),
     artifact_hashes: z.array(sha256).min(1).max(513),
@@ -478,6 +519,23 @@ export const spatialSimulationResultSchema = z
   .superRefine((result, context) => {
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: 'custom', path, message });
+    if (
+      result.contract_version === 'spatial-simulation-result-v1' &&
+      result.linear_solver_diagnostics !== undefined
+    )
+      issue(
+        ['linear_solver_diagnostics'],
+        'Linear solver diagnostics require spatial-simulation-result-v2',
+      );
+    if (
+      result.linear_solver_diagnostics &&
+      new Set(result.linear_solver_diagnostics.map((entry) => entry.solver_id))
+        .size !== result.linear_solver_diagnostics.length
+    )
+      issue(
+        ['linear_solver_diagnostics'],
+        'Linear solver identifiers must be unique',
+      );
     if (result.mesh.dimension !== result.dimension)
       issue(['mesh', 'dimension'], 'Result and mesh dimensions must match');
     if (result.coordinate_system === 'axisymmetric' && result.dimension !== 2)
@@ -1047,6 +1105,9 @@ export const spatialSimulationRunSnapshotSchema = z
         (run.result.convergence.some(
           (entry) => entry.status === 'not_converged',
         ) ||
+          run.result.linear_solver_diagnostics?.some(
+            (entry) => entry.status === 'not_converged',
+          ) ||
           run.result.conservation_residuals.some((entry) => !entry.passed))
       )
         context.addIssue({

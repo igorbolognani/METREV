@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Spatial material fields in spatial-input-v1; no case parameter values or solver defaults are supplied here.",
+  "scope": "Spatial material fields in spatial-input-v1/v2; no case parameter values or solver defaults are supplied here.",
   "allowed_source_kinds": [
     "measured",
     "literature",
@@ -22,10 +22,10 @@
       "bounds": { "exclusive_min": 0 }
     },
     "dynamic_viscosity_pa_s": {
-      "meaning": "Liquid dynamic viscosity",
+      "meaning": "Dynamic viscosity of the declared liquid or pore-fluid phase",
       "unit": "Pa*s",
       "form": "scalar_or_field",
-      "domains": ["bulk_liquid"],
+      "domains": ["bulk_liquid", "anode", "biofilm", "separator"],
       "derivable": false,
       "derivation_rule": null,
       "physics": ["hydraulics"],
