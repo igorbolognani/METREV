@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import {
   spatialMeshReferenceSchema,
   spatialModelInputV2Schema,
+  spatialModelInputV2Sha256,
   spatialSidecarResponseSchema,
   type SpatialSidecarResponse,
   type SpatialModelInputV2,
@@ -154,37 +155,69 @@ export class LocalSpatialArtifactStore {
     const sidecarResponse = spatialSidecarResponseSchema.parse(
       input.sidecarResponse,
     );
-    const meshArtifact =
+    const planarMeshResponse =
       sidecarResponse.status === 'ok' &&
       sidecarResponse.operation === 'planar_mesh'
-        ? sidecarResponse.artifacts.find(
-            (artifact) =>
-              artifact.refinement_factor === model.mesh.refinement_factor,
-          )
+        ? sidecarResponse
         : undefined;
+    type HydraulicSidecarResponse = Extract<
+      SpatialSidecarResponse,
+      {
+        operation: 'planar_stokes' | 'planar_darcy' | 'planar_darcy_transport';
+      }
+    >;
+    const hydraulicResponse =
+      sidecarResponse.status === 'ok' &&
+      (sidecarResponse.operation === 'planar_stokes' ||
+        sidecarResponse.operation === 'planar_darcy' ||
+        sidecarResponse.operation === 'planar_darcy_transport')
+        ? (sidecarResponse as HydraulicSidecarResponse)
+        : undefined;
+    const meshArtifact = planarMeshResponse
+      ? planarMeshResponse.artifacts.find(
+          (artifact) =>
+            artifact.refinement_factor === model.mesh.refinement_factor,
+        )
+      : hydraulicResponse?.mesh;
+    const isPlanarMeshMatch =
+      planarMeshResponse !== undefined &&
+      planarMeshResponse.request_id === model.mesh.request.request_id &&
+      planarMeshResponse.input_sha256 === model.mesh.input_sha256 &&
+      planarMeshResponse.geometry_version ===
+        model.mesh.request.mesh.geometry_version &&
+      planarMeshResponse.metadata.sidecar_version ===
+        model.mesh.sidecar_version &&
+      planarMeshResponse.metadata.gmsh_version === model.mesh.gmsh_version &&
+      canonicalJson(planarMeshResponse.physical_groups) ===
+        canonicalJson(model.mesh.physical_groups) &&
+      canonicalJson(planarMeshResponse.component_map) ===
+        canonicalJson(model.mesh.component_map) &&
+      canonicalJson(planarMeshResponse.interfaces) ===
+        canonicalJson(model.mesh.interfaces);
+    const isHydraulicMeshMatch =
+      hydraulicResponse !== undefined &&
+      hydraulicResponse.model_input_contract_version ===
+        model.contract_version &&
+      hydraulicResponse.model_input_sha256 ===
+        spatialModelInputV2Sha256(model) &&
+      hydraulicResponse.mesh.refinement_factor ===
+        model.mesh.refinement_factor &&
+      hydraulicResponse.metadata.gmsh_version === model.mesh.gmsh_version &&
+      canonicalJson(hydraulicResponse.physical_groups) ===
+        canonicalJson(model.mesh.physical_groups);
     if (
-      sidecarResponse.status !== 'ok' ||
-      sidecarResponse.operation !== 'planar_mesh' ||
-      sidecarResponse.request_id !== model.mesh.request.request_id ||
-      sidecarResponse.input_sha256 !== model.mesh.input_sha256 ||
-      sidecarResponse.geometry_version !==
-        model.mesh.request.mesh.geometry_version ||
-      sidecarResponse.metadata.sidecar_version !== model.mesh.sidecar_version ||
-      sidecarResponse.metadata.gmsh_version !== model.mesh.gmsh_version ||
       !meshArtifact ||
+      !(isPlanarMeshMatch || isHydraulicMeshMatch) ||
       meshArtifact.sha256 !== model.mesh.sha256 ||
       meshArtifact.format !== model.mesh.format ||
-      !sidecarResponse.metadata.gmsh_version ||
-      canonicalJson(sidecarResponse.physical_groups) !==
-        canonicalJson(model.mesh.physical_groups) ||
-      canonicalJson(sidecarResponse.component_map) !==
-        canonicalJson(model.mesh.component_map) ||
-      canonicalJson(sidecarResponse.interfaces) !==
-        canonicalJson(model.mesh.interfaces)
+      !meshArtifact.bytes ||
+      (hydraulicResponse &&
+        (hydraulicResponse.mesh.sha256 !== model.mesh.sha256 ||
+          hydraulicResponse.mesh.format !== model.mesh.format))
     )
       throw new SpatialArtifactStoreError(
         'integrity_failure',
-        'Spatial input does not match a successful sidecar mesh manifest',
+        'Spatial input does not match a successful sidecar mesh or solver manifest',
       );
     const ownerSha = ownerDigest(input.ownerId);
     const expectedMeshSha = model.mesh.sha256;
