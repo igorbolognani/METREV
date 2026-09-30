@@ -5,6 +5,7 @@ fixtures, not a METREV cell solver. Run this only inside
 apps/spatial-sidecar/Dockerfile; the ordinary Python suite stays lean.
 """
 
+import hashlib
 import json
 from pathlib import Path
 import tempfile
