@@ -21,6 +21,7 @@ from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import gmsh as gmshio
 
 from metrev_spatial.__main__ import run
+from metrev_spatial.darcy import solve_planar_darcy
 from metrev_spatial.stokes import solve_planar_stokes
 
 
@@ -446,6 +447,162 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
                 "field_dataset_names": [field["field_name"] for field in response["field_datasets"]]}
 
 
+def run_planar_darcy_sidecar(fixture_mesh: dict) -> dict:
+    """Verify Darcy pressure/flow against a homogeneous porous slab solution."""
+    permeability_m2 = 1e-10
+    viscosity_pa_s = 1e-3
+    inlet_pressure_pa = 10.0
+    outlet_pressure_pa = 0.0
+    length_m = height_m = 0.01
+    mesh_recipe = json.loads(json.dumps(fixture_mesh))
+    mesh_recipe["height_m"]["value"] = height_m
+    mesh_recipe["layers"] = [{
+        **mesh_recipe["layers"][1],
+        "tag": "porous",
+        "kind": "biofilm",
+        "width_m": {**mesh_recipe["layers"][1]["width_m"], "value": length_m},
+    }]
+    mesh_recipe["target_size_m"]["value"] = 0.002
+    mesh_recipe["boundaries"] = {
+        "left": {"tag": "west", "role": "inlet"},
+        "right": {"tag": "east", "role": "outlet"},
+        "top": {"tag": "north", "role": "wall"},
+        "bottom": {"tag": "south", "role": "wall"},
+    }
+    mesh_recipe["refinement_factors"] = [1]
+    mesh_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_mesh",
+        "mesh": mesh_recipe,
+    }
+    source = {"source_kind": "test_fixture",
+              "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+    darcy_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_darcy",
+        "mesh_request": mesh_request,
+        "mesh_sha256": "0" * 64,
+        "refinement_factor": 1,
+        "model_input_contract_version": "spatial-input-v2",
+        "model_input_sha256": "1" * 64,
+        "setup": {
+            "regime": "steady_darcy",
+            "equation_ref": "EQ-FL-003",
+            "domain_tag": "porous",
+            "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+            "permeability_parameter_id": "hydraulic_permeability_m2",
+            "pressure_variable": "pressure",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "pressure_pa": {"value": inlet_pressure_pa, "unit": "Pa", **source}},
+            "outlet": {"tag": "east", "pressure_pa": {"value": outlet_pressure_pa, "unit": "Pa", **source}},
+        },
+        "viscosity": {"value": viscosity_pa_s, "unit": "Pa*s", **source},
+        "permeability": {"value": permeability_m2, "unit": "m2", **source},
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        mesh_directory = root / "mesh"
+        mesh_response = run(
+            json.dumps(mesh_request, separators=(",", ":")).encode(), mesh_directory
+        )
+        assert mesh_response["status"] == "ok", mesh_response
+        selected_mesh = mesh_response["artifacts"][0]
+        darcy_request["mesh_sha256"] = selected_mesh["sha256"]
+
+        mesh_data = gmshio.read_from_msh(
+            mesh_directory / selected_mesh["path"], MPI.COMM_WORLD, gdim=2
+        )
+        solved = solve_planar_darcy(
+            mesh_data,
+            porous_region_tag="region:porous",
+            permeability_m2=permeability_m2,
+            viscosity_pa_s=viscosity_pa_s,
+            inlet_tag="boundary:west",
+            outlet_tag="boundary:east",
+            inlet_pressure_pa=inlet_pressure_pa,
+            outlet_pressure_pa=outlet_pressure_pa,
+        )
+        exact_pressure = fem.Function(solved.pressure.function_space)
+        exact_pressure.interpolate(
+            lambda x: inlet_pressure_pa + (outlet_pressure_pa - inlet_pressure_pa)
+            * x[0] / length_m
+        )
+        exact_velocity = fem.Function(solved.velocity.function_space)
+        exact_velocity.interpolate(
+            lambda x: np.asarray([
+                np.full_like(x[0], permeability_m2 / viscosity_pa_s
+                             * (inlet_pressure_pa - outlet_pressure_pa) / length_m),
+                np.zeros_like(x[0]),
+            ])
+        )
+        exact_pressure.x.scatter_forward()
+        exact_velocity.x.scatter_forward()
+
+        def global_integral(form) -> float:
+            local = fem.assemble_scalar(fem.form(form))
+            return mesh_data.mesh.comm.allreduce(float(local), op=MPI.SUM)
+
+        dx = ufl.Measure("dx", domain=mesh_data.mesh)
+        pressure_norm = np.sqrt(global_integral(exact_pressure**2 * dx))
+        pressure_error = np.sqrt(global_integral((solved.pressure - exact_pressure)**2 * dx))
+        velocity_norm = np.sqrt(global_integral(ufl.inner(exact_velocity, exact_velocity) * dx))
+        velocity_error = np.sqrt(global_integral(
+            ufl.inner(solved.velocity - exact_velocity, solved.velocity - exact_velocity) * dx
+        ))
+        relative_pressure_error = pressure_error / pressure_norm
+        relative_velocity_error = velocity_error / velocity_norm
+        expected_flow = (
+            permeability_m2 / viscosity_pa_s
+            * (inlet_pressure_pa - outlet_pressure_pa) / length_m
+            * height_m
+        )
+        assert relative_pressure_error < 1e-8, relative_pressure_error
+        assert relative_velocity_error < 1e-8, relative_velocity_error
+        assert abs(solved.inlet_flow_m2_s_per_depth - expected_flow) / expected_flow < 1e-8
+        assert abs(solved.outlet_flow_m2_s_per_depth - expected_flow) / expected_flow < 1e-8
+        assert solved.relative_flow_balance < 1e-8
+        assert solved.divergence_l2_per_s < 1e-8
+        assert solved.linear_converged_reason > 0
+
+        solution_directory = root / "solution"
+        response = run(
+            json.dumps(darcy_request, separators=(",", ":")).encode(),
+            solution_directory,
+        )
+        assert response["status"] == "ok", response
+        assert response["model_input_sha256"] == darcy_request["model_input_sha256"]
+        assert response["mesh"]["sha256"] == darcy_request["mesh_sha256"]
+        assert response["diagnostics"]["linear_converged_reason"] > 0
+        assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["relative_flow_balance"] < 1e-8
+        assert response["diagnostics"]["divergence_l2_per_s"] < 1e-8
+        xdmf = solution_directory / "darcy-solution.xdmf"
+        hdf5 = solution_directory / "darcy-solution.h5"
+        assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
+        data_paths = {
+            item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
+            for item in ET.parse(xdmf).getroot().findall(".//Attribute")
+        }
+        assert data_paths == {
+            "velocity_x": "/Function/velocity_x/0",
+            "velocity_y": "/Function/velocity_y/0",
+            "pressure": "/Function/pressure/0",
+        }, data_paths
+        for artifact in (response["mesh"], *response["solution_artifacts"]):
+            data = (solution_directory / artifact["path"]).read_bytes()
+            assert len(data) == artifact["bytes"]
+            assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        return {
+            "cell_count": response["mesh"]["cell_count"],
+            "relative_pressure_l2_error": relative_pressure_error,
+            "relative_velocity_l2_error": relative_velocity_error,
+            "relative_flow_balance": response["diagnostics"]["relative_flow_balance"],
+        }
+
+
 def main() -> None:
     fixture = Path(__file__).resolve().parents[1] / "fixtures" / "planar-mesh-request.json"
     fixture_data = json.loads(fixture.read_text())
@@ -555,6 +712,7 @@ def main() -> None:
     assert boundary_group.dim == 2 and boundary_group.tag in imported_3d.facet_tags.values
     error_3d, cells_3d = solve_affine(imported_3d, (1.0, 2.0, 3.0))
     sidecar_stokes = run_planar_stokes_sidecar(fixture_data["mesh"])
+    sidecar_darcy = run_planar_darcy_sidecar(fixture_data["mesh"])
 
     print(
         json.dumps(
@@ -565,6 +723,7 @@ def main() -> None:
                 "layered_diffusion_refinements": layered_results,
                 "stokes_poiseuille_refinements": stokes_results,
                 "stokes_sidecar_operation": sidecar_stokes,
+                "darcy_sidecar_operation": sidecar_darcy,
                 "affine_max_error_3d": error_3d,
                 "tetrahedron_count": cells_3d,
             }

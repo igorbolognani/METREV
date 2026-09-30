@@ -17,10 +17,14 @@ import {
 } from '@metrev/electrochem-models';
 import {
   runSpatialSidecar,
+  planarDarcyRequestFromInput,
   planarStokesRequestFromInput,
   SidecarTransportError,
 } from '@metrev/spatial-sidecar-client';
-import { stokesChannelInput } from '../fixtures/spatial-input-v2';
+import {
+  darcyPorousInput,
+  stokesChannelInput,
+} from '../fixtures/spatial-input-v2';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const moduleDirectory = join(root, 'apps/spatial-sidecar');
@@ -160,6 +164,44 @@ describe('isolated numerical sidecar boundary', () => {
     }
   });
 
+  it('binds the restricted Darcy operation to source-backed porous properties and mesh', async () => {
+    const input = darcyPorousInput();
+    const request = planarDarcyRequestFromInput(input, fixture.request_id);
+    expect(spatialSidecarRequestSchema.parse(request)).toMatchObject({
+      operation: 'planar_darcy',
+      model_input_contract_version: 'spatial-input-v2',
+      model_input_sha256: spatialModelInputV2Sha256(input),
+      mesh_sha256: input.mesh.sha256,
+      setup: input.darcy_development,
+      viscosity: input.material_fields[0].field.value,
+      permeability: input.material_fields[1].field.value,
+    });
+    expect(() =>
+      planarDarcyRequestFromInput({ ...input, darcy_development: undefined }),
+    ).toThrow(/does not declare the Darcy development regime/);
+
+    const artifactRoot = await mkdtemp(join(tmpdir(), 'metrev-darcy-test-'));
+    try {
+      const result = await runSpatialSidecar(request, {
+        pythonExecutable: 'python3',
+        moduleDirectory,
+        artifactRoot,
+        timeoutMs: 20_000,
+      });
+      if (result.response.status === 'error') {
+        expect(result.response.code).toBe('dependency_unavailable');
+      } else {
+        expect(result.response.operation).toBe('planar_darcy');
+        expect(
+          result.response.field_datasets.map((field) => field.variable_id),
+        ).toEqual(['p', 'ux', 'uy']);
+        expect(result.artifactDirectory).toBeTruthy();
+      }
+    } finally {
+      await rm(artifactRoot, { recursive: true, force: true });
+    }
+  });
+
   it('requires paired XDMF/HDF5 manifests and declared Stokes dataset bindings', () => {
     const response = {
       protocol_version: 'spatial-sidecar-v1',
@@ -263,6 +305,40 @@ describe('isolated numerical sidecar boundary', () => {
             dataset_path: '/Function/velocity_y/0',
           },
           response.field_datasets[2],
+        ],
+      }).success,
+    ).toBe(false);
+    const darcyResponse = {
+      ...response,
+      operation: 'planar_darcy',
+      physical_groups: {
+        'region:porous': 1,
+        'boundary:west': 101,
+        'boundary:east': 102,
+        'boundary:south': 103,
+        'boundary:north': 104,
+      },
+      solution_artifacts: [
+        { ...response.solution_artifacts[0], path: 'darcy-solution.xdmf' },
+        { ...response.solution_artifacts[1], path: 'darcy-solution.h5' },
+      ],
+      field_datasets: response.field_datasets.map((field) => ({
+        ...field,
+        domain_tag: 'porous',
+      })),
+    } as const;
+    expect(spatialSidecarResponseSchema.safeParse(darcyResponse).success).toBe(
+      true,
+    );
+    expect(
+      spatialSidecarResponseSchema.safeParse({
+        ...darcyResponse,
+        solution_artifacts: [
+          {
+            ...darcyResponse.solution_artifacts[0],
+            path: 'stokes-solution.xdmf',
+          },
+          darcyResponse.solution_artifacts[1],
         ],
       }).success,
     ).toBe(false);

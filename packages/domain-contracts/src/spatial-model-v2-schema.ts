@@ -11,6 +11,7 @@ import {
   spatialSidecarRequestSchema,
 } from './spatial-sidecar-schema';
 import { spatialStokesSetupSchema } from './spatial-stokes-schema';
+import { spatialDarcySetupSchema } from './spatial-darcy-schema';
 
 export { spatialVariableAuthority };
 
@@ -247,6 +248,7 @@ export const spatialModelInputV2Schema = z
     ),
     boundary_conditions: z.array(boundarySchema),
     stokes_development: spatialStokesSetupSchema.optional(),
+    darcy_development: spatialDarcySetupSchema.optional(),
     circuit: z.discriminatedUnion('kind', [
       z
         .object({
@@ -595,6 +597,94 @@ export const spatialModelInputV2Schema = z
               'Full Cauchy traction component requires Pa',
             );
         });
+    }
+    const darcy = input.darcy_development;
+    if (darcy) {
+      const path = ['darcy_development'] as (string | number)[];
+      const porousKinds = new Set(['anode', 'biofilm', 'separator']);
+      if (
+        stokes ||
+        layers.length !== 1 ||
+        layers[0].tag !== darcy.domain_tag ||
+        !porousKinds.has(layers[0].kind)
+      )
+        issue(
+          [...path, 'domain_tag'],
+          'Development Darcy requires one matching anode, biofilm or separator region and cannot share a Stokes setup',
+        );
+      for (const [parameterId, key] of [
+        [darcy.viscosity_parameter_id, 'viscosity_parameter_id'],
+        [darcy.permeability_parameter_id, 'permeability_parameter_id'],
+      ] as const) {
+        const field = input.material_fields.find(
+          (entry) =>
+            entry.parameter_id === parameterId &&
+            entry.domain_tag === darcy.domain_tag,
+        );
+        if (!field || field.field.kind !== 'constant')
+          issue(
+            [...path, key],
+            'Darcy requires source-traced constant viscosity and permeability in the porous domain',
+          );
+      }
+      for (const [id, kind, key] of [
+        [darcy.pressure_variable, 'pressure', 'pressure_variable'],
+        [darcy.velocity_variables.x, 'velocity_x', 'velocity_variables'],
+        [darcy.velocity_variables.y, 'velocity_y', 'velocity_variables'],
+      ] as const) {
+        const variable = variables.get(id);
+        if (
+          !variable ||
+          variable.kind !== kind ||
+          variable.domain_tags.length !== 1 ||
+          variable.domain_tags[0] !== darcy.domain_tag ||
+          !input.requested_outputs.includes(id)
+        )
+          issue(
+            [...path, key],
+            `Declared ${kind} must be requested in the porous domain`,
+          );
+        if (
+          input.boundary_conditions.some(
+            (condition) => condition.variable === id,
+          )
+        )
+          issue(
+            [...path, key],
+            'Darcy state boundaries must come only from the explicit hydraulic setup',
+          );
+      }
+      const inletBoundary = boundarySides.find(
+        ([, boundary]) => boundary.tag === darcy.inlet.tag,
+      );
+      const outletBoundary = boundarySides.find(
+        ([, boundary]) => boundary.tag === darcy.outlet.tag,
+      );
+      const opposingSides =
+        (inletBoundary?.[0] === 'left' && outletBoundary?.[0] === 'right') ||
+        (inletBoundary?.[0] === 'right' && outletBoundary?.[0] === 'left') ||
+        (inletBoundary?.[0] === 'top' && outletBoundary?.[0] === 'bottom') ||
+        (inletBoundary?.[0] === 'bottom' && outletBoundary?.[0] === 'top');
+      const wallCount = boundarySides.filter(
+        ([, boundary]) => boundary.role === 'wall',
+      ).length;
+      if (
+        boundarySides.length !== 4 ||
+        wallCount !== 2 ||
+        inletBoundary?.[1].role !== 'inlet' ||
+        outletBoundary?.[1].role !== 'outlet' ||
+        !opposingSides
+      )
+        issue(
+          [...path, 'inlet'],
+          'Darcy requires opposing inlet/outlet pressure facets and two no-flow walls',
+        );
+      for (const port of ['inlet', 'outlet'] as const)
+        if (darcy[port].pressure_pa.unit !== 'Pa')
+          issue(
+            [...path, port, 'pressure_pa', 'unit'],
+            'Darcy pressure boundary requires Pa',
+          );
     }
     input.variables.forEach((entry, index) => {
       const path = ['variables', index] as (string | number)[];

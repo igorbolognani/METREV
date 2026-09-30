@@ -45,6 +45,46 @@ export function planarStokesRequestFromInput(
   }) as Extract<SpatialSidecarRequest, { operation: 'planar_stokes' }>;
 }
 
+/** Translate an admitted porous v2 case to the narrow single-domain Darcy boundary. */
+export function planarDarcyRequestFromInput(
+  candidate: unknown,
+  requestId = randomUUID(),
+): Extract<SpatialSidecarRequest, { operation: 'planar_darcy' }> {
+  const input = spatialModelInputV2Schema.parse(candidate);
+  const setup = input.darcy_development;
+  if (!setup)
+    throw new RangeError('Input does not declare the Darcy development regime');
+  const viscosity = input.material_fields.find(
+    (entry) =>
+      entry.parameter_id === setup.viscosity_parameter_id &&
+      entry.domain_tag === setup.domain_tag,
+  );
+  const permeability = input.material_fields.find(
+    (entry) =>
+      entry.parameter_id === setup.permeability_parameter_id &&
+      entry.domain_tag === setup.domain_tag,
+  );
+  if (!viscosity || viscosity.field.kind !== 'constant')
+    throw new RangeError('Darcy sidecar requires constant declared viscosity');
+  if (!permeability || permeability.field.kind !== 'constant')
+    throw new RangeError(
+      'Darcy sidecar requires constant declared permeability',
+    );
+  return spatialSidecarRequestSchema.parse({
+    protocol_version: 'spatial-sidecar-v1',
+    request_id: requestId,
+    operation: 'planar_darcy',
+    mesh_request: input.mesh.request,
+    mesh_sha256: input.mesh.sha256,
+    refinement_factor: input.mesh.refinement_factor,
+    model_input_contract_version: input.contract_version,
+    model_input_sha256: spatialModelInputV2Sha256(input),
+    setup,
+    viscosity: viscosity.field.value,
+    permeability: permeability.field.value,
+  }) as Extract<SpatialSidecarRequest, { operation: 'planar_darcy' }>;
+}
+
 /** Bind a validated request and matching sidecar manifest to a stored mesh URI.
  * The artifact store must still authorize the URI and verify its file hash before use.
  */
@@ -156,7 +196,9 @@ export async function runSpatialSidecar(
     );
 
   const artifactDirectory =
-    request.operation === 'planar_mesh' || request.operation === 'planar_stokes'
+    request.operation === 'planar_mesh' ||
+    request.operation === 'planar_stokes' ||
+    request.operation === 'planar_darcy'
       ? await (async () => {
           await mkdir(options.artifactRoot, { recursive: true });
           return mkdtemp(join(resolve(options.artifactRoot), 'metrev-mesh-'));
@@ -268,66 +310,79 @@ export async function runSpatialSidecar(
         'Sidecar response does not match the request',
       );
 
-    if (
+    const isPlanarStokes =
       response.operation === 'planar_stokes' &&
-      request.operation === 'planar_stokes'
-    ) {
+      request.operation === 'planar_stokes';
+    const isPlanarDarcy =
+      response.operation === 'planar_darcy' &&
+      request.operation === 'planar_darcy';
+    if (isPlanarStokes || isPlanarDarcy) {
+      const hydraulicRequest = request as Extract<
+        SpatialSidecarRequest,
+        { operation: 'planar_stokes' | 'planar_darcy' }
+      >;
+      const hydraulicResponse = response as Extract<
+        SpatialSidecarResponse,
+        { operation: 'planar_stokes' | 'planar_darcy' }
+      >;
       if (
         !artifactDirectory ||
-        response.model_input_contract_version !==
-          request.model_input_contract_version ||
-        response.model_input_sha256 !== request.model_input_sha256 ||
-        response.mesh.sha256 !== request.mesh_sha256 ||
-        response.mesh.refinement_factor !== request.refinement_factor
+        hydraulicResponse.model_input_contract_version !==
+          hydraulicRequest.model_input_contract_version ||
+        hydraulicResponse.model_input_sha256 !==
+          hydraulicRequest.model_input_sha256 ||
+        hydraulicResponse.mesh.sha256 !== hydraulicRequest.mesh_sha256 ||
+        hydraulicResponse.mesh.refinement_factor !==
+          hydraulicRequest.refinement_factor
       )
         throw new SidecarTransportError(
           'artifact_integrity',
-          'Stokes result does not match the admitted model and mesh',
+          'Hydraulic result does not match the admitted model and mesh',
         );
       const expectedGroups: Record<string, number> = {};
-      request.mesh_request.mesh.layers.forEach((layer, index) => {
+      hydraulicRequest.mesh_request.mesh.layers.forEach((layer, index) => {
         expectedGroups[`region:${layer.tag}`] = index + 1;
       });
       (['left', 'right', 'bottom', 'top'] as const).forEach((side, index) => {
         expectedGroups[
-          `boundary:${request.mesh_request.mesh.boundaries[side].tag}`
+          `boundary:${hydraulicRequest.mesh_request.mesh.boundaries[side].tag}`
         ] = 101 + index;
       });
       for (
         let index = 1;
-        index < request.mesh_request.mesh.layers.length;
+        index < hydraulicRequest.mesh_request.mesh.layers.length;
         index++
       ) {
-        const left = request.mesh_request.mesh.layers[index - 1];
-        const right = request.mesh_request.mesh.layers[index];
+        const left = hydraulicRequest.mesh_request.mesh.layers[index - 1];
+        const right = hydraulicRequest.mesh_request.mesh.layers[index];
         expectedGroups[`interface:${left.tag}:${right.tag}`] = 201 + index;
       }
       if (
         Object.keys(expectedGroups).length !==
-          Object.keys(response.physical_groups).length ||
+          Object.keys(hydraulicResponse.physical_groups).length ||
         Object.entries(expectedGroups).some(
-          ([tag, id]) => response.physical_groups[tag] !== id,
+          ([tag, id]) => hydraulicResponse.physical_groups[tag] !== id,
         )
       )
         throw new SidecarTransportError(
           'artifact_integrity',
-          'Stokes mesh physical groups do not match the admitted recipe',
+          'Hydraulic mesh physical groups do not match the admitted recipe',
         );
       const expectedDatasets = [
         {
-          variable_id: request.setup.pressure_variable,
+          variable_id: hydraulicRequest.setup.pressure_variable,
           field_name: 'pressure',
           dataset_path: '/Function/pressure/0',
           unit: 'Pa',
         },
         {
-          variable_id: request.setup.velocity_variables.x,
+          variable_id: hydraulicRequest.setup.velocity_variables.x,
           field_name: 'velocity_x',
           dataset_path: '/Function/velocity_x/0',
           unit: 'm/s',
         },
         {
-          variable_id: request.setup.velocity_variables.y,
+          variable_id: hydraulicRequest.setup.velocity_variables.y,
           field_name: 'velocity_y',
           dataset_path: '/Function/velocity_y/0',
           unit: 'm/s',
@@ -336,28 +391,31 @@ export async function runSpatialSidecar(
       if (
         expectedDatasets.some(
           (expected) =>
-            !response.field_datasets.some(
+            !hydraulicResponse.field_datasets.some(
               (field) =>
                 field.variable_id === expected.variable_id &&
                 field.field_name === expected.field_name &&
                 field.dataset_path === expected.dataset_path &&
                 field.unit === expected.unit &&
-                field.domain_tag === request.setup.domain_tag,
+                field.domain_tag === hydraulicRequest.setup.domain_tag,
             ),
         )
       )
         throw new SidecarTransportError(
           'artifact_integrity',
-          'Stokes field datasets do not match the declared state variables',
+          'Hydraulic field datasets do not match the declared state variables',
         );
-      const artifacts = [response.mesh, ...response.solution_artifacts];
+      const artifacts = [
+        hydraulicResponse.mesh,
+        ...hydraulicResponse.solution_artifacts,
+      ];
       for (const artifact of artifacts) {
         const bytes = await readFile(
           join(artifactDirectory, artifact.path),
         ).catch(() => {
           throw new SidecarTransportError(
             'artifact_integrity',
-            'Stokes mesh or solution artifact is missing',
+            'Hydraulic mesh or solution artifact is missing',
           );
         });
         if (
@@ -366,7 +424,7 @@ export async function runSpatialSidecar(
         )
           throw new SidecarTransportError(
             'artifact_integrity',
-            'Stokes artifact hash or length does not match its manifest',
+            'Hydraulic artifact hash or length does not match its manifest',
           );
       }
     }
