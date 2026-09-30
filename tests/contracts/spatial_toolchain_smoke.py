@@ -5,9 +5,13 @@ fixtures, not a METREV cell solver. Run this only inside
 apps/spatial-sidecar/Dockerfile; the ordinary Python suite stays lean.
 """
 
+import hashlib
 import json
+import math
 from pathlib import Path
 import tempfile
+import uuid
+import xml.etree.ElementTree as ET
 
 from mpi4py import MPI
 import numpy as np
@@ -18,6 +22,8 @@ from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import gmsh as gmshio
 
 from metrev_spatial.__main__ import run
+from metrev_spatial.darcy import solve_planar_darcy
+from metrev_spatial.darcy_transport import solve_planar_darcy_transport
 from metrev_spatial.stokes import solve_planar_stokes
 
 
@@ -363,6 +369,478 @@ def create_tetrahedral_mesh(path: Path) -> None:
         gmsh.finalize()
 
 
+def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
+    """Exercise request admission, mesh identity and XDMF/HDF5 output binding."""
+    mesh_recipe = json.loads(json.dumps(fixture_mesh))
+    mesh_recipe["layers"] = [mesh_recipe["layers"][2]]
+    mesh_recipe["boundaries"]["left"] = {"tag": "west", "role": "wall"}
+    mesh_recipe["boundaries"]["right"] = {"tag": "east", "role": "wall"}
+    mesh_recipe["refinement_factors"] = [1]
+    mesh_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_mesh",
+        "mesh": mesh_recipe,
+    }
+    source = {"value": 0.0, "unit": "Pa", "source_kind": "test_fixture",
+              "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+    stokes_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_stokes",
+        "mesh_request": mesh_request,
+        "mesh_sha256": "0" * 64,
+        "refinement_factor": 1,
+        "model_input_contract_version": "spatial-input-v2",
+        "model_input_sha256": "1" * 64,
+        "setup": {
+            "regime": "steady_stokes",
+            "equation_ref": "EQ-FL-002",
+            "domain_tag": "liquid",
+            "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+            "pressure_variable": "pressure",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "wall_tags": ["west", "east"],
+            "inlet": {"tag": "inlet", "traction_pa": [{**source}, {**source, "value": 1e-7}]},
+            "outlet": {"tag": "outlet", "traction_pa": [{**source}, {**source}]},
+        },
+        "viscosity": {"value": 1e-3, "unit": "Pa*s", "source_kind": "test_fixture",
+                      "source_ref": "tests/contracts/spatial_toolchain_smoke.py"},
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        mesh_directory = root / "mesh"
+        mesh_response = run(
+            json.dumps(mesh_request, separators=(",", ":")).encode(), mesh_directory
+        )
+        assert mesh_response["status"] == "ok", mesh_response
+        stokes_request["mesh_sha256"] = mesh_response["artifacts"][0]["sha256"]
+        solution_directory = root / "solution"
+        response = run(
+            json.dumps(stokes_request, separators=(",", ":")).encode(), solution_directory
+        )
+        assert response["status"] == "ok", response
+        assert response["model_input_contract_version"] == "spatial-input-v2"
+        assert response["field_representation"] == "lagrange_p1_interpolation"
+        assert response["model_input_sha256"] == stokes_request["model_input_sha256"]
+        assert response["mesh"]["sha256"] == stokes_request["mesh_sha256"]
+        assert response["diagnostics"]["linear_converged_reason"] > 0
+        assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["relative_flow_balance"] < 1e-8
+        summaries = {item["field_name"]: item for item in response["field_summaries"]}
+        assert set(summaries) == {"pressure", "velocity_x", "velocity_y"}
+        assert all(
+            summary["sample_count"] == response["mesh"]["node_count"]
+            and summary["minimum"] <= summary["mean"] <= summary["maximum"]
+            and summary["integration_measure"] == "domain_area"
+            for summary in summaries.values()
+        )
+        assert summaries["pressure"]["integral_unit"] == "Pa*m2"
+        assert summaries["velocity_x"]["integral_unit"] == "m3/s"
+        assert summaries["velocity_y"]["integral_unit"] == "m3/s"
+        assert response["solver_diagnostics"] == [{
+            "solver_id": "stokes_saddle_point",
+            "method": "petsc_preonly_lu",
+            "status": "converged",
+            "iterations": response["diagnostics"]["linear_iterations"],
+            "converged_reason": response["diagnostics"]["linear_converged_reason"],
+        }]
+        xdmf = solution_directory / "stokes-solution.xdmf"
+        hdf5 = solution_directory / "stokes-solution.h5"
+        assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
+        data_paths = {
+            item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
+            for item in ET.parse(xdmf).getroot().findall(".//Attribute")
+        }
+        assert data_paths == {
+            "velocity_x": "/Function/velocity_x/0",
+            "velocity_y": "/Function/velocity_y/0",
+            "pressure": "/Function/pressure/0",
+        }, data_paths
+        for artifact in (response["mesh"], *response["solution_artifacts"]):
+            data = (solution_directory / artifact["path"]).read_bytes()
+            assert len(data) == artifact["bytes"]
+            assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        return {"cell_count": response["mesh"]["cell_count"],
+                "relative_flow_balance": response["diagnostics"]["relative_flow_balance"],
+                "field_dataset_names": [field["field_name"] for field in response["field_datasets"]]}
+
+
+def run_planar_darcy_sidecar(fixture_mesh: dict) -> dict:
+    """Verify Darcy pressure/flow against a homogeneous porous slab solution."""
+    permeability_m2 = 1e-10
+    viscosity_pa_s = 1e-3
+    inlet_pressure_pa = 10.0
+    outlet_pressure_pa = 0.0
+    length_m = height_m = 0.01
+    mesh_recipe = json.loads(json.dumps(fixture_mesh))
+    mesh_recipe["height_m"]["value"] = height_m
+    mesh_recipe["layers"] = [{
+        **mesh_recipe["layers"][1],
+        "tag": "porous",
+        "kind": "biofilm",
+        "width_m": {**mesh_recipe["layers"][1]["width_m"], "value": length_m},
+    }]
+    mesh_recipe["target_size_m"]["value"] = 0.002
+    mesh_recipe["boundaries"] = {
+        "left": {"tag": "west", "role": "inlet"},
+        "right": {"tag": "east", "role": "outlet"},
+        "top": {"tag": "north", "role": "wall"},
+        "bottom": {"tag": "south", "role": "wall"},
+    }
+    mesh_recipe["refinement_factors"] = [1]
+    mesh_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_mesh",
+        "mesh": mesh_recipe,
+    }
+    source = {"source_kind": "test_fixture",
+              "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+    darcy_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_darcy",
+        "mesh_request": mesh_request,
+        "mesh_sha256": "0" * 64,
+        "refinement_factor": 1,
+        "model_input_contract_version": "spatial-input-v2",
+        "model_input_sha256": "1" * 64,
+        "setup": {
+            "regime": "steady_darcy",
+            "equation_ref": "EQ-FL-003",
+            "domain_tag": "porous",
+            "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+            "permeability_parameter_id": "hydraulic_permeability_m2",
+            "pressure_variable": "pressure",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "pressure_pa": {"value": inlet_pressure_pa, "unit": "Pa", **source}},
+            "outlet": {"tag": "east", "pressure_pa": {"value": outlet_pressure_pa, "unit": "Pa", **source}},
+        },
+        "viscosity": {"value": viscosity_pa_s, "unit": "Pa*s", **source},
+        "permeability": {"value": permeability_m2, "unit": "m2", **source},
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        mesh_directory = root / "mesh"
+        mesh_response = run(
+            json.dumps(mesh_request, separators=(",", ":")).encode(), mesh_directory
+        )
+        assert mesh_response["status"] == "ok", mesh_response
+        selected_mesh = mesh_response["artifacts"][0]
+        darcy_request["mesh_sha256"] = selected_mesh["sha256"]
+
+        mesh_data = gmshio.read_from_msh(
+            mesh_directory / selected_mesh["path"], MPI.COMM_WORLD, gdim=2
+        )
+        solved = solve_planar_darcy(
+            mesh_data,
+            porous_region_tag="region:porous",
+            permeability_m2=permeability_m2,
+            viscosity_pa_s=viscosity_pa_s,
+            inlet_tag="boundary:west",
+            outlet_tag="boundary:east",
+            inlet_pressure_pa=inlet_pressure_pa,
+            outlet_pressure_pa=outlet_pressure_pa,
+        )
+        exact_pressure = fem.Function(solved.pressure.function_space)
+        exact_pressure.interpolate(
+            lambda x: inlet_pressure_pa + (outlet_pressure_pa - inlet_pressure_pa)
+            * x[0] / length_m
+        )
+        exact_velocity = fem.Function(solved.velocity.function_space)
+        exact_velocity.interpolate(
+            lambda x: np.asarray([
+                np.full_like(x[0], permeability_m2 / viscosity_pa_s
+                             * (inlet_pressure_pa - outlet_pressure_pa) / length_m),
+                np.zeros_like(x[0]),
+            ])
+        )
+        exact_pressure.x.scatter_forward()
+        exact_velocity.x.scatter_forward()
+
+        def global_integral(form) -> float:
+            local = fem.assemble_scalar(fem.form(form))
+            return mesh_data.mesh.comm.allreduce(float(local), op=MPI.SUM)
+
+        dx = ufl.Measure("dx", domain=mesh_data.mesh)
+        pressure_norm = np.sqrt(global_integral(exact_pressure**2 * dx))
+        pressure_error = np.sqrt(global_integral((solved.pressure - exact_pressure)**2 * dx))
+        velocity_norm = np.sqrt(global_integral(ufl.inner(exact_velocity, exact_velocity) * dx))
+        velocity_error = np.sqrt(global_integral(
+            ufl.inner(solved.velocity - exact_velocity, solved.velocity - exact_velocity) * dx
+        ))
+        relative_pressure_error = pressure_error / pressure_norm
+        relative_velocity_error = velocity_error / velocity_norm
+        expected_flow = (
+            permeability_m2 / viscosity_pa_s
+            * (inlet_pressure_pa - outlet_pressure_pa) / length_m
+            * height_m
+        )
+        assert relative_pressure_error < 1e-8, relative_pressure_error
+        assert relative_velocity_error < 1e-8, relative_velocity_error
+        assert abs(solved.inlet_flow_m2_s_per_depth - expected_flow) / expected_flow < 1e-8
+        assert abs(solved.outlet_flow_m2_s_per_depth - expected_flow) / expected_flow < 1e-8
+        assert solved.relative_flow_balance < 1e-8
+        assert solved.divergence_l2_per_s < 1e-8
+        assert solved.linear_converged_reason > 0
+
+        solution_directory = root / "solution"
+        response = run(
+            json.dumps(darcy_request, separators=(",", ":")).encode(),
+            solution_directory,
+        )
+        assert response["status"] == "ok", response
+        assert response["model_input_sha256"] == darcy_request["model_input_sha256"]
+        assert response["mesh"]["sha256"] == darcy_request["mesh_sha256"]
+        assert response["diagnostics"]["linear_converged_reason"] > 0
+        assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
+        assert response["diagnostics"]["relative_flow_balance"] < 1e-8
+        assert response["diagnostics"]["divergence_l2_per_s"] < 1e-8
+        xdmf = solution_directory / "darcy-solution.xdmf"
+        hdf5 = solution_directory / "darcy-solution.h5"
+        assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
+        data_paths = {
+            item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
+            for item in ET.parse(xdmf).getroot().findall(".//Attribute")
+        }
+        assert data_paths == {
+            "velocity_x": "/Function/velocity_x/0",
+            "velocity_y": "/Function/velocity_y/0",
+            "pressure": "/Function/pressure/0",
+        }, data_paths
+        for artifact in (response["mesh"], *response["solution_artifacts"]):
+            data = (solution_directory / artifact["path"]).read_bytes()
+            assert len(data) == artifact["bytes"]
+            assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        return {
+            "cell_count": response["mesh"]["cell_count"],
+            "relative_pressure_l2_error": relative_pressure_error,
+            "relative_velocity_l2_error": relative_velocity_error,
+            "relative_flow_balance": response["diagnostics"]["relative_flow_balance"],
+        }
+
+
+def run_planar_darcy_transport_sidecar(fixture_mesh: dict) -> dict:
+    """Verify solved Darcy velocity drives an analytic passive-scalar profile."""
+    permeability_m2 = 1e-12
+    viscosity_pa_s = 1e-3
+    inlet_pressure_pa, outlet_pressure_pa = 1.0, 0.0
+    inlet_concentration_mol_m3, outlet_concentration_mol_m3 = 2.0, 1.0
+    effective_diffusivity_m2_s = 1e-9
+    length_m = height_m = 0.01
+    mesh_recipe = json.loads(json.dumps(fixture_mesh))
+    mesh_recipe["height_m"]["value"] = height_m
+    mesh_recipe["layers"] = [{
+        **mesh_recipe["layers"][1],
+        "tag": "porous",
+        "kind": "biofilm",
+        "width_m": {**mesh_recipe["layers"][1]["width_m"], "value": length_m},
+    }]
+    mesh_recipe["target_size_m"]["value"] = 0.00025
+    mesh_recipe["boundaries"] = {
+        "left": {"tag": "west", "role": "inlet"},
+        "right": {"tag": "east", "role": "outlet"},
+        "top": {"tag": "north", "role": "wall"},
+        "bottom": {"tag": "south", "role": "wall"},
+    }
+    mesh_recipe["refinement_factors"] = [1]
+    mesh_request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_mesh",
+        "mesh": mesh_recipe,
+    }
+    source = {"source_kind": "test_fixture",
+              "source_ref": "tests/contracts/spatial_toolchain_smoke.py"}
+    request = {
+        "protocol_version": "spatial-sidecar-v1",
+        "request_id": str(uuid.uuid4()),
+        "operation": "planar_darcy_transport",
+        "mesh_request": mesh_request,
+        "mesh_sha256": "0" * 64,
+        "refinement_factor": 1,
+        "model_input_contract_version": "spatial-input-v2",
+        "model_input_sha256": "1" * 64,
+        "setup": {
+            "regime": "steady_darcy",
+            "equation_ref": "EQ-FL-003",
+            "domain_tag": "porous",
+            "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+            "permeability_parameter_id": "hydraulic_permeability_m2",
+            "pressure_variable": "pressure",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "pressure_pa": {"value": inlet_pressure_pa, "unit": "Pa", **source}},
+            "outlet": {"tag": "east", "pressure_pa": {"value": outlet_pressure_pa, "unit": "Pa", **source}},
+        },
+        "transport_setup": {
+            "regime": "steady_advection_diffusion",
+            "equation_ref": "EQ-SP-001",
+            "domain_tag": "porous",
+            "species_id": "neutral_tracer",
+            "concentration_variable": "neutral_tracer_c",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "concentration_mol_m3": {
+                "value": inlet_concentration_mol_m3, "unit": "mol/m3", **source}},
+            "outlet": {"tag": "east", "concentration_mol_m3": {
+                "value": outlet_concentration_mol_m3, "unit": "mol/m3", **source}},
+        },
+        "viscosity": {"value": viscosity_pa_s, "unit": "Pa*s", **source},
+        "permeability": {"value": permeability_m2, "unit": "m2", **source},
+        "effective_diffusivity": {"value": effective_diffusivity_m2_s, "unit": "m2/s", **source},
+    }
+    darcy_mobility = permeability_m2 / viscosity_pa_s
+    darcy_speed = darcy_mobility * (inlet_pressure_pa - outlet_pressure_pa) / length_m
+    peclet = darcy_speed * length_m / effective_diffusivity_m2_s
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        mesh_directory = root / "mesh"
+        mesh_response = run(
+            json.dumps(mesh_request, separators=(",", ":")).encode(), mesh_directory
+        )
+        assert mesh_response["status"] == "ok", mesh_response
+        mesh_record = mesh_response["artifacts"][0]
+        request["mesh_sha256"] = mesh_record["sha256"]
+        mesh_data = gmshio.read_from_msh(mesh_directory / mesh_record["path"], MPI.COMM_WORLD, gdim=2)
+        solved_flow = solve_planar_darcy(
+            mesh_data,
+            porous_region_tag="region:porous",
+            permeability_m2=permeability_m2,
+            viscosity_pa_s=viscosity_pa_s,
+            inlet_tag="boundary:west",
+            outlet_tag="boundary:east",
+            inlet_pressure_pa=inlet_pressure_pa,
+            outlet_pressure_pa=outlet_pressure_pa,
+        )
+        solved_transport = solve_planar_darcy_transport(
+            mesh_data,
+            darcy_velocity=solved_flow.velocity,
+            domain_tag="porous",
+            inlet_tag="west",
+            outlet_tag="east",
+            wall_tags=("north", "south"),
+            inlet_concentration_mol_m3=inlet_concentration_mol_m3,
+            outlet_concentration_mol_m3=outlet_concentration_mol_m3,
+            effective_diffusivity_m2_s=effective_diffusivity_m2_s,
+            characteristic_length_m=length_m,
+        )
+        exact_concentration = fem.Function(solved_transport.concentration.function_space)
+        exact_concentration.interpolate(
+            lambda x: inlet_concentration_mol_m3
+            + (outlet_concentration_mol_m3 - inlet_concentration_mol_m3)
+            * (np.exp(peclet * x[0] / length_m) - 1.0)
+            / (math.exp(peclet) - 1.0)
+        )
+        exact_concentration.x.scatter_forward()
+
+        def global_integral(form) -> float:
+            local = fem.assemble_scalar(fem.form(form))
+            return mesh_data.mesh.comm.allreduce(float(local), op=MPI.SUM)
+
+        dx = ufl.Measure("dx", domain=mesh_data.mesh)
+        exact_norm = np.sqrt(global_integral(exact_concentration**2 * dx))
+        concentration_error = np.sqrt(global_integral(
+            (solved_transport.concentration - exact_concentration)**2 * dx
+        ))
+        relative_concentration_error = concentration_error / exact_norm
+        expected_flux_density = darcy_speed * (
+            inlet_concentration_mol_m3
+            - (outlet_concentration_mol_m3 - inlet_concentration_mol_m3)
+            / (math.exp(peclet) - 1.0)
+        )
+        expected_boundary_rate = expected_flux_density * height_m
+        assert relative_concentration_error < 2e-3, relative_concentration_error
+        assert math.isclose(solved_transport.peclet_number, peclet, rel_tol=1e-8)
+        assert solved_transport.relative_species_balance < 1e-2
+        assert solved_transport.inlet_species_rate_mol_m_s_per_depth < 0
+        assert solved_transport.outlet_species_rate_mol_m_s_per_depth > 0
+        assert abs(solved_transport.outlet_species_rate_mol_m_s_per_depth - expected_boundary_rate) \
+            / abs(expected_boundary_rate) < 1e-2
+        assert abs(solved_transport.inlet_species_rate_mol_m_s_per_depth + expected_boundary_rate) \
+            / abs(expected_boundary_rate) < 1e-2
+        assert abs(solved_transport.wall_species_rate_mol_m_s_per_depth) < 1e-10
+        assert solved_transport.linear_converged_reason > 0
+
+        solution_directory = root / "solution"
+        response = run(
+            json.dumps(request, separators=(",", ":")).encode(), solution_directory
+        )
+        assert response["status"] == "ok", response
+        assert response["operation"] == "planar_darcy_transport"
+        assert response["model_input_sha256"] == request["model_input_sha256"]
+        assert response["mesh"]["sha256"] == request["mesh_sha256"]
+        diagnostics = response["diagnostics"]
+        assert diagnostics["darcy_linear_converged_reason"] > 0
+        assert diagnostics["transport_linear_converged_reason"] > 0
+        assert diagnostics["relative_flow_balance"] < 1e-8
+        assert diagnostics["relative_species_balance"] < 1e-2
+        assert math.isclose(diagnostics["peclet_number"], peclet, rel_tol=1e-8)
+        summaries = {
+            item["field_name"]: item for item in response["field_summaries"]
+        }
+        assert list(summaries) == [
+            "pressure", "velocity_x", "velocity_y", "concentration"
+        ]
+        expected_integral_units = {
+            "pressure": "Pa*m2",
+            "velocity_x": "m3/s",
+            "velocity_y": "m3/s",
+            "concentration": "mol/m",
+        }
+        for name, summary in summaries.items():
+            assert summary["sample_count"] == response["mesh"]["node_count"]
+            assert summary["association"] == "mesh_nodes"
+            assert summary["integration_measure"] == "domain_area"
+            assert summary["minimum"] <= summary["mean"] <= summary["maximum"]
+            assert summary["integral_unit"] == expected_integral_units[name]
+        expected_mean_concentration = (
+            global_integral(exact_concentration * dx)
+            / global_integral(1.0 * dx)
+        )
+        assert abs(
+            summaries["concentration"]["mean"] - expected_mean_concentration
+        ) / max(1.0, abs(expected_mean_concentration)) < 2e-3
+        solver_diagnostics = response["solver_diagnostics"]
+        assert [item["solver_id"] for item in solver_diagnostics] == [
+            "darcy_pressure", "neutral_scalar_transport"
+        ]
+        assert all(
+            item["method"] == "petsc_preonly_lu"
+            and item["status"] == "converged"
+            and item["iterations"] > 0
+            and item["converged_reason"] > 0
+            for item in solver_diagnostics
+        )
+        assert solver_diagnostics[0]["iterations"] == diagnostics["darcy_linear_iterations"]
+        assert solver_diagnostics[1]["iterations"] == diagnostics["transport_linear_iterations"]
+        xdmf = solution_directory / "darcy-transport-solution.xdmf"
+        hdf5 = solution_directory / "darcy-transport-solution.h5"
+        assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
+        data_paths = {
+            item.attrib["Name"]: (item.findtext("DataItem") or "").strip().split(":", 1)[-1]
+            for item in ET.parse(xdmf).getroot().findall(".//Attribute")
+        }
+        assert data_paths == {
+            "velocity_x": "/Function/velocity_x/0",
+            "velocity_y": "/Function/velocity_y/0",
+            "pressure": "/Function/pressure/0",
+            "concentration": "/Function/concentration/0",
+        }, data_paths
+        for artifact in (response["mesh"], *response["solution_artifacts"]):
+            data = (solution_directory / artifact["path"]).read_bytes()
+            assert len(data) == artifact["bytes"]
+            assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        return {
+            "cell_count": response["mesh"]["cell_count"],
+            "relative_concentration_l2_error": relative_concentration_error,
+            "relative_species_balance": diagnostics["relative_species_balance"],
+            "peclet_number": diagnostics["peclet_number"],
+        }
+
+
 def main() -> None:
     fixture = Path(__file__).resolve().parents[1] / "fixtures" / "planar-mesh-request.json"
     fixture_data = json.loads(fixture.read_text())
@@ -471,6 +949,9 @@ def main() -> None:
     assert volume_group.dim == 3 and volume_group.tag in imported_3d.cell_tags.values
     assert boundary_group.dim == 2 and boundary_group.tag in imported_3d.facet_tags.values
     error_3d, cells_3d = solve_affine(imported_3d, (1.0, 2.0, 3.0))
+    sidecar_stokes = run_planar_stokes_sidecar(fixture_data["mesh"])
+    sidecar_darcy = run_planar_darcy_sidecar(fixture_data["mesh"])
+    sidecar_darcy_transport = run_planar_darcy_transport_sidecar(fixture_data["mesh"])
 
     print(
         json.dumps(
@@ -480,6 +961,9 @@ def main() -> None:
                 "triangle_count": cells_2d,
                 "layered_diffusion_refinements": layered_results,
                 "stokes_poiseuille_refinements": stokes_results,
+                "stokes_sidecar_operation": sidecar_stokes,
+                "darcy_sidecar_operation": sidecar_darcy,
+                "darcy_transport_sidecar_operation": sidecar_darcy_transport,
                 "affine_max_error_3d": error_3d,
                 "tetrahedron_count": cells_3d,
             }

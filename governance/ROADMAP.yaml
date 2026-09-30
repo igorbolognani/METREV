@@ -69,7 +69,7 @@ work_items:
       - packages/electrochem-models/
     blockers:
       - P02 product intake and full dimensional coverage pending
-      - Darcy/Brinkman, buffer, thermal and biological law parameters need source-backed model-specific contracts
+      - Constant isotropic permeability and pore-fluid viscosity are source-backed for the restricted Darcy development operation; tensor or variable hydraulic fields, Darcy/Brinkman interface laws, buffer, thermal and biological law parameters still need model-specific contracts
   - id: P04
     title: Activate the future numerical sidecar architecture
     phase: foundation
@@ -92,7 +92,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Pinned DOLFINx/PETSc imports a tagged planar mesh and solves a synthetic affine Poisson smoke in CI; coupled physics and a production solver adapter remain absent
+      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; coupled physics and a production solver adapter remain absent
       - The worker and authenticated API exist; product authorization for mesh artifacts, a production artifact provider and a deployed solver remain pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
@@ -175,11 +175,11 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - The optional single-liquid Stokes input is metadata only. Product hydraulics remains unregistered, and Darcy/Brinkman porous flow, Navier–Stokes regimes, mixed-domain admission and case-runner integration are not implemented
-      - P05/P06 remain partial; velocity is not coupled to species transport, and product persistence/API/UI integration remains pending
+      - Restricted bulk-liquid Stokes and homogeneous single-porous-domain Darcy operations write hash-checked pressure/velocity fields and verify analytic fixtures independently. A separate development operation now transfers solved Darcy velocity to one neutral passive scalar on the same porous mesh and checks an analytic advection–diffusion profile and species-flux balance. Product hydraulics remains unregistered; bulk/porous interface coupling, heterogeneous Darcy/Brinkman, Navier–Stokes regimes, reactive or ionic transport coupling and case-runner integration remain unimplemented
+      - P05/P06 remain partial; the new transport fixture does not establish multi-region interface conservation, and production field persistence/API/UI integration remains pending
     gate_evidence:
-      GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. It does not establish product hydraulic input or solver admission
-      GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure and checks expected pressure drop plus integrated inlet/outlet flow across three mesh refinements
+      GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. A typed worker request is bound to that input and the selected regenerated mesh digest; it does not establish product hydraulic input or solver admission
+      GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure across three refinements; a homogeneous porous Darcy fixture checks exact linear pressure, uniform Darcy velocity, analytic pressure-driven flow and integrated inlet/outlet balance. A separate same-mesh Darcy-to-neutral-scalar fixture checks an analytic Pe=1 advection–diffusion profile and integrated inlet/outlet/wall species-flux balance. These development fixtures are not product-coupled
       GATE-NONLINEAR-CONVERGENCE: the benchmark is linear Stokes, so nonlinear convergence is not applicable; its PETSc direct solve fails on nonconvergence, while coupled nonlinear product solvers remain unimplemented
       GATE-LIMITING-CASE: parameterized synthetic Poiseuille flow on three tagged refinements checks analytic velocity and pressure, positive inlet/outlet flow, pressure drop, PETSc convergence reason and divergence diagnostics; viscosity and pressure drop are varied without claiming product hydraulics
   - id: P08
@@ -360,6 +360,7 @@ work_items:
       - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider and the viewer is absent
       - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
       - Returned state fields must contain every requested variable or explicitly composed planar x/y velocity vector and no unrequested variable; independent derived metrics and broader vector output authority beyond planar velocity remain pending
+      - The explicit development worker has restricted Darcy-transport and single-liquid Stokes adapters that project solver fields into input-bound result-v2 manifests using owner-scoped local stores; CI verifies both through the pinned native worker/API path, while production artifact storage, the viewer, and application solver admission remain pending
     gate_evidence:
       GATE-CONTRACT: spatial-simulation-result-v2 rejects inconsistent domains, field references, hash lists, metric derivations and completion identity; v1 result snapshots remain readable, while new input-bound persistence requires v2 and checks mesh topology and requested state outputs
       GATE-PROVENANCE: result and scalar outputs bind to run, model, input hash and content-addressed mesh/field references
@@ -390,10 +391,10 @@ work_items:
       - apps/
     blockers:
       - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large durable artifact provider remain unverified
-      - The pluggable worker runtime and authenticated owner-scoped API are implemented; a development-only local field-artifact provider passes an API read roundtrip, while production executor admission, PDE solver, durable provider and container CPU/memory limits remain pending
+      - The pluggable worker runtime, authenticated owner-scoped API and explicit development-only Darcy and single-liquid Stokes executors are implemented; CI exercises both through the pinned DOLFINx/PETSc/Gmsh worker and verified field API, while product solver admission, durable storage and deployment CPU/memory limits remain pending
     gate_evidence:
       GATE-PERSISTENCE: result metadata is capped at 2 MiB of UTF-8 JSON before persistence; schema-valid large diagnostic-history fixtures are rejected without advancing the run, with memory and PostgreSQL regression coverage
-      GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; durable production storage remains unverified
+      GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; CI checks this route with output from the pinned native worker sidecar, while durable production storage remains unverified
   - id: P16
     title: Do not execute large 2D/3D simulations synchronously inside Fastify requests
     phase: P2
@@ -417,10 +418,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; worker deadlines and cancellation terminate the isolated sidecar process group, while application solver admission remains pending
-      - No spatial solver or production field store is registered; run creation and retries remain fail-closed without explicit admission, and deployment CPU/memory limits are still required
+      - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; the worker emits structured per-run lifecycle events and persists stable, sanitized sidecar failure reasons. Worker deadlines and cancellation terminate the isolated sidecar process group, while deployment CPU/memory limits and application solver admission remain pending
+      - No product spatial solver or production field store is registered; API run admission remains fail-closed by default, and deployment CPU/memory limits are still required
     gate_evidence:
-      GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines and field-byte hash verification pass focused tests
+      GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines, service shutdown (including claim races), strict operational configuration and field-byte hash verification pass focused tests
   - id: P17
     title: Integrate 2D with the actual case runner
     phase: P2

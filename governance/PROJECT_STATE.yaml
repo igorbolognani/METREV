@@ -10,21 +10,22 @@ roadmap: ROADMAP.yaml
 numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_development_real_mesh_ci_gate_passed
 spatial_artifact_storage: development_local_content_addressed_mesh_adapter_not_product_integrated
-async_simulation_jobs: durable_queue_owner_scoped_api_and_pluggable_worker_runtime_solver_admission_required
+async_simulation_jobs: durable_queue_owner_scoped_api_structured_worker_events_safe_failure_codes_and_opt_in_darcy_stokes_development_executors_product_solver_admission_required
 spatial_viewer: absent
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
   - Catalog status is execution availability, separate from scientific maturity.
   - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
   - Spatial job creation and retries fail closed unless an executor admission is injected; no spatial PDE solver or production field-artifact provider is registered.
-  - The spatial worker bounds its asynchronous wait even if an executor ignores AbortSignal; terminating a blocked native solver process and hard CPU/memory isolation still require an executor/deployment boundary.
+  - The spatial worker bounds its asynchronous wait even if an executor ignores AbortSignal; the sidecar client terminates its isolated process group on cancellation or timeout; service shutdown aborts the active executor and records worker_shutdown without cancelling queued jobs. Deployment CPU/memory isolation remains pending.
+  - Worker runs emit structured claim, progress, completion, failure, cancellation, and lease-loss events; known sidecar failures persist stable safe codes without stderr or local-path details.
 spatial_input_contract: spatial_input_v1_legacy_plus_v2_planar_schema_only
-spatial_result_contract: spatial_simulation_result_v1_compact_manifest_external_field_references
+spatial_result_contract: spatial_simulation_result_v2_input_bound_manifests_v1_read_compatibility
 spatial_run_metadata: postgresql_owner_scoped_lifecycle_with_hash_bound_snapshots_worker_leases_and_authenticated_api
 physics_composition: dependency_ordered_descriptors_without_equation_assembly
 coupled_1d_case_runner: development_with_complete_cell_1d
 sensitivity_persistence: migration_and_roundtrip_implemented
 spatial_parameter_authority: version_1_material_and_variable_boundary_units
-numerical_toolchain: pinned_dolfinx_0_10_0_gmsh_4_15_2_tagged_mesh_and_affine_poisson_smoke_passed_no_production_solver
+numerical_toolchain: pinned_dolfinx_0_10_0_gmsh_4_15_2_tagged_mesh_affine_poisson_restricted_stokes_homogeneous_darcy_and_same_mesh_darcy_neutral_scalar_transport_smokes_with_hashed_xdmf_hdf5_outputs_no_production_solver
 governing_equations: candidate_registry_spatial_2d_3d_not_implemented
 spatial_diffusion_verification: isolated_orthogonal_1d_2d_3d_steady_transient_layered_upwind_linear_loss_diagonal_anisotropy_mixed_boundary_and_porous_storage_scalar_transport_not_product_integrated

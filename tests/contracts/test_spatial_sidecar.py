@@ -47,6 +47,157 @@ class SidecarTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_mesh(fixture["mesh"])
 
+    def stokes_request(self):
+        fixture = json.loads(FIXTURE.read_text())
+        mesh = fixture["mesh"]
+        mesh["layers"] = [mesh["layers"][2]]
+        mesh["boundaries"]["left"] = {"tag": "west", "role": "wall"}
+        mesh["boundaries"]["right"] = {"tag": "east", "role": "wall"}
+        mesh["refinement_factors"] = [1]
+        source = {"value": 0.0, "unit": "Pa", "source_kind": "test_fixture",
+                  "source_ref": "test-fixture://stokes"}
+        return {
+            "protocol_version": "spatial-sidecar-v1",
+            "request_id": "1b3f2f7a-b7c8-4fbb-a8e3-0830db3e06d4",
+            "operation": "planar_stokes",
+            "mesh_request": {**fixture, "mesh": mesh},
+            "mesh_sha256": "a" * 64,
+            "refinement_factor": 1,
+            "model_input_contract_version": "spatial-input-v2",
+            "model_input_sha256": "b" * 64,
+            "setup": {
+                "regime": "steady_stokes",
+                "equation_ref": "EQ-FL-002",
+                "domain_tag": "liquid",
+                "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+                "pressure_variable": "p",
+                "velocity_variables": {"x": "ux", "y": "uy"},
+                "wall_tags": ["west", "east"],
+                "inlet": {"tag": "inlet", "traction_pa": [{**source}, {**source, "value": 1.0}]},
+                "outlet": {"tag": "outlet", "traction_pa": [{**source}, {**source}]},
+            },
+            "viscosity": {"value": 1e-3, "unit": "Pa*s", "source_kind": "test_fixture",
+                          "source_ref": "test-fixture://stokes"},
+        }
+
+    def test_stokes_request_is_source_and_geometry_bound(self):
+        from metrev_spatial.__main__ import validate_planar_stokes_request
+
+        request = self.stokes_request()
+        self.assertIs(validate_planar_stokes_request(request), request)
+        malformed = json.loads(json.dumps(request))
+        malformed["mesh_sha256"] = "A" * 64
+        with self.assertRaises(ValueError):
+            validate_planar_stokes_request(malformed)
+        malformed = json.loads(json.dumps(request))
+        malformed["mesh_request"]["request_id"] = "not-a-uuid"
+        with self.assertRaises(ValueError):
+            validate_planar_stokes_request(malformed)
+        malformed = json.loads(json.dumps(request))
+        malformed["setup"]["velocity_variables"]["y"] = "ux"
+        with self.assertRaises(ValueError):
+            validate_planar_stokes_request(malformed)
+        malformed = json.loads(json.dumps(request))
+        malformed["refinement_factor"] = True
+        with self.assertRaises(ValueError):
+            validate_planar_stokes_request(malformed)
+        malformed = json.loads(json.dumps(request))
+        malformed["viscosity"]["uncertainty"] = True
+        malformed["viscosity"]["uncertainty_unit"] = "Pa*s"
+        with self.assertRaises(ValueError):
+            validate_planar_stokes_request(malformed)
+
+    def darcy_request(self):
+        fixture = json.loads(FIXTURE.read_text())
+        mesh = fixture["mesh"]
+        mesh["layers"] = [mesh["layers"][1]]
+        mesh["boundaries"] = {
+            "left": {"tag": "west", "role": "inlet"},
+            "right": {"tag": "east", "role": "outlet"},
+            "top": {"tag": "north", "role": "wall"},
+            "bottom": {"tag": "south", "role": "wall"},
+        }
+        mesh["refinement_factors"] = [1]
+        source = {"source_kind": "test_fixture", "source_ref": "test-fixture://darcy"}
+        return {
+            "protocol_version": "spatial-sidecar-v1",
+            "request_id": "1b3f2f7a-b7c8-4fbb-a8e3-0830db3e06d4",
+            "operation": "planar_darcy",
+            "mesh_request": {**fixture, "mesh": mesh},
+            "mesh_sha256": "a" * 64,
+            "refinement_factor": 1,
+            "model_input_contract_version": "spatial-input-v2",
+            "model_input_sha256": "b" * 64,
+            "setup": {
+                "regime": "steady_darcy",
+                "equation_ref": "EQ-FL-003",
+                "domain_tag": "biofilm",
+                "viscosity_parameter_id": "dynamic_viscosity_pa_s",
+                "permeability_parameter_id": "hydraulic_permeability_m2",
+                "pressure_variable": "pressure",
+                "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+                "inlet": {"tag": "west", "pressure_pa": {"value": 10.0, "unit": "Pa", **source}},
+                "outlet": {"tag": "east", "pressure_pa": {"value": 0.0, "unit": "Pa", **source}},
+            },
+            "viscosity": {"value": 1e-3, "unit": "Pa*s", **source},
+            "permeability": {"value": 1e-10, "unit": "m2", **source},
+        }
+
+    def test_darcy_request_is_source_and_geometry_bound(self):
+        from metrev_spatial.__main__ import validate_planar_darcy_request
+
+        request = self.darcy_request()
+        self.assertIs(validate_planar_darcy_request(request), request)
+        mutations = [
+            lambda body: body.update(mesh_sha256="A" * 64),
+            lambda body: body["permeability"].update(unit="m2/s"),
+            lambda body: body["permeability"].update(value=0),
+            lambda body: body["setup"]["outlet"].update(tag="west"),
+            lambda body: body["setup"]["inlet"]["pressure_pa"].update(unit="m/s"),
+            lambda body: body["mesh_request"]["mesh"]["layers"][0].update(kind="bulk_liquid"),
+            lambda body: body["refinement_factor"] and body.update(refinement_factor=True),
+        ]
+        for mutate in mutations:
+            malformed = json.loads(json.dumps(request))
+            mutate(malformed)
+            with self.assertRaises(ValueError):
+                validate_planar_darcy_request(malformed)
+
+    def darcy_transport_request(self):
+        request = self.darcy_request()
+        request["operation"] = "planar_darcy_transport"
+        source = {"source_kind": "test_fixture", "source_ref": "test-fixture://transport"}
+        request["transport_setup"] = {
+            "regime": "steady_advection_diffusion",
+            "equation_ref": "EQ-SP-001",
+            "domain_tag": "biofilm",
+            "species_id": "neutral_tracer",
+            "concentration_variable": "neutral_tracer_c",
+            "velocity_variables": {"x": "velocity_x", "y": "velocity_y"},
+            "inlet": {"tag": "west", "concentration_mol_m3": {"value": 2.0, "unit": "mol/m3", **source}},
+            "outlet": {"tag": "east", "concentration_mol_m3": {"value": 1.0, "unit": "mol/m3", **source}},
+        }
+        request["effective_diffusivity"] = {"value": 1e-9, "unit": "m2/s", **source}
+        return request
+
+    def test_darcy_transport_binds_neutral_species_to_positive_darcy_flow(self):
+        from metrev_spatial.__main__ import validate_planar_darcy_transport_request
+
+        request = self.darcy_transport_request()
+        self.assertIs(validate_planar_darcy_transport_request(request), request)
+        mutations = [
+            lambda body: body["transport_setup"]["velocity_variables"].update(x="unbound_velocity"),
+            lambda body: body["transport_setup"]["outlet"].update(tag="west"),
+            lambda body: body["transport_setup"]["inlet"]["concentration_mol_m3"].update(value=-1),
+            lambda body: body["effective_diffusivity"].update(unit="m/s"),
+            lambda body: body["setup"]["inlet"]["pressure_pa"].update(value=0),
+        ]
+        for mutate in mutations:
+            malformed = json.loads(json.dumps(request))
+            mutate(malformed)
+            with self.assertRaises(ValueError):
+                validate_planar_darcy_transport_request(malformed)
+
     @unittest.skipUnless(os.getenv("METREV_REQUIRE_GMSH") == "1", "Install pinned Gmsh for mesh gate")
     def test_single_liquid_channel_retains_all_exterior_physical_groups(self):
         fixture = json.loads(FIXTURE.read_text())

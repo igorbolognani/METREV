@@ -141,3 +141,155 @@ export const validSpatialInput = () => ({
   circuit: { kind: 'external_load', resistance: q(1000, 'ohm') },
   requested_outputs: ['substrate_c', 'phi_s'],
 });
+
+export const stokesChannelInput = () => {
+  const candidate = validSpatialInput();
+  candidate.geometry.layers = [candidate.geometry.layers[2]];
+  candidate.geometry.boundaries.left = { tag: 'west', role: 'wall' };
+  candidate.geometry.boundaries.right = { tag: 'east', role: 'wall' };
+  candidate.mesh.request.mesh = copy(candidate.geometry);
+  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+  candidate.mesh.physical_groups = {
+    'region:liquid': 1,
+    'boundary:west': 101,
+    'boundary:east': 102,
+    'boundary:inlet': 103,
+    'boundary:outlet': 104,
+  };
+  candidate.mesh.component_map = { liquid: 'case/reactor' };
+  candidate.mesh.interfaces = [];
+  candidate.material_fields = [
+    {
+      parameter_id: 'dynamic_viscosity_pa_s',
+      domain_tag: 'liquid',
+      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
+    },
+  ];
+  candidate.species = [];
+  candidate.reaction_laws = [];
+  candidate.variables = [
+    { id: 'p', kind: 'pressure', domain_tags: ['liquid'], unit: 'Pa' },
+    { id: 'ux', kind: 'velocity_x', domain_tags: ['liquid'], unit: 'm/s' },
+    { id: 'uy', kind: 'velocity_y', domain_tags: ['liquid'], unit: 'm/s' },
+  ];
+  candidate.initial_conditions = [];
+  candidate.boundary_conditions = [];
+  candidate.requested_outputs = ['p', 'ux', 'uy'];
+  return {
+    ...candidate,
+    stokes_development: {
+      regime: 'steady_stokes',
+      equation_ref: 'EQ-FL-002',
+      domain_tag: 'liquid',
+      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
+      pressure_variable: 'p',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      wall_tags: ['west', 'east'],
+      inlet: { tag: 'inlet', traction_pa: [q(0, 'Pa'), q(1, 'Pa')] },
+      outlet: { tag: 'outlet', traction_pa: [q(0, 'Pa'), q(0, 'Pa')] },
+    },
+  };
+};
+
+export const darcyPorousInput = () => {
+  const candidate = stokesChannelInput();
+  candidate.geometry.layers[0] = {
+    ...candidate.geometry.layers[0],
+    tag: 'porous',
+    kind: 'biofilm',
+    component_id: 'case/biofilm',
+  };
+  candidate.geometry.boundaries = {
+    left: { tag: 'west', role: 'inlet' },
+    right: { tag: 'east', role: 'outlet' },
+    top: { tag: 'north', role: 'wall' },
+    bottom: { tag: 'south', role: 'wall' },
+  };
+  candidate.mesh.request.mesh = copy(candidate.geometry);
+  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+  candidate.mesh.physical_groups = {
+    'region:porous': 1,
+    'boundary:west': 101,
+    'boundary:east': 102,
+    'boundary:south': 103,
+    'boundary:north': 104,
+  };
+  candidate.mesh.component_map = { porous: 'case/biofilm' };
+  candidate.mesh.interfaces = [];
+  candidate.material_fields = [
+    {
+      parameter_id: 'dynamic_viscosity_pa_s',
+      domain_tag: 'porous',
+      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
+    },
+    {
+      parameter_id: 'hydraulic_permeability_m2',
+      domain_tag: 'porous',
+      field: { kind: 'constant', value: q(1e-10, 'm2') },
+    },
+  ];
+  candidate.variables = [
+    { id: 'p', kind: 'pressure', domain_tags: ['porous'], unit: 'Pa' },
+    { id: 'ux', kind: 'velocity_x', domain_tags: ['porous'], unit: 'm/s' },
+    { id: 'uy', kind: 'velocity_y', domain_tags: ['porous'], unit: 'm/s' },
+  ];
+  candidate.initial_conditions = [];
+  candidate.boundary_conditions = [];
+  candidate.requested_outputs = ['p', 'ux', 'uy'];
+  const { stokes_development: unusedStokesSetup, ...porousCandidate } =
+    candidate;
+  void unusedStokesSetup;
+  return {
+    ...porousCandidate,
+    darcy_development: {
+      regime: 'steady_darcy',
+      equation_ref: 'EQ-FL-003',
+      domain_tag: 'porous',
+      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
+      permeability_parameter_id: 'hydraulic_permeability_m2',
+      pressure_variable: 'p',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      inlet: { tag: 'west', pressure_pa: q(10, 'Pa') },
+      outlet: { tag: 'east', pressure_pa: q(0, 'Pa') },
+    },
+  };
+};
+
+export const darcyTransportInput = () => {
+  const input = darcyPorousInput();
+  input.species = [
+    {
+      id: 'neutral_tracer',
+      valence: q(0, '1'),
+      molecular_diffusivity: {
+        kind: 'constant',
+        value: q(1e-9, 'm2/s'),
+      },
+      effective_diffusivity: {
+        kind: 'constant',
+        value: q(1e-9, 'm2/s'),
+      },
+    },
+  ];
+  input.variables.push({
+    id: 'neutral_tracer_c',
+    kind: 'species_concentration',
+    species_id: 'neutral_tracer',
+    domain_tags: ['porous'],
+    unit: 'mol/m3',
+  });
+  input.requested_outputs.push('neutral_tracer_c');
+  return {
+    ...input,
+    darcy_transport_development: {
+      regime: 'steady_advection_diffusion' as const,
+      equation_ref: 'EQ-SP-001' as const,
+      domain_tag: 'porous',
+      species_id: 'neutral_tracer',
+      concentration_variable: 'neutral_tracer_c',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      inlet: { tag: 'west', concentration_mol_m3: q(2, 'mol/m3') },
+      outlet: { tag: 'east', concentration_mol_m3: q(1, 'mol/m3') },
+    },
+  };
+};
