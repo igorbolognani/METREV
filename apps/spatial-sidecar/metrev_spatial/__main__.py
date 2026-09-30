@@ -85,8 +85,8 @@ def validate_mesh(obj: object) -> dict:
     height = sourced_length(mesh["height_m"])
     target = sourced_length(mesh["target_size_m"])
     layers = mesh["layers"]
-    if not isinstance(layers, list) or not 2 <= len(layers) <= 16:
-        raise RequestError("Expected 2–16 planar layers")
+    if not isinstance(layers, list) or not 1 <= len(layers) <= 16:
+        raise RequestError("Expected 1–16 planar layers")
     tags: set[str] = set()
     width = 0.0
     for layer in layers:

@@ -19,8 +19,16 @@ These stable IDs describe candidate spatial formulations. They do not mean the 2
 - Sign/domain/dimensions: outward flux positive; liquid in 2D/3D (1D only in a compatible reduced flow model).
 - Assumptions and boundaries: incompressible, single phase; prescribed inlet flow or pressure, outlet condition, walls and porous interfaces require a consistent velocity definition.
 - Scientific support: standard continuum balance; a specific closure and reference must be reviewed before implementation.
-- Implementation/tests: the isolated scalar transport fixture now checks the prescribed velocity's finite-volume divergence at every cell using the same shared interior and exterior face values used in transport. The pinned synthetic Stokes channel fixture checks inlet/outlet flow balance, but no product hydraulic solve feeds transport. Verify a solved velocity-to-transport transfer and bulk/porous interface before promotion.
+- Implementation/tests: the isolated scalar transport fixture checks prescribed finite-volume velocity divergence. `metrev_spatial/stokes.py` solves the restricted 2D steady single-phase bulk-liquid problem EQ-FL-002 on meshes whose owned cells all belong to the explicitly supplied liquid region tag, reports integrated flow and divergence, and rejects multi-region cells, interior wall facets, missing global boundary groups or nonconvergence. The pinned synthetic Poiseuille benchmark checks analytic velocity, pressure, pressure drop and inlet/outlet balance at three refinements and varies viscosity/pressure drop. No product hydraulic solve feeds transport; verify a solved velocity-to-transport transfer and bulk/porous interface before promotion.
 - Limitations: cannot represent gas evolution, variable density or turbulent flow without an explicit extension.
+
+## EQ-FL-002 — Restricted planar Stokes flow
+
+- Formula: `−∇·(2μ sym(∇u)) + ∇p = 0`, `∇·u = 0` for constant dynamic viscosity `μ` in one 2D bulk-liquid domain.
+- Variables/units: velocity `u` m/s, pressure `p` Pa, `μ` Pa·s, stress `σ = 2μ sym(∇u) − pI` Pa; the assembled momentum residual is Pa/m. Positive boundary flow leaves the liquid; inlet flow is reported as its negative, per unit out-of-plane depth.
+- Boundaries/assumptions: no-slip tagged walls, explicit full Cauchy traction `σn` at tagged inlet/outlet, steady laminar incompressible single-phase liquid, no porous interface. Pressure alone is not silently substituted for full traction. The manufactured Poiseuille fixture supplies its known tangential viscous traction as well as pressure traction.
+- Implementation/tests: Taylor–Hood P2/P1 FEM with a direct PETSc linear solve, explicit convergence reason, field functions, pressure means, divergence L2 and integrated inlet/outlet flow. Tagged-mesh analytical refinement in the pinned container is numerical verification only. The input values in the benchmark are test fixtures; this module is not a product solver or an experimentally validated hydraulic model.
+- Unsupported: nonlinear Navier–Stokes, Darcy/Brinkman, variable viscosity, turbulence, species coupling and runtime case admission.
 
 ## EQ-CH-001 — Electrolyte charge conservation
 
