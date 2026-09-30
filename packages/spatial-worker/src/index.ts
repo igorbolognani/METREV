@@ -24,6 +24,14 @@ export {
   type StokesDevelopmentExecutorOptions,
   type StokesSidecarRunner,
 } from './stokes-development-executor';
+export {
+  SpatialSimulationExecutionError,
+  normalizeSpatialSimulationExecutionError,
+} from './execution-error';
+export type {
+  SpatialSimulationWorkerLogEvent,
+  SpatialSimulationWorkerLogger,
+} from './worker';
 
 function positiveInteger(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -105,6 +113,9 @@ async function main() {
         repository,
         executor,
         workerId,
+        logger: {
+          emit: (event) => console.info(JSON.stringify(event)),
+        },
         maxJobs,
         leaseDurationMs,
         executionTimeoutMs,

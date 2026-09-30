@@ -25,6 +25,7 @@ import type {
   SpatialSimulationExecutionContext,
   SpatialSimulationExecutor,
 } from './worker';
+import { normalizeSpatialSimulationExecutionError } from './execution-error';
 
 type DarcyTransportResponse = Extract<
   SpatialSidecarResponse,
@@ -381,13 +382,18 @@ export class DarcyDevelopmentExecutor implements SpatialSimulationExecutor {
         artifactRootStat.mode & 0o077
       )
         throw new Error('Sidecar output root must be a private directory');
-      const sidecar = await this.sidecarRunner(request, {
-        pythonExecutable: this.options.pythonExecutable,
-        moduleDirectory: this.options.moduleDirectory,
-        artifactRoot: this.options.artifactRoot,
-        timeoutMs: this.options.timeoutMs,
-        signal: context.signal,
-      });
+      let sidecar: SidecarProcessResult;
+      try {
+        sidecar = await this.sidecarRunner(request, {
+          pythonExecutable: this.options.pythonExecutable,
+          moduleDirectory: this.options.moduleDirectory,
+          artifactRoot: this.options.artifactRoot,
+          timeoutMs: this.options.timeoutMs,
+          signal: context.signal,
+        });
+      } catch (error) {
+        throw normalizeSpatialSimulationExecutionError(error);
+      }
       artifactDirectory = sidecar.artifactDirectory;
       if (
         sidecar.response.status !== 'ok' ||
