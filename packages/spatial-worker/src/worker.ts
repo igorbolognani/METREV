@@ -44,6 +44,8 @@ const progressSchema = z
 export type SpatialWorkerProgress = z.infer<typeof progressSchema>;
 
 export interface SpatialSimulationExecutionContext {
+  /** Authenticated owner from the durable queue claim; never taken from the model. */
+  ownerId: string;
   input: SpatialModelInputV2;
   run: SpatialSimulationRunSnapshot;
   signal: AbortSignal;
@@ -175,6 +177,7 @@ async function processClaimedRun(input: {
       );
     }
     const execution = input.executor.execute({
+      ownerId: work.ownerId,
       input: work.input,
       run: work.run,
       signal: abortController.signal,

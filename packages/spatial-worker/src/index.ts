@@ -14,6 +14,12 @@ import {
   type SpatialSimulationExecutor,
 } from './worker';
 
+export {
+  DarcyDevelopmentExecutor,
+  type DarcyDevelopmentExecutorOptions,
+  type SpatialSidecarRunner,
+} from './darcy-development-executor';
+
 function positiveInteger(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
