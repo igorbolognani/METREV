@@ -1,0 +1,359 @@
+{
+  "schema_version": 1,
+  "repository": "igorbolognani/METREV",
+  "default_branch": "main",
+  "archive_prefix": "archive/2026-09-30",
+  "maintenance_branch": "codex/mainline-audit-and-branch-maintenance",
+  "branches": [
+    {
+      "name": "audit/master-plan-merged-pr-alignment",
+      "sha": "e793b859e35de6a562a6a969a342bb0c6d21092b",
+      "merged_prs": [69]
+    },
+    {
+      "name": "codex/focus-mfc-mec-wastewater-biosensors",
+      "sha": "d30c7079e17ba5ed8bf0f8c467d16afd6e3122fa",
+      "merged_prs": [30]
+    },
+    {
+      "name": "codex/p04-stokes-sidecar-operation",
+      "sha": "b1a9a2f059ab6eff045867a0f544e4fc525ee05f",
+      "merged_prs": [95]
+    },
+    {
+      "name": "codex/p04-stokes-sidecar-toolchain-gate",
+      "sha": "8a066843b2376df9ade73af9ec3f0aa0dd20f01e",
+      "merged_prs": [96]
+    },
+    {
+      "name": "codex/p05-layer-local-refinement",
+      "sha": "bbb88942db2284645b2adb53852338948f6f6000",
+      "merged_prs": [88]
+    },
+    {
+      "name": "codex/p06-cellwise-conservative-velocity",
+      "sha": "9a7b6c244e825cac098ca97a92792dec29d59b09",
+      "merged_prs": [90]
+    },
+    {
+      "name": "codex/p07-darcy-sidecar-operation",
+      "sha": "66882ad447ec447426cbf1ec5993a568b390b09a",
+      "merged_prs": [97]
+    },
+    {
+      "name": "codex/p07-darcy-species-transfer",
+      "sha": "8612e0eb8739b25f16a6c67b247520a0ccb205bd",
+      "merged_prs": [98]
+    },
+    {
+      "name": "codex/p07-darcy-transport-summary",
+      "sha": "3a0d15cf706d9f0c622f094fbe09cb94806e23ec",
+      "merged_prs": [99]
+    },
+    {
+      "name": "codex/p07-stokes-channel-verification",
+      "sha": "863341d162d28f4b7eaa3202fc64a965211f3599",
+      "merged_prs": [85]
+    },
+    {
+      "name": "codex/p07-stokes-input-boundary",
+      "sha": "b9b3672b20627ea67e53253b377318615820eaed",
+      "merged_prs": [93]
+    },
+    {
+      "name": "codex/p07-stokes-input-mainline",
+      "sha": "947149cbce266fe2838a99b837545cf48718bc38",
+      "merged_prs": [94]
+    },
+    {
+      "name": "codex/p07-tagged-stokes-kernel",
+      "sha": "95338a45fb8c0bffd2a178ab344fa2bf3b8bd822",
+      "merged_prs": [91]
+    },
+    {
+      "name": "codex/p14-darcy-field-api-roundtrip",
+      "sha": "05de17236609a54dc23ea0c44541a2ff55126112",
+      "merged_prs": [102]
+    },
+    {
+      "name": "codex/p14-darcy-native-worker-roundtrip",
+      "sha": "daa37d339dc02c433da2dbb1be3afb29871bbbac",
+      "merged_prs": [103]
+    },
+    {
+      "name": "codex/p14-linear-solver-diagnostics",
+      "sha": "394c875bb962d5fcb61083b2463782add44c2823",
+      "merged_prs": [100]
+    },
+    {
+      "name": "codex/p14-result-dimensional-units",
+      "sha": "ec65979d9486418e2584d0ec2e45b99028f6aef4",
+      "merged_prs": [84]
+    },
+    {
+      "name": "codex/p14-stokes-native-worker-roundtrip",
+      "sha": "1484c6a747d56852e4928094ba5fa8b323de262b",
+      "merged_prs": [105]
+    },
+    {
+      "name": "codex/p14-vector-output-authority",
+      "sha": "a3b7af849766087b32641a9f7ff7bad230280ceb",
+      "merged_prs": [92]
+    },
+    {
+      "name": "codex/p15-local-field-artifact-store",
+      "sha": "e1a14f12edd38eff8d20c571f689407e04858d07",
+      "merged_prs": [89]
+    },
+    {
+      "name": "codex/p15-result-manifest-cap",
+      "sha": "5fc554ce66a0a61951095836ad4b67b138482d9d",
+      "merged_prs": [87]
+    },
+    {
+      "name": "codex/p16-darcy-development-executor",
+      "sha": "a96dd6b8a960ec0d624d52987af5d4ffe1abd0ca",
+      "merged_prs": [101]
+    },
+    {
+      "name": "codex/p16-sidecar-process-tree",
+      "sha": "cb025f94f22a44bdef30cedf7f9f099dd7972091",
+      "merged_prs": [86]
+    },
+    {
+      "name": "codex/p16-spatial-worker-failure-observability",
+      "sha": "20b2cdd3a2d86224ab5c47cde4dee73b441e32f3",
+      "merged_prs": [106]
+    },
+    {
+      "name": "codex/p16-stokes-development-executor",
+      "sha": "7fafabc3760884860ad3332d21e7823c394ca3bb",
+      "merged_prs": [104]
+    },
+    {
+      "name": "codex/phase0-main-baseline",
+      "sha": "1c047056067eccbba9d5c645a65bae72c20c0941",
+      "merged_prs": [34]
+    },
+    {
+      "name": "codex/spatial-runtime-batch-1",
+      "sha": "9459c6cf0ce6523a0a690a37fd8b2b267ff792db",
+      "merged_prs": [107]
+    },
+    {
+      "name": "codex/spatial-runtime-batch-2",
+      "sha": "b62d6e75705419c43d130578b46691ba8f041062",
+      "merged_prs": [108]
+    },
+    {
+      "name": "codex/spatial-runtime-batch-3",
+      "sha": "e33a4a71d359dc7a5101ed9ca776125dc11824c3",
+      "merged_prs": [109]
+    },
+    {
+      "name": "codex/vertical-slice-mfc-mec-biosensors",
+      "sha": "b204aec1dc3d7edf3831846b6ec4c6bbf860ba5a",
+      "merged_prs": [35]
+    },
+    {
+      "name": "experiment/034-agentic-audit-superpowers-coach",
+      "sha": "648a0d6fc37b39e48f96f503d4868dc497855cae",
+      "merged_prs": [20]
+    },
+    {
+      "name": "feat/control-plane-spatial-contracts",
+      "sha": "8d4bc72c53f54a5b941e34d7ea75232b41772162",
+      "merged_prs": [44]
+    },
+    {
+      "name": "feat/literature-biofilm-1d",
+      "sha": "95120f6e256dcb6d86598a927b4d9ec3eade913b",
+      "merged_prs": [40]
+    },
+    {
+      "name": "feat/mesh-refinement-geometry-audit",
+      "sha": "7ccbcc70c0f84def25f3dbaae21c439aab046372",
+      "merged_prs": [63]
+    },
+    {
+      "name": "feat/metrev-browser-evidence-review",
+      "sha": "9ad1a739169d1a9015d0a2d6aa39d30361cf6a8a",
+      "merged_prs": [36]
+    },
+    {
+      "name": "feat/metrev-evidence-model-editorial-gpt6",
+      "sha": "65aa3cd674a5dc9c892db240a644efdff2c30e02",
+      "merged_prs": [39]
+    },
+    {
+      "name": "feat/metrev-experimental-comparison",
+      "sha": "baeae10a79c6a2c2592777f537bd64a35392c05b",
+      "merged_prs": [38]
+    },
+    {
+      "name": "feat/metrev-sensitivity-response",
+      "sha": "4e28880924bd3c4bb05a861d5bb2816ba903097d",
+      "merged_prs": [37]
+    },
+    {
+      "name": "feat/metrev-svg-component-provenance",
+      "sha": "9c5f8043fd102f59ae29286980623ac9141ce02a",
+      "merged_prs": []
+    },
+    {
+      "name": "feat/model-evidence-gap-audit",
+      "sha": "45c80a06b3dcd10bca9b2f9c34025cb356a22e01",
+      "merged_prs": [42]
+    },
+    {
+      "name": "feat/p1-coupled-cell-engine",
+      "sha": "5f93ce0cc73fa489e205774d3f9791e53dd12548",
+      "merged_prs": [43]
+    },
+    {
+      "name": "feat/porous-anode-reaction-transport",
+      "sha": "d8617e1d9b595b7102091aa714e0a47493f422ff",
+      "merged_prs": [41]
+    },
+    {
+      "name": "feat/spatial-anisotropic-diffusion",
+      "sha": "9a5dd8d7fe11ae336eafa89e09edb5de55a257e8",
+      "merged_prs": [76]
+    },
+    {
+      "name": "feat/spatial-conservative-diffusion-baseline",
+      "sha": "511b7f348b5a7f1dfc0588302774ed0cf4dac4f4",
+      "merged_prs": [67]
+    },
+    {
+      "name": "feat/spatial-heterogeneous-interface-diffusion",
+      "sha": "43a9b53e151fa03fd194632e7e76f8d5a2d69f78",
+      "merged_prs": [70]
+    },
+    {
+      "name": "feat/spatial-input-v2-boundaries",
+      "sha": "d037c5962a4721b420e857b06068ddbae6569111",
+      "merged_prs": [46]
+    },
+    {
+      "name": "feat/spatial-job-queue",
+      "sha": "3e03bcaa989c7566a7f76690d5afebaaf5573167",
+      "merged_prs": [60]
+    },
+    {
+      "name": "feat/spatial-job-worker-api",
+      "sha": "219fb665efe0f0abbfc3606b5d1bad63f667c29c",
+      "merged_prs": [61]
+    },
+    {
+      "name": "feat/spatial-linear-reaction",
+      "sha": "641e939eccb3671b912ecfc44dbce32807b9d948",
+      "merged_prs": [75]
+    },
+    {
+      "name": "feat/spatial-mesh-artifact-store",
+      "sha": "58443eddc76288dd98896665714aca7ea1e3c693",
+      "merged_prs": [58]
+    },
+    {
+      "name": "feat/spatial-mesh-request-binding",
+      "sha": "824b19d8d2ba0ec802683a5de8a6e0595bab783a",
+      "merged_prs": [57]
+    },
+    {
+      "name": "feat/spatial-mixed-boundaries",
+      "sha": "133467f1e35fa764f1d38a07c7b8625399af558f",
+      "merged_prs": [79]
+    },
+    {
+      "name": "feat/spatial-porosity-storage",
+      "sha": "30c12270c75e2672902154e7dd538da7fbadde76",
+      "merged_prs": [80]
+    },
+    {
+      "name": "feat/spatial-prescribed-flux-boundaries",
+      "sha": "0276291ed351de30784c13ae6dae5b1faaafcd92",
+      "merged_prs": [77]
+    },
+    {
+      "name": "feat/spatial-result-run-persistence",
+      "sha": "be5defdb91bb0cbad02e7ded94bab14f641d4be0",
+      "merged_prs": [59]
+    },
+    {
+      "name": "feat/spatial-runtime-contracts",
+      "sha": "bcedaf050adbfc806dbd21dd7a182a249ad0a77f",
+      "merged_prs": [45]
+    },
+    {
+      "name": "feat/spatial-transient-diffusion-verification",
+      "sha": "85f70b2255de6f3f108bd4a92f4732e23fa45f04",
+      "merged_prs": [68]
+    },
+    {
+      "name": "feat/spatial-upwind-convection",
+      "sha": "7ecabb915f63742c6a48440cb8fb14aba28ff243",
+      "merged_prs": [73]
+    },
+    {
+      "name": "fix/legacy-route-searchparams-ci",
+      "sha": "45fd8506ff514e7cab1c3473d2facb9203a8b69e",
+      "merged_prs": [18]
+    },
+    {
+      "name": "fix/pr30-review-findings",
+      "sha": "30f6c2d43f351024ace39fc6558236f4181408eb",
+      "merged_prs": [33]
+    },
+    {
+      "name": "fix/promote-transport-through-77",
+      "sha": "454ee12d8450e9edb9b7a368dc03a2c690e3e400",
+      "merged_prs": [78]
+    },
+    {
+      "name": "fix/spatial-result-topology-output-binding",
+      "sha": "15dc695fec2e043eaef7728ad363b24eb9a3126c",
+      "merged_prs": [82]
+    },
+    {
+      "name": "fix/spatial-result-unit-binding",
+      "sha": "a63448e0fecb22ea40e9a8b73e086c670a411cfd",
+      "merged_prs": [81]
+    },
+    {
+      "name": "fix/spatial-retry-admission",
+      "sha": "fcc9a1e449ddec5a7f32954eda50b30346101d84",
+      "merged_prs": [65]
+    },
+    {
+      "name": "fix/spatial-stack-promotion",
+      "sha": "b556c7f1302db3845edc8519b99d3f973fcdf4e3",
+      "merged_prs": [72]
+    },
+    {
+      "name": "fix/spatial-worker-abort-deadline",
+      "sha": "3af33f2bf12e758f18cc1f0d9e4321fc30ed46a7",
+      "merged_prs": [64]
+    },
+    {
+      "name": "test/mesh-topology-boundary-audit",
+      "sha": "ab79b16af70809c8385beb2ce32fd1e55639b50d",
+      "merged_prs": [66]
+    },
+    {
+      "name": "test/spatial-3d-fem-smoke",
+      "sha": "e583f63fe58bcec47cb587fd589bd006df9ced57",
+      "merged_prs": [74]
+    },
+    {
+      "name": "test/spatial-layered-diffusion-benchmark",
+      "sha": "81bc845d18efd7912651faabe3f08babdbe54b43",
+      "merged_prs": [83]
+    },
+    {
+      "name": "test/spatial-pinned-toolchain-smoke",
+      "sha": "be2f87a0e79bed8cf2adea98b01271bd24b82f3e",
+      "merged_prs": [71]
+    }
+  ]
+}

@@ -26,6 +26,10 @@ pnpm exec tsc --noEmit -p apps/web-ui/tsconfig.json
 
 `pnpm run test:fast`, `pnpm run lint`, and `pnpm run build` are the broader checks. Database, Docker, and browser checks need their own configured environment.
 
+## Git integration
+
+`main` is the only long-lived branch. Use one temporary branch per coherent batch and target its PR directly at `main`; CI rejects temporary integration targets. After main CI passes, the archive workflow preserves audited historical heads and the latest merged PR head in tags before deleting unchanged inactive branches. Protected branches, open-PR heads/bases and changed heads are retained. The archive and deletion use an atomic Git transaction with explicit SHA leases, so concurrent work cannot be overwritten. `pnpm run branches:archive:plan` is offline and makes no changes. See [the archive plan](governance/BRANCH_ARCHIVE_PLAN.json) and [current execution audit](docs/audits/MAINLINE_TEST_AND_PHASE_AUDIT_2026-09-30.md) for the historical inventory and recovery instructions.
+
 ## Current capability
 
 The persisted case runner executes the lumped, isothermal, uncalibrated `coupled-0d-dae-v1` for supported MFC/MEC cases. A restricted, steady planar 1D cell can also run through case evaluation when a complete source-backed `cell_1d` is supplied; it remains a development model and its outputs are informational only. The analyst development API remains available. Higher-dimensional catalog entries describe research intent, not executable spatial solvers. Numerical checks do not establish experimental validation.
