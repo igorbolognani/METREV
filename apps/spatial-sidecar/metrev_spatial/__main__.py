@@ -491,6 +491,63 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             raise ValueError("XDMF output does not bind all requested Stokes states")
     except (ET.ParseError, OSError, ValueError) as exc:
         raise SolverError(f"Unable to verify Stokes XDMF field bindings: {exc}") from exc
+
+    try:
+        dx = ufl.Measure("dx", domain=mesh_data.mesh)
+        local_area = fem.assemble_scalar(fem.form(1.0 * dx))
+        area = mesh_data.mesh.comm.allreduce(float(local_area), op=MPI.SUM)
+        if not math.isfinite(area) or area <= 0:
+            raise ValueError("Stokes mesh must have positive area")
+        integral_units = {"Pa": "Pa*m2", "m/s": "m3/s"}
+        fields_by_name = {
+            "pressure": exported_pressure,
+            "velocity_x": exported_velocity_x,
+            "velocity_y": exported_velocity_y,
+        }
+        field_summaries = []
+        for name, field in fields_by_name.items():
+            variable_id, unit = expected_datasets[name]
+            index_map = field.function_space.dofmap.index_map
+            local_dof_count = (
+                index_map.size_local * field.function_space.dofmap.index_map_bs
+            )
+            local_values = field.x.array[:local_dof_count]
+            if local_values.size == 0:
+                local_minimum = math.inf
+                local_maximum = -math.inf
+            else:
+                local_minimum = float(local_values.min())
+                local_maximum = float(local_values.max())
+            minimum = mesh_data.mesh.comm.allreduce(local_minimum, op=MPI.MIN)
+            maximum = mesh_data.mesh.comm.allreduce(local_maximum, op=MPI.MAX)
+            local_integral = fem.assemble_scalar(fem.form(field * dx))
+            integral = mesh_data.mesh.comm.allreduce(float(local_integral), op=MPI.SUM)
+            sample_count = mesh_data.mesh.comm.allreduce(local_dof_count, op=MPI.SUM)
+            mean = integral / area
+            if (sample_count <= 0 or not all(math.isfinite(value) for value in
+                                             (minimum, maximum, mean, integral)) or
+                    minimum > mean or mean > maximum):
+                raise ValueError(f"Invalid finite-element summary for {name}")
+            field_summaries.append({
+                "field_name": name,
+                "variable_id": variable_id,
+                "unit": unit,
+                "domain_tag": request["setup"]["domain_tag"],
+                "association": "mesh_nodes",
+                "sample_count": int(sample_count),
+                "minimum": minimum,
+                "maximum": maximum,
+                "mean": mean,
+                "integral": integral,
+                "integration_measure": "domain_area",
+                "integral_unit": integral_units[unit],
+            })
+        if any(summary["sample_count"] != mesh_record["node_count"]
+               for summary in field_summaries):
+            raise ValueError("Stokes nodal summary count differs from mesh node count")
+    except Exception as exc:
+        raise SolverError(f"Unable to summarize Stokes fields: {exc}") from exc
+
     solution_files = []
     for path, artifact_format in ((xdmf_path, "xdmf"), (output_dir / "stokes-solution.h5", "hdf5")):
         try:
@@ -515,6 +572,13 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
         "linear_iterations": result.linear_iterations,
         "linear_converged_reason": result.linear_converged_reason,
     }
+    solver_diagnostics = [{
+        "solver_id": "stokes_saddle_point",
+        "method": "petsc_preonly_lu",
+        "status": "converged",
+        "iterations": result.linear_iterations,
+        "converged_reason": result.linear_converged_reason,
+    }]
     return {"protocol_version": PROTOCOL_VERSION, "request_id": request["request_id"], "status": "ok",
             "operation": "planar_stokes", "metadata": meta,
             "model_input_contract_version": request["model_input_contract_version"],
@@ -522,7 +586,8 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             "field_representation": "lagrange_p1_interpolation",
             "mesh": mesh_record, "physical_groups": physical_groups,
             "diagnostics": diagnostics, "solution_artifacts": solution_files,
-            "field_datasets": field_datasets}
+            "field_datasets": field_datasets, "field_summaries": field_summaries,
+            "solver_diagnostics": solver_diagnostics}
 
 
 def solve_planar_darcy_request(request: dict, output_dir: Path, meta: dict) -> dict:

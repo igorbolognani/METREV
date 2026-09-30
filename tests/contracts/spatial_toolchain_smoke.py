@@ -428,6 +428,24 @@ def run_planar_stokes_sidecar(fixture_mesh: dict) -> dict:
         assert response["diagnostics"]["inlet_flow_m2_s_per_depth"] > 0
         assert response["diagnostics"]["outlet_flow_m2_s_per_depth"] > 0
         assert response["diagnostics"]["relative_flow_balance"] < 1e-8
+        summaries = {item["field_name"]: item for item in response["field_summaries"]}
+        assert set(summaries) == {"pressure", "velocity_x", "velocity_y"}
+        assert all(
+            summary["sample_count"] == response["mesh"]["node_count"]
+            and summary["minimum"] <= summary["mean"] <= summary["maximum"]
+            and summary["integration_measure"] == "domain_area"
+            for summary in summaries.values()
+        )
+        assert summaries["pressure"]["integral_unit"] == "Pa*m2"
+        assert summaries["velocity_x"]["integral_unit"] == "m3/s"
+        assert summaries["velocity_y"]["integral_unit"] == "m3/s"
+        assert response["solver_diagnostics"] == [{
+            "solver_id": "stokes_saddle_point",
+            "method": "petsc_preonly_lu",
+            "status": "converged",
+            "iterations": response["diagnostics"]["linear_iterations"],
+            "converged_reason": response["diagnostics"]["linear_converged_reason"],
+        }]
         xdmf = solution_directory / "stokes-solution.xdmf"
         hdf5 = solution_directory / "stokes-solution.h5"
         assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0

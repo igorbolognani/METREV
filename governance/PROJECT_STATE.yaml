@@ -10,7 +10,7 @@ roadmap: ROADMAP.yaml
 numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_development_real_mesh_ci_gate_passed
 spatial_artifact_storage: development_local_content_addressed_mesh_adapter_not_product_integrated
-async_simulation_jobs: durable_queue_owner_scoped_api_and_pluggable_worker_runtime_solver_admission_required
+async_simulation_jobs: durable_queue_owner_scoped_api_and_opt_in_darcy_and_stokes_development_executors_product_solver_admission_required
 spatial_viewer: absent
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
