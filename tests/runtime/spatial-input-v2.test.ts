@@ -54,6 +54,7 @@ function stokesChannelInput() {
     ...candidate,
     stokes_development: {
       regime: 'steady_stokes',
+      equation_ref: 'EQ-FL-002',
       domain_tag: 'liquid',
       viscosity_parameter_id: 'dynamic_viscosity_pa_s',
       pressure_variable: 'p',
@@ -126,6 +127,9 @@ describe('spatial-input-v2 admission boundary', () => {
 
   it('rejects unsupported hydraulic regions, missing viscosity, ambiguous states and boundary tractions', () => {
     const changes = [
+      (input: ReturnType<typeof stokesChannelInput>) => {
+        input.stokes_development.equation_ref = 'EQ-FL-001';
+      },
       (input: ReturnType<typeof stokesChannelInput>) => {
         input.material_fields = [];
       },

@@ -140,6 +140,7 @@ const boundarySchema = z.discriminatedUnion('kind', [
 const stokesSetupSchema = z
   .object({
     regime: z.literal('steady_stokes'),
+    equation_ref: z.literal('EQ-FL-002'),
     domain_tag: identifier,
     viscosity_parameter_id: z.literal('dynamic_viscosity_pa_s'),
     pressure_variable: identifier,

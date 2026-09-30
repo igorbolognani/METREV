@@ -88,6 +88,7 @@ stokes_development:
   required:
     [
       regime,
+      equation_ref,
       domain_tag,
       viscosity_parameter_id,
       pressure_variable,
@@ -96,10 +97,11 @@ stokes_development:
       inlet,
       outlet,
     ]
+  equation_ref: EQ-FL-002 in docs/numerics/GOVERNING_EQUATIONS.md; steady incompressible symmetric-stress Stokes momentum and continuity.
   viscosity: A source-traced constant dynamic_viscosity_pa_s material field on the sole bulk-liquid region; no inferred liquid properties.
   states: Requested pressure, velocity_x and velocity_y variables declared only on that region; no overlapping generic state boundary conditions.
   facets: Exactly two exterior walls, one inlet and one outlet matching the planar geometry and tagged mesh.
-  port_traction: Explicit x/y full Cauchy traction components with unit Pa and source provenance at both inlet and outlet; zero traction is allowed.
+  port_traction: Explicit x/y full Cauchy traction components σ·n, where n is the outward liquid normal, with unit Pa and source provenance at both inlet and outlet; enter the weak-form right hand side with positive sign. Zero traction is allowed.
 circuit:
   MFC: { kind: external_load, unit: ohm, sign: generated_power }
   MEC: { kind: applied_voltage, unit: V, sign: consumed_electrical_power }
