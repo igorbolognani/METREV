@@ -37,6 +37,7 @@ class PlanarStokesResult:
 def solve_planar_stokes(
     mesh_data: Any,
     *,
+    liquid_region_tag: str,
     viscosity_pa_s: float,
     wall_tags: tuple[str, ...],
     inlet_tag: str,
@@ -65,9 +66,9 @@ def solve_planar_stokes(
         raise ValueError("Tagged cells and exterior facets are required")
 
     groups = mesh_data.physical_groups
-    liquid = groups.get("region:bulk_liquid")
+    liquid = groups.get(liquid_region_tag)
     if liquid is None or liquid.dim != 2:
-        raise ValueError("A bulk-liquid cell group is required")
+        raise ValueError("A declared bulk-liquid cell group is required")
     owned_cells = domain.topology.index_map(2).size_local
     tagged_owned = mesh_data.cell_tags.indices < owned_cells
     invalid_cells = (not np.array_equal(mesh_data.cell_tags.indices[tagged_owned], np.arange(owned_cells))

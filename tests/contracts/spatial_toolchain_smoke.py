@@ -248,7 +248,7 @@ def solve_stokes_poiseuille(mesh_data, width_m: float, length_m: float,
         )
 
     solved = solve_planar_stokes(
-        mesh_data, viscosity_pa_s=viscosity_pa_s,
+        mesh_data, liquid_region_tag="region:bulk_liquid", viscosity_pa_s=viscosity_pa_s,
         wall_tags=("boundary:wall",), inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
         traction_by_tag={
             "boundary:inlet": exact_traction(inlet_pressure),
@@ -391,7 +391,7 @@ def main() -> None:
     # A cell mesh with porous/solid layers cannot be solved as free liquid.
     try:
         solve_planar_stokes(
-            imported, viscosity_pa_s=1e-3,
+            imported, liquid_region_tag="region:liquid", viscosity_pa_s=1e-3,
             wall_tags=("boundary:outer_wall",),
             inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
             traction_by_tag={
@@ -429,7 +429,7 @@ def main() -> None:
                     }},
                 ):
                     options = dict(
-                        viscosity_pa_s=1e-3, wall_tags=("boundary:wall",),
+                        liquid_region_tag="region:bulk_liquid", viscosity_pa_s=1e-3, wall_tags=("boundary:wall",),
                         inlet_tag="boundary:inlet", outlet_tag="boundary:outlet",
                         traction_by_tag={"boundary:inlet": ufl.as_vector((0.0, 0.0)),
                                          "boundary:outlet": ufl.as_vector((0.0, 0.0))},
