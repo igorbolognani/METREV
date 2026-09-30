@@ -92,7 +92,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Pinned DOLFINx/PETSc imports a tagged planar mesh and solves a synthetic affine Poisson smoke in CI; coupled physics and a production solver adapter remain absent
+      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; coupled physics and a production solver adapter remain absent
       - The worker and authenticated API exist; product authorization for mesh artifacts, a production artifact provider and a deployed solver remain pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
@@ -175,10 +175,10 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - The optional single-liquid Stokes input is metadata only. Product hydraulics remains unregistered, and Darcy/Brinkman porous flow, Navier–Stokes regimes, mixed-domain admission and case-runner integration are not implemented
-      - P05/P06 remain partial; velocity is not coupled to species transport, and product persistence/API/UI integration remains pending
+      - A restricted single-liquid Stokes worker operation now writes hash-checked XDMF/HDF5 pressure and velocity datasets, but product hydraulics remains unregistered; Darcy/Brinkman porous flow, Navier–Stokes regimes, mixed-domain admission and case-runner integration are not implemented
+      - P05/P06 remain partial; velocity is not coupled to species transport, and production field persistence/API/UI integration remains pending
     gate_evidence:
-      GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. It does not establish product hydraulic input or solver admission
+      GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. A typed worker request is bound to that input and the selected regenerated mesh digest; it does not establish product hydraulic input or solver admission
       GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure and checks expected pressure drop plus integrated inlet/outlet flow across three mesh refinements
       GATE-NONLINEAR-CONVERGENCE: the benchmark is linear Stokes, so nonlinear convergence is not applicable; its PETSc direct solve fails on nonconvergence, while coupled nonlinear product solvers remain unimplemented
       GATE-LIMITING-CASE: parameterized synthetic Poiseuille flow on three tagged refinements checks analytic velocity and pressure, positive inlet/outlet flow, pressure drop, PETSc convergence reason and divergence diagnostics; viscosity and pressure drop are varied without claiming product hydraulics
