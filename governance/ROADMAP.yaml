@@ -69,7 +69,7 @@ work_items:
       - packages/electrochem-models/
     blockers:
       - P02 product intake and full dimensional coverage pending
-      - Darcy/Brinkman, buffer, thermal and biological law parameters need source-backed model-specific contracts
+      - Constant isotropic permeability and pore-fluid viscosity are source-backed for the restricted Darcy development operation; tensor or variable hydraulic fields, Darcy/Brinkman interface laws, buffer, thermal and biological law parameters still need model-specific contracts
   - id: P04
     title: Activate the future numerical sidecar architecture
     phase: foundation
@@ -175,11 +175,11 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - A restricted single-liquid Stokes worker operation now writes hash-checked XDMF/HDF5 pressure and velocity datasets, but product hydraulics remains unregistered; Darcy/Brinkman porous flow, Navier–Stokes regimes, mixed-domain admission and case-runner integration are not implemented
+      - Restricted bulk-liquid Stokes and homogeneous single-porous-domain Darcy operations write hash-checked pressure/velocity fields and verify analytic fixtures independently. Product hydraulics remains unregistered; bulk/porous interface coupling, heterogeneous Darcy/Brinkman, Navier–Stokes regimes, velocity-to-species transfer and case-runner integration remain unimplemented
       - P05/P06 remain partial; velocity is not coupled to species transport, and production field persistence/API/UI integration remains pending
     gate_evidence:
       GATE-CONTRACT: the pinned Gmsh fixture preserves explicit bulk-liquid, no-slip wall, inlet and outlet physical groups; a restricted development input binds source-traced constant viscosity, pressure and x/y velocity states, complete exterior roles and full traction components. A typed worker request is bound to that input and the selected regenerated mesh digest; it does not establish product hydraulic input or solver admission
-      GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure and checks expected pressure drop plus integrated inlet/outlet flow across three mesh refinements
+      GATE-MASS-CONSERVATION: the Taylor–Hood Stokes fixture matches analytic planar Poiseuille velocity and pressure across three refinements; a homogeneous porous Darcy fixture checks exact linear pressure, uniform Darcy velocity, analytic pressure-driven flow and integrated inlet/outlet balance. Neither hydraulic fixture is product-coupled
       GATE-NONLINEAR-CONVERGENCE: the benchmark is linear Stokes, so nonlinear convergence is not applicable; its PETSc direct solve fails on nonconvergence, while coupled nonlinear product solvers remain unimplemented
       GATE-LIMITING-CASE: parameterized synthetic Poiseuille flow on three tagged refinements checks analytic velocity and pressure, positive inlet/outlet flow, pressure drop, PETSc convergence reason and divergence diagnostics; viscosity and pressure drop are varied without claiming product hydraulics
   - id: P08

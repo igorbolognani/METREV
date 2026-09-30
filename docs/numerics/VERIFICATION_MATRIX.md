@@ -26,6 +26,8 @@ Prescribed cellwise incompressible velocity is face-averaged on internal finite-
 
 The reusable tagged-mesh Stokes development component applies full declared traction and no-slip walls, records PETSc convergence, divergence L2, inlet/outlet fluxes and pressure means. The synthetic planar Poiseuille check varies viscosity and pressure drop across three mesh levels and requires relative field and flow errors below 1e-7 and flow imbalance below 1e-8. The component has no product hydraulic admission or porous interface.
 
+The homogeneous porous Darcy fixture solves one tagged biofilm layer with source-traced constant permeability and pore-fluid viscosity. A pinned Gmsh/DOLFINx operation checks the exact linear pressure, uniform Darcy velocity, pressure drop, analytic `Q=(k/μ)(Δp/L)H`, positive inlet/outlet flow, flux balance, divergence and XDMF/HDF5 hashes/dataset paths. It does not verify heterogeneous porous media, bulk/porous interface flow, or transport driven by the computed velocity.
+
 The same kernel verifies a constant, grid-aligned diagonal diffusion tensor through affine fields in 1D/2D/3D and manufactured-source refinement in 2D/3D. It has no off-diagonal tensor terms or unstructured-mesh discretization.
 
 Prescribed outward diffusive-flux boundaries are checked as a no-flux limit with reaction in steady 1D/2D/3D and with implicit transient loss/storage in 1D/2D/3D. Mixed Dirichlet/flux faces and a steady unanchored all-Neumann problem remain unsupported.

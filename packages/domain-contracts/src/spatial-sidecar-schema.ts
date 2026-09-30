@@ -6,6 +6,11 @@ import {
   spatialStokesTractionSchema,
   spatialStokesViscositySchema,
 } from './spatial-stokes-schema';
+import {
+  spatialDarcySetupSchema,
+  spatialDarcyPermeabilitySchema,
+  spatialDarcyViscositySchema,
+} from './spatial-darcy-schema';
 
 const region = z.enum([
   'bulk_liquid',
@@ -239,6 +244,75 @@ const planarStokesRequestSchema = z
     }
   });
 
+const planarDarcyRequestSchema = z
+  .object({
+    protocol_version: z.literal('spatial-sidecar-v1'),
+    request_id: z.string().uuid(),
+    operation: z.literal('planar_darcy'),
+    mesh_request: planarMeshRequestSchema,
+    mesh_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    refinement_factor: z.number().int().positive(),
+    model_input_contract_version: z.literal('spatial-input-v2'),
+    model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    setup: spatialDarcySetupSchema,
+    viscosity: spatialDarcyViscositySchema,
+    permeability: spatialDarcyPermeabilitySchema,
+  })
+  .strict()
+  .superRefine((request, context) => {
+    const mesh = request.mesh_request.mesh;
+    if (!mesh.refinement_factors.includes(request.refinement_factor))
+      context.addIssue({
+        code: 'custom',
+        path: ['refinement_factor'],
+        message: 'Requested refinement is absent from the mesh recipe',
+      });
+    if (
+      mesh.layers.length !== 1 ||
+      !['anode', 'biofilm', 'separator'].includes(mesh.layers[0].kind) ||
+      mesh.layers[0].tag !== request.setup.domain_tag
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup', 'domain_tag'],
+        message:
+          'Planar Darcy sidecar accepts exactly one matching porous anode, biofilm or separator layer',
+      });
+    const sides = Object.entries(mesh.boundaries);
+    const inlet = sides.find(
+      ([, boundary]) =>
+        boundary.tag === request.setup.inlet.tag && boundary.role === 'inlet',
+    );
+    const outlet = sides.find(
+      ([, boundary]) =>
+        boundary.tag === request.setup.outlet.tag && boundary.role === 'outlet',
+    );
+    const opposite =
+      (inlet?.[0] === 'left' && outlet?.[0] === 'right') ||
+      (inlet?.[0] === 'right' && outlet?.[0] === 'left') ||
+      (inlet?.[0] === 'top' && outlet?.[0] === 'bottom') ||
+      (inlet?.[0] === 'bottom' && outlet?.[0] === 'top');
+    if (
+      sides.filter(([, boundary]) => boundary.role === 'wall').length !== 2 ||
+      !inlet ||
+      !outlet ||
+      !opposite
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['setup'],
+        message:
+          'Darcy requires opposing inlet/outlet pressure facets and two no-flow walls',
+      });
+    for (const port of ['inlet', 'outlet'] as const)
+      if (request.setup[port].pressure_pa.unit !== 'Pa')
+        context.addIssue({
+          code: 'custom',
+          path: ['setup', port, 'pressure_pa', 'unit'],
+          message: 'Darcy boundary pressure must be expressed in Pa',
+        });
+  });
+
 export const spatialSidecarRequestSchema = z.union([
   z
     .object({
@@ -249,6 +323,7 @@ export const spatialSidecarRequestSchema = z.union([
     .strict(),
   planarMeshRequestSchema,
   planarStokesRequestSchema,
+  planarDarcyRequestSchema,
 ]);
 
 const runtimeMetadata = z
@@ -297,6 +372,88 @@ const stokesFieldDataset = z
   .strict();
 
 export const spatialSidecarResponseSchema = z.union([
+  z
+    .object({
+      protocol_version: z.literal('spatial-sidecar-v1'),
+      request_id: z.string().uuid(),
+      status: z.literal('ok'),
+      operation: z.literal('planar_darcy'),
+      metadata: runtimeMetadata,
+      model_input_contract_version: z.literal('spatial-input-v2'),
+      model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      field_representation: z.literal('lagrange_p1_interpolation'),
+      mesh: meshArtifact,
+      field_datasets: z.tuple([
+        stokesFieldDataset,
+        stokesFieldDataset,
+        stokesFieldDataset,
+      ]),
+      physical_groups: z.record(z.number().int().positive()),
+      diagnostics: z
+        .object({
+          inlet_flow_m2_s_per_depth: z.number().finite(),
+          outlet_flow_m2_s_per_depth: z.number().finite(),
+          relative_flow_balance: z.number().finite().nonnegative(),
+          mean_inlet_pressure_pa: z.number().finite(),
+          mean_outlet_pressure_pa: z.number().finite(),
+          pressure_drop_pa: z.number().finite(),
+          divergence_l2_per_s: z.number().finite().nonnegative(),
+          linear_iterations: z.number().int().nonnegative(),
+          linear_converged_reason: z.number().int().positive(),
+        })
+        .strict(),
+      solution_artifacts: z.tuple([
+        z
+          .object({
+            path: z.literal('darcy-solution.xdmf'),
+            format: z.literal('xdmf'),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            bytes: z.number().int().positive(),
+          })
+          .strict(),
+        z
+          .object({
+            path: z.literal('darcy-solution.h5'),
+            format: z.literal('hdf5'),
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            bytes: z.number().int().positive(),
+          })
+          .strict(),
+      ]),
+    })
+    .strict()
+    .superRefine((response, context) => {
+      const datasets = new Map(
+        response.field_datasets.map((field) => [field.field_name, field]),
+      );
+      for (const fieldName of ['pressure', 'velocity_x', 'velocity_y'] as const)
+        if (!datasets.has(fieldName))
+          context.addIssue({
+            code: 'custom',
+            path: ['field_datasets'],
+            message: `Missing ${fieldName} field dataset binding`,
+          });
+      for (const field of response.field_datasets)
+        if (field.dataset_path !== `/Function/${field.field_name}/0`)
+          context.addIssue({
+            code: 'custom',
+            path: ['field_datasets'],
+            message: 'Field name and HDF5 dataset path must agree',
+          });
+      if (
+        new Set(response.field_datasets.map(({ variable_id }) => variable_id))
+          .size !== 3 ||
+        datasets.get('pressure')?.unit !== 'Pa' ||
+        datasets.get('velocity_x')?.unit !== 'm/s' ||
+        datasets.get('velocity_y')?.unit !== 'm/s'
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['field_datasets'],
+          message:
+            'Darcy fields require distinct state variables, canonical units and matching HDF5 paths',
+        });
+    }),
   z
     .object({
       protocol_version: z.literal('spatial-sidecar-v1'),

@@ -30,6 +30,14 @@ These stable IDs describe candidate spatial formulations. They do not mean the 2
 - Implementation/tests: Taylor–Hood P2/P1 FEM with a direct PETSc linear solve, explicit convergence reason, field functions, pressure means, divergence L2 and integrated inlet/outlet flow. The pinned container also exercises the typed sidecar request, selected mesh digest check and XDMF/HDF5 datasets. For output, the P2 velocity is interpolated to first-order Lagrange functions to match the linear mesh; diagnostics remain calculated from the solved Taylor–Hood fields. Tagged-mesh analytical refinement is numerical verification only. The input values in the benchmark are test fixtures; this module is not a product solver or an experimentally validated hydraulic model.
 - Unsupported: nonlinear Navier–Stokes, Darcy/Brinkman, variable viscosity, turbulence, species coupling and runtime case admission.
 
+## EQ-FL-003 — Restricted homogeneous porous Darcy flow
+
+- Formula: `u_D = −(k/μ)∇p`, `∇·u_D = 0` for a steady incompressible pore fluid with constant isotropic intrinsic permeability `k` and dynamic viscosity `μ` in one porous 2D region.
+- Variables/units: Darcy superficial velocity `u_D` m/s, pressure `p` Pa, permeability `k` m², viscosity `μ` Pa·s; `(k/μ)∇p` has units m/s. Integrated flow is reported per unit out-of-plane depth in m²/s.
+- Boundaries/assumptions: source-backed pressure values at two opposing inlet/outlet facets; the other two exterior facets are impermeable natural boundaries. No porous-interface jump law, bulk-liquid domain, deformation, compressibility or multiphase flow is implied.
+- Implementation/tests: P1 pressure FEM assembles `∫(k/μ)∇p·∇q dΩ = 0`; velocity is calculated from Darcy's law and interpolated to P1 output fields. The pinned planar fixture checks the exact linear pressure and uniform Darcy velocity, analytic flow `Q = (k/μ)(Δp/L)H`, integrated inlet/outlet balance, divergence, PETSc convergence and hash-bound XDMF/HDF5 datasets. This is numerical verification of a homogeneous development operation, not a cell-scale hydraulic model or product solver.
+- Unsupported: heterogeneous/tensor permeability, Brinkman or Navier–Stokes coupling, bulk/porous interfaces, species coupling and runtime case admission.
+
 ## EQ-CH-001 — Electrolyte charge conservation
 
 - Formula: `∇·i_l = a_v j_F` in an electrolyte pore volume where interfacial Faradaic current transfers to the solid; `i_l = F Σ_i z_i N_i` when ionic species fluxes resolve conduction. Coupled solid equation uses `∇·i_s = −a_v j_F`.

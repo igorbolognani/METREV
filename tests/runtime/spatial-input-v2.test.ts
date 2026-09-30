@@ -10,6 +10,7 @@ import { meshReferenceFromSidecar } from '@metrev/spatial-sidecar-client';
 import {
   canonicalRequest,
   copy,
+  darcyPorousInput,
   digestRequest,
   meshRequest,
   q,
@@ -117,6 +118,45 @@ describe('spatial-input-v2 admission boundary', () => {
       const input = stokesChannelInput();
       change(input);
       expect(spatialModelInputV2Schema.safeParse(input).success).toBe(false);
+    }
+  });
+
+  it('admits only a source-backed single-domain porous Darcy development setup', () => {
+    const input = darcyPorousInput();
+    expect(spatialModelInputV2Schema.safeParse(input).success).toBe(true);
+    const invalid = [
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields = candidate.material_fields.filter(
+          (entry) => entry.parameter_id !== 'hydraulic_permeability_m2',
+        );
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields[0].field.value.unit = 'm2/s';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.material_fields[1].field.value.value = 0;
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.geometry.layers[0].kind = 'bulk_liquid';
+        candidate.mesh.request.mesh.layers[0].kind = 'bulk_liquid';
+        candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.outlet.tag = 'west';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.inlet.pressure_pa.unit = 'm/s';
+      },
+      (candidate: ReturnType<typeof darcyPorousInput>) => {
+        candidate.darcy_development.velocity_variables.y = 'ux';
+      },
+    ];
+    for (const mutate of invalid) {
+      const candidate = darcyPorousInput();
+      mutate(candidate);
+      expect(spatialModelInputV2Schema.safeParse(candidate).success).toBe(
+        false,
+      );
     }
   });
   it('binds source-traced local mesh sizes into the admitted request and rejects invalid refinements', () => {

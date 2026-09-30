@@ -188,3 +188,67 @@ export const stokesChannelInput = () => {
     },
   };
 };
+
+export const darcyPorousInput = () => {
+  const candidate = stokesChannelInput();
+  candidate.geometry.layers[0] = {
+    ...candidate.geometry.layers[0],
+    tag: 'porous',
+    kind: 'biofilm',
+    component_id: 'case/biofilm',
+  };
+  candidate.geometry.boundaries = {
+    left: { tag: 'west', role: 'inlet' },
+    right: { tag: 'east', role: 'outlet' },
+    top: { tag: 'north', role: 'wall' },
+    bottom: { tag: 'south', role: 'wall' },
+  };
+  candidate.mesh.request.mesh = copy(candidate.geometry);
+  candidate.mesh.input_sha256 = digestRequest(candidate.mesh.request);
+  candidate.mesh.physical_groups = {
+    'region:porous': 1,
+    'boundary:west': 101,
+    'boundary:east': 102,
+    'boundary:south': 103,
+    'boundary:north': 104,
+  };
+  candidate.mesh.component_map = { porous: 'case/biofilm' };
+  candidate.mesh.interfaces = [];
+  candidate.material_fields = [
+    {
+      parameter_id: 'dynamic_viscosity_pa_s',
+      domain_tag: 'porous',
+      field: { kind: 'constant', value: q(1e-3, 'Pa*s') },
+    },
+    {
+      parameter_id: 'hydraulic_permeability_m2',
+      domain_tag: 'porous',
+      field: { kind: 'constant', value: q(1e-10, 'm2') },
+    },
+  ];
+  candidate.variables = [
+    { id: 'p', kind: 'pressure', domain_tags: ['porous'], unit: 'Pa' },
+    { id: 'ux', kind: 'velocity_x', domain_tags: ['porous'], unit: 'm/s' },
+    { id: 'uy', kind: 'velocity_y', domain_tags: ['porous'], unit: 'm/s' },
+  ];
+  candidate.initial_conditions = [];
+  candidate.boundary_conditions = [];
+  candidate.requested_outputs = ['p', 'ux', 'uy'];
+  const { stokes_development: unusedStokesSetup, ...porousCandidate } =
+    candidate;
+  void unusedStokesSetup;
+  return {
+    ...porousCandidate,
+    darcy_development: {
+      regime: 'steady_darcy',
+      equation_ref: 'EQ-FL-003',
+      domain_tag: 'porous',
+      viscosity_parameter_id: 'dynamic_viscosity_pa_s',
+      permeability_parameter_id: 'hydraulic_permeability_m2',
+      pressure_variable: 'p',
+      velocity_variables: { x: 'ux', y: 'uy' },
+      inlet: { tag: 'west', pressure_pa: q(10, 'Pa') },
+      outlet: { tag: 'east', pressure_pa: q(0, 'Pa') },
+    },
+  };
+};
