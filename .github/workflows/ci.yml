@@ -171,11 +171,34 @@ jobs:
       - name: Build pinned DOLFINx/PETSc/Gmsh sidecar
         run: docker build -f apps/spatial-sidecar/Dockerfile -t metrev-spatial-toolchain .
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Node workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
       - name: Verify tagged meshes, scalar diffusion, affine Poisson and Stokes fixtures
         run: |
           docker run --rm --entrypoint python3 \
             --mount type=bind,source="${{ github.workspace }}/tests",target=/opt/metrev-spatial/tests,readonly \
             metrev-spatial-toolchain /opt/metrev-spatial/tests/contracts/spatial_toolchain_smoke.py
+
+      - name: Verify native Darcy worker and authenticated field API roundtrip
+        run: pnpm exec vitest run tests/runtime/spatial-worker-darcy-development.test.ts -t "pinned native sidecar"
+        env:
+          METREV_SPATIAL_DOCKER_IMAGE: metrev-spatial-toolchain
 
   validate-local:
     runs-on: ubuntu-latest
