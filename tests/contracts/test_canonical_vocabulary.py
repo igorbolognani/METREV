@@ -554,6 +554,7 @@ def test_spatial_v2_external_contract_and_unit_authority() -> None:
         contract["required_fields"]
     )
     assert "request" in contract["mesh"]["required"]
+    assert "vector_outputs" in contract["optional_fields"]
     for spec in authority["variables"].values():
         assert spec["unit"] and spec["domains"]
         assert spec["bounds"] is not None

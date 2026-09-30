@@ -56,6 +56,17 @@ const variableSchema = z
   })
   .strict();
 
+/** A requested vector view of two separately authoritative scalar states. */
+const vectorOutputSchema = z
+  .object({
+    id: identifier,
+    components: z.tuple([
+      z.object({ axis: z.literal('x'), variable_id: identifier }).strict(),
+      z.object({ axis: z.literal('y'), variable_id: identifier }).strict(),
+    ]),
+  })
+  .strict();
+
 const speciesSchema = z
   .object({
     id: identifier,
@@ -202,6 +213,7 @@ export const spatialModelInputV2Schema = z
     ),
     species: z.array(speciesSchema),
     variables: z.array(variableSchema).min(1),
+    vector_outputs: z.array(vectorOutputSchema).max(32).optional(),
     reaction_laws: z.array(
       z
         .object({
@@ -420,6 +432,10 @@ export const spatialModelInputV2Schema = z
       'variables',
     );
     unique(
+      (input.vector_outputs ?? []).map((entry) => entry.id),
+      'vector_outputs',
+    );
+    unique(
       input.reaction_laws.map((entry) => entry.id),
       'reaction_laws',
     );
@@ -477,6 +493,32 @@ export const spatialModelInputV2Schema = z
     const variables = new Map(
       input.variables.map((entry) => [entry.id, entry]),
     );
+    input.vector_outputs?.forEach((entry, index) => {
+      const path = ['vector_outputs', index] as (string | number)[];
+      if (variables.has(entry.id))
+        issue(
+          [...path, 'id'],
+          'Vector output ID must not shadow a state variable',
+        );
+      const x = variables.get(entry.components[0].variable_id);
+      const y = variables.get(entry.components[1].variable_id);
+      if (
+        !x ||
+        x.kind !== 'velocity_x' ||
+        !y ||
+        y.kind !== 'velocity_y' ||
+        x.unit !== y.unit
+      )
+        issue(
+          [...path, 'components'],
+          'Vector velocity requires declared x/y velocity states in the same canonical unit',
+        );
+      else if (!x.domain_tags.some((tag) => y.domain_tags.includes(tag)))
+        issue(
+          [...path, 'components'],
+          'Vector components require a shared physical domain',
+        );
+    });
     input.variables.forEach((entry, index) => {
       const path = ['variables', index] as (string | number)[];
       const spec = variableSpecs[entry.kind];
@@ -673,10 +715,13 @@ export const spatialModelInputV2Schema = z
     )
       issue(['circuit'], 'MEC requires a positive applied voltage in V');
     input.requested_outputs.forEach((id, index) => {
-      if (!variables.has(id))
+      if (
+        !variables.has(id) &&
+        !input.vector_outputs?.some((entry) => entry.id === id)
+      )
         issue(
           ['requested_outputs', index],
-          'Output requires a declared variable',
+          'Output requires a declared variable or vector view',
         );
     });
   });
