@@ -141,7 +141,7 @@ def solve_planar_darcy(
     velocity = fem.Function(velocity_space)
     darcy_expression = -mobility * ufl.grad(pressure)
     velocity.interpolate(
-        fem.Expression(darcy_expression, velocity_space.element.interpolation_points())
+        fem.Expression(darcy_expression, velocity_space.element.interpolation_points)
     )
     velocity.x.scatter_forward()
 
