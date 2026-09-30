@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  spatialSpeciesBudgetSchema,
+  spatialSpeciesBudgetResidual,
+  spatialSpeciesBudgetMatchesLaw,
+} from './spatial-species-budget';
 
 import {
   spatialModelInputV2Schema,
@@ -341,6 +346,7 @@ const conservationResidualSchema = z
     scope: z.enum(['global', 'domain', 'interface']),
     scope_tag: tag.optional(),
     absolute_residual: z.number().finite().nonnegative(),
+    species_budget: spatialSpeciesBudgetSchema.optional(),
     unit,
     relative_residual: z.number().finite().nonnegative(),
     tolerance: z.number().finite().nonnegative(),
@@ -348,6 +354,23 @@ const conservationResidualSchema = z
   })
   .strict()
   .superRefine((residual, context) => {
+    if (residual.species_budget) {
+      const measured = spatialSpeciesBudgetResidual(residual.species_budget);
+      if (
+        residual.kind !== 'species_mass' ||
+        residual.unit !== 'mol/(m*s)' ||
+        Math.abs(measured.absolute - residual.absolute_residual) >
+          1e-10 *
+            Math.max(measured.absolute, residual.absolute_residual, 1e-30) ||
+        Math.abs(measured.relative - residual.relative_residual) > 1e-12
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['species_budget'],
+          message:
+            'Species residual must match its measured production, loss and outward flux budget',
+        });
+    }
     if (residual.passed && residual.relative_residual > residual.tolerance)
       context.addIssue({
         code: 'custom',
@@ -786,6 +809,16 @@ export const spatialSimulationResultSchema = z
 
     for (const [index, residual] of result.conservation_residuals.entries()) {
       if (
+        residual.species_budget &&
+        (result.contract_version !== 'spatial-simulation-result-v2' ||
+          result.dimension !== 2 ||
+          result.coordinate_system !== 'cartesian')
+      )
+        issue(
+          ['conservation_residuals', index, 'species_budget'],
+          'Per-depth species budgets require Cartesian 2D result-v2',
+        );
+      if (
         residual.scope === 'domain' &&
         !domainTags.has(residual.scope_tag as string)
       )
@@ -874,6 +907,43 @@ export function spatialSimulationResultForInputSchema(
       issue(
         ['dimension'],
         'Result coordinates and dimension must match the input',
+      );
+
+    const transport =
+      input.darcy_transport_development ?? input.stokes_transport_development;
+    const law = transport?.linear_source_loss;
+    const budgets = result.conservation_residuals.filter(
+      (residual) => residual.species_budget,
+    );
+    const concentration = result.fields.find(
+      (field) => field.variable_id === transport?.concentration_variable,
+    );
+    if (law) {
+      const area =
+        input.geometry.height_m.value *
+        input.geometry.layers.reduce(
+          (sum, layer) => sum + layer.width_m.value,
+          0,
+        );
+      if (
+        budgets.length !== 1 ||
+        concentration?.value_type !== 'scalar' ||
+        !spatialSpeciesBudgetMatchesLaw(
+          budgets[0].species_budget!,
+          law,
+          transport!.concentration_variable,
+          area,
+          concentration.summary.integral,
+        )
+      )
+        issue(
+          ['conservation_residuals'],
+          'Source/loss runs require the measured budget bound to input and concentration integral',
+        );
+    } else if (budgets.length)
+      issue(
+        ['conservation_residuals'],
+        'Source-free input cannot claim a reaction budget',
       );
 
     const inputGroupTags = Object.keys(input.mesh.physical_groups).sort();

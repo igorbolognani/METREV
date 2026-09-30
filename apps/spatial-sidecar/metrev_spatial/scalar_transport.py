@@ -20,6 +20,8 @@ class PlanarScalarTransportResult:
     inlet_species_rate_mol_m_s_per_depth: float
     outlet_species_rate_mol_m_s_per_depth: float
     wall_species_rate_mol_m_s_per_depth: float
+    production_rate_mol_m_s_per_depth: float
+    consumption_rate_mol_m_s_per_depth: float
     relative_species_balance: float
     peclet_number: float
     minimum_concentration_mol_m3: float
@@ -40,16 +42,22 @@ def solve_planar_scalar_transport(
     outlet_concentration_mol_m3: float,
     effective_diffusivity_m2_s: float,
     characteristic_length_m: float,
+    linear_source_loss: tuple[float, float] | None = None,
 ) -> PlanarScalarTransportResult:
-    """Solve div(u_D c - D_eff grad(c))=0 with sourced port concentrations.
+    """Solve div(u c - D_eff grad(c)) = source - loss*c with declared coefficients.
 
     Declared superficial or bulk velocity is consumed as the advective flux. Concentration
     is P1. The conservative term div(u*c) retains div(u)*c, including
     any discrete divergence of a solved velocity; no divergence-free field
     is silently substituted. Concentration is fixed at both declared pressure ports and the walls
-    have zero normal Hydraulic and diffusive flux. Reactions, migration and
-    porous/bulk interfaces are outside this restricted operation.
+    have zero normal hydraulic and diffusive flux. An absent source/loss law means
+    the existing explicitly source-free formulation, not inferred coefficients.
+    Electrochemical/biological networks, migration and porous/bulk interfaces remain unsupported.
     """
+    source_rate, loss_rate = (0.0, 0.0) if linear_source_loss is None else linear_source_loss
+    for value in (source_rate, loss_rate):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+            raise ValueError("Scalar source and first-order loss must be finite and nonnegative")
     domain = mesh_data.mesh
     if velocity.ufl_domain() != domain.ufl_domain():
         raise ValueError("Transport velocity must use the exact same numerical mesh")
@@ -130,8 +138,9 @@ def solve_planar_scalar_transport(
     bilinear = (
         effective_diffusivity_m2_s * ufl.inner(ufl.grad(trial), ufl.grad(test))
         + ufl.div(velocity * trial) * test
+        + loss_rate * trial * test
     ) * dx
-    linear = fem.Constant(domain, PETSc.ScalarType(0.0)) * test * dx
+    linear = fem.Constant(domain, PETSc.ScalarType(source_rate)) * test * dx
     problem = LinearProblem(
         bilinear,
         linear,
@@ -165,8 +174,10 @@ def solve_planar_scalar_transport(
     wall_rate = math.fsum(
         integrated(ufl.dot(species_flux, normal) * ds(tag)) for tag in wall_ids
     )
-    balance_scale = max(abs(inlet_rate) + abs(outlet_rate) + abs(wall_rate), 1e-30)
-    relative_balance = abs(inlet_rate + outlet_rate + wall_rate) / balance_scale
+    production_rate = integrated(fem.Constant(domain, PETSc.ScalarType(source_rate)) * dx)
+    consumption_rate = integrated(loss_rate * concentration * dx)
+    balance_scale = max(abs(inlet_rate) + abs(outlet_rate) + abs(wall_rate) + production_rate + consumption_rate, 1e-30)
+    relative_balance = abs(inlet_rate + outlet_rate + wall_rate - production_rate + consumption_rate) / balance_scale
 
     inlet_measure = integrated(1.0 * ds(inlet_group.tag))
     if inlet_measure <= 0:
@@ -176,7 +187,7 @@ def solve_planar_scalar_transport(
     local_values = concentration.x.array[:]
     minimum = domain.comm.allreduce(float(np.min(local_values)), op=MPI.MIN)
     maximum = domain.comm.allreduce(float(np.max(local_values)), op=MPI.MAX)
-    diagnostics = (inlet_rate, outlet_rate, wall_rate, relative_balance, peclet, minimum, maximum)
+    diagnostics = (inlet_rate, outlet_rate, wall_rate, production_rate, consumption_rate, relative_balance, peclet, minimum, maximum)
     if any(not math.isfinite(value) for value in diagnostics):
         raise RuntimeError("Hydraulic transport produced non-finite diagnostics")
     if minimum < -1e-9 * max(1.0, maximum):
@@ -186,6 +197,8 @@ def solve_planar_scalar_transport(
         inlet_species_rate_mol_m_s_per_depth=inlet_rate,
         outlet_species_rate_mol_m_s_per_depth=outlet_rate,
         wall_species_rate_mol_m_s_per_depth=wall_rate,
+        production_rate_mol_m_s_per_depth=production_rate,
+        consumption_rate_mol_m_s_per_depth=consumption_rate,
         relative_species_balance=relative_balance,
         peclet_number=peclet,
         minimum_concentration_mol_m3=minimum,

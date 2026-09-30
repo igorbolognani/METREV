@@ -229,10 +229,41 @@ def validate_source_value(obj: object, unit: str, *, positive: bool = False) -> 
     return value
 
 
+def validate_linear_source_loss(transport: dict) -> None:
+    if "linear_source_loss" not in transport:
+        return
+    law = exact_keys(transport["linear_source_loss"], {"law", "source_rate_mol_m3_s", "loss_rate_per_s"})
+    if law["law"] != "constant_source_first_order_loss":
+        raise RequestError("Unsupported scalar source/loss law")
+    for name, unit in (("source_rate_mol_m3_s", "mol/(m3*s)"), ("loss_rate_per_s", "1/s")):
+        validate_source_value(law[name], unit)
+        if law[name]["value"] < 0:
+            raise RequestError("Scalar source/loss coefficients cannot be negative")
+
+
+def linear_source_loss_values(transport: dict):
+    law = transport.get("linear_source_loss")
+    return None if law is None else (law["source_rate_mol_m3_s"]["value"], law["loss_rate_per_s"]["value"])
+
+
+def scalar_species_budget(transport_setup: dict, transport) -> dict:
+    if "linear_source_loss" not in transport_setup:
+        return {}
+    return {"species_budget": {
+        "concentration_variable": transport_setup["concentration_variable"], "unit": "mol/(m*s)",
+        "inlet_outward_rate": transport.inlet_species_rate_mol_m_s_per_depth,
+        "outlet_outward_rate": transport.outlet_species_rate_mol_m_s_per_depth,
+        "wall_outward_rate": transport.wall_species_rate_mol_m_s_per_depth,
+        "production_rate": transport.production_rate_mol_m_s_per_depth,
+        "consumption_rate": transport.consumption_rate_mol_m_s_per_depth,
+    }}
+
+
 def validate_hydraulic_transport_setup(request: dict) -> None:
     transport = exact_keys(request["transport_setup"],
                            {"regime", "equation_ref", "domain_tag", "species_id",
-                            "concentration_variable", "velocity_variables", "inlet", "outlet"})
+                            "concentration_variable", "velocity_variables", "inlet", "outlet"}, {"linear_source_loss"})
+    validate_linear_source_loss(transport)
     flow = request["setup"]
     if transport["regime"] != "steady_advection_diffusion" or transport["equation_ref"] != "EQ-SP-001":
         raise RequestError("Unsupported neutral transport equation")
@@ -409,7 +440,8 @@ def validate_planar_darcy_transport_request(obj: object) -> dict:
         raise RequestError("Unsupported Darcy transport operation")
     transport = exact_keys(request["transport_setup"],
                            {"regime", "equation_ref", "domain_tag", "species_id",
-                            "concentration_variable", "velocity_variables", "inlet", "outlet"})
+                            "concentration_variable", "velocity_variables", "inlet", "outlet"}, {"linear_source_loss"})
+    validate_linear_source_loss(transport)
     if transport["regime"] != "steady_advection_diffusion" or transport["equation_ref"] != "EQ-SP-001":
         raise RequestError("Unsupported or unbound passive species transport setup")
     flow = request["setup"]
@@ -491,6 +523,7 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
                 outlet_concentration_mol_m3=transport_setup["outlet"]["concentration_mol_m3"]["value"],
                 effective_diffusivity_m2_s=request["effective_diffusivity"]["value"],
                 characteristic_length_m=length,
+                linear_source_loss=linear_source_loss_values(transport_setup),
             )
         except (ValueError, KeyError, StopIteration) as exc:
             raise RequestError(str(exc)) from exc
@@ -657,6 +690,7 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             "maximum_concentration_mol_m3": transport.maximum_concentration_mol_m3,
             "linear_iterations": transport.linear_iterations,
             "linear_converged_reason": transport.linear_converged_reason,
+            **scalar_species_budget(request["transport_setup"], transport),
         }}
         solver_diagnostics.append({"solver_id": "neutral_scalar_transport", "method": "petsc_preonly_lu",
                                    "status": "converged", "iterations": transport.linear_iterations,
@@ -847,6 +881,7 @@ def solve_planar_darcy_transport_request(request: dict, output_dir: Path, meta: 
             ),
             effective_diffusivity_m2_s=float(request["effective_diffusivity"]["value"]),
             characteristic_length_m=characteristic_length_m,
+            linear_source_loss=linear_source_loss_values(transport_setup),
         )
     except (ValueError, KeyError, StopIteration) as exc:
         raise RequestError(str(exc)) from exc
@@ -987,6 +1022,7 @@ def solve_planar_darcy_transport_request(request: dict, output_dir: Path, meta: 
         "maximum_concentration_mol_m3": transport.maximum_concentration_mol_m3,
         "transport_linear_iterations": transport.linear_iterations,
         "transport_linear_converged_reason": transport.linear_converged_reason,
+        **scalar_species_budget(transport_setup, transport),
     }
     solver_diagnostics = [
         {

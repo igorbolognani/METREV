@@ -19,7 +19,9 @@
       "derivation_rule": null,
       "physics": ["hydraulics"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "dynamic_viscosity_pa_s": {
       "meaning": "Dynamic viscosity of the declared liquid or pore-fluid phase",
@@ -30,7 +32,9 @@
       "derivation_rule": null,
       "physics": ["hydraulics"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "kinematic_viscosity_m2_s": {
       "meaning": "Liquid kinematic viscosity",
@@ -41,7 +45,9 @@
       "derivation_rule": "dynamic_viscosity_pa_s / fluid_density_kg_m3, same local conditions",
       "physics": ["hydraulics"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "hydraulic_permeability_m2": {
       "meaning": "Intrinsic permeability of porous media",
@@ -52,7 +58,9 @@
       "derivation_rule": null,
       "physics": ["darcy_flow", "brinkman_flow"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "porosity": {
       "meaning": "Connected pore volume fraction",
@@ -63,7 +71,10 @@
       "derivation_rule": null,
       "physics": ["porous_transport"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0, "max": 1 }
+      "bounds": {
+        "min": 0,
+        "max": 1
+      }
     },
     "tortuosity": {
       "meaning": "Effective path length correction",
@@ -74,7 +85,9 @@
       "derivation_rule": null,
       "physics": ["porous_transport"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 1 }
+      "bounds": {
+        "min": 1
+      }
     },
     "specific_surface_area_m2_m3": {
       "meaning": "Accessible internal area per porous volume",
@@ -85,7 +98,9 @@
       "derivation_rule": null,
       "physics": ["heterogeneous_reaction"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "effective_diffusivity_m2_s": {
       "meaning": "Species and domain specific effective diffusivity",
@@ -104,7 +119,9 @@
       "derivation_rule": "Only with source-backed species free diffusivity and declared porosity/tortuosity law",
       "physics": ["species_transport"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "effective_substrate_diffusivity_m2_s": {
       "meaning": "Substrate diffusivity in a specific biofilm",
@@ -115,7 +132,9 @@
       "derivation_rule": "Only with source-backed free diffusivity and local effective transport law",
       "physics": ["species_transport"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "solid_conductivity_s_m": {
       "meaning": "Electronic conductivity of electrode solid",
@@ -126,7 +145,9 @@
       "derivation_rule": null,
       "physics": ["electronic_charge"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "ionic_conductivity_s_m": {
       "meaning": "Ionic conductivity under declared electrolyte conditions",
@@ -144,7 +165,9 @@
       "derivation_rule": null,
       "physics": ["ionic_charge"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "biofilm_conductivity_s_m": {
       "meaning": "Local biofilm electron conductivity",
@@ -155,7 +178,9 @@
       "derivation_rule": null,
       "physics": ["biofilm_electron_transfer"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
     },
     "exchange_current_density_a_m2": {
       "meaning": "Protocol-specific interfacial exchange current density",
@@ -166,7 +191,9 @@
       "derivation_rule": null,
       "physics": ["charge_transfer"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "charge_transfer_coefficient": {
       "meaning": "Electrode charge transfer coefficient",
@@ -177,7 +204,10 @@
       "derivation_rule": null,
       "physics": ["charge_transfer"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0, "max": 1 }
+      "bounds": {
+        "min": 0,
+        "max": 1
+      }
     },
     "membrane_fixed_charge_mol_m3": {
       "meaning": "Fixed ionic charge per membrane pore volume",
@@ -188,7 +218,9 @@
       "derivation_rule": null,
       "physics": ["donnan_partition", "ionic_migration"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "partition_coefficient": {
       "meaning": "Species-specific membrane interface partition coefficient",
@@ -199,7 +231,9 @@
       "derivation_rule": null,
       "physics": ["donnan_partition"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "gas_transfer_coefficient_m_s": {
       "meaning": "Condition-specific gas/liquid mass transfer velocity",
@@ -210,7 +244,9 @@
       "derivation_rule": null,
       "physics": ["gas_transport"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "biomass_density_kg_m3": {
       "meaning": "Local biomass density",
@@ -221,7 +257,9 @@
       "derivation_rule": null,
       "physics": ["biofilm_kinetics"],
       "dimensions": [1, 2, 3],
-      "bounds": { "min": 0 }
+      "bounds": {
+        "min": 0
+      }
     },
     "half_saturation_cod_kg_m3": {
       "meaning": "Substrate half-saturation COD concentration",
@@ -232,7 +270,35 @@
       "derivation_rule": null,
       "physics": ["biofilm_kinetics"],
       "dimensions": [1, 2, 3],
-      "bounds": { "exclusive_min": 0 }
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "source_rate_mol_m3_s": {
+      "meaning": "Declared constant volumetric production of the transported neutral species",
+      "unit": "mol/(m3*s)",
+      "form": "scalar",
+      "domains": ["bulk_liquid", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["species_transport"],
+      "dimensions": [2],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "loss_rate_per_s": {
+      "meaning": "Declared first-order disappearance coefficient of the transported neutral species",
+      "unit": "1/s",
+      "form": "scalar",
+      "domains": ["bulk_liquid", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["species_transport"],
+      "dimensions": [2],
+      "bounds": {
+        "min": 0
+      }
     }
   }
 }

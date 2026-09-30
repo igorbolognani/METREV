@@ -5,6 +5,7 @@ import {
   spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
   spatialSimulationResultForInputSchema,
+  spatialSpeciesBudgetResidual,
   type SpatialModelInputV2,
   type SpatialSidecarRequest,
   type SpatialSidecarResponse,
@@ -260,11 +261,14 @@ function resultFromResponse(input: {
         balance_id: 'neutral_species_mass_balance',
         kind: 'species_mass' as const,
         scope: 'global' as const,
-        absolute_residual: Math.abs(
-          diagnostics.inlet_species_rate_mol_m_s_per_depth +
-            diagnostics.outlet_species_rate_mol_m_s_per_depth +
-            diagnostics.wall_species_rate_mol_m_s_per_depth,
-        ),
+        species_budget: diagnostics.species_budget,
+        absolute_residual: diagnostics.species_budget
+          ? spatialSpeciesBudgetResidual(diagnostics.species_budget).absolute
+          : Math.abs(
+              diagnostics.inlet_species_rate_mol_m_s_per_depth +
+                diagnostics.outlet_species_rate_mol_m_s_per_depth +
+                diagnostics.wall_species_rate_mol_m_s_per_depth,
+            ),
         unit: 'mol/(m*s)',
         relative_residual: diagnostics.relative_species_balance,
         tolerance: SPECIES_BALANCE_TOLERANCE,
@@ -316,7 +320,7 @@ function resultFromResponse(input: {
 
 /** Development-only adapter for the one-domain Darcy plus neutral passive-scalar limit. */
 export class DarcyDevelopmentExecutor implements SpatialSimulationExecutor {
-  readonly solverVersion = 'darcy-transport-development-v0.2.0';
+  readonly solverVersion = 'darcy-transport-development-v0.3.0';
   readonly runtimeVersion = 'spatial-sidecar-v1';
   private readonly options: DarcyDevelopmentExecutorOptions;
   private readonly sidecarRunner: SpatialSidecarRunner;
