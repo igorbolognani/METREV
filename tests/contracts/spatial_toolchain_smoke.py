@@ -760,6 +760,44 @@ def run_planar_darcy_transport_sidecar(fixture_mesh: dict) -> dict:
         assert diagnostics["relative_flow_balance"] < 1e-8
         assert diagnostics["relative_species_balance"] < 1e-2
         assert math.isclose(diagnostics["peclet_number"], peclet, rel_tol=1e-8)
+        summaries = {
+            item["field_name"]: item for item in response["field_summaries"]
+        }
+        assert list(summaries) == [
+            "pressure", "velocity_x", "velocity_y", "concentration"
+        ]
+        expected_integral_units = {
+            "pressure": "Pa*m2",
+            "velocity_x": "m3/s",
+            "velocity_y": "m3/s",
+            "concentration": "mol/m",
+        }
+        for name, summary in summaries.items():
+            assert summary["sample_count"] == response["mesh"]["node_count"]
+            assert summary["association"] == "mesh_nodes"
+            assert summary["integration_measure"] == "domain_area"
+            assert summary["minimum"] <= summary["mean"] <= summary["maximum"]
+            assert summary["integral_unit"] == expected_integral_units[name]
+        expected_mean_concentration = (
+            global_integral(exact_concentration * dx)
+            / global_integral(1.0 * dx)
+        )
+        assert abs(
+            summaries["concentration"]["mean"] - expected_mean_concentration
+        ) / max(1.0, abs(expected_mean_concentration)) < 2e-3
+        solver_diagnostics = response["solver_diagnostics"]
+        assert [item["solver_id"] for item in solver_diagnostics] == [
+            "darcy_pressure", "neutral_scalar_transport"
+        ]
+        assert all(
+            item["method"] == "petsc_preonly_lu"
+            and item["status"] == "converged"
+            and item["iterations"] > 0
+            and item["converged_reason"] > 0
+            for item in solver_diagnostics
+        )
+        assert solver_diagnostics[0]["iterations"] == diagnostics["darcy_linear_iterations"]
+        assert solver_diagnostics[1]["iterations"] == diagnostics["transport_linear_iterations"]
         xdmf = solution_directory / "darcy-transport-solution.xdmf"
         hdf5 = solution_directory / "darcy-transport-solution.h5"
         assert xdmf.is_file() and hdf5.is_file() and hdf5.stat().st_size > 0
