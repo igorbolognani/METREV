@@ -316,6 +316,7 @@ export const spatialSidecarResponseSchema = z.union([
       metadata: runtimeMetadata,
       model_input_contract_version: z.literal('spatial-input-v2'),
       model_input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      field_representation: z.literal('lagrange_p1_interpolation'),
       mesh: meshArtifact,
       field_datasets: z.tuple([
         stokesFieldDataset,

@@ -176,6 +176,7 @@ describe('isolated numerical sidecar boundary', () => {
       },
       model_input_sha256: 'a'.repeat(64),
       model_input_contract_version: 'spatial-input-v2',
+      field_representation: 'lagrange_p1_interpolation',
       mesh: {
         refinement_factor: 1,
         format: 'msh4',

@@ -301,6 +301,7 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
     try:
         from mpi4py import MPI
         import ufl
+        from dolfinx import fem
         from dolfinx.io import XDMFFile, gmsh as gmshio
         from .stokes import solve_planar_stokes
     except Exception as exc:
@@ -342,14 +343,23 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
 
         velocity_x = scalar_component(0)
         velocity_y = scalar_component(1)
-        velocity_x.name = "velocity_x"
-        velocity_y.name = "velocity_y"
-        result.pressure.name = "pressure"
+        output_space = fem.functionspace(mesh_data.mesh, ("Lagrange", 1))
+        exported_velocity_x = fem.Function(output_space)
+        exported_velocity_y = fem.Function(output_space)
+        exported_pressure = fem.Function(output_space)
+        exported_velocity_x.interpolate(velocity_x)
+        exported_velocity_y.interpolate(velocity_y)
+        exported_pressure.interpolate(result.pressure)
+        for field in (exported_velocity_x, exported_velocity_y, exported_pressure):
+            field.x.scatter_forward()
+        exported_velocity_x.name = "velocity_x"
+        exported_velocity_y.name = "velocity_y"
+        exported_pressure.name = "pressure"
         with XDMFFile(mesh_data.mesh.comm, str(xdmf_path), "w") as xdmf:
             xdmf.write_mesh(mesh_data.mesh)
-            xdmf.write_function(velocity_x, 0.0)
-            xdmf.write_function(velocity_y, 0.0)
-            xdmf.write_function(result.pressure, 0.0)
+            xdmf.write_function(exported_velocity_x, 0.0)
+            xdmf.write_function(exported_velocity_y, 0.0)
+            xdmf.write_function(exported_pressure, 0.0)
     except Exception as exc:
         raise SolverError(f"Unable to write Stokes XDMF/HDF5 fields: {exc}") from exc
     expected_datasets = {
@@ -406,6 +416,7 @@ def solve_planar_stokes_request(request: dict, output_dir: Path, meta: dict) -> 
             "operation": "planar_stokes", "metadata": meta,
             "model_input_contract_version": request["model_input_contract_version"],
             "model_input_sha256": request["model_input_sha256"],
+            "field_representation": "lagrange_p1_interpolation",
             "mesh": mesh_record, "physical_groups": physical_groups,
             "diagnostics": diagnostics, "solution_artifacts": solution_files,
             "field_datasets": field_datasets}
