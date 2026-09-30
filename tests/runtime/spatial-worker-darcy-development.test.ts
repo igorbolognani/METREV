@@ -412,11 +412,27 @@ describe('development Darcy transport worker adapter', () => {
         const fieldStore = new LocalSpatialFieldArtifactStore({
           rootDirectory: join(root, 'fields'),
         });
-        const executor = new DarcyDevelopmentExecutor({
+        const nativeExecutor = new DarcyDevelopmentExecutor({
           ...sidecarOptions,
           meshArtifactStore: meshStore,
           fieldArtifactStore: fieldStore,
         });
+        const executionErrors: unknown[] = [];
+        const executor = {
+          solverVersion: nativeExecutor.solverVersion,
+          runtimeVersion: nativeExecutor.runtimeVersion,
+          supports: nativeExecutor.supports.bind(nativeExecutor),
+          execute: async (
+            ...args: Parameters<typeof nativeExecutor.execute>
+          ) => {
+            try {
+              return await nativeExecutor.execute(...args);
+            } catch (error) {
+              executionErrors.push(error);
+              throw error;
+            }
+          },
+        };
         const repository = new MemorySpatialSimulationRunRepository();
         const { run } = await repository.createOrGet({
           owner_id: ownerId,
@@ -437,7 +453,14 @@ describe('development Darcy transport worker adapter', () => {
           executor,
           workerId: 'darcy-native-test-worker',
         });
-        expect(cycle).toMatchObject({ claimed: 1, completed: 1, failed: 0 });
+        expect(
+          cycle,
+          `Native worker error: ${
+            executionErrors[0] instanceof Error
+              ? (executionErrors[0].stack ?? executionErrors[0].message)
+              : String(executionErrors[0] ?? 'unknown failure')
+          }`,
+        ).toMatchObject({ claimed: 1, completed: 1, failed: 0 });
         const completed = await repository.getOwnedRun(run.id, ownerId);
         expect(completed).toMatchObject({
           status: 'completed',
