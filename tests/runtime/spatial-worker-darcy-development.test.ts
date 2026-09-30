@@ -23,7 +23,10 @@ import { runSpatialSidecar } from '@metrev/spatial-sidecar-client';
 import { describe, expect, it } from 'vitest';
 
 import { buildApp } from '../../apps/api-server/src/app';
-import { darcyTransportInput } from '../fixtures/spatial-input-v2';
+import {
+  darcyTransportInput,
+  digestRequest,
+} from '../fixtures/spatial-input-v2';
 import { DarcyDevelopmentExecutor } from '../../packages/spatial-worker/src/darcy-development-executor';
 import type { SpatialSidecarRunner } from '../../packages/spatial-worker/src/darcy-development-executor';
 import { runSpatialSimulationWorkerCycle } from '../../packages/spatial-worker/src/worker';
@@ -374,8 +377,18 @@ describe('development Darcy transport worker adapter', () => {
           artifactRoot,
           timeoutMs: 120_000,
         };
+        const inputCandidate = spatialModelInputV2Schema.parse(
+          darcyTransportInput(),
+        );
+        inputCandidate.geometry.layers[0].width_m.value = 0.01;
+        inputCandidate.geometry.target_size_m.value = 0.00025;
+        inputCandidate.mesh.request.mesh.layers[0].width_m.value = 0.01;
+        inputCandidate.mesh.request.mesh.target_size_m.value = 0.00025;
+        inputCandidate.mesh.input_sha256 = digestRequest(
+          inputCandidate.mesh.request,
+        );
         const meshRun = await runSpatialSidecar(
-          spatialModelInputV2Schema.parse(darcyTransportInput()).mesh.request,
+          inputCandidate.mesh.request,
           sidecarOptions,
         );
         if (
@@ -399,13 +412,13 @@ describe('development Darcy transport worker adapter', () => {
         if (!gmshVersion || !sidecarVersion)
           throw new Error('Pinned sidecar omitted runtime versions');
 
-        const input = spatialModelInputV2Schema.parse(darcyTransportInput());
-        input.mesh.sha256 = sha256(meshBytes);
-        input.mesh.gmsh_version = gmshVersion;
-        input.mesh.sidecar_version = sidecarVersion;
-        input.mesh.physical_groups = meshRun.response.physical_groups;
-        input.mesh.component_map = meshRun.response.component_map;
-        input.mesh.interfaces = meshRun.response.interfaces;
+        inputCandidate.mesh.sha256 = sha256(meshBytes);
+        inputCandidate.mesh.gmsh_version = gmshVersion;
+        inputCandidate.mesh.sidecar_version = sidecarVersion;
+        inputCandidate.mesh.physical_groups = meshRun.response.physical_groups;
+        inputCandidate.mesh.component_map = meshRun.response.component_map;
+        inputCandidate.mesh.interfaces = meshRun.response.interfaces;
+        const input = spatialModelInputV2Schema.parse(inputCandidate);
         const permeability = input.material_fields.find(
           ({ parameter_id }) => parameter_id === 'hydraulic_permeability_m2',
         );
