@@ -10,6 +10,8 @@ const env = Object.fromEntries(
 );
 Object.assign(env, {
   METREV_SPATIAL_E2E: '1',
+  PORT: '4024',
+  HOST: '127.0.0.1',
   METREV_STORAGE_MODE: 'postgres',
   AUTH_URL: webURL,
   NEXT_PUBLIC_API_BASE_URL: apiURL,

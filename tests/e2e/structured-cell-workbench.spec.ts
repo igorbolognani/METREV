@@ -82,15 +82,31 @@ test('2D and 3D fields, probes, reload, slices and report downloads', async ({
       (p: { source_kind: string }) => p.source_kind === 'test_fixture',
     ),
   ).toBe(true);
+  let releaseMesh!: () => void;
+  const heldMesh = new Promise<void>((resolve) => {
+    releaseMesh = resolve;
+  });
+  await page.route('**/api/spatial-simulations/*/mesh', async (route) => {
+    await heldMesh;
+    await route.continue();
+  });
   await enqueue(page, 3);
   await expect(
     page.getByText('3D · completed · 100%', { exact: true }),
   ).toBeVisible();
+  // The preceding 2D field must disappear while the new geometry is in flight.
+  await expect(
+    page.getByRole('img', {
+      name: 'concentration_reduced numerical cell field',
+    }),
+  ).toHaveCount(0);
+  releaseMesh();
   await expect(
     page.getByRole('img', {
       name: 'concentration_reduced numerical cell field',
     }),
   ).toBeVisible();
+  await page.unroute('**/api/spatial-simulations/*/mesh');
   await page.getByLabel('Z slice', { exact: true }).focus();
   await page.getByLabel('Z slice', { exact: true }).press('ArrowRight');
   await expect(
