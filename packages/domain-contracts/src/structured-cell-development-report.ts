@@ -250,11 +250,13 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     },
     enabled_physics: [
       'steady_trace_species_diffusion_migration',
-      'mass_action_or_monod_reactions',
+      ...new Set(
+        run.input_snapshot.reactions.map((r) => `${r.law.kind}_reactions`),
+      ),
       'volumetric_butler_volmer',
       'fixed_conductivity_liquid_charge',
       'electrode_solid_charge',
-      'mfc_or_mec_circuit',
+      run.system === 'MFC' ? 'mfc_external_load' : 'mec_applied_voltage',
     ],
     convergence: run.result.convergence,
     conservation_residuals: run.result.conservation_residuals,

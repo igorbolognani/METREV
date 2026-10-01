@@ -111,6 +111,8 @@ describe('structured cell native worker and authenticated artifacts', () => {
           uncertainty: 0.1,
           uncertainty_unit: 'K',
         });
+        expect(report.enabled_physics).not.toContain('mass_action_reactions');
+        expect(report.enabled_physics).toContain('mfc_external_load');
         expect(report.verification_status.mesh_refinement).toBe(
           'not_assessed_for_this_run',
         );

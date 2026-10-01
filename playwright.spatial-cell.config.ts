@@ -54,6 +54,7 @@ export default defineConfig({
       env,
       timeout: 90000,
       reuseExistingServer: false,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 10000 },
     },
     {
       command: 'pnpm --filter @metrev/web-ui dev --port 3024',
@@ -61,6 +62,7 @@ export default defineConfig({
       env,
       timeout: 180000,
       reuseExistingServer: false,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 10000 },
     },
   ],
 });
