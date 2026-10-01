@@ -199,6 +199,7 @@ export function SpatialCellWorkbench() {
           }}
         />
         <textarea
+          aria-label="Cell input JSON"
           className="mt-2 min-h-48 w-full rounded border p-3 font-mono text-sm"
           value={source}
           onChange={(event) => setSource(event.target.value)}
