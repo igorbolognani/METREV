@@ -1,6 +1,6 @@
 # Restricted cell verification and product batch — 2026-10-01
 
-This batch starts at main `72acd35bc027e373e37e163c316ef62b60af1efd`, after PR #113 merged at 20:45 UTC. That PR's CI run `36861845705` and CodeQL run `36861845678` succeeded. Earlier dated audits remain historical checkpoints. This branch has no merge authorization.
+This batch starts at main `72acd35bc027e373e37e163c316ef62b60af1efd`, after PR #113 merged at 20:45 UTC. That PR's CI run `36861845705` and CodeQL run `36861845678` succeeded. Earlier dated audits remain historical checkpoints. The implementation is published as draft PR #114 on `codex/spatial-verification-product-batch`, without merge.
 
 ## Delivered scope
 

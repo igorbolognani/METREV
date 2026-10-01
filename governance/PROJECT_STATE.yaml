@@ -46,6 +46,6 @@ snapshot:
   integrated_pr_ci: success_run_36861845705
   integrated_pr_codeql: success_run_36861845678
   development_branch: codex/spatial-verification-product-batch
-  development_pr: null
-  integration_state: development_branch_not_merged
+  development_pr: 114
+  integration_state: open_draft_not_merged
   release_gate: pending_independent_review_required_ci_and_general_product_dependencies

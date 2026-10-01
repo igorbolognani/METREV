@@ -60,7 +60,7 @@ stages:
     period: '2026-10-01'
     state: development_pr_not_merged
     branch: codex/spatial-verification-product-batch
-    pull_request: null
+    pull_request: 114
     base_main: 72acd35bc027e373e37e163c316ef62b60af1efd
     sources:
       - tests/contracts/test_spatial_cell_verification.py
