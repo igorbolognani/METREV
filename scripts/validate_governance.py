@@ -24,6 +24,7 @@ def validate() -> None:
     maturity = read("SCIENTIFIC_MATURITY.yaml")
     matrix = read("CAPABILITY_MATRIX.yaml")
     state = read("PROJECT_STATE.yaml")
+    timeline = read("DEVELOPMENT_TIMELINE.yaml")
     risks = read("RISK_REGISTER.yaml")
     brief = (GOV / "MASTER_EXECUTION_TASK.md").read_text(encoding="utf-8")
     program = brief.split("# 28. COMPLETE 40-POINT IMPLEMENTATION PROGRAM", 1)[1].split(
@@ -41,6 +42,24 @@ def validate() -> None:
     assert graph["source"] == "ROADMAP.yaml"
     assert state["roadmap"] == "ROADMAP.yaml"
     assert state["model_registry"] == "CAPABILITY_MATRIX.yaml"
+    assert state["development_timeline"] == "DEVELOPMENT_TIMELINE.yaml"
+    assert (ROOT / state["reconciliation_checkpoint"]).is_file()
+    assert timeline["observed_on"] == state["snapshot"]["observed_on"]
+    assert timeline["current_requirements"] == "governance/MASTER_EXECUTION_TASK.md"
+    assert timeline["current_operating_rules"] == "AGENTS.md"
+    assert timeline["checkpoint"] == state["reconciliation_checkpoint"]
+    assert timeline["phase_2_functional"] is False
+    assert timeline["phase_3_functional"] is False
+    stages = timeline["stages"]
+    assert len({stage["id"] for stage in stages}) == len(stages)
+    for stage in stages:
+        assert stage["period"] and stage["meaning"] and stage["sources"]
+        if stage["state"] in {"current_requirements", "integrated_main", "development_pr_not_merged"}:
+            assert all((ROOT / path).is_file() for path in stage["sources"])
+    review_stage = next(stage for stage in stages if stage["state"] == "development_pr_not_merged")
+    assert review_stage["base_main"] == state["snapshot"]["integrated_main_head"]
+    assert review_stage["branch"] == state["snapshot"]["development_branch"]
+    assert review_stage["pull_request"] == state["snapshot"]["development_pr"]
     assert len(risks["risks"]) >= 10
     for risk in risks["risks"]:
         assert risk["severity"] and risk["likelihood"] and risk["verification"]
@@ -95,7 +114,38 @@ def validate() -> None:
         assert bool(spec["derivation_rule"]) == spec["derivable"]
     catalog = {profile["id"]: profile for profile in domain["fidelities"]}
     models = {entry["model_id"]: entry for entry in matrix["models"]}
+    assert matrix["coverage_scope"] == "catalog_case_runner_fidelities"
     assert len(models) == len(matrix["models"]) and set(models) == set(catalog)
+    profiles = matrix["development_profiles"]
+    assert len({profile["model_id"] for profile in profiles}) == len(profiles)
+    for profile in profiles:
+        identifier = profile["model_id"]
+        assert identifier not in models, "A development profile must not silently activate a catalog fidelity"
+        assert profile["numerical_maturity"] == "numerically_implemented"
+        assert profile["experimental_maturity"] == "none"
+        assert profile["case_runner"] is False
+        assert profile["product_admission"] is False
+        assert profile["decision_eligible"] is False
+        for key in ("runtime_source", "validator_source", "worker_source", "adapter_source",
+                    "api_configuration_source", "ui_source", "numerical_test", "worker_api_test"):
+            assert (ROOT / profile[key]).is_file(), (identifier, key)
+        validator = (ROOT / profile["validator_source"]).read_text()
+        numerical_runtime = (ROOT / profile["runtime_source"]).read_text()
+        assert identifier in validator and identifier in numerical_runtime
+        assert profile["input_contract"] in validator and profile["input_contract"] in numerical_runtime
+        assert profile["result_contract"] in (ROOT / profile["worker_source"]).read_text()
+        assert set(profile["dimensions"]) == {2, 3}
+        boundary = yaml.safe_load((ROOT / "bioelectro-copilot-contracts/contracts/spatial_cell_input_v1.yaml").read_text())
+        equations = yaml.safe_load((ROOT / boundary["scientific_authority"]).read_text())
+        assert boundary["runtime_validator"] == profile["validator_source"]
+        assert boundary["model_id"] == equations["model_id"] == identifier
+        assert boundary["version"] == profile["input_contract"]
+        assert boundary["results"]["version"] == profile["result_contract"]
+        assert equations["supported_dimensions"] == profile["dimensions"]
+        assert equations["product_decision_eligibility"] is False
+        assert equations["independent_validation"] == "absent"
+        assert equations["verification"] == profile["numerical_test"]
+        assert profile["remaining_gates"], "Development maturity requires explicit remaining gates"
     required_scales = {"0D", "1D", "2D", "3D", "macro_stack", "micro_porous_electrode", "nano_interface"}
     required_features = {
         "mass_balance", "species_diffusion", "species_convection", "ionic_migration",

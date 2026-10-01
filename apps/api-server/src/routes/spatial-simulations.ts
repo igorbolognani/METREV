@@ -15,9 +15,10 @@ import {
   type SpatialSimulationRunRepository,
 } from '@metrev/database';
 import {
-  spatialModelInputV2Schema,
-  spatialModelInputV2Sha256,
-  type SpatialModelInputV2,
+  spatialRuntimeInputSchema,
+  spatialRuntimeInputSha256,
+  spatialRuntimeMeshRequestSha256,
+  type SpatialRuntimeInput,
 } from '@metrev/domain-contracts';
 
 const runParamsSchema = z
@@ -28,7 +29,7 @@ const fieldParamsSchema = runParamsSchema.extend({
 });
 const createRequestSchema = z
   .object({
-    input: spatialModelInputV2Schema,
+    input: spatialRuntimeInputSchema,
     evaluation_id: z.string().trim().min(1).max(160).nullable().optional(),
   })
   .strict();
@@ -36,7 +37,7 @@ const createRequestSchema = z
 export interface SpatialSimulationRunAdmission {
   solverVersion: string;
   runtimeVersion: string;
-  supports(input: SpatialModelInputV2): boolean;
+  supports(input: SpatialRuntimeInput): boolean;
 }
 
 export interface SpatialFieldArtifactReader {
@@ -201,10 +202,10 @@ export async function registerSpatialSimulationRoutes(
         system: model.system,
         dimension: model.dimension,
         input_contract_version: model.contract_version,
-        input_sha256: spatialModelInputV2Sha256(model),
+        input_sha256: spatialRuntimeInputSha256(model),
         solver_version: admission.solverVersion,
         runtime_version: admission.runtimeVersion,
-        mesh_request_sha256: model.mesh.input_sha256,
+        mesh_request_sha256: spatialRuntimeMeshRequestSha256(model),
         input_snapshot: model,
       });
       reply.header('Location', `/api/spatial-simulations/${created.run.id}`);
@@ -234,10 +235,16 @@ export async function registerSpatialSimulationRoutes(
       : reply.code(404).send({ error: 'not_found' });
   });
 
-  app.get('/:runId/fields/:fieldId', async (request, reply) => {
+  const downloadArtifact = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    mesh = false,
+  ) => {
     const actor = authorize(request, reply, 'VIEWER');
     if (!actor) return reply;
-    const params = fieldParamsSchema.safeParse(request.params);
+    const params = mesh
+      ? runParamsSchema.safeParse(request.params)
+      : fieldParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.code(400).send({
         error: 'invalid_input',
@@ -248,11 +255,20 @@ export async function registerSpatialSimulationRoutes(
       actor.userId,
     );
     if (!run) return reply.code(404).send({ error: 'not_found' });
-    if (run.status !== 'completed' || !run.result)
+    if (!['completed', 'failed'].includes(run.status) || !run.result)
       return reply.code(409).send({ error: 'field_not_available' });
-    const field = run.result.fields.find(
-      (candidate) => candidate.field_id === params.data.fieldId,
-    );
+    if (mesh && run.result.contract_version !== 'spatial-simulation-result-v3')
+      return reply.code(422).send({ error: 'mesh_download_unsupported' });
+    const field = mesh
+      ? {
+          field_id: '_mesh',
+          artifact: { ...run.result.mesh.artifact, dataset_path: '/mesh' },
+        }
+      : run.result.fields.find(
+          (candidate) =>
+            candidate.field_id ===
+            ('fieldId' in params.data ? params.data.fieldId : null),
+        );
     if (!field) return reply.code(404).send({ error: 'not_found' });
     const reader = app.spatialFieldArtifactReader;
     if (!reader)
@@ -292,7 +308,13 @@ export async function registerSpatialSimulationRoutes(
         return reply.code(502).send({ error: 'artifact_integrity_failure' });
       return reply.code(502).send({ error: 'artifact_store_read_failed' });
     }
-  });
+  };
+  app.get('/:runId/fields/:fieldId', (request, reply) =>
+    downloadArtifact(request, reply),
+  );
+  app.get('/:runId/mesh', (request, reply) =>
+    downloadArtifact(request, reply, true),
+  );
 
   app.delete('/:runId', async (request, reply) => {
     const actor = authorize(request, reply, 'ANALYST');

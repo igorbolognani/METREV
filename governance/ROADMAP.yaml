@@ -1,5 +1,7 @@
 schema_version: 1
 source: MASTER_EXECUTION_TASK.md
+status_scope: full_source_requirements_and_product_dependency_gates
+development_progress_source: CAPABILITY_MATRIX.yaml#development_profiles
 work_items:
   - id: P01
     title: Close the common engine architecture before writing large 2D PDE code
@@ -44,8 +46,8 @@ work_items:
       - packages/domain-contracts/
       - packages/electrochem-models/
     blockers:
-      - v2 currently covers planar 2D research input; 1D/3D geometry variants and full case intake pending
-      - Local artifact adapter verifies and owner-scopes mesh reads; product-authenticated artifact access is not integrated
+      - v2 covers planar research input; separate spatial-cell-input-v1 validates restricted steady orthogonal 2D/3D cells. Full stack-driven case intake and general dimensional geometry remain pending
+      - Authenticated development API reads hash-verified local mesh/field artifacts; production artifact storage and case-runner integration remain pending
   - id: P03
     title: Expand the physical vocabulary needed by PDE models
     phase: foundation
@@ -92,8 +94,8 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; same-domain neutral scalar transport is verified for restricted Stokes and Darcy operations, while reactive/ionic multi-region coupling and a production solver adapter remain absent
-      - The worker and authenticated API exist; product authorization for mesh artifacts, a production artifact provider and a deployed solver remain pending; local filesystem adapter is development-only
+      - Pinned DOLFINx/PETSc imports tagged planar meshes, solves affine Poisson and restricted Stokes development smoke cases, and returns hash-checked XDMF/HDF5 datasets in CI; same-domain neutral scalar transport is verified for restricted Stokes and Darcy operations, while general FEM reactive/ionic multi-region coupling and a production solver adapter remain absent. A separate SciPy finite-volume structured-cell development executor now couples trace species, reactions, liquid/solid potentials and circuit under fixed supporting-electrolyte assumptions
+      - The worker and authenticated API exist; production mesh-artifact authorization/deployment, a durable production provider and a deployed solver remain pending; local filesystem adapter is development-only
   - id: P05
     title: Build geometry and mesh infrastructure before broad 2D physics
     phase: P2
@@ -146,7 +148,7 @@ work_items:
       - apps/
     blockers:
       - An isolated scalar finite-volume kernel has bounded steady, transient, heterogeneous-interface and prescribed constant/cellwise divergence-checked velocity verification on 1D/2D/3D orthogonal grids; it remains disconnected from Gmsh and simulation cases. The shared DOLFINx neutral scalar kernel transfers solved Stokes/Darcy velocity on one tagged domain; the mesh benchmark is not a product solver or cell physics; P03 and P05 remain partial
-      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; electrochemical reaction networks, full-cell hydraulic integration, electromigration, electrolyte and solid charge, physical region interfaces, circuit closure and nonlinear convergence remain unimplemented in spatial runtime
+      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; the separate structured-cell development runtime implements steady species/reaction/charge/interface/circuit assembly and sparse Newton in 2D/3D. Full-cell hydraulic coupling, full electroneutral species closure, charged membrane interfaces, coupled refinement and product integration remain pending
     gate_evidence:
       GATE-SCALAR-SOURCE-LOSS: The shared native same-domain Stokes/Darcy scalar kernel supports sourced constant production and first-order loss; analytic production/loss/equilibrium fixtures refine on three meshes and native worker/API cases persist an input-bound measured species budget. This does not close charge, network, interface or nonlinear cell gates
       GATE-MASS-CONSERVATION: A scalar finite-volume fixture checks integrated source and first-order disappearance against prescribed diffusive and upwind advective boundary flux and verifies affine isotropic/diagonal-anisotropic, manufactured and two-material interface solutions in 1D/2D/3D; this is not coupled species/charge conservation
@@ -208,6 +210,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Structured-cell electrode kinetics and homogeneous mass-action/Monod reactions are development precursors; spatial biofilm growth, guilds and coupled flow remain pending
   - id: P09
     title: Generalize membrane physics beyond the restricted 1D reduction
     phase: P2
@@ -232,6 +235,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Structured-cell interfaces use continuous concentration/potential and supporting electrolyte; selective charged membrane and Donnan laws remain pending
   - id: P10
     title: Implement a resolved cathode model
     phase: P2
@@ -256,6 +260,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Structured-cell volumetric cathode kinetics and solid potential exist in development; general resolved cathode transport and gas physics remain pending
   - id: P11
     title: Implement a robust numerical strategy
     phase: P2
@@ -284,6 +289,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Restricted structured-cell sparse analytic Newton, positivity backtracking and failure diagnostics exist; continuation, coupled refinement and general robust/scalable solver strategy remain pending
   - id: P12
     title: Turn the 2D research profile into actual executable functionality
     phase: P2
@@ -333,6 +339,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Structured-cell equilibrium, directional Jacobian, extrusion, energy sign and failure fixtures exist; coupled mesh refinement, representative nonuniform benchmarks and general verification gates remain pending
   - id: P14
     title: Create a spatial result contract
     phase: P2
@@ -358,12 +365,12 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider and the viewer is absent
+      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider; a restricted structured-cell slice viewer exists with browser acceptance pending
       - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
       - Returned state fields must contain every requested variable or explicitly composed planar x/y velocity vector and no unrequested variable; independent derived metrics and broader vector output authority beyond planar velocity remain pending
-      - The explicit development worker has restricted Darcy-transport and single-liquid Stokes adapters that project solver fields into input-bound result-v2 manifests using owner-scoped local stores; CI verifies both through the pinned native worker/API path, while production artifact storage, the viewer, and application solver admission remain pending
+      - The explicit development worker has restricted Darcy-transport and single-liquid Stokes adapters that project solver fields into input-bound result-v2 manifests using owner-scoped local stores; CI verifies both through the pinned native worker/API path, while production artifact storage and general catalog solver admission remain pending. Structured-cell result-v3 additionally retains source-bound JSON fields and numerical mesh for completed and failed runs
     gate_evidence:
-      GATE-CONTRACT: spatial-simulation-result-v2 rejects inconsistent domains, field references, hash lists, metric derivations and completion identity; v1 result snapshots remain readable, while new input-bound persistence requires v2 and checks mesh topology and requested state outputs
+      GATE-CONTRACT: spatial-simulation-result-v2 rejects inconsistent domains, field references, hash lists, metric derivations and completion identity; v1 result snapshots remain readable, while input-bound persistence requires v2 or v3 according to input identity and checks mesh topology and requested state outputs
       GATE-PROVENANCE: result and scalar outputs bind to run, model, input hash and content-addressed mesh/field references
       GATE-UNITS: field state units are checked against authority-validated immutable input before completed or failed persistence; integral units are checked against field units and Cartesian mesh dimension, while axisymmetric domain-volume and boundary-area integrals use the physical 3D measure; scalar and planar velocity-component metrics must declare a field statistic and match its value and unit
   - id: P15
@@ -392,7 +399,7 @@ work_items:
       - apps/
     blockers:
       - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large durable artifact provider remain unverified
-      - The pluggable worker runtime, authenticated owner-scoped API and explicit development-only Darcy and single-liquid Stokes executors are implemented; CI exercises both through the pinned DOLFINx/PETSc/Gmsh worker and verified field API, while an explicit bounded Docker sidecar transport is implemented; product solver admission, durable production storage and deployed worker limits remain pending
+      - The pluggable worker runtime, authenticated owner-scoped API and opt-in Darcy, Stokes and structured-cell development executors are implemented; Merged CI exercises the Stokes/Darcy adapters through the pinned DOLFINx/PETSc/Gmsh worker and verified field API; the structured cell uses native SciPy with memory-repository/API checks, while an explicit bounded Docker sidecar transport is implemented; product solver admission, durable production storage and deployed worker limits remain pending
     gate_evidence:
       GATE-PERSISTENCE: result metadata is capped at 2 MiB of UTF-8 JSON before persistence; schema-valid large diagnostic-history fixtures are rejected without advancing the run, with memory and PostgreSQL regression coverage
       GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; CI checks this route with output from the pinned native worker sidecar, while durable production storage remains unverified
@@ -420,7 +427,7 @@ work_items:
       - apps/
     blockers:
       - Durable snapshots, idempotent claims, leases, cancellation, bounded retry lineage, owner-scoped API routes and verified field reads are implemented; the worker emits structured per-run lifecycle events and persists stable, sanitized sidecar failure reasons. Worker deadlines and cancellation terminate the isolated sidecar process group, while per-run Docker CPU/memory/PID/temp limits are implemented and deployed worker limits and application solver admission remain pending
-      - No product spatial solver or production field store is registered; API run admission remains fail-closed by default, and the bounded Docker sidecar profile is implemented; deployed worker and database resource enforcement still require an operational target
+      - No general catalog spatial solver or production field store is registered; API run admission remains fail-closed by default and may load an explicit development adapter via METREV_SPATIAL_API_RUNTIME_MODULE, and the bounded Docker sidecar profile is implemented; deployed worker and database resource enforcement still require an operational target
     gate_evidence:
       GATE-CONTRACT: Spatial input hashes bind run identity; owner scoping, role checks, retry idempotency, cancellation, worker deadlines, service shutdown (including claim races), strict operational configuration, container invocation and named-container cleanup on success/failure/abort/timeout, and field-byte hash verification pass focused tests
   - id: P17
@@ -476,6 +483,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Standalone spatial JSON workbench queues the exact development profile; stack-to-equation graph and full case configuration remain pending
   - id: P19
     title: Build proper 2D visualization
     phase: P2
@@ -500,6 +508,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Restricted actual-mesh XY cell field view and real z-slice selection exist; browser verification, vector/probe comparison and integrated report views remain pending
   - id: P20
     title: Define when Phase 2 is actually complete
     phase: P2
@@ -554,6 +563,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - One restricted 2D/3D finite-volume assembly exists as an architectural precursor; P20 is not complete and this does not open Phase 3 product gates
   - id: P22
     title: Create cell-scale 3D geometry
     phase: P3
@@ -579,6 +589,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Source-backed orthogonal structured 3D layers exist in the development profile; broad cell geometry, tagged unstructured meshes and Phase 2 prerequisites remain pending
   - id: P23
     title: Extend hydraulics to 3D
     phase: P3
@@ -629,6 +640,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Restricted steady 3D species/charge/reactions use the common assembly; coupled hydraulics, broad refinement/performance and Phase 3 product prerequisites remain pending
   - id: P25
     title: Do not resolve nano/pore geometry inside the full cell mesh by default
     phase: P3
@@ -893,6 +905,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; cell-specific PostgreSQL reload and browser acceptance remain pending
   - id: P36
     title: Expand CI without making every PR prohibitively expensive
     phase: P2
@@ -958,6 +971,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - Catalog and isolated development identities are machine-checked separately; synthetic verification does not promote experimental or product maturity
   - id: P39
     title: Follow a practical implementation sequence
     phase: foundation

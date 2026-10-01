@@ -1,4 +1,6 @@
 schema_version: 1
+coverage_scope: catalog_case_runner_fidelities
+# Development executors below have separate identities and do not activate catalog profiles.
 models:
   - model_id: coupled-0d-dae-v1
     catalog_status: executable
@@ -260,3 +262,30 @@ development_operations:
     native_verification_source: tests/contracts/spatial_toolchain_smoke.py
     native_worker_test: tests/runtime/spatial-worker-darcy-development.test.ts
     experimental_maturity: none
+development_profiles:
+  - model_id: structured-cell-supporting-electrolyte-v1
+    input_contract: spatial-cell-input-v1
+    result_contract: spatial-simulation-result-v3
+    dimensions: [2, 3]
+    numerical_maturity: numerically_implemented
+    experimental_maturity: none
+    case_runner: false
+    product_admission: false
+    decision_eligible: false
+    runtime_source: apps/spatial-sidecar/metrev_spatial/structured_cell.py
+    validator_source: packages/domain-contracts/src/structured-cell-schema.ts
+    worker_source: packages/spatial-worker/src/structured-cell-executor.ts
+    adapter_source: packages/spatial-worker/src/structured-cell-development-adapter.ts
+    api_configuration_source: apps/api-server/src/spatial-runtime.ts
+    ui_source: apps/web-ui/src/components/modeling/spatial-cell-workbench.tsx
+    numerical_test: tests/contracts/test_spatial_structured_cell.py
+    worker_api_test: tests/runtime/structured-cell-worker.test.ts
+    scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_mfc_mec_circuit
+    remaining_gates:
+      - coupled_mesh_refinement
+      - case_runner_and_stack_composition
+      - postgres_cell_roundtrip
+      - browser_cell_workbench
+      - production_artifact_provider_and_deployment
+      - matched_experimental_comparison
+      - independent_validation

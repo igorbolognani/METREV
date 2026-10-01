@@ -3,6 +3,7 @@ import { assertRuntimeDatabaseReady } from '@metrev/database';
 import { initializeTelemetry } from '@metrev/telemetry/node';
 
 import { buildApp } from './app';
+import { configuredSpatialRuntime } from './spatial-runtime';
 
 async function start(): Promise<void> {
   const port = Number(process.env.PORT ?? 4000);
@@ -13,7 +14,7 @@ async function start(): Promise<void> {
     await initializeTelemetry('metrev-api-server');
     assertRuntimeAuthConfiguration();
     await assertRuntimeDatabaseReady();
-    app = await buildApp();
+    app = await buildApp(await configuredSpatialRuntime(process.env));
     await app.listen({ host, port });
     app.log.info(`METREV API listening on ${host}:${port}`);
   } catch (error) {

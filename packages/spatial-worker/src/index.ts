@@ -23,3 +23,4 @@ export type {
   SpatialSimulationExecutionContext,
 } from './worker';
 export { spatialWorkerConfigFromEnvironment } from './config';
+export * from './structured-cell-executor';

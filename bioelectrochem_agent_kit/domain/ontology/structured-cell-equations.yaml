@@ -1,0 +1,51 @@
+version: structured-cell-equations-v1
+status: implemented_restricted_development_mathematical_checks_only
+model_id: structured-cell-supporting-electrolyte-v1
+supported_dimensions: [2, 3]
+state:
+  concentration: { unit: mol/m3, domains: all_regions }
+  liquid_potential: { unit: V, domains: all_regions }
+  solid_potential: { unit: V, domains: anode_and_cathode }
+  collector_voltage: { unit: V, reference: anode_collector_zero }
+equations:
+  - id: cell-species-steady-v1
+    expression: div(N_i) = sum(nu_ir * r_r) + nu_ie * j_F / (n_e * F)
+    flux: N_i = -D_i * (grad(c_i) + z_i * F * c_i * grad(phi_l) / (R * T))
+    method: Finite volumes with Scharfetter-Gummel face flux and harmonic diffusivity.
+    boundary: x insulating; explicitly selected transverse reservoir faces impose species concentration.
+  - id: cell-liquid-charge-v1
+    expression: div(-kappa * grad(phi_l)) = j_F
+    boundary: No total ionic current across exterior faces; supporting electrolyte compensates trace species reservoir current.
+  - id: cell-solid-charge-v1
+    expression: div(-sigma * grad(phi_s)) = -j_F
+    boundary: Fixed anode collector at zero and cathode collector at circuit voltage; all other electronic faces insulating.
+  - id: cell-butler-volmer-v1
+    expression: j_F = i0 * (a_forward * exp(alpha * n_e * F * eta / (R * T)) - a_reverse * exp(-(1-alpha) * n_e * F * eta / (R * T)))
+    overpotential: eta = phi_s - phi_l - E_eq
+    sign: Positive j_F is anodic oxidation; charge and atoms include produced electrons.
+  - id: cell-homogeneous-reactions-v1
+    expression: Source-traced mass-action rates in normalized concentrations, or Monod rate with declared substrate and half-saturation.
+    domain: One explicitly tagged region per reaction.
+  - id: cell-circuit-v1
+    expression: MFC V = I * R_load; MEC V = -V_applied; I = minus outward anode collector current.
+    power: Signed electrical power I*V; MEC electrical input -I*V, never generated energy.
+assumptions:
+  - Steady, isothermal, orthogonal structured layers; zero convection.
+  - Fixed source-traced conductivity of an unmodeled supporting electrolyte; trace species do not determine total conductivity.
+  - Continuous interface concentrations and potential; each shared face flux enters neighbors with opposite signs.
+  - Volumetric electrode kinetics, not resolved electrode surface or pore/nanoscale transfer.
+unsupported_physics:
+  [
+    full_electroneutral_species_closure,
+    stokes_darcy_cell_flow_coupling,
+    donnan_partition,
+    fixed_membrane_charge,
+    double_layer,
+    biofilm_growth,
+    gas_transport,
+    heat_transport,
+    multiscale_transfer,
+  ]
+verification: tests/contracts/test_spatial_structured_cell.py
+independent_validation: absent
+product_decision_eligibility: false

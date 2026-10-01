@@ -1,0 +1,381 @@
+{
+  "contract_version": "spatial-cell-input-v1",
+  "model_id": "structured-cell-supporting-electrolyte-v1",
+  "system": "MFC",
+  "dimension": 2,
+  "coordinate_system": "cartesian",
+  "charge_model": "fixed-conductivity-supporting-electrolyte",
+  "geometry": {
+    "geometry_version": "structured-layers-v1",
+    "lengths_m": [
+      {
+        "value": 0.0003,
+        "unit": "m",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      {
+        "value": 0.001,
+        "unit": "m",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      }
+    ],
+    "out_of_plane_depth": {
+      "value": 0.001,
+      "unit": "m",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    },
+    "transverse_cells": [2],
+    "layers": [
+      {
+        "tag": "anode",
+        "kind": "anode",
+        "width_m": {
+          "value": 0.0001,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "cells": 2,
+        "electrolyte_conductivity": {
+          "value": 1,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "solid_conductivity": {
+          "value": 10,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "diffusivity": {
+          "reduced": {
+            "value": 1e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "oxidized": {
+            "value": 2e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        }
+      },
+      {
+        "tag": "membrane",
+        "kind": "membrane",
+        "width_m": {
+          "value": 0.0001,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "cells": 2,
+        "electrolyte_conductivity": {
+          "value": 1,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "solid_conductivity": {
+          "value": 0,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "diffusivity": {
+          "reduced": {
+            "value": 1e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "oxidized": {
+            "value": 2e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        }
+      },
+      {
+        "tag": "cathode",
+        "kind": "cathode",
+        "width_m": {
+          "value": 0.0001,
+          "unit": "m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "cells": 2,
+        "electrolyte_conductivity": {
+          "value": 1,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "solid_conductivity": {
+          "value": 10,
+          "unit": "S/m",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "diffusivity": {
+          "reduced": {
+            "value": 1e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "oxidized": {
+            "value": 2e-9,
+            "unit": "m2/s",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        }
+      }
+    ]
+  },
+  "temperature": {
+    "value": 298.15,
+    "unit": "K",
+    "source_kind": "test_fixture",
+    "source_ref": "synthetic:closed-redox-couple"
+  },
+  "reservoir_faces": ["y_min", "y_max"],
+  "species": [
+    {
+      "id": "reduced",
+      "valence": {
+        "value": 0,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "elements": {
+        "C": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "initial_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "reservoir_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "reference_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      }
+    },
+    {
+      "id": "oxidized",
+      "valence": {
+        "value": 1,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "elements": {
+        "C": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "initial_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "reservoir_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "reference_concentration": {
+        "value": 1,
+        "unit": "mol/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      }
+    }
+  ],
+  "reactions": [],
+  "electrodes": [
+    {
+      "role": "anode",
+      "domain_tag": "anode",
+      "electron_count": {
+        "value": 1,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "equilibrium_potential": {
+        "value": 0,
+        "unit": "V",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "exchange_current": {
+        "value": 1,
+        "unit": "A/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "alpha": {
+        "value": 0.5,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "stoichiometry": {
+        "reduced": {
+          "value": -1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "oxidized": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "forward_orders": {
+        "reduced": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "reverse_orders": {
+        "oxidized": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      }
+    },
+    {
+      "role": "cathode",
+      "domain_tag": "cathode",
+      "electron_count": {
+        "value": 1,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "equilibrium_potential": {
+        "value": 0.3,
+        "unit": "V",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "exchange_current": {
+        "value": 1,
+        "unit": "A/m3",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "alpha": {
+        "value": 0.5,
+        "unit": "1",
+        "source_kind": "test_fixture",
+        "source_ref": "synthetic:closed-redox-couple"
+      },
+      "stoichiometry": {
+        "reduced": {
+          "value": -1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "oxidized": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "forward_orders": {
+        "reduced": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      },
+      "reverse_orders": {
+        "oxidized": {
+          "value": 1,
+          "unit": "1",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        }
+      }
+    }
+  ],
+  "circuit": {
+    "kind": "external_load",
+    "resistance": {
+      "value": 10000000,
+      "unit": "ohm",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    }
+  },
+  "numerics": {
+    "max_evaluations": 400,
+    "nonlinear_tolerance": 1e-7,
+    "conservation_tolerance": 0.000001,
+    "concentration_scale": {
+      "value": 1,
+      "unit": "mol/m3",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    },
+    "potential_scale": {
+      "value": 1,
+      "unit": "V",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    },
+    "species_rate_scale": {
+      "value": 0.0001,
+      "unit": "mol/(m3*s)",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    },
+    "charge_rate_scale": {
+      "value": 100,
+      "unit": "A/m3",
+      "source_kind": "test_fixture",
+      "source_ref": "synthetic:closed-redox-couple"
+    }
+  }
+}
