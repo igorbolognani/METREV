@@ -312,6 +312,14 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Set up Python for native cell persistence gate
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install native cell numerical dependencies
+        run: python -m pip install numpy==2.3.5 scipy==1.17.0
+
       - name: Run local-view smoke validation
         run: pnpm run validate:local:smoke
 
