@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import { structuredCellInputSchema } from './structured-cell-schema';
+import {
+  spatialRuntimeInputSchema,
+  spatialRuntimeInputSha256,
+  spatialRuntimeMeshRequestSha256,
+  type SpatialRuntimeInput,
+} from './spatial-runtime-input';
 import {
   spatialSpeciesBudgetSchema,
   spatialSpeciesBudgetResidual,
@@ -23,6 +30,7 @@ export const spatialArtifactFormatSchema = z.enum([
   'xdmf',
   'hdf5',
   'vtu',
+  'json',
 ]);
 
 /** Stable content-addressed references only; signed URLs and local paths are not persisted. */
@@ -511,6 +519,7 @@ export const spatialSimulationResultSchema = z
     contract_version: z.enum([
       'spatial-simulation-result-v1',
       'spatial-simulation-result-v2',
+      'spatial-simulation-result-v3',
     ]),
     run_id: identifier,
     evaluation_id: identifier.nullable(),
@@ -537,11 +546,47 @@ export const spatialSimulationResultSchema = z
     warnings: z.array(warningSchema).max(500),
     unsupported_physics: z.array(unsupportedPhysicsSchema).max(128),
     artifact_hashes: z.array(sha256).min(1).max(513),
+    cell_circuit: z
+      .object({
+        collector_voltage_V: z.number().finite(),
+        anodic_current_A: z.number().finite(),
+        signed_electrical_power_W: z.number().finite(),
+        mfc_generated_power_W: z.number().finite().nullable(),
+        mec_electrical_input_W: z.number().finite().nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((result, context) => {
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: 'custom', path, message });
+    if (result.cell_circuit) {
+      const c = result.cell_circuit;
+      if (
+        result.contract_version !== 'spatial-simulation-result-v3' ||
+        Math.abs(
+          c.signed_electrical_power_W -
+            c.collector_voltage_V * c.anodic_current_A,
+        ) >
+          1e-12 * Math.max(1, Math.abs(c.signed_electrical_power_W))
+      )
+        issue(
+          ['cell_circuit'],
+          'Circuit power must bind to current and voltage in result-v3',
+        );
+      if (
+        result.system === 'MFC'
+          ? c.mfc_generated_power_W !== c.signed_electrical_power_W ||
+            c.mec_electrical_input_W !== null
+          : c.mec_electrical_input_W !== -c.signed_electrical_power_W ||
+            c.mfc_generated_power_W !== null
+      )
+        issue(
+          ['cell_circuit'],
+          'MEC electrical input and MFC generated output must remain distinct',
+        );
+    }
     if (
       result.contract_version === 'spatial-simulation-result-v1' &&
       result.linear_solver_diagnostics !== undefined
@@ -706,7 +751,7 @@ export const spatialSimulationResultSchema = z
             ['fields', index, 'components'],
             'Vector axes must match the result coordinate system and dimension',
           );
-        if (result.contract_version === 'spatial-simulation-result-v2')
+        if (result.contract_version !== 'spatial-simulation-result-v1')
           for (const [componentIndex, component] of field.components.entries())
             validateSummary(component.summary, field.unit, [
               'fields',
@@ -716,7 +761,7 @@ export const spatialSimulationResultSchema = z
               'summary',
             ]);
       } else {
-        if (result.contract_version === 'spatial-simulation-result-v2')
+        if (result.contract_version !== 'spatial-simulation-result-v1')
           validateSummary(field.summary, field.unit, [
             'fields',
             index,
@@ -859,9 +904,67 @@ export const spatialSimulationResultSchema = z
 
 /** Bind scalar states and explicitly composed vector views to immutable input. */
 export function spatialSimulationResultForInputSchema(
-  candidate: SpatialModelInputV2,
+  candidate: SpatialRuntimeInput,
   admittedInputSha256?: string,
 ) {
+  if (candidate.contract_version === 'spatial-cell-input-v1') {
+    const input = structuredCellInputSchema.parse(candidate);
+    return spatialSimulationResultSchema.superRefine((result, context) => {
+      const issue = (message: string) =>
+        context.addIssue({ code: 'custom', message });
+      if (
+        result.contract_version !== 'spatial-simulation-result-v3' ||
+        result.input_contract_version !== input.contract_version ||
+        result.input_sha256 !==
+          (admittedInputSha256 ?? spatialRuntimeInputSha256(input)) ||
+        result.model_id !== input.model_id ||
+        result.dimension !== input.dimension ||
+        result.system !== input.system ||
+        result.coordinate_system !== input.coordinate_system
+      )
+        issue('Cell result identity differs from its immutable input');
+      if (
+        result.mesh.request_sha256 !== spatialRuntimeMeshRequestSha256(input) ||
+        result.mesh.geometry_version !== input.geometry.geometry_version ||
+        result.mesh.generated_with.name !== 'metrev-structured-fv' ||
+        result.mesh.artifact.format !== 'json'
+      )
+        issue('Cell mesh differs from its geometry request');
+      const expected = [
+        'liquid_potential',
+        'solid_potential_anode',
+        'solid_potential_cathode',
+        ...input.species.map((s) => 'concentration_' + s.id),
+      ].sort();
+      if (
+        result.fields
+          .map((f) => f.field_id)
+          .sort()
+          .join() !== expected.join()
+      )
+        issue('Cell fields must cover every admitted state exactly');
+      const domains = result.domains.filter((d) => d.role === 'domain');
+      if (
+        domains.length !== input.geometry.layers.length ||
+        domains.some(
+          (d) =>
+            !input.geometry.layers.some(
+              (l) => l.tag === d.tag && l.kind === d.kind,
+            ),
+        )
+      )
+        issue('Cell regions differ from input');
+      for (const f of result.fields)
+        if (
+          f.variable_id !== f.field_id ||
+          f.association !== 'mesh_cells' ||
+          f.value_type !== 'scalar' ||
+          f.unit !== (f.field_id.startsWith('concentration_') ? 'mol/m3' : 'V')
+        )
+          issue('Invalid cell field meaning or unit');
+      if (!result.cell_circuit) issue('Cell circuit diagnostics are required');
+    });
+  }
   const input = spatialModelInputV2Schema.parse(candidate);
   const variables = new Map(
     input.variables.map((variable) => [variable.id, variable]),
@@ -1288,7 +1391,7 @@ export const createSpatialSimulationRunInputSchema = z
     solver_version: identifier,
     runtime_version: identifier,
     mesh_request_sha256: sha256.nullable().default(null),
-    input_snapshot: spatialModelInputV2Schema,
+    input_snapshot: spatialRuntimeInputSchema,
   })
   .strict()
   .superRefine((input, context) => {
@@ -1304,12 +1407,12 @@ export const createSpatialSimulationRunInputSchema = z
       [
         'input_sha256',
         input.input_sha256,
-        spatialModelInputV2Sha256(input.input_snapshot),
+        spatialRuntimeInputSha256(input.input_snapshot),
       ],
       [
         'mesh_request_sha256',
         input.mesh_request_sha256,
-        input.input_snapshot.mesh.input_sha256,
+        spatialRuntimeMeshRequestSha256(input.input_snapshot),
       ],
     ];
     for (const [field, actual, expected] of bindings) {

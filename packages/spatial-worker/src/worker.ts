@@ -3,13 +3,16 @@ import {
   type SpatialSimulationRunRepository,
 } from '@metrev/database';
 import type {
-  SpatialModelInputV2,
+  SpatialRuntimeInput,
   SpatialSimulationResult,
   SpatialSimulationRunSnapshot,
 } from '@metrev/domain-contracts';
 import { z } from 'zod';
 
-import { SpatialSimulationExecutionError } from './execution-error';
+import {
+  SpatialSimulationExecutionError,
+  SpatialNumericalResultError,
+} from './execution-error';
 
 const activeStatusSchema = z.enum([
   'preparing_geometry',
@@ -48,7 +51,7 @@ export type SpatialWorkerProgress = z.infer<typeof progressSchema>;
 export interface SpatialSimulationExecutionContext {
   /** Authenticated owner from the durable queue claim; never taken from the model. */
   ownerId: string;
-  input: SpatialModelInputV2;
+  input: SpatialRuntimeInput;
   run: SpatialSimulationRunSnapshot;
   signal: AbortSignal;
   reportProgress(progress: SpatialWorkerProgress): Promise<void>;
@@ -58,7 +61,7 @@ export interface SpatialSimulationExecutionContext {
 export interface SpatialSimulationExecutor {
   solverVersion: string;
   runtimeVersion: string;
-  supports(input: SpatialModelInputV2): boolean;
+  supports(input: SpatialRuntimeInput): boolean;
   execute(
     context: SpatialSimulationExecutionContext,
   ): Promise<SpatialSimulationResult>;
@@ -366,6 +369,11 @@ async function processClaimedRun(input: {
         next_status: 'failed',
         progress: current.progress,
         failure,
+        ...(!timedOut &&
+        !shuttingDown &&
+        error instanceof SpatialNumericalResultError
+          ? { result: error.result }
+          : {}),
         worker_id: work.workerId,
         lease_token: work.leaseToken,
       });

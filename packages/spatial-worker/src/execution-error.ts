@@ -1,4 +1,7 @@
-import { spatialSimulationFailureSchema } from '@metrev/domain-contracts';
+import {
+  spatialSimulationFailureSchema,
+  type SpatialSimulationResult,
+} from '@metrev/domain-contracts';
 import { SidecarTransportError } from '@metrev/spatial-sidecar-client';
 
 const sidecarFailures = {
@@ -41,6 +44,16 @@ export class SpatialSimulationExecutionError extends Error {
     super(failure.message);
     this.name = 'SpatialSimulationExecutionError';
     this.code = failure.code;
+  }
+}
+
+/** A failed solve still carries its verified fields and diagnostics for inspection. */
+export class SpatialNumericalResultError extends SpatialSimulationExecutionError {
+  constructor(readonly result: SpatialSimulationResult) {
+    super(
+      'spatial_numerical_nonconvergence',
+      'The spatial solve did not meet nonlinear and conservation tolerances',
+    );
   }
 }
 

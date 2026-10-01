@@ -153,10 +153,30 @@ export class LocalSpatialFieldArtifactStore {
     runId: string;
     field: Field;
   }): Promise<FieldManifest> {
+    const field = spatialFieldManifestSchema.parse(input.field);
+    return this.storeArtifact({
+      sourceFilePath: input.sourceFilePath,
+      ownerId: input.ownerId,
+      runId: input.runId,
+      fieldId: field.field_id,
+      artifact: field.artifact,
+    });
+  }
+
+  /** Mesh and diagnostic objects share the same immutable owner/run-bound storage. */
+  async storeArtifact(input: {
+    sourceFilePath: string;
+    ownerId: string;
+    runId: string;
+    fieldId: string;
+    artifact: z.infer<typeof spatialFieldArtifactSchema>;
+  }): Promise<FieldManifest> {
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
-    const field = spatialFieldManifestSchema.parse(input.field);
-    const fieldId = fieldIdSchema.parse(field.field_id);
+    const field = {
+      artifact: spatialFieldArtifactSchema.parse(input.artifact),
+    };
+    const fieldId = fieldIdSchema.parse(input.fieldId);
     if (field.artifact.bytes > this.maxFieldBytes)
       throw new SpatialArtifactStoreError(
         'size_limit',

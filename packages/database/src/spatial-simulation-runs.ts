@@ -9,11 +9,11 @@ import {
   spatialSimulationRunLeaseInputSchema,
   spatialSimulationRunSnapshotSchema,
   transitionSpatialSimulationRunInputSchema,
-  spatialModelInputV2Schema,
+  spatialRuntimeInputSchema,
   type ClaimSpatialSimulationRunInput,
   type CreateSpatialSimulationRunInput,
   type RetrySpatialSimulationRunInput,
-  type SpatialModelInputV2,
+  type SpatialRuntimeInput,
   type SpatialSimulationRunSnapshot,
   type SpatialSimulationRunStatus,
   type SpatialSimulationRunLeaseInput,
@@ -114,7 +114,7 @@ export interface SpatialSimulationRunWorkItem {
   ownerId: string;
   workerId: string;
   leaseToken: string;
-  input: SpatialModelInputV2;
+  input: SpatialRuntimeInput;
   run: SpatialSimulationRunSnapshot;
 }
 
@@ -139,7 +139,7 @@ export interface SpatialSimulationRunRepository {
   getOwnedInput(
     runId: string,
     ownerId: string,
-  ): Promise<SpatialModelInputV2 | null>;
+  ): Promise<SpatialRuntimeInput | null>;
   transition(
     input: TransitionSpatialSimulationRunInput,
   ): Promise<SpatialSimulationRunSnapshot | null>;
@@ -366,7 +366,7 @@ function assertTransition(
     );
 
   if (input.result) {
-    const parsedInput = spatialModelInputV2Schema.safeParse(inputSnapshot);
+    const parsedInput = spatialRuntimeInputSchema.safeParse(inputSnapshot);
     if (!parsedInput.success)
       throw new SpatialSimulationRunError(
         'invalid_transition',
@@ -508,13 +508,13 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
   async getOwnedInput(
     runId: string,
     ownerId: string,
-  ): Promise<SpatialModelInputV2 | null> {
+  ): Promise<SpatialRuntimeInput | null> {
     const record = await this.prisma.spatialSimulationRunRecord.findFirst({
       where: { id: runId, ownerId },
       select: { inputSnapshot: true },
     });
     if (!record?.inputSnapshot) return null;
-    return spatialModelInputV2Schema.parse(record.inputSnapshot);
+    return spatialRuntimeInputSchema.parse(record.inputSnapshot);
   }
 
   async transition(
@@ -703,7 +703,7 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
           ownerId: persisted.ownerId,
           workerId: input.worker_id,
           leaseToken,
-          input: spatialModelInputV2Schema.parse(persisted.inputSnapshot),
+          input: spatialRuntimeInputSchema.parse(persisted.inputSnapshot),
           run: fromRecord(persisted),
         };
       }
@@ -999,7 +999,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
     {
       ownerId: string;
       idempotencyKey: string;
-      input: SpatialModelInputV2;
+      input: SpatialRuntimeInput;
       workerId: string | null;
       leaseToken: string | null;
       leaseExpiresAt: number | null;
@@ -1059,7 +1059,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
     this.runs.set(run.id, {
       ownerId: input.owner_id,
       idempotencyKey: input.idempotency_key,
-      input: spatialModelInputV2Schema.parse(JSON.parse(inputJson)),
+      input: spatialRuntimeInputSchema.parse(JSON.parse(inputJson)),
       workerId: null,
       leaseToken: null,
       leaseExpiresAt: null,
@@ -1080,7 +1080,7 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
   async getOwnedInput(
     runId: string,
     ownerId: string,
-  ): Promise<SpatialModelInputV2 | null> {
+  ): Promise<SpatialRuntimeInput | null> {
     const record = this.runs.get(runId);
     return record?.ownerId === ownerId ? record.input : null;
   }

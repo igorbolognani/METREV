@@ -261,12 +261,15 @@ function killProcessTree(child: ChildProcess): void {
   }
 }
 
-/** Worker-side boundary only. No Fastify request may launch a mesh synchronously. */
-export async function runSpatialSidecar(
-  input: SpatialSidecarRequest,
+/** Shared bounded transport for both legacy FEM and structured-cell protocols. */
+export async function runSpatialSidecarProcess(
+  payload: string,
   options: SidecarProcessOptions,
-): Promise<SidecarProcessResult> {
-  const request = spatialSidecarRequestSchema.parse(input);
+  needsArtifacts: boolean,
+  pythonModule:
+    | 'metrev_spatial'
+    | 'metrev_spatial.structured_cell' = 'metrev_spatial',
+) {
   if (
     !Number.isSafeInteger(options.timeoutMs) ||
     options.timeoutMs < 1 ||
@@ -280,20 +283,15 @@ export async function runSpatialSidecar(
     );
 
   if (options.container) validateSpatialContainerOptions(options.container);
-  const artifactDirectory =
-    request.operation === 'planar_mesh' ||
-    request.operation === 'planar_stokes' ||
-    request.operation === 'planar_darcy' ||
-    request.operation === 'planar_darcy_transport'
-      ? await (async () => {
-          await mkdir(options.artifactRoot, { recursive: true });
-          return mkdtemp(join(resolve(options.artifactRoot), 'metrev-mesh-'));
-        })()
-      : null;
-  const payload = JSON.stringify(request);
+  const artifactDirectory = needsArtifacts
+    ? await (async () => {
+        await mkdir(options.artifactRoot, { recursive: true });
+        return mkdtemp(join(resolve(options.artifactRoot), 'metrev-mesh-'));
+      })()
+    : null;
   const args = [
     '-m',
-    'metrev_spatial',
+    pythonModule,
     ...(artifactDirectory ? ['--output-dir', artifactDirectory] : []),
   ];
   let containerPlan: ReturnType<typeof spatialContainerExecutionPlan> | null =
@@ -303,6 +301,7 @@ export async function runSpatialSidecar(
       containerPlan = spatialContainerExecutionPlan(
         options.container,
         artifactDirectory,
+        pythonModule,
       );
   } catch (error) {
     if (artifactDirectory)
@@ -403,6 +402,26 @@ export async function runSpatialSidecar(
       throw error;
     });
 
+  return { stdout, artifactDirectory };
+}
+
+/** Worker-side boundary only. No Fastify request may launch a solve synchronously. */
+export async function runSpatialSidecar(
+  input: SpatialSidecarRequest,
+  options: SidecarProcessOptions,
+): Promise<SidecarProcessResult> {
+  const request = spatialSidecarRequestSchema.parse(input);
+  const needsArtifacts = [
+    'planar_mesh',
+    'planar_stokes',
+    'planar_darcy',
+    'planar_darcy_transport',
+  ].includes(request.operation);
+  const { stdout, artifactDirectory } = await runSpatialSidecarProcess(
+    JSON.stringify(request),
+    options,
+    needsArtifacts,
+  );
   let response: SpatialSidecarResponse;
   try {
     response = spatialSidecarResponseSchema.parse(JSON.parse(stdout));
@@ -625,7 +644,7 @@ export async function runSpatialSidecar(
       if (
         !artifactDirectory ||
         response.input_sha256 !==
-          createHash('sha256').update(payload).digest('hex') ||
+          createHash('sha256').update(JSON.stringify(request)).digest('hex') ||
         response.artifacts.length !== request.mesh.refinement_factors.length ||
         response.artifacts.some(
           (artifact, index) =>

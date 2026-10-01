@@ -45,6 +45,9 @@ export function validateSpatialContainerOptions(
 export function spatialContainerExecutionPlan(
   options: SpatialSidecarContainerOptions,
   artifactDirectory: string | null,
+  pythonModule:
+    | 'metrev_spatial'
+    | 'metrev_spatial.structured_cell' = 'metrev_spatial',
 ) {
   const checked = validateSpatialContainerOptions(options);
   if (
@@ -96,7 +99,13 @@ export function spatialContainerExecutionPlan(
           `type=bind,source=${artifactDirectory},target=/opt/metrev-artifacts`,
         ]
       : []),
+    ...(pythonModule === 'metrev_spatial.structured_cell'
+      ? ['--entrypoint', 'python3']
+      : []),
     checked.image,
+    ...(pythonModule === 'metrev_spatial.structured_cell'
+      ? ['-m', pythonModule]
+      : []),
     ...(artifactDirectory ? ['--output-dir', '/opt/metrev-artifacts'] : []),
   ];
   return { command: checked.dockerExecutable ?? 'docker', args, name };

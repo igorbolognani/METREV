@@ -1,0 +1,62 @@
+version: spatial-cell-input-v1
+model_id: structured-cell-supporting-electrolyte-v1
+scope: Opt-in development model; steady Cartesian 2D and 3D with declared supporting electrolyte.
+runtime_validator: packages/domain-contracts/src/structured-cell-schema.ts
+scientific_authority: bioelectrochem_agent_kit/domain/ontology/structured-cell-equations.yaml
+required_fields:
+  [
+    contract_version,
+    model_id,
+    system,
+    dimension,
+    coordinate_system,
+    charge_model,
+    geometry,
+    temperature,
+    reservoir_faces,
+    species,
+    reactions,
+    electrodes,
+    circuit,
+    numerics,
+  ]
+scientific_value:
+  required: [value, unit, source_kind, source_ref]
+  optional: [source_locator, conditions, uncertainty, uncertainty_unit]
+  source_kinds: [measured, literature, default, assumption, test_fixture]
+geometry:
+  version: structured-layers-v1
+  dimensions: [2, 3]
+  coordinates: cartesian
+  required: [geometry_version, lengths_m, transverse_cells, layers]
+  planar_only_required: [out_of_plane_depth]
+  layers: Ordered anode, internal regions, cathode; all widths sum to x length.
+  interfaces: Shared Cartesian faces with continuous concentrations and potential; harmonic material transmissibilities.
+species:
+  required:
+    [
+      id,
+      valence,
+      elements,
+      initial_concentration,
+      reservoir_concentration,
+      reference_concentration,
+    ]
+  concentration_unit: mol/m3
+  valence_unit: '1'
+  elements: Nonempty atom inventory, nonnegative integer counts.
+reactions:
+  homogeneous_laws: [mass_action, monod]
+  balances: Atoms and charge conserved; electrode stoichiometry explicitly produces electron_count electrons in the anodic orientation.
+charge:
+  model: fixed-conductivity-supporting-electrolyte
+  note: Trace-species migration and independent total Ohmic liquid current. This is not a full electroneutral Nernst-Planck closure.
+circuit:
+  MFC: Positive external resistance in ohm.
+  MEC: Positive applied voltage in V, imposed as negative cathode-minus-anode collector voltage.
+results:
+  version: spatial-simulation-result-v3
+  artifacts: Hash-bound JSON cell fields and actual structured numerical mesh, owner-scoped access.
+  failed_solve: Retain verified fields and conservation diagnostics; no completed status when tolerances fail.
+  energy: Signed current times voltage; separately tagged MFC generation and MEC electrical input.
+compatibility: Existing input v2 and result v1/v2 remain supported. Never substitute dimension or executor.

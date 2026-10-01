@@ -3,7 +3,7 @@ FROM ghcr.io/fenics/dolfinx/dolfinx@sha256:25a4952542107766402a1de448ab1b387df70
 
 RUN apt-get update && apt-get install -y --no-install-recommends libglu1-mesa libxft2 \
     && rm -rf /var/lib/apt/lists/* \
-    && python3 -m pip install --no-cache-dir gmsh==4.15.2
+    && python3 -m pip install --no-cache-dir gmsh==4.15.2 scipy==1.17.0
 
 WORKDIR /opt/metrev-spatial
 COPY apps/spatial-sidecar/metrev_spatial ./metrev_spatial
