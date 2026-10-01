@@ -21,3 +21,4 @@ export * from './spatial-runtime-input';
 export * from './structured-cell-topology';
 export type * from './spatial-physics-types';
 export * from './validator';
+export * from './structured-cell-development-report';

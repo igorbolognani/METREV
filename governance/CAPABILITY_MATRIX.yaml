@@ -279,13 +279,22 @@ development_profiles:
     api_configuration_source: apps/api-server/src/spatial-runtime.ts
     ui_source: apps/web-ui/src/components/modeling/spatial-cell-workbench.tsx
     numerical_test: tests/contracts/test_spatial_structured_cell.py
+    refinement_test: tests/contracts/test_spatial_cell_verification.py
+    refinement_record: tests/fixtures/structured-cell-refinement-verification.json
+    postgres_test: tests/postgres/structured-cell-roundtrip.test.ts
+    browser_test: tests/e2e/structured-cell-workbench.spec.ts
+    browser_config: playwright.spatial-cell.config.ts
+    report_source: packages/domain-contracts/src/structured-cell-development-report.ts
+    numerical_verification_scope: synthetic_nonuniform_18_72_288_cell_2d_refinement_not_general_or_empirical
+    postgres_gate: implemented_required_ci_local_database_unavailable
+    browser_gate: implemented_required_ci_local_chromium_download_unavailable
     worker_api_test: tests/runtime/structured-cell-worker.test.ts
     scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_mfc_mec_circuit
     remaining_gates:
-      - coupled_mesh_refinement
+      - larger_mesh_nonlinear_robustness_and_broader_verification
       - case_runner_and_stack_composition
-      - postgres_cell_roundtrip
-      - browser_cell_workbench
+      - postgres_cell_roundtrip_ci
+      - browser_cell_workbench_ci
       - production_artifact_provider_and_deployment
       - matched_experimental_comparison
       - independent_validation

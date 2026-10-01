@@ -127,7 +127,8 @@ def validate() -> None:
         assert profile["product_admission"] is False
         assert profile["decision_eligible"] is False
         for key in ("runtime_source", "validator_source", "worker_source", "adapter_source",
-                    "api_configuration_source", "ui_source", "numerical_test", "worker_api_test"):
+                    "api_configuration_source", "ui_source", "numerical_test", "worker_api_test",
+                    "refinement_test", "refinement_record", "postgres_test", "browser_test", "browser_config", "report_source"):
             assert (ROOT / profile[key]).is_file(), (identifier, key)
         validator = (ROOT / profile["validator_source"]).read_text()
         numerical_runtime = (ROOT / profile["runtime_source"]).read_text()

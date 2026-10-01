@@ -2,12 +2,19 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { z } from 'zod';
 import {
   structuredCellInputSchema,
   STRUCTURED_CELL_LIMITS,
+  buildStructuredCellDevelopmentReport,
+  renderStructuredCellDevelopmentReport,
+  type StructuredCellRunView,
 } from '@metrev/domain-contracts/browser';
-import type { SpatialSimulationRunSnapshot } from '@metrev/domain-contracts';
+import {
+  readCellMesh,
+  readCellField,
+  type CellMesh,
+  type CellField,
+} from '@/lib/spatial-cell-field';
 import {
   createSpatialCellRun,
   fetchSpatialRun,
@@ -15,39 +22,37 @@ import {
   fetchSpatialArtifact,
 } from '@/lib/spatial-api';
 
-const meshSchema = z
-  .object({
-    shape: z.array(z.number().int().positive()).min(2).max(3),
-    centers_m: z.array(z.array(z.number().finite()).min(2).max(3)).max(20000),
-    sizes_m: z
-      .array(z.array(z.number().finite().positive()).min(2).max(3))
-      .max(20000),
-    region_index: z.array(z.number().int().nonnegative()).max(20000),
-    volumes_m3: z.array(z.number().finite().positive()).max(20000),
-  })
-  .strict();
-const dataSchema = z
-  .object({
-    id: z.string(),
-    unit: z.string(),
-    cells: z.array(z.number().int().nonnegative()).max(20000),
-    values: z.array(z.number().finite()).max(20000),
-  })
-  .strict();
-type Mesh = z.infer<typeof meshSchema>;
-type Data = z.infer<typeof dataSchema>;
-
 export function SpatialCellWorkbench() {
   const [source, setSource] = useState('');
   const [evaluationId, setEvaluationId] = useState('');
   const [runId, setRunId] = useState('');
-  const [run, setRun] = useState<SpatialSimulationRunSnapshot | null>(null);
+  const [run, setRun] = useState<StructuredCellRunView | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState('');
-  const [mesh, setMesh] = useState<Mesh | null>(null);
-  const [data, setData] = useState<Data | null>(null);
+  const [meshAsset, setMeshAsset] = useState<{
+    runId: string;
+    digest: string;
+    value: CellMesh;
+  } | null>(null);
+  const [fieldAsset, setFieldAsset] = useState<{
+    runId: string;
+    digest: string;
+    value: CellField;
+  } | null>(null);
   const [slice, setSlice] = useState(0);
+  const [probe, setProbe] = useState<number | null>(null);
+  const manifest = run?.result?.fields.find((f) => f.field_id === selected);
+  const mesh =
+    meshAsset?.runId === run?.id &&
+    meshAsset?.digest === run?.result?.mesh.artifact.sha256
+      ? (meshAsset?.value ?? null)
+      : null;
+  const data =
+    fieldAsset?.runId === run?.id &&
+    fieldAsset?.digest === manifest?.artifact.sha256
+      ? (fieldAsset?.value ?? null)
+      : null;
   const active =
     run !== null && !['completed', 'failed', 'cancelled'].includes(run.status);
   useEffect(() => {
@@ -68,9 +73,12 @@ export function SpatialCellWorkbench() {
     };
   }, [run, active]);
   useEffect(() => {
+    setMeshAsset(null);
+    setFieldAsset(null);
+    setProbe(null);
     if (!run?.result) {
-      setMesh(null);
-      setData(null);
+      setMeshAsset(null);
+      setFieldAsset(null);
       return;
     }
     let cancelled = false;
@@ -78,7 +86,12 @@ export function SpatialCellWorkbench() {
     setSlice(0);
     void fetchSpatialArtifact(run.id, null, run.result.mesh.artifact.sha256)
       .then((value) => {
-        if (!cancelled) setMesh(meshSchema.parse(value));
+        if (!cancelled)
+          setMeshAsset({
+            runId: run.id,
+            digest: run.result!.mesh.artifact.sha256,
+            value: readCellMesh(value, run),
+          });
       })
       .catch((reason) => {
         if (!cancelled) setError(String(reason));
@@ -89,20 +102,19 @@ export function SpatialCellWorkbench() {
   }, [run]);
   useEffect(() => {
     const field = run?.result?.fields.find((f) => f.field_id === selected);
-    if (!run || !field) return;
+    if (!run || !field || !mesh) return;
     let cancelled = false;
-    setData(null);
+    setFieldAsset(null);
+    setProbe(null);
     void fetchSpatialArtifact(run.id, field.field_id, field.artifact.sha256)
       .then((value) => {
-        const parsed = dataSchema.parse(value);
-        if (
-          parsed.id !== field.field_id ||
-          parsed.unit !== field.unit ||
-          parsed.cells.length !== parsed.values.length ||
-          new Set(parsed.cells).size !== parsed.cells.length
-        )
-          throw new Error('Invalid field topology');
-        if (!cancelled) setData(parsed);
+        const parsed = readCellField(value, mesh, field, run);
+        if (!cancelled)
+          setFieldAsset({
+            runId: run.id,
+            digest: field.artifact.sha256,
+            value: parsed,
+          });
       })
       .catch((reason) => {
         if (!cancelled) setError(String(reason));
@@ -110,8 +122,8 @@ export function SpatialCellWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, [run, selected]);
-  async function act(action: () => Promise<SpatialSimulationRunSnapshot>) {
+  }, [run, selected, mesh]);
+  async function act(action: () => Promise<StructuredCellRunView>) {
     setBusy(true);
     setError('');
     try {
@@ -124,27 +136,21 @@ export function SpatialCellWorkbench() {
       setBusy(false);
     }
   }
-  function download() {
-    if (!run) return;
+  function download(format: 'json' | 'md') {
+    if (!run?.result) return;
+    const report = buildStructuredCellDevelopmentReport(run);
+    const content =
+      format === 'json'
+        ? JSON.stringify(report, null, 2)
+        : renderStructuredCellDevelopmentReport(report);
     const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            {
-              run,
-              decision_eligible: false,
-              limitations: STRUCTURED_CELL_LIMITS,
-            },
-            null,
-            2,
-          ),
-        ],
-        { type: 'application/json' },
-      ),
+      new Blob([content], {
+        type: format === 'json' ? 'application/json' : 'text/markdown',
+      }),
     );
     const a = document.createElement('a');
     a.href = url;
-    a.download = `metrev-spatial-${run.id}.json`;
+    a.download = `metrev-spatial-${run.id}.${format}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -263,9 +269,34 @@ export function SpatialCellWorkbench() {
           )}
           {run.result && (
             <>
-              <button className="rounded border p-2" onClick={download}>
-                Download development report
+              <button
+                className="rounded border p-2"
+                onClick={() => download('json')}
+              >
+                Download development report JSON
               </button>
+              <button
+                className="rounded border p-2"
+                onClick={() => download('md')}
+              >
+                Download development report Markdown
+              </button>
+              <p>
+                Diagnostic role:{' '}
+                {run.status === 'completed'
+                  ? 'modeled development result'
+                  : 'failed run diagnostics'}
+                . Decision eligible: false.
+              </p>
+              {run.result.convergence.map((c) => (
+                <p key={c.solver_id}>
+                  Termination: {c.termination_reason} · final scaled residual{' '}
+                  {c.history[
+                    c.history.length - 1
+                  ].nonlinear_residual.toExponential(3)}{' '}
+                  · tolerance {c.absolute_tolerance.toExponential(3)}
+                </p>
+              ))}
               <label className="block">
                 Numerical field{' '}
                 <select
@@ -289,7 +320,10 @@ export function SpatialCellWorkbench() {
                     max={nz - 1}
                     step={1}
                     value={slice}
-                    onChange={(event) => setSlice(Number(event.target.value))}
+                    onChange={(event) => {
+                      setSlice(Number(event.target.value));
+                      setProbe(null);
+                    }}
                   />
                 </label>
               )}
@@ -326,6 +360,16 @@ export function SpatialCellWorkbench() {
                       return (
                         <rect
                           key={cell}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`Probe cell ${cell}`}
+                          onClick={() => setProbe(cell)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setProbe(cell);
+                            }
+                          }}
                           x={20 + (660 * (c[0] - s[0] / 2)) / extent[0]}
                           y={400 - (380 * (c[1] + s[1] / 2)) / extent[1]}
                           width={(660 * s[0]) / extent[0]}
@@ -339,6 +383,18 @@ export function SpatialCellWorkbench() {
                       );
                     })}
                   </svg>
+                  {probe !== null && data.cells.includes(probe) && (
+                    <p role="status">
+                      Cell {probe} · region{' '}
+                      {
+                        run.input_snapshot.geometry.layers[
+                          mesh.region_index[probe]
+                        ].tag
+                      }{' '}
+                      · center ({mesh.centers_m[probe].join(', ')}) m ·{' '}
+                      {data.values[data.cells.indexOf(probe)]} {data.unit}
+                    </p>
+                  )}
                 </>
               )}
               {run.result.cell_circuit && (

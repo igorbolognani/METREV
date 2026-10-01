@@ -5,6 +5,7 @@ const baseURL =
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: 'structured-cell-workbench.spec.ts',
   timeout: 120_000,
   expect: {
     timeout: 10_000,
