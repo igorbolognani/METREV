@@ -15,7 +15,6 @@ import {
 import {
   spatialModelInputV2Schema,
   spatialModelInputV2Sha256,
-  type SpatialModelInputV2,
 } from './spatial-model-v2-schema';
 
 const identifier = z.string().trim().min(1).max(160);

@@ -1,0 +1,66 @@
+schema_version: 1
+observed_on: '2026-10-01'
+authority: chronological_reconciliation_not_a_replacement_roadmap
+current_requirements: governance/MASTER_EXECUTION_TASK.md
+current_operating_rules: AGENTS.md
+checkpoint: docs/audits/RESUMPTION_RECONCILIATION_2026-10-01.md
+stages:
+  - id: legacy_workspace
+    period: April-May 2026
+    state: historical_context
+    git_revision: 4c8a2377062cdfe65c313bb8c5d63d81f9cea872^
+    sources:
+      - adr/0002-runtime-monorepo-stack.md
+      - adr/0003-runtime-authority-and-tooling-invariants.md
+      - adr/0005-research-worker-and-runtime-extraction.md
+      - specs/037-evidence-research-quality-expansion/report.md
+    meaning: Authenticated Next.js/Fastify/PostgreSQL workspace, contract-first rules and research workers; historical checklists and corpus scale targets are not current release authority.
+  - id: focused_scientific_baseline
+    period: '2026-09-23'
+    state: historical_decision_with_current_scope
+    git_revision: f753bc0
+    sources:
+      - specs/038-coupled-mfc-mec-wastewater-biosensors/spec.md
+      - specs/038-coupled-mfc-mec-wastewater-biosensors/plan.md
+    meaning: MFC/MEC wastewater and biosensor scope, source-backed inputs and coupled 0D first; its spatial non-goal describes that release, not the later spatial program.
+  - id: common_spatial_direction
+    period: '2026-09-27'
+    state: current_requirements
+    git_revision: 5e56c3e
+    sources:
+      - governance/MASTER_EXECUTION_TASK.md
+      - AGENTS.md
+      - docs/adr/ADR-003-physics-composition.md
+      - docs/adr/ADR-007-verification-vs-validation.md
+    meaning: One stack-configured common physics runtime, composable modules and explicit maturity; development may use traced candidates before human review, while decision eligibility and independent validation remain gated.
+  - id: integrated_spatial_increments
+    period: 2026-09-27 through 2026-09-30
+    state: integrated_main
+    git_revision: e00d5936dd5cc6d8884640d83d1d01a42e5653d4
+    sources:
+      - docs/audits/MAINLINE_TEST_AND_PHASE_AUDIT_2026-09-30.md
+      - docs/audits/SPATIAL_EXECUTION_BATCHES_2026-09-30.md
+      - governance/CAPABILITY_MATRIX.yaml
+    meaning: Restricted 1D case integration, spatial contracts/queue/artifacts, Gmsh and bounded Stokes/Darcy neutral scalar source-loss operations; broad coupled 2D/3D product remains pending.
+  - id: structured_cell_review_batch
+    period: '2026-10-01'
+    state: development_pr_not_merged
+    branch: codex/coupled-spatial-cell-batch
+    pull_request: 113
+    base_main: e00d5936dd5cc6d8884640d83d1d01a42e5653d4
+    sources:
+      - docs/adr/ADR-008-structured-cell-development.md
+      - apps/spatial-sidecar/STRUCTURED_CELL.md
+      - bioelectrochem_agent_kit/domain/ontology/structured-cell-equations.yaml
+      - bioelectro-copilot-contracts/contracts/spatial_cell_input_v1.yaml
+    meaning: Reproducible replacement for an unrecovered interrupted patch; restricted steady 2D/3D finite volumes with SciPy Newton and supporting electrolyte, worker/API/artifacts and development slices, not PETSc SNES or full electroneutral DAE.
+sequence:
+  - development_batch
+  - numerical_verification_and_correction
+  - product_integration_and_independent_review
+  - required_ci_and_acceptance_gates
+  - merge_to_main
+phase_2_functional: false
+phase_3_functional: false
+conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
+next_work: verify_restricted_coupled_2d_refinement_and_failure_behavior_before_product_or_broader_3d_promotion

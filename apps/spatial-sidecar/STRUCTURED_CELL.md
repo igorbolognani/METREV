@@ -19,7 +19,7 @@ Install Python numerical requirements and normal workspace dependencies. The pin
 - `METREV_SPATIAL_SIDECAR_MODULE_DIR`: absolute `apps/spatial-sidecar` directory
 - Optional `METREV_SPATIAL_SIDECAR_IMAGE`: explicitly configured restricted container image
 
-The default API remains closed to spatial execution until an operator supplies an admission adapter. The development adapter only admits this precise model. The `/modeling/spatial` workbench accepts complete source-backed JSON, queues work, reloads/cancels jobs and downloads digest-verified fields and numerical mesh. Its XY view is a numerical cell slice; 3D selection changes the actual z slice. Reports retain development limitations and decision ineligibility.
+The default API remains closed to spatial execution until an operator supplies an admission adapter. The development adapter only admits this precise model. The `/modeling/spatial` workbench accepts complete source-backed JSON, queues work, reloads/cancels jobs and downloads digest-verified fields and numerical mesh. Its XY view is a numerical cell slice; 3D selection changes the actual z slice. The downloaded development JSON retains limitations and decision ineligibility; integrated scientific spatial reports remain pending.
 
 ## Verification and remaining gates
 

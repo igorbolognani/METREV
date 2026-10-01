@@ -136,6 +136,48 @@ export const runtimeCanonicalReconciliationMatrix: ReconciliationEntry[] = [
 
 export const runtimeAuthoritySources: RuntimeAuthoritySource[] = [
   {
+    concern: 'mechanistic_input_units_and_ranges',
+    file_path: 'bioelectrochem_agent_kit/domain/rules/mechanistic-model.yml',
+    authority_role: 'runtime_loaded',
+    runtime_consumer:
+      'packages/domain-contracts/src/loaders.ts#loadMechanisticModelDefinition',
+    note: 'The source-backed lumped model boundary is directly loaded from domain authority.',
+  },
+  {
+    concern: 'spatial_material_parameter_authority',
+    file_path:
+      'bioelectrochem_agent_kit/domain/ontology/spatial-parameter-authority.json',
+    authority_role: 'runtime_loaded',
+    runtime_consumer:
+      'packages/domain-contracts/src/spatial-model-v2-schema.ts',
+    note: 'Imported directly by the spatial v1/v2 validators; this is material-field authority, not a composed PDE solver.',
+  },
+  {
+    concern: 'spatial_variable_boundary_authority',
+    file_path:
+      'bioelectrochem_agent_kit/domain/ontology/spatial-variable-authority.json',
+    authority_role: 'runtime_loaded',
+    runtime_consumer:
+      'packages/domain-contracts/src/spatial-model-v2-schema.ts',
+    note: 'Imported directly to validate state domains and boundary units for planar research input.',
+  },
+  {
+    concern: 'structured_cell_equations',
+    file_path:
+      'bioelectrochem_agent_kit/domain/ontology/structured-cell-equations.yaml',
+    authority_role: 'semantic_source',
+    note: 'Declares the restricted supporting-electrolyte formulation and limits. Python implements these equations; this YAML is not loaded to assemble equations at runtime.',
+  },
+  {
+    concern: 'structured_cell_serialization_boundary',
+    file_path:
+      'bioelectro-copilot-contracts/contracts/spatial_cell_input_v1.yaml',
+    authority_role: 'validation_reference',
+    runtime_consumer:
+      'packages/domain-contracts/src/structured-cell-schema.ts#structuredCellInputSchema',
+    note: 'Portable boundary specification aligned with the executable TypeScript and Python validators; the YAML is not itself the hot-path validator.',
+  },
+  {
     concern: 'domain_semantics',
     file_path: 'bioelectrochem_agent_kit/domain/ontology/stack-taxonomy.yml',
     authority_role: 'semantic_source',

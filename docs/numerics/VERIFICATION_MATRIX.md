@@ -1,5 +1,7 @@
 # Numerical verification matrix
 
+The 2D/3D columns below refer to the broad catalog cell profiles. Restricted development operations have separate evidence and identities; structured-cell evidence is recorded at the end of this file.
+
 `PASS` means only the cited bounded synthetic test. It is not experimental validation or a general solver claim. `TODO` means no representative checked-in verification for that dimension. The 1D tests cover a restricted steady planar cell, not the biofilm research profile or every boundary.
 
 | Check                             | Restricted 1D               | 2D              | 3D              | Evidence / required next gate                                                                                                                                                                                                                                                      |
@@ -39,3 +41,16 @@ Porous-storage extension: heterogeneous time-independent porosity, cellwise prod
 Stokes-to-species batch: native `spatial_toolchain_smoke.py` transfers solved P2 Poiseuille velocity to a constant tracer on each of the three channel meshes, checking extrema and advective species rates. The typed sidecar zero-flow case uses opposing concentrations 1 and 2 mol/m³ and checks the exact affine mean and diffusive port flux; it writes all four datasets and verifies artifact digests. `spatial-worker-stokes-development.test.ts` runs both flow-only and scalar variants through durable claims, result-v2 persistence and owner-scoped authenticated artifact reads; the native variants require the pinned container. Local JS/Python contract coverage does not replace that native execution gate.
 
 Native scalar source/loss batch: `spatial_toolchain_smoke.py` checks pure first-order loss, constant production and production/loss equilibrium against analytic profiles at three mesh factors. It measures source, loss and outward boundary terms separately, checks concentration positivity without clipping and uses the resulting budget for conservation. `spatial-source-loss.test.ts` rejects missing provenance, units, coefficients and undeclared law parameters; native Stokes/Darcy worker cases persist reactive concentration and input-bound budgets through the authenticated field API. This extends development verification only; all cell-level TODO entries above remain pending.
+
+## Restricted structured-cell development checks, 2026-10-01
+
+| Check                               | Scoped evidence                                                                                                         | Remaining boundary                                             |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Species and charge/circuit balances | 2D/3D synthetic equilibrium and current-carrying extrusion, heterogeneous 2D mass-action/Monod case                     | Nonuniform coupled refinement and broad cell chemistry         |
+| Jacobian                            | 2D analytic directional finite-difference comparison                                                                    | Wider parameter/regime matrix                                  |
+| Energy sign                         | 2D MEC input labeled separately from MFC generation                                                                     | Full gas/auxiliary balance is outside this profile             |
+| Failure / positivity                | Budget exhaustion retains fields/residuals; Newton uses positivity backtracking without clipping                        | Wider nonlinear failure/stabilization matrix                   |
+| Worker/API/artifacts                | Real Python convergent 2D/3D and failed 2D subprocesses, memory-repository reload and authenticated mesh/field download | Cell-specific PostgreSQL roundtrip, browser and deployment     |
+| Empirical comparison                | None                                                                                                                    | Matched experiments, calibration split and independent holdout |
+
+Sources: `tests/contracts/test_spatial_structured_cell.py` and `tests/runtime/structured-cell-worker.test.ts`. These bounded checks do not close general P2/P3 gates. A steady cell has no applicable time-refinement claim; transient scalar fixture results do not verify transient cell physics.
