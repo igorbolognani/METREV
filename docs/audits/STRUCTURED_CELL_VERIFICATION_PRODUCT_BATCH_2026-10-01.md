@@ -23,11 +23,13 @@ The versioned record `tests/fixtures/structured-cell-refinement-verification.jso
 
 ## Validation status
 
-PASS local numerical verification: four new Python tests and existing seven cell tests. PASS native worker/API/report/view/topology regressions for three real Python runs. The available fast matrix passed lint, 525 JavaScript tests (five native DOLFINx skips), 17 contract checks, 41 spatial Python tests (three Gmsh skips), governance and 20-package build. Final incremental checks and CI belong to this new branch head.
+PASS local numerical verification: four new Python tests and existing seven cell tests. PASS native worker/API/report/view/topology regressions for three real Python runs. The available fast matrix passed lint, 525 JavaScript tests (five native DOLFINx skips), 17 contract checks, 41 spatial Python tests (three Gmsh skips), governance and 20-package build. Final incremental typechecks/build, native tests, refinement record reproduction and repository/workflow formatting also passed.
 
 BLOCKED locally: no reachable configured PostgreSQL server; the new PostgreSQL suite fails at setup, with four cases unexecuted. Package installation cannot switch OS users; Playwright's Chromium download returns a truncated archive. Browser listing succeeds but does not establish browser acceptance. Docker/actionlint and native DOLFINx/Gmsh gates remain CI responsibilities. No migrations, seeds or ingestion were run against a user database.
 
-Required remote gates: `validate-postgres` and `validate-spatial-cell-browser`, plus existing CI/security checks. Test files and CI configuration are implementation, not proof of their successful execution.
+PASS remote runtime head `6f9217df08484f3aaad7909e6c23f2c87283fca4`: CI run `36930062304` completed all seven jobs successfully, and CodeQL run `36930062265` passed. The PostgreSQL job passed 20 tests across four suites, including all four new native cell scenarios. Chromium passed both real-stack tests: 2D/3D creation, reload, numerical fields/probes/slices, report downloads, stale field removal during delayed geometry, and failed diagnostic retention. The existing local-view acceptance, advanced matrix, native Gmsh and pinned DOLFINx toolchain also passed.
+
+Early CI attempts exposed missing Python dependencies in the local acceptance job, an unbound test API port and the JSON textarea's missing accessible name. These were corrected. The test runtime now uses graceful process-group shutdown. The final documentation update records evidence for the verified runtime head; executable files are unchanged by that update. Local environment limitations above remain facts and are not inferred to be CI failures.
 
 ## Next dependency and unchanged maturity
 

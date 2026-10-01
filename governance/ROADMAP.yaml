@@ -508,7 +508,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Restricted actual-mesh XY cell field view and real z-slice selection exist; run/digest-bound scalar probes and development reports exist; browser CI acceptance, vector/comparison views and general case integration remain pending
+      - Restricted actual-mesh XY cell field view and real z-slice selection exist; run/digest-bound scalar probes and development reports exist; the real Chromium gate passed at runtime head 6f9217d, while vector/comparison views and general case integration remain pending
   - id: P20
     title: Define when Phase 2 is actually complete
     phase: P2
@@ -906,7 +906,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests are required in CI; their acceptance remains pending this branch head
+      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests passed in CI run 36930062304 at runtime head 6f9217d; full catalog/case integration and general spatial verification remain pending
   - id: P36
     title: Expand CI without making every PR prohibitively expensive
     phase: P2

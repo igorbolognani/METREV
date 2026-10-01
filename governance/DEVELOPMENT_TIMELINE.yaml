@@ -68,7 +68,7 @@ stages:
       - tests/e2e/structured-cell-workbench.spec.ts
       - packages/domain-contracts/src/structured-cell-development-report.ts
       - docs/audits/STRUCTURED_CELL_VERIFICATION_PRODUCT_BATCH_2026-10-01.md
-    meaning: Nonuniform restricted 2D refinement and termination verification, durable/browser gates added to CI, hash-bound workbench probes and deterministic development reports. No general catalog promotion or independent validation.
+    meaning: Nonuniform restricted 2D refinement and termination verification, native PostgreSQL and real Chromium gates passed at runtime head 6f9217d in CI run 36930062304, hash-bound workbench probes and deterministic development reports. No general catalog promotion or independent validation.
 sequence:
   - development_batch
   - numerical_verification_and_correction
@@ -78,4 +78,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: satisfy_cell_postgres_and_browser_ci_then_map_stack_case_inputs_to_common_equation_graph_before_general_profile_promotion
+next_work: map_stack_case_inputs_to_common_equation_graph_with_explicit_data_requirements_before_general_profile_promotion

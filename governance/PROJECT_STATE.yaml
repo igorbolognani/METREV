@@ -11,7 +11,7 @@ numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_verified_development_plus_structured_orthogonal_2d_3d_cell_mesh_development
 spatial_artifact_storage: development_local_content_addressed_owner_scoped_mesh_and_field_adapters_no_production_provider
 async_simulation_jobs: durable_queue_owner_scoped_api_structured_worker_events_safe_failure_codes_and_opt_in_darcy_stokes_development_executors_product_solver_admission_required
-spatial_viewer: development_structured_cell_xy_slices_bound_to_run_digest_with_cell_probe_browser_ci_gate_pending
+spatial_viewer: development_structured_cell_xy_slices_bound_to_run_digest_with_cell_probe_real_browser_gate_verified
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
   - Catalog status is execution availability, separate from scientific maturity.
@@ -48,4 +48,7 @@ snapshot:
   development_branch: codex/spatial-verification-product-batch
   development_pr: 114
   integration_state: open_draft_not_merged
+  verified_runtime_head: 6f9217df08484f3aaad7909e6c23f2c87283fca4
+  runtime_ci: success_run_36930062304_all_seven_jobs
+  runtime_codeql: success_run_36930062265
   release_gate: pending_independent_review_required_ci_and_general_product_dependencies
