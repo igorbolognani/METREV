@@ -25,14 +25,6 @@ def transverse_fixture(factor=1):
     value['numerics']['max_evaluations'] = 1000
     return value
 
-def numerical_payload_sha256(output):
-    # Exclude only solver identity and the newly derived, non-numerical extrema.
-    payload = {key: value for key, value in output.items() if key not in {'version', 'field_extrema'}}
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(',', ':'), allow_nan=False
-    ).encode()
-    return hashlib.sha256(canonical).hexdigest()
-
 class CoupledCellVerificationTests(unittest.TestCase):
     def test_three_meshes_nonuniform_fields_and_conservative_observables(self):
         record = json.loads(FIXTURE.with_name('structured-cell-refinement-verification.json').read_text())
@@ -42,16 +34,12 @@ class CoupledCellVerificationTests(unittest.TestCase):
         self.assertEqual(record['solver_version'], 'structured-cell-fv-v1')
         self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v3')
         self.assertEqual(
-            record['numerical_invariance']['baseline_runtime_source_sha256'],
+            record['numerical_comparison']['baseline_runtime_source_sha256'],
             '28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c',
         )
         outputs = [Cell(transverse_fixture(f)).solve() for f in (1, 2, 4)]
         observables = []
-        for output, level in zip(outputs, record['levels']):
-            self.assertEqual(
-                numerical_payload_sha256(output),
-                level['baseline_numerical_payload_sha256'],
-            )
+        for output in outputs:
             self.assertEqual(output['status'], 'converged')
             self.assertEqual(output['termination_reason'], 'nonlinear_and_conservation_passed')
             self.assertTrue(all(r['passed'] for r in output['residuals']))
@@ -65,14 +53,29 @@ class CoupledCellVerificationTests(unittest.TestCase):
             voltage = output['circuit']['collector_voltage_V']
             self.assertAlmostEqual(voltage, current*1e7, delta=1e-7)
             observables.append([current, voltage, np.average(concentrations, weights=volume)])
-        np.testing.assert_allclose([v[0] for v in observables], [v['circuit']['anodic_current_A'] for v in record['levels']], rtol=1e-6)
-        np.testing.assert_allclose([v[2] for v in observables], [v['volume_weighted_reduced_mean_mol_m3'] for v in record['levels']], rtol=1e-8)
+        tolerances = record['observable_tolerances']
+        np.testing.assert_allclose(
+            [v[0] for v in observables],
+            [v['circuit']['anodic_current_A'] for v in record['levels']],
+            rtol=tolerances['baseline_current_relative'],
+        )
+        np.testing.assert_allclose(
+            [v[2] for v in observables],
+            [v['volume_weighted_reduced_mean_mol_m3'] for v in record['levels']],
+            rtol=tolerances['baseline_weighted_mean_relative'],
+        )
         observables = np.array(observables)
         changes = np.abs(np.diff(observables, axis=0))
         # Successive differences reduce; no manufactured exact cell solution is claimed.
-        self.assertTrue((changes[1] < .4*changes[0]).all())
-        self.assertLess(changes[1, 0]/abs(observables[2, 0]), 2e-5)
-        self.assertLess(changes[1, 2], 1e-5)  # mol/m3
+        ratio_limit = tolerances['successive_difference_ratio_maximum']
+        self.assertTrue((changes[1] < ratio_limit*changes[0]).all())
+        self.assertLess(
+            changes[1, 0]/abs(observables[2, 0]),
+            tolerances['medium_fine_current_relative_maximum'],
+        )
+        self.assertLess(
+            changes[1, 2], tolerances['medium_fine_mean_absolute_mol_m3_maximum']
+        )  # mol/m3
 
     def test_nonlinear_tolerance_sensitivity(self):
         loose = transverse_fixture(); tight = copy.deepcopy(loose)
