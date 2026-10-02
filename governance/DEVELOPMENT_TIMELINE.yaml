@@ -3,7 +3,7 @@ observed_on: '2026-10-01'
 authority: chronological_reconciliation_not_a_replacement_roadmap
 current_requirements: governance/MASTER_EXECUTION_TASK.md
 current_operating_rules: AGENTS.md
-checkpoint: docs/audits/RESUMPTION_RECONCILIATION_2026-10-01.md
+checkpoint: docs/audits/STRUCTURED_CELL_VERIFICATION_PRODUCT_BATCH_2026-10-01.md
 stages:
   - id: legacy_workspace
     period: April-May 2026
@@ -44,7 +44,9 @@ stages:
     meaning: Restricted 1D case integration, spatial contracts/queue/artifacts, Gmsh and bounded Stokes/Darcy neutral scalar source-loss operations; broad coupled 2D/3D product remains pending.
   - id: structured_cell_review_batch
     period: '2026-10-01'
-    state: development_pr_not_merged
+    state: integrated_main
+    git_revision: 72acd35bc027e373e37e163c316ef62b60af1efd
+    merged_at: 2026-10-01T20:45:00Z
     branch: codex/coupled-spatial-cell-batch
     pull_request: 113
     base_main: e00d5936dd5cc6d8884640d83d1d01a42e5653d4
@@ -54,6 +56,19 @@ stages:
       - bioelectrochem_agent_kit/domain/ontology/structured-cell-equations.yaml
       - bioelectro-copilot-contracts/contracts/spatial_cell_input_v1.yaml
     meaning: Reproducible replacement for an unrecovered interrupted patch; restricted steady 2D/3D finite volumes with SciPy Newton and supporting electrolyte, worker/API/artifacts and development slices, not PETSc SNES or full electroneutral DAE.
+  - id: structured_cell_verification_product_batch
+    period: '2026-10-01'
+    state: development_pr_not_merged
+    branch: codex/spatial-verification-product-batch
+    pull_request: 114
+    base_main: 72acd35bc027e373e37e163c316ef62b60af1efd
+    sources:
+      - tests/contracts/test_spatial_cell_verification.py
+      - tests/postgres/structured-cell-roundtrip.test.ts
+      - tests/e2e/structured-cell-workbench.spec.ts
+      - packages/domain-contracts/src/structured-cell-development-report.ts
+      - docs/audits/STRUCTURED_CELL_VERIFICATION_PRODUCT_BATCH_2026-10-01.md
+    meaning: Nonuniform restricted 2D refinement and termination verification, native PostgreSQL and real Chromium gates passed at runtime head 6f9217d in CI run 36930062304, hash-bound workbench probes and deterministic development reports. No general catalog promotion or independent validation.
 sequence:
   - development_batch
   - numerical_verification_and_correction
@@ -63,4 +78,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: verify_restricted_coupled_2d_refinement_and_failure_behavior_before_product_or_broader_3d_promotion
+next_work: map_stack_case_inputs_to_common_equation_graph_with_explicit_data_requirements_before_general_profile_promotion

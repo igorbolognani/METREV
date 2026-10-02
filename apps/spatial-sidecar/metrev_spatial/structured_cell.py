@@ -320,6 +320,8 @@ class Cell:
         return J.tocsr()
 
     def solve(self):
+        # A Cell may be reused in verification; each solve owns its diagnostics.
+        self.history=[]
         x=np.zeros(self.size)
         for k,s in enumerate(self.input['species']): x[k*self.n:(k+1)*self.n]=s['initial_concentration']['value']/self.cs
         cath=self.input['electrodes'][1]['equilibrium_potential']['value']; an=self.input['electrodes'][0]['equilibrium_potential']['value']
@@ -331,19 +333,20 @@ class Cell:
             result=self.residual(v)
             if not np.isfinite(result).all(): raise ValueError('Nonfinite cell residual')
             return result
-        f=residual(x); evaluations=1; reason=0
+        f=residual(x); evaluations=1; reason=0; termination='maximum_evaluations'
         tolerance=self.input['numerics']['nonlinear_tolerance']; maximum=self.input['numerics']['max_evaluations']
         while evaluations<maximum:
             self.history.append(float(np.max(np.abs(f))))
-            if self.history[-1]<=tolerance: reason=1; break
+            if self.history[-1]<=tolerance: reason=1; termination='nonlinear_tolerance'; break
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter('error',MatrixRankWarning)
                     step=spsolve(self.jacobian(x),-f)
-                if not np.isfinite(step).all(): break
-            except (MatrixRankWarning,ValueError,RuntimeError,OverflowError): break
+                if not np.isfinite(step).all(): termination='nonfinite_newton_step'; break
+            except (MatrixRankWarning,ValueError,RuntimeError,OverflowError): termination='linear_solve_failed'; break
             alpha=1.; negative=step[:self.ns*self.n]<0
             if negative.any(): alpha=min(alpha,.99*float(np.min(-x[:self.ns*self.n][negative]/step[:self.ns*self.n][negative])))
+            if alpha<1e-12: termination='positivity_step_blocked'; break
             accepted=False
             while alpha>=1e-12 and evaluations<maximum:
                 candidate=x+alpha*step
@@ -351,13 +354,15 @@ class Cell:
                     trial=residual(candidate); evaluations+=1
                     if np.linalg.norm(trial)<=(1-1e-4*alpha)*np.linalg.norm(f):
                         x=candidate; f=trial; accepted=True; break
-                except (FloatingPointError,OverflowError): evaluations+=1
+                except (FloatingPointError,OverflowError,ValueError): evaluations+=1
                 alpha*=.5
-            if not accepted: break
+            if not accepted:
+                termination='maximum_evaluations' if evaluations>=maximum else 'line_search_failed'
+                break
         final=float(np.max(np.abs(f)))
         if not self.history or final!=self.history[-1]: self.history.append(final)
-        if final<=tolerance: reason=1
-        return self.output(SimpleNamespace(x=x,fun=f,nfev=evaluations,status=reason,success=reason>0))
+        if final<=tolerance: reason=1; termination='nonlinear_tolerance'
+        return self.output(SimpleNamespace(x=x,fun=f,nfev=evaluations,status=reason,success=reason>0,termination=termination))
 
     def output(self,result):
         c,phi,solid,V=self.unpack(result.x); mass,ionic,electronic,boundary,source,collectors,jr,interfaces=self.balances(result.x)
@@ -376,13 +381,14 @@ class Cell:
         circuit_residual=float(abs(self.residual(result.x)[-1]))
         residuals.append({'balance_id':'load_voltage','kind':'circuit_closure','scope':'global','absolute_residual':circuit_residual*self.ps,'unit':'V','relative_residual':circuit_residual,'tolerance':scale,'passed':circuit_residual<=scale})
         converged=bool(result.success and self.history[-1]<=self.input['numerics']['nonlinear_tolerance'] and all(r['passed'] for r in residuals))
+        termination='nonlinear_and_conservation_passed' if converged else ('conservation_gate_failed' if result.success else result.termination)
         fields=[{'id':'concentration_'+s['id'],'unit':'mol/m3','values':c[k].tolist(),'cells':list(range(n))} for k,s in enumerate(self.input['species'])]
         fields.append({'id':'liquid_potential','unit':'V','values':phi.tolist(),'cells':list(range(n))})
         for e in self.input['electrodes']:
             r=next(r for r,l in enumerate(self.input['geometry']['layers']) if l['tag']==e['domain_tag']); cells=np.flatnonzero(self.mesh['regions']==r)
             fields.append({'id':'solid_potential_'+e['role'],'unit':'V','values':solid[cells].tolist(),'cells':cells.tolist()})
         current=float(-collectors[0]); power=current*V
-        return {'version':VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'history':self.history,'residuals':residuals,'fields':fields,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()}}
+        return {'version':VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'termination_reason':termination,'history':self.history.copy(),'residuals':residuals,'fields':fields,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()}}
 
 
 def main():

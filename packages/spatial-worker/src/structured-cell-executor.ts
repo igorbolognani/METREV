@@ -89,6 +89,15 @@ const solveSchema = envelopeSchema
     status: z.enum(['converged', 'not_converged']),
     evaluations: z.number().int().positive(),
     optimizer_termination: z.number().int(),
+    termination_reason: z.enum([
+      'nonlinear_and_conservation_passed',
+      'conservation_gate_failed',
+      'maximum_evaluations',
+      'linear_solve_failed',
+      'nonfinite_newton_step',
+      'positivity_step_blocked',
+      'line_search_failed',
+    ]),
     history: z.array(z.number().finite().nonnegative()).min(1).max(10001),
     residuals: z.array(residualSchema).min(1).max(64),
     circuit: circuitSchema,
@@ -444,10 +453,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
               iteration: i + 1,
               nonlinear_residual,
             })),
-            termination_reason:
-              response.status === 'converged'
-                ? 'nonlinear_and_conservation_passed'
-                : 'nonlinear_or_conservation_failed',
+            termination_reason: response.termination_reason,
           },
         ],
         warnings: [

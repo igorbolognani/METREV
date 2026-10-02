@@ -59,4 +59,12 @@ results:
   artifacts: Hash-bound JSON cell fields and actual structured numerical mesh, owner-scoped access.
   failed_solve: Retain verified fields and conservation diagnostics; no completed status when tolerances fail.
   energy: Signed current times voltage; separately tagged MFC generation and MEC electrical input.
+  termination: Explicit nonlinear/conservation success or evaluation budget, linear solve, nonfinite step, positivity, line search or conservation gate failure.
+  development_report:
+    version: spatial-cell-development-report-v1
+    runtime_projection: packages/domain-contracts/src/structured-cell-development-report.ts
+    formats: [json, markdown]
+    decision_eligible: false
+    contents: Source-backed input, geometry, external artifact hashes and summaries, circuit, convergence, conservation, unsupported physics and failed diagnostic role.
+    verification: Never infer per-run mesh convergence or independent validation from a fixture.
 compatibility: Existing input v2 and result v1/v2 remain supported. Never substitute dimension or executor.

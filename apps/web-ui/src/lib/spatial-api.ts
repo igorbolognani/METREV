@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   structuredCellInputSchema,
   type StructuredCellInput,
+  structuredCellRunViewSchema,
 } from '@metrev/domain-contracts/browser';
-import type { SpatialSimulationRunSnapshot } from '@metrev/domain-contracts';
 
 const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 async function json(response: Response) {
@@ -21,61 +21,57 @@ export async function createSpatialCellRun(
   input: StructuredCellInput,
   evaluationId?: string,
 ) {
-  return readRun(
-    await json(
-      await fetch(`${base}/api/spatial-simulations`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': crypto.randomUUID(),
-        },
-        body: JSON.stringify({
-          input: structuredCellInputSchema.parse(input),
-          ...(evaluationId ? { evaluation_id: evaluationId } : {}),
+  return fetchSpatialRun(
+    readRunId(
+      await json(
+        await fetch(`${base}/api/spatial-simulations`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            input: structuredCellInputSchema.parse(input),
+            ...(evaluationId ? { evaluation_id: evaluationId } : {}),
+          }),
         }),
-      }),
+      ),
     ),
   );
 }
-function readRun(value: unknown): SpatialSimulationRunSnapshot {
-  z.object({
-    run: z
-      .object({
-        id: z.string().min(1),
-        status: z.enum([
-          'queued',
-          'preparing_geometry',
-          'meshing',
-          'solving',
-          'postprocessing',
-          'completed',
-          'failed',
-          'cancelled',
-        ]),
-        progress: z.number().min(0).max(100),
-        dimension: z.union([z.literal(2), z.literal(3)]),
-      })
-      .passthrough(),
-  }).parse(value);
-  return (value as { run: SpatialSimulationRunSnapshot }).run;
+function readRunId(value: unknown) {
+  return z
+    .object({ run: z.object({ id: z.string().min(1).max(160) }) })
+    .parse(value).run.id;
+}
+export function readRun(value: unknown) {
+  return z.object({ run: structuredCellRunViewSchema }).parse(value).run;
 }
 export async function fetchSpatialRun(id: string) {
   return readRun(
     await json(
-      await fetch(`${base}/api/spatial-simulations/${encodeURIComponent(id)}`, {
-        credentials: 'include',
-      }),
+      await fetch(
+        `${base}/api/spatial-simulations/${encodeURIComponent(id)}/view`,
+        {
+          credentials: 'include',
+        },
+      ),
     ),
   );
 }
 export async function cancelSpatialRun(id: string) {
-  return readRun(
-    await json(
-      await fetch(`${base}/api/spatial-simulations/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      }),
+  return fetchSpatialRun(
+    readRunId(
+      await json(
+        await fetch(
+          `${base}/api/spatial-simulations/${encodeURIComponent(id)}`,
+          {
+            method: 'DELETE',
+            credentials: 'include',
+          },
+        ),
+      ),
     ),
   );
 }

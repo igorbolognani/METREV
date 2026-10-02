@@ -1,0 +1,98 @@
+{
+  "version": "structured-cell-synthetic-refinement-verification-v1",
+  "role": "mathematical_software_verification",
+  "decision_eligible": false,
+  "independent_validation": false,
+  "source": "tests/contracts/test_spatial_cell_verification.py:transverse_fixture",
+  "source_input_fixture_sha256": "e01169d6183e02e29bb92e95fdc32b161c42534f87dfd39e651dd97b493525dc",
+  "runtime_source_sha256": "5c194a54b8a4214520c2ee29238dc745adc50c9577c101b531f8c2b02b773e37",
+  "numerical_library_versions": {
+    "numpy": "2.3.5",
+    "scipy": "1.17.0"
+  },
+  "observable_tolerances": {
+    "successive_difference_ratio_maximum": 0.4,
+    "medium_fine_current_relative_maximum": 2e-5,
+    "medium_fine_mean_absolute_mol_m3_maximum": 1e-5
+  },
+  "levels": [
+    {
+      "refinement_factor": 1,
+      "cell_count": 18,
+      "input_sha256": "da9fecbcc38bb25006adafde4c83e217c374a13bf969b74cd14b2b6ba12ddd23",
+      "geometry_request_sha256": "90a0bb713e2d443bf17d9a015159632edfd0f02275511cd8606939718e50a23f",
+      "mesh_artifact_sha256": "8c7c334ca95fa4c7968288cec8339d6a6fae4f1567d370c926e5ba617f5d621a",
+      "field_artifact_sha256": {
+        "concentration_reduced": "f044d93c054e408d63e932c55ec58cefff9a27b616f55ba6dc44155d75fda012",
+        "concentration_oxidized": "bc85a261ca94601c5fb39e48921178ec0f54900dd7370e7b234495efc4758c4a",
+        "liquid_potential": "427e970a804255cfc3f0adc4b59bba02c03d1bf1944c14661d8467f35b0ba997",
+        "solid_potential_anode": "47d8cdc548b72e00a2617fd0b5083304cc10a4c69a06522d2f82871ecdeede4d",
+        "solid_potential_cathode": "9d1dbec9bab89715e07a5814f356af02d3142d137566980f3c49791c9625c95c"
+      },
+      "status": "converged",
+      "termination_reason": "nonlinear_and_conservation_passed",
+      "evaluations": 85,
+      "circuit": {
+        "collector_voltage_V": 0.005254795837729239,
+        "anodic_current_A": 5.254795837729239e-10,
+        "signed_electrical_power_W": 2.7612879296216534e-12,
+        "mfc_generated_power_W": 2.7612879296216534e-12,
+        "mec_electrical_input_W": null
+      },
+      "volume_weighted_reduced_mean_mol_m3": 0.999544584536886,
+      "maximum_relative_conservation_residual": 2.725119359047572e-8
+    },
+    {
+      "refinement_factor": 2,
+      "cell_count": 72,
+      "input_sha256": "5fd2253ef5061ed8acb2a0dda746380d38b879049b9a42e6e74c0be8d6426ec8",
+      "geometry_request_sha256": "fe79abc9678b2de6053bfc85d07de8534cfa6078da7c14995faedb3e5893465b",
+      "mesh_artifact_sha256": "8c758374199a1b3bacb6a611a47a7c963747842360111cf7e237ec982a1b2a7a",
+      "field_artifact_sha256": {
+        "concentration_reduced": "9605b2b9614842b78ea2e8ea2ef66a131c4aca3485e889b9df6ec48523e10e67",
+        "concentration_oxidized": "bbc545d525d4635f62e7517ca2641a8b2b63f74623a55b3ebc8e94981fd723c0",
+        "liquid_potential": "ba92ca1b50899b1c84108fdd876c47c96d47047dd0b36b0e2bb6e4069df655db",
+        "solid_potential_anode": "24acb349766e42a9b7069f4dd74f8529b491d23e967895e78a33d178e94c058c",
+        "solid_potential_cathode": "ec8278940fe3075f046a0517f32a4f3b397e9c40e4ccf6090b54fcc08db6e686"
+      },
+      "status": "converged",
+      "termination_reason": "nonlinear_and_conservation_passed",
+      "evaluations": 140,
+      "circuit": {
+        "collector_voltage_V": 0.005255153395640583,
+        "anodic_current_A": 5.255153395640583e-10,
+        "signed_electrical_power_W": 2.7616637211712753e-12,
+        "mfc_generated_power_W": 2.7616637211712753e-12,
+        "mec_electrical_input_W": null
+      },
+      "volume_weighted_reduced_mean_mol_m3": 0.9995622809288387,
+      "maximum_relative_conservation_residual": 4.128128487341057e-9
+    },
+    {
+      "refinement_factor": 4,
+      "cell_count": 288,
+      "input_sha256": "b8c501d6a8727b7737d7b154c40906725bbfc3dd4d10d0e36c14449a6565e057",
+      "geometry_request_sha256": "f9e77240867643ded3ae86a06f3ab7984ec6ee7eeff4ce9742e959e5b313c4e9",
+      "mesh_artifact_sha256": "49aa2b91da8c7f360db78dd6e27c39bbebf1d92a92c6167a96d1565b7f2e311a",
+      "field_artifact_sha256": {
+        "concentration_reduced": "32d27561b3f59fcb8bd2f0fff9475977257b3319dd7c9dee98ed12866711079e",
+        "concentration_oxidized": "83e4b22d57d95880b00f6f1124c93906289ce93070b7242f4b63fb361a71ced4",
+        "liquid_potential": "26603de35c86a0f9e96cb7381714982786ae546c3520f37440341f11d6c6ac61",
+        "solid_potential_anode": "a0cf8ff7b1994b29bb2204c933485fd762b3246008c7df4d0be7aeaff99773e4",
+        "solid_potential_cathode": "03a9af54348959f3911c4353607a32fcb8ed0ac947cc0272c361c23ad7fb2609"
+      },
+      "status": "converged",
+      "termination_reason": "nonlinear_and_conservation_passed",
+      "evaluations": 344,
+      "circuit": {
+        "collector_voltage_V": 0.005255246554540063,
+        "anodic_current_A": 5.255246554540062e-10,
+        "signed_electrical_power_W": 2.7617616349005198e-12,
+        "mfc_generated_power_W": 2.7617616349005198e-12,
+        "mec_electrical_input_W": null
+      },
+      "volume_weighted_reduced_mean_mol_m3": 0.9995668598182632,
+      "maximum_relative_conservation_residual": 3.4527988823008243e-9
+    }
+  ]
+}

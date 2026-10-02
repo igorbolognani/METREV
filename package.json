@@ -40,6 +40,7 @@
     "test:db": "vitest run --config vitest.postgres.config.ts",
     "lint:workflow-semantics": "node scripts/run-workflow-semantic-lint.mjs",
     "governance:check": "python3 scripts/validate_governance.py",
+    "test:spatial-cell:e2e": "playwright test --config playwright.spatial-cell.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:install": "playwright install --with-deps chromium",

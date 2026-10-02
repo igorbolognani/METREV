@@ -54,3 +54,9 @@ Native scalar source/loss batch: `spatial_toolchain_smoke.py` checks pure first-
 | Empirical comparison                | None                                                                                                                    | Matched experiments, calibration split and independent holdout |
 
 Sources: `tests/contracts/test_spatial_structured_cell.py` and `tests/runtime/structured-cell-worker.test.ts`. These bounded checks do not close general P2/P3 gates. A steady cell has no applicable time-refinement claim; transient scalar fixture results do not verify transient cell physics.
+
+## Restricted coupled-cell follow-up
+
+`tests/contracts/test_spatial_cell_verification.py` exercises one-sided transverse reservoir feeding with heterogeneous diffusivity and liquid conductivity at 18/72/288 cells. It checks local/global species, liquid/solid charge and MFC load closure, finite nonnegative fields, volume-weighted concentration and current refinement, plus `1e-7`/`1e-9` nonlinear tolerance sensitivity. Successive observable differences must shrink below 40% of the previous difference; medium/fine current differs by less than `2e-5` relative and mean concentration by less than `1e-5 mol/m3`. This is a synthetic restricted-cell check, not an exact solution or an empirical accuracy estimate.
+
+The same suite distinguishes evaluation exhaustion, linear failure, nonfinite step, positivity blockage and line-search failure; no failing candidate is silently accepted or clipped. Repeated solves own independent histories. Native worker tests verify 2D/3D success and 2D failed report/view/mesh/fields. The new cell-specific PostgreSQL and actual-browser gates are required in CI; test existence does not establish gate success. Details and the 1,152-cell budget limit are in the dated verification/product audit. General catalog and independent-validation gates stay pending.

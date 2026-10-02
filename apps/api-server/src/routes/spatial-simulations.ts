@@ -18,6 +18,9 @@ import {
   spatialRuntimeInputSchema,
   spatialRuntimeInputSha256,
   spatialRuntimeMeshRequestSha256,
+  buildStructuredCellDevelopmentReport,
+  renderStructuredCellDevelopmentReport,
+  structuredCellRunViewSchema,
   type SpatialRuntimeInput,
 } from '@metrev/domain-contracts';
 
@@ -233,6 +236,70 @@ export async function registerSpatialSimulationRoutes(
     return run
       ? reply.send({ run })
       : reply.code(404).send({ error: 'not_found' });
+  });
+
+  app.get('/:runId/view', async (request, reply) => {
+    const actor = authorize(request, reply, 'VIEWER');
+    if (!actor) return reply;
+    const params = runParamsSchema.safeParse(request.params);
+    if (!params.success)
+      return reply.code(400).send({ error: 'invalid_input' });
+    const run = await app.spatialSimulationRunRepository.getOwnedRun(
+      params.data.runId,
+      actor.userId,
+    );
+    if (!run) return reply.code(404).send({ error: 'not_found' });
+    if (run.model_id !== 'structured-cell-supporting-electrolyte-v1')
+      return reply.code(409).send({ error: 'view_unavailable' });
+    const input = await app.spatialSimulationRunRepository.getOwnedInput(
+      run.id,
+      actor.userId,
+    );
+    if (!input || spatialRuntimeInputSha256(input) !== run.input_sha256)
+      return reply.code(409).send({ error: 'input_integrity_failure' });
+    reply.header('Cache-Control', 'private, no-store');
+    return reply.send({
+      run: structuredCellRunViewSchema.parse({ ...run, input_snapshot: input }),
+    });
+  });
+
+  app.get('/:runId/report', async (request, reply) => {
+    const actor = authorize(request, reply, 'VIEWER');
+    if (!actor) return reply;
+    const params = runParamsSchema.safeParse(request.params);
+    const query = z
+      .object({ format: z.enum(['json', 'markdown']).default('json') })
+      .strict()
+      .safeParse(request.query);
+    if (!params.success || !query.success)
+      return reply.code(400).send({ error: 'invalid_input' });
+    const run = await app.spatialSimulationRunRepository.getOwnedRun(
+      params.data.runId,
+      actor.userId,
+    );
+    if (!run) return reply.code(404).send({ error: 'not_found' });
+    if (
+      run.model_id !== 'structured-cell-supporting-electrolyte-v1' ||
+      !run.result ||
+      !['completed', 'failed'].includes(run.status)
+    )
+      return reply.code(409).send({ error: 'report_unavailable' });
+    const input = await app.spatialSimulationRunRepository.getOwnedInput(
+      run.id,
+      actor.userId,
+    );
+    if (!input || spatialRuntimeInputSha256(input) !== run.input_sha256)
+      return reply.code(409).send({ error: 'input_integrity_failure' });
+    const report = buildStructuredCellDevelopmentReport({
+      ...run,
+      input_snapshot: input,
+    });
+    reply.header('Cache-Control', 'private, no-store');
+    if (query.data.format === 'markdown')
+      return reply
+        .type('text/markdown; charset=utf-8')
+        .send(renderStructuredCellDevelopmentReport(report));
+    return reply.send(report);
   });
 
   const downloadArtifact = async (
