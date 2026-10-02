@@ -144,21 +144,32 @@ export function composeModules(
   dimension: 0 | 1 | 2 | 3,
 ): ComposedModule[] {
   const ordered: ComposedModule[] = [];
+  const composedById = new Map<string, ComposedModule>();
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const visit = (id: string) => {
     if (visited.has(id)) return;
     const module = PHYSICS_MODULES[id];
-    if (!module || visiting.has(id))
-      throw new RangeError(`Invalid physics module dependency: ${id}`);
+    if (!module)
+      throw new RangeError(`Unknown physics module in composition: ${id}`);
+    if (visiting.has(id))
+      throw new RangeError(`Cyclic physics module dependency: ${id}`);
     visiting.add(id);
     for (const dependency of module.requires) visit(dependency);
     visiting.delete(id);
     visited.add(id);
-    ordered.push({
+    const composed: ComposedModule = {
       ...module,
-      executableAtFidelity: module.supportedDimensions.includes(dimension),
-    });
+      executableAtFidelity:
+        module.supportedDimensions.includes(dimension) &&
+        module.equationRefs.length > 0 &&
+        module.requires.every(
+          (dependency) =>
+            composedById.get(dependency)?.executableAtFidelity === true,
+        ),
+    };
+    ordered.push(composed);
+    composedById.set(id, composed);
   };
   ids.forEach(visit);
   return ordered;

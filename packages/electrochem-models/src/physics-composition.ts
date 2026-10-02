@@ -82,10 +82,55 @@ export function resolvePhysicsComposition(
   }
 
   const researchOnly = profile.status === 'research_profile_only';
-  const modulePlan = composeModules(
-    activeModules,
-    profile.spatialDimension,
-  ).map((module) => ({
+  let composedModulePlan: ComposedModule[];
+  try {
+    composedModulePlan = composeModules(
+      activeModules,
+      profile.spatialDimension,
+    );
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : 'Unknown module graph error';
+    return {
+      modelId: profile.id,
+      status: 'not_implemented',
+      activeModules,
+      missingModules: [
+        'configuration_specific_mapping',
+        'unresolved_module_dependency',
+      ],
+      missingInputs: profile.requiredSpatialInputs,
+      unsupportedConfiguration: [
+        ...unsupportedConfiguration,
+        `module_graph:${detail}`,
+      ],
+      note: `The selected stack's physics-module graph could not be resolved: ${detail}`,
+      modulePlan: [],
+    };
+  }
+  const composedById = new Map(
+    composedModulePlan.map((module) => [module.id, module]),
+  );
+  const moduleMappingBlockers = composedModulePlan.flatMap((module) => {
+    const blockers: string[] = [];
+    if (!module.supportedDimensions.includes(profile.spatialDimension))
+      blockers.push(
+        `module:${module.id}:unsupported_dimension_${profile.spatialDimension}d`,
+      );
+    if (module.equationRefs.length === 0)
+      blockers.push(`module:${module.id}:missing_equation_mapping`);
+    const unmappedDependencies = module.requires.filter(
+      (dependency) =>
+        composedById.get(dependency)?.executableAtFidelity !== true,
+    );
+    if (unmappedDependencies.length > 0)
+      blockers.push(
+        `module:${module.id}:unmapped_dependencies:${unmappedDependencies.join(',')}`,
+      );
+    return blockers;
+  });
+  unsupportedConfiguration.push(...moduleMappingBlockers);
+  const modulePlan = composedModulePlan.map((module) => ({
     ...module,
     executableAtFidelity:
       !researchOnly &&
@@ -107,9 +152,17 @@ export function resolvePhysicsComposition(
           'numerical_runtime',
           'product_integration',
         ]
-    : unsupportedConfiguration.length
-      ? ['configuration_specific_mapping']
-      : [];
+    : [];
+  if (unsupportedConfiguration.length > 0) {
+    if (!missingModules.includes('configuration_specific_mapping'))
+      missingModules.push('configuration_specific_mapping');
+    for (const id of new Set(
+      moduleMappingBlockers.map((blocker) => blocker.split(':')[1]),
+    )) {
+      if (id && !missingModules.includes(`module_mapping:${id}`))
+        missingModules.push(`module_mapping:${id}`);
+    }
+  }
   return {
     modelId: profile.id,
     status:
