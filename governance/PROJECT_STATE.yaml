@@ -48,8 +48,8 @@ snapshot:
   development_branch: codex/stack-spatial-case-integration
   development_pr: 115
   integration_state: open_draft_not_merged
-  verified_runtime_head: pending_current_branch_required_checks
-  runtime_ci: pending_current_branch_required_checks
-  runtime_codeql: pending_current_branch_required_checks
+  verified_runtime_head: 10fec666770b844c86f9f65668a511af805fde3b
+  runtime_ci: success_run_36993158159_all_seven_jobs
+  runtime_codeql: success_run_36993158154
   release_gate: pending_independent_review_required_ci_and_general_product_dependencies
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph

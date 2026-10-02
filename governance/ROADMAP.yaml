@@ -365,7 +365,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider; a restricted structured-cell slice viewer passed the PR #114 browser gate; new case-bound flow requires its own CI evidence
+      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider; a restricted structured-cell slice viewer passed the PR #114 browser gate; the new case-bound flow passed CI run 36993158159
       - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
       - Returned state fields must contain every requested variable or explicitly composed planar x/y velocity vector and no unrequested variable; independent derived metrics and broader vector output authority beyond planar velocity remain pending
       - The explicit development worker has restricted Darcy-transport and single-liquid Stokes adapters that project solver fields into input-bound result-v2 manifests using owner-scoped local stores; CI verifies both through the pinned native worker/API path, while production artifact storage and general catalog solver admission remain pending. Structured-cell result-v3 additionally retains source-bound JSON fields and numerical mesh for completed and failed runs
@@ -907,7 +907,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests passed in CI run 36930062304 at runtime head 6f9217d; new case-bound native worker/API tests pass locally; PostgreSQL snapshot revision and browser case history gates are added for current CI. Full catalog integration and general spatial verification remain pending
+      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests passed in CI run 36930062304 at runtime head 6f9217d; new case-bound native worker/API tests pass locally; 24 PostgreSQL checks including immutable snapshot revision and three real browser scenarios passed CI run 36993158159 at head 10fec66. Full catalog integration and general spatial verification remain pending
   - id: P36
     title: Expand CI without making every PR prohibitively expensive
     phase: P2
