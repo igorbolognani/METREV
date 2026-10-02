@@ -61,6 +61,10 @@ export default defineConfig({
   test: {
     include: ['tests/postgres/**/*.test.ts'],
     environment: 'node',
+    // Files share a durable global queue but keep private artifact roots. A
+    // worker in another file must not claim this file's fixture. Explicit
+    // Promise.all claim/lease races inside a test remain concurrent.
+    fileParallelism: false,
     coverage: {
       reporter: ['text', 'html'],
       include: ['packages/**/*.ts', 'apps/api-server/src/**/*.ts'],
