@@ -10,6 +10,11 @@ import {
   type TechnicalCompletenessAssessment,
   type TechnicalCompletenessCandidate,
 } from './table-ready-completeness';
+import {
+  assessSolverEvidenceCoverage,
+  summarizeSolverEvidenceCoverage,
+  type SolverEvidenceCoverage,
+} from './solver-evidence-coverage';
 
 loadWorkspaceEnv(import.meta.url);
 
@@ -18,6 +23,7 @@ type EvidenceReadinessReportItem = {
   catalog_item_id: string;
   source_record_id: string;
   source_type: string;
+  solver_evidence_coverage: SolverEvidenceCoverage;
   title: string;
 };
 
@@ -30,6 +36,9 @@ type EvidenceReadinessReport = {
     action_counts: Record<TechnicalCompletenessAction, number>;
     accepted_records_evaluated: number;
     strict_table_ready_records: number;
+    solver_variable_coverage: ReturnType<
+      typeof summarizeSolverEvidenceCoverage
+    >;
   };
 };
 
@@ -131,6 +140,7 @@ async function loadAcceptedRecords(limit: number) {
           fieldKey: true,
           material: true,
           metricType: true,
+          operatingConditionKey: true,
           normalizedUnit: true,
           normalizedValue: true,
           reactorType: true,
@@ -144,6 +154,7 @@ async function loadAcceptedRecords(limit: number) {
           decisionReady: true,
           material: true,
           metricType: true,
+          operatingConditionKey: true,
           normalizedUnit: true,
           normalizedValue: true,
           systemType: true,
@@ -157,13 +168,21 @@ async function loadAcceptedRecords(limit: number) {
 
 export async function buildEvidenceReadinessReport(input: { limit: number }) {
   const records = await loadAcceptedRecords(input.limit);
-  const items = records.map((record) => ({
-    assessment: evaluateTechnicalCompleteness(toCandidate(record)),
-    catalog_item_id: record.id,
-    source_record_id: record.sourceRecordId,
-    source_type: record.sourceRecord.sourceType.toLowerCase(),
-    title: record.title,
-  }));
+  const items = records.map((record) => {
+    const solverEvidenceCoverage = assessSolverEvidenceCoverage({
+      canonicalFacts: record.scientificFacts,
+      benchmarkRecords: record.benchmarkRecords,
+    });
+
+    return {
+      assessment: evaluateTechnicalCompleteness(toCandidate(record)),
+      catalog_item_id: record.id,
+      source_record_id: record.sourceRecordId,
+      source_type: record.sourceRecord.sourceType.toLowerCase(),
+      solver_evidence_coverage: solverEvidenceCoverage,
+      title: record.title,
+    };
+  });
   const actionCounts = emptyActionCounts();
 
   for (const item of items) {
@@ -182,12 +201,19 @@ export async function buildEvidenceReadinessReport(input: { limit: number }) {
       strict_table_ready_records: items.filter(
         (item) => item.assessment.strictTableReady,
       ).length,
+      solver_variable_coverage: summarizeSolverEvidenceCoverage(
+        items.map((item) => item.solver_evidence_coverage),
+      ),
     },
   } satisfies EvidenceReadinessReport;
 }
 
 function escapeCsvValue(value: unknown) {
-  const raw = Array.isArray(value) ? value.join(';') : String(value ?? '');
+  const raw = Array.isArray(value)
+    ? value.join(';')
+    : value && typeof value === 'object'
+      ? JSON.stringify(value)
+      : String(value ?? '');
   return /[",\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
 }
 
@@ -206,6 +232,7 @@ function toCsv(report: EvidenceReadinessReport) {
     'reactor_materials',
     'metrics_outputs',
     'decision_metadata',
+    'solver_evidence_coverage',
     'normalized_metric_records',
     'reactor_material_signals',
     'performance_metric_signals',
@@ -224,6 +251,7 @@ function toCsv(report: EvidenceReadinessReport) {
     item.assessment.coverage.reactorMaterials,
     item.assessment.coverage.metricsOutputs,
     item.assessment.coverage.decisionMetadata,
+    item.solver_evidence_coverage,
     item.assessment.counts.normalizedMetricRecords,
     item.assessment.counts.reactorMaterialSignals,
     item.assessment.counts.performanceMetricSignals,
