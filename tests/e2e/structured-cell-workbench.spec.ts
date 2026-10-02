@@ -275,3 +275,34 @@ test('failed solve retains diagnostic fields and cannot become a completed resul
     'maximum_evaluations',
   );
 });
+
+test('compares saved completed-run summaries only for matching geometry and units', async ({
+  page,
+}) => {
+  await signIn(page);
+  const runA = await enqueue(page, 2);
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+  const runB = await enqueue(page, 2);
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(/does not interpolate or remap meshes/i),
+  ).toBeVisible();
+  await page.getByLabel('Second saved run ID', { exact: true }).fill(runA);
+  await page
+    .getByRole('button', { name: 'Compare summaries', exact: true })
+    .click();
+  await expect(page.getByRole('status')).toContainText(`A: ${runB}`);
+  await expect(page.getByRole('status')).toContainText(`B: ${runA}`);
+  await expect(page.getByRole('status')).toContainText(
+    'Decision eligible: false.',
+  );
+  await expect(page.getByRole('table').last()).toContainText(
+    'concentration_reduced',
+  );
+  await expect(page.getByRole('table').last()).toContainText('Δ (B − A)');
+});
