@@ -186,6 +186,15 @@ export async function registerSpatialSimulationRoutes(
       });
 
     const model = parsed.data.input;
+    if (
+      model.contract_version === 'spatial-cell-input-v1' &&
+      (model.case_context || parsed.data.evaluation_id)
+    )
+      return reply.code(400).send({
+        error: 'case_intake_required',
+        message:
+          'Use the evaluation spatial-simulations route to bind a structured cell to its immutable case snapshot.',
+      });
     try {
       if (!admission.supports(model))
         return reply.code(422).send({

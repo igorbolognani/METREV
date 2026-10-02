@@ -24,6 +24,12 @@ scientific_value:
   required: [value, unit, source_kind, source_ref]
   optional: [source_locator, conditions, uncertainty, uncertainty_unit]
   source_kinds: [measured, literature, default, assumption, test_fixture]
+optional_case_context:
+  version: structured-cell-case-context-v1
+  runtime_projection: packages/domain-contracts/src/structured-cell-case-context.ts
+  authority: Authenticated saved-evaluation service assigns case/evaluation IDs and canonical normalized-case hash; clients cannot assert this binding.
+  mapping: Explicit complete compatible layer-to-stack-block mapping; no scientific parameters inferred from 0D.
+  eligibility: Development only; decision_eligible is false.
 geometry:
   version: structured-layers-v1
   dimensions: [2, 3]
@@ -60,6 +66,11 @@ results:
   failed_solve: Retain verified fields and conservation diagnostics; no completed status when tolerances fail.
   energy: Signed current times voltage; separately tagged MFC generation and MEC electrical input.
   termination: Explicit nonlinear/conservation success or evaluation budget, linear solve, nonfinite step, positivity, line search or conservation gate failure.
+  equation_graph:
+    version: structured-cell-equation-graph-v1
+    runtime_projection: packages/domain-contracts/src/structured-cell-equation-graph.ts
+    scope: Fixed-profile assembly metadata, equation IDs, domain/state units, input parameter paths, interfaces and couplings; not a general symbolic PDE compiler.
+    binding: Optional for legacy compatibility; when present it must equal the graph compiled from the admitted immutable input.
   development_report:
     version: spatial-cell-development-report-v1
     runtime_projection: packages/domain-contracts/src/structured-cell-development-report.ts

@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AuthorizationError, requireRole, type Role } from '@metrev/auth';
 import { confidenceLevelSchema } from '@metrev/domain-contracts';
 import { withSpan } from '@metrev/telemetry';
+import { registerCaseSpatialEvaluationRoutes } from './case-spatial-evaluations';
 
 const rateLimitedRouteOptions = {
   config: {
@@ -59,6 +60,7 @@ function replyForAuthorizationError(
 export async function registerEvaluationRoutes(
   app: FastifyInstance,
 ): Promise<void> {
+  await registerCaseSpatialEvaluationRoutes(app);
   app.get('/', rateLimitedRouteOptions, async (request, reply) => {
     try {
       requireRole(request.actor, 'VIEWER');

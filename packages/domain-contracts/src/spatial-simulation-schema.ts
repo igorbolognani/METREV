@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { structuredCellInputSchema } from './structured-cell-schema';
 import {
+  compileStructuredCellEquationGraph,
+  structuredCellEquationGraphSchema,
+} from './structured-cell-equation-graph';
+import {
   spatialRuntimeInputSchema,
   spatialRuntimeInputSha256,
   spatialRuntimeMeshRequestSha256,
@@ -545,6 +549,7 @@ export const spatialSimulationResultSchema = z
     warnings: z.array(warningSchema).max(500),
     unsupported_physics: z.array(unsupportedPhysicsSchema).max(128),
     artifact_hashes: z.array(sha256).min(1).max(513),
+    equation_graph: structuredCellEquationGraphSchema.optional(),
     cell_circuit: z
       .object({
         collector_voltage_V: z.number().finite(),
@@ -560,6 +565,16 @@ export const spatialSimulationResultSchema = z
   .superRefine((result, context) => {
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: 'custom', path, message });
+    if (
+      result.equation_graph &&
+      (result.contract_version !== 'spatial-simulation-result-v3' ||
+        result.model_id !== result.equation_graph.model_id ||
+        result.dimension !== result.equation_graph.dimension)
+    )
+      issue(
+        ['equation_graph'],
+        'Equation graph must match the restricted result-v3 profile and dimension',
+      );
     if (result.cell_circuit) {
       const c = result.cell_circuit;
       if (
@@ -962,6 +977,23 @@ export function spatialSimulationResultForInputSchema(
         )
           issue('Invalid cell field meaning or unit');
       if (!result.cell_circuit) issue('Cell circuit diagnostics are required');
+      if (input.case_context && !result.equation_graph)
+        issue(
+          'Case-bound cell results require their fixed-profile equation graph',
+        );
+      if (
+        input.case_context &&
+        result.evaluation_id !== input.case_context.evaluation_id
+      )
+        issue(
+          'Cell evaluation binding differs from its immutable case context',
+        );
+      if (
+        result.equation_graph &&
+        JSON.stringify(result.equation_graph) !==
+          JSON.stringify(compileStructuredCellEquationGraph(input))
+      )
+        issue('Equation graph differs from admitted fixed-profile assembly');
     });
   }
   const input = spatialModelInputV2Schema.parse(candidate);

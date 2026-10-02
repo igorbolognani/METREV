@@ -269,7 +269,16 @@ development_profiles:
     dimensions: [2, 3]
     numerical_maturity: numerically_implemented
     experimental_maturity: none
-    case_runner: false
+    case_runner: true
+    case_runner_scope: explicit_saved_evaluation_planar_stack_development_only
+    case_composition_source: packages/electrochem-models/src/case-spatial-composition.ts
+    case_service_source: apps/api-server/src/services/case-spatial-evaluation.ts
+    case_api_source: apps/api-server/src/routes/case-spatial-evaluations.ts
+    case_ui_source: apps/web-ui/src/components/modeling/case-spatial-controls.tsx
+    case_runtime_test: tests/runtime/case-spatial-evaluation.test.ts
+    case_postgres_test: tests/postgres/case-spatial-roundtrip.test.ts
+    equation_graph_source: packages/domain-contracts/src/structured-cell-equation-graph.ts
+    case_persistence_browser_gate: verified_native_postgresql_24_checks_and_three_real_browser_scenarios_ci_run_36993158159
     product_admission: false
     decision_eligible: false
     runtime_source: apps/spatial-sidecar/metrev_spatial/structured_cell.py
@@ -286,14 +295,14 @@ development_profiles:
     browser_config: playwright.spatial-cell.config.ts
     report_source: packages/domain-contracts/src/structured-cell-development-report.ts
     numerical_verification_scope: synthetic_nonuniform_18_72_288_cell_2d_refinement_not_general_or_empirical
-    postgres_gate: verified_native_postgresql_ci_run_36930062304
-    browser_gate: verified_real_next_fastify_postgresql_worker_chromium_ci_run_36930062304
-    verified_runtime_head: 6f9217df08484f3aaad7909e6c23f2c87283fca4
+    postgres_gate: verified_native_postgresql_ci_run_36993158159
+    browser_gate: verified_real_next_fastify_postgresql_worker_chromium_ci_run_36993158159
+    verified_runtime_head: 10fec666770b844c86f9f65668a511af805fde3b
     worker_api_test: tests/runtime/structured-cell-worker.test.ts
     scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_mfc_mec_circuit
     remaining_gates:
       - larger_mesh_nonlinear_robustness_and_broader_verification
-      - case_runner_and_stack_composition
+      - general_stack_geometry_and_equation_composition
       - production_artifact_provider_and_deployment
       - matched_experimental_comparison
       - independent_validation

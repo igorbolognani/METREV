@@ -3,11 +3,14 @@ import { readFile, rm, lstat } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 import {
+  compileStructuredCellEquationGraph,
   structuredCellInputSchema,
   structuredCellTopology,
   STRUCTURED_CELL_LIMITS,
   spatialRuntimeInputSha256,
   structuredCellGeometrySha256,
+  serializeStructuredCellInput,
+  serializeStructuredCellGeometry,
   spatialSimulationResultForInputSchema,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
@@ -118,7 +121,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v1';
+  readonly runtimeVersion = 'structured-cell-process-v2';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -146,6 +149,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
     context: SpatialSimulationExecutionContext,
   ): Promise<SpatialSimulationResult> {
     const input = structuredCellInputSchema.parse(context.input);
+    const equationGraph = compileStructuredCellEquationGraph(input);
     const inputHash = spatialRuntimeInputSha256(input);
     const geometryHash = structuredCellGeometrySha256(input);
     if (
@@ -162,9 +166,9 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       const payload = JSON.stringify({
         operation,
         request_id: requestId,
-        input_json: JSON.stringify(input),
+        input_json: serializeStructuredCellInput(input),
         input_sha256: inputHash,
-        geometry_json: JSON.stringify(input.geometry),
+        geometry_json: serializeStructuredCellGeometry(input),
         geometry_sha256: geometryHash,
       });
       const result = await runSpatialSidecarProcess(
@@ -475,6 +479,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
           ]),
         ],
         cell_circuit: response.circuit,
+        equation_graph: equationGraph,
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

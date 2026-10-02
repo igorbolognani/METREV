@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { structuredCellFixture } from '../fixtures/structured-cell';
 import { analystEmail, analystPassword } from './support/local-runtime';
+import rawCaseFixture from '../fixtures/raw-case-input.json';
 
 // Dedicated config starts real Next.js, authenticated Fastify, PostgreSQL and native worker.
 const api = 'http://localhost:4024';
@@ -33,6 +34,125 @@ async function enqueue(page: Page, dimension: 2 | 3, failed = false) {
   expect(response.status()).toBe(202);
   return (await response.json()).run.id as string;
 }
+
+test('saved case composition, exact fidelity refusal and durable run history', async ({
+  page,
+}) => {
+  await signIn(page);
+  // Plain intake data keeps Playwright independent of the server's ESM loaders.
+  const rawInput = {
+    ...rawCaseFixture,
+    case_id: `browser-case-cell-${crypto.randomUUID()}`,
+    mechanistic_model: undefined,
+    stack_blocks: {
+      ...rawCaseFixture.stack_blocks,
+      reactor_architecture: {
+        architecture_type: 'planar',
+        membrane_presence: 'present',
+      },
+    },
+  };
+  const request = {
+    input: structuredCellFixture(),
+    component_domains: [
+      { domain_tag: 'anode', stack_block: 'anode_biofilm_support' },
+      { domain_tag: 'membrane', stack_block: 'membrane_or_separator' },
+      { domain_tag: 'cathode', stack_block: 'cathode_catalyst_support' },
+    ],
+  };
+  const evaluationResponse = await page.request.post(
+    api + '/api/cases/evaluate',
+    { data: rawInput },
+  );
+  expect(evaluationResponse.status()).toBe(201);
+  const evaluation = await evaluationResponse.json();
+  await page.goto(`/modeling/spatial?evaluation=${evaluation.evaluation_id}`);
+  await page
+    .getByRole('textbox', { name: 'Cell input JSON' })
+    .fill(JSON.stringify(request.input));
+  for (const mapping of request.component_domains!)
+    await page
+      .getByLabel(`Case component for ${mapping.domain_tag}`, { exact: true })
+      .selectOption(mapping.stack_block);
+  await page
+    .getByLabel('Additional required physics')
+    .fill('fixed_membrane_charge');
+  await page
+    .getByRole('button', { name: 'Check case composition', exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      'Composition status: not_implemented. Decision eligible: false.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Queue case run', exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel('Additional required physics').fill('');
+  await page
+    .getByRole('button', { name: 'Check case composition', exact: true })
+    .click();
+  await expect(
+    page.getByText('Composition status: ready. Decision eligible: false.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('12 cells · 49 algebraic states · sparse Newton coupling', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const queued = page.waitForResponse(
+    (r) =>
+      r.url() ===
+        api +
+          `/api/evaluations/${evaluation.evaluation_id}/spatial-simulations` &&
+      r.request().method() === 'POST',
+  );
+  await page
+    .getByRole('button', { name: 'Queue case run', exact: true })
+    .click();
+  const created = await queued;
+  expect(created.status()).toBe(202);
+  const id = (await created.json()).run.id;
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('img', {
+      name: 'concentration_reduced numerical cell field',
+    }),
+  ).toBeVisible();
+  const report = await page.request.get(
+    `${api}/api/spatial-simulations/${id}/report`,
+  );
+  expect(report.status()).toBe(200);
+  expect(await report.json()).toMatchObject({
+    case_context: {
+      evaluation_id: evaluation.evaluation_id,
+      case_id: rawInput.case_id,
+      component_domains: request.component_domains,
+    },
+    equation_graph: { algebraic_state_count: 49 },
+    decision_eligible: false,
+  });
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Reload case runs', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: `2D · completed · ${id}`, exact: true })
+    .click();
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('img', {
+      name: 'concentration_reduced numerical cell field',
+    }),
+  ).toBeVisible();
+});
 
 test('2D and 3D fields, probes, reload, slices and report downloads', async ({
   page,

@@ -14,17 +14,47 @@ export const spatialRuntimeInputSchema = z.union([
   structuredCellInputSchema,
 ]);
 export type SpatialRuntimeInput = z.infer<typeof spatialRuntimeInputSchema>;
+/** Versioned case binding uses locale-independent object order; arrays remain ordered. */
+export function canonicalJsonStringify(value: unknown): string {
+  const canonical = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(canonical)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.entries(v)
+              .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+              .map(([key, child]) => [key, canonical(child)]),
+          )
+        : v;
+  return JSON.stringify(canonical(value));
+}
+export function serializeStructuredCellInput(
+  input: StructuredCellInput,
+): string {
+  return input.case_context
+    ? canonicalJsonStringify(input)
+    : JSON.stringify(input);
+}
+export function serializeStructuredCellGeometry(
+  input: StructuredCellInput,
+): string {
+  return input.case_context
+    ? canonicalJsonStringify(input.geometry)
+    : JSON.stringify(input.geometry);
+}
 export function spatialRuntimeInputSha256(candidate: unknown): string {
   const input = spatialRuntimeInputSchema.parse(candidate);
   if (input.contract_version === 'spatial-input-v2')
     return spatialModelInputV2Sha256(input);
-  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
+  return createHash('sha256')
+    .update(serializeStructuredCellInput(input))
+    .digest('hex');
 }
 export function structuredCellGeometrySha256(
   input: StructuredCellInput,
 ): string {
   return createHash('sha256')
-    .update(JSON.stringify(input.geometry))
+    .update(serializeStructuredCellGeometry(input))
     .digest('hex');
 }
 export function spatialRuntimeMeshRequestSha256(

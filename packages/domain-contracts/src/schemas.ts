@@ -1217,6 +1217,8 @@ export const auditRecordSchema = z.object({
   timestamp: z.string().min(1),
   actor_role: z.string().min(1),
   actor_id: z.string().optional(),
+  /** Immutable per-evaluation input; old records fall back to the case snapshot. */
+  normalized_case_snapshot: normalizedCaseInputSchema.optional(),
   defaults_count: z.number().int().nonnegative(),
   missing_data_count: z.number().int().nonnegative(),
   confidence_level: confidenceLevelSchema,

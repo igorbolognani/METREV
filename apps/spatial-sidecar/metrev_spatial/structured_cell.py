@@ -45,11 +45,22 @@ def number(v, unit, lower=None, strict=False):
 
 def validate(inp):
     required = {'contract_version','model_id','system','dimension','coordinate_system','charge_model','geometry','temperature','reservoir_faces','species','reactions','electrodes','circuit','numerics'}
-    if not isinstance(inp,dict) or set(inp)!=required:
+    if not isinstance(inp,dict) or set(inp) - {'case_context'} != required:
         raise ValueError('Invalid cell input properties')
     if (inp['contract_version']!='spatial-cell-input-v1' or inp['model_id']!='structured-cell-supporting-electrolyte-v1' or inp['dimension'] not in [2,3] or inp['coordinate_system']!='cartesian' or inp['charge_model']!='fixed-conductivity-supporting-electrolyte'):
         raise ValueError('Unsupported cell profile or fidelity')
     g=inp['geometry']; d=inp['dimension']; layers=g['layers']; species=inp['species']
+    if 'case_context' in inp:
+        context=inp['case_context']
+        expected={'version','case_id','evaluation_id','normalized_case_sha256','mapping_policy','component_domains','architecture_family','input_role','decision_eligible'}
+        if not isinstance(context,dict) or set(context)!=expected or context['version']!='structured-cell-case-context-v1' or context['mapping_policy']!='explicit_layer_to_case_stack_block_v1' or context['input_role']!='source_traced_case_development_input' or context['decision_eligible'] is not False:
+            raise ValueError('Invalid case context')
+        if any(not isinstance(context[key],str) or not context[key].strip() for key in ['case_id','evaluation_id','architecture_family']) or not isinstance(context['normalized_case_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',context['normalized_case_sha256']):
+            raise ValueError('Invalid case identity')
+        blocks={'bulk_liquid':'reactor_architecture','anode':'anode_biofilm_support','biofilm':'anode_biofilm_support','membrane':'membrane_or_separator','separator':'membrane_or_separator','cathode':'cathode_catalyst_support'}
+        maps=context['component_domains']
+        if not isinstance(maps,list) or len(maps)!=len(layers) or any(not isinstance(m,dict) or set(m)!={'domain_tag','stack_block'} for m in maps) or len(set(m['domain_tag'] for m in maps))!=len(layers) or any(not any(m['domain_tag']==l['tag'] and m['stack_block']==blocks.get(l['kind']) for m in maps) for l in layers):
+            raise ValueError('Case layer mapping mismatch')
     if g['geometry_version']!='structured-layers-v1' or len(g['lengths_m'])!=d or len(g['transverse_cells'])!=d-1:
         raise ValueError('Geometry rank mismatch')
     if set(g) != {'geometry_version','lengths_m','transverse_cells','layers'} | ({'out_of_plane_depth'} if d==2 else set()):

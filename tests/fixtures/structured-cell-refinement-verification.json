@@ -5,7 +5,7 @@
   "independent_validation": false,
   "source": "tests/contracts/test_spatial_cell_verification.py:transverse_fixture",
   "source_input_fixture_sha256": "e01169d6183e02e29bb92e95fdc32b161c42534f87dfd39e651dd97b493525dc",
-  "runtime_source_sha256": "5c194a54b8a4214520c2ee29238dc745adc50c9577c101b531f8c2b02b773e37",
+  "runtime_source_sha256": "28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c",
   "numerical_library_versions": {
     "numpy": "2.3.5",
     "scipy": "1.17.0"

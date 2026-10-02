@@ -123,12 +123,15 @@ def validate() -> None:
         assert identifier not in models, "A development profile must not silently activate a catalog fidelity"
         assert profile["numerical_maturity"] == "numerically_implemented"
         assert profile["experimental_maturity"] == "none"
-        assert profile["case_runner"] is False
+        assert profile["case_runner"] is True
+        assert profile["case_runner_scope"] == "explicit_saved_evaluation_planar_stack_development_only"
         assert profile["product_admission"] is False
         assert profile["decision_eligible"] is False
         for key in ("runtime_source", "validator_source", "worker_source", "adapter_source",
                     "api_configuration_source", "ui_source", "numerical_test", "worker_api_test",
-                    "refinement_test", "refinement_record", "postgres_test", "browser_test", "browser_config", "report_source"):
+                    "refinement_test", "refinement_record", "postgres_test", "browser_test", "browser_config", "report_source",
+                    "case_composition_source", "case_service_source", "case_api_source", "case_ui_source",
+                    "case_runtime_test", "case_postgres_test", "equation_graph_source"):
             assert (ROOT / profile[key]).is_file(), (identifier, key)
         validator = (ROOT / profile["validator_source"]).read_text()
         numerical_runtime = (ROOT / profile["runtime_source"]).read_text()
@@ -146,6 +149,10 @@ def validate() -> None:
         assert equations["product_decision_eligibility"] is False
         assert equations["independent_validation"] == "absent"
         assert equations["verification"] == profile["numerical_test"]
+        equation_graph = (ROOT / profile["equation_graph_source"]).read_text()
+        assert set(re.findall(r"'(?P<id>cell-[a-z-]+-v1)'", equation_graph)) == {equation["id"] for equation in equations["equations"]}
+        assert boundary["results"]["equation_graph"]["runtime_projection"] == profile["equation_graph_source"]
+        assert boundary["optional_case_context"]["runtime_projection"] == "packages/domain-contracts/src/structured-cell-case-context.ts"
         assert profile["remaining_gates"], "Development maturity requires explicit remaining gates"
     required_scales = {"0D", "1D", "2D", "3D", "macro_stack", "micro_porous_electrode", "nano_interface"}
     required_features = {

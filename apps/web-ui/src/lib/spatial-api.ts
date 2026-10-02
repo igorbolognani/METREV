@@ -4,6 +4,10 @@ import {
   structuredCellInputSchema,
   type StructuredCellInput,
   structuredCellRunViewSchema,
+  structuredCellEquationGraphSchema,
+  caseSpatialRequestSchema,
+  caseSpatialRunHistoryEntrySchema,
+  type CaseSpatialRequest,
 } from '@metrev/domain-contracts/browser';
 
 const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
@@ -17,10 +21,7 @@ async function json(response: Response) {
     );
   return data;
 }
-export async function createSpatialCellRun(
-  input: StructuredCellInput,
-  evaluationId?: string,
-) {
+export async function createSpatialCellRun(input: StructuredCellInput) {
   return fetchSpatialRun(
     readRunId(
       await json(
@@ -33,12 +34,66 @@ export async function createSpatialCellRun(
           },
           body: JSON.stringify({
             input: structuredCellInputSchema.parse(input),
-            ...(evaluationId ? { evaluation_id: evaluationId } : {}),
           }),
         }),
       ),
     ),
   );
+}
+const casePlanSchema = z.object({
+  status: z.string(),
+  resolution: z.object({
+    model_id: z.string(),
+    dimension: z.number(),
+    missing_inputs: z.array(z.string()),
+    missing_modules: z.array(z.string()),
+    unsupported_configuration: z.array(z.string()),
+    equation_graph: structuredCellEquationGraphSchema.nullable(),
+    input: structuredCellInputSchema.nullable().optional(),
+    decision_eligible: z.literal(false),
+  }),
+  run: z.object({ id: z.string() }).nullable(),
+  created: z.boolean(),
+});
+export async function fetchCaseSpatialPlan(
+  evaluationId: string,
+  request: CaseSpatialRequest,
+  enqueue = false,
+  key?: string,
+) {
+  return casePlanSchema.parse(
+    await json(
+      await fetch(
+        `${base}/api/evaluations/${encodeURIComponent(evaluationId)}/spatial-simulations${enqueue ? '' : '/plan'}`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(enqueue
+              ? { 'Idempotency-Key': key ?? crypto.randomUUID() }
+              : {}),
+          },
+          body: JSON.stringify(caseSpatialRequestSchema.parse(request)),
+        },
+      ),
+    ),
+  );
+}
+export async function fetchCaseSpatialRuns(evaluationId: string) {
+  return z
+    .object({
+      runs: z.array(caseSpatialRunHistoryEntrySchema).max(25),
+      limit: z.number(),
+    })
+    .parse(
+      await json(
+        await fetch(
+          `${base}/api/evaluations/${encodeURIComponent(evaluationId)}/spatial-simulations`,
+          { credentials: 'include' },
+        ),
+      ),
+    );
 }
 function readRunId(value: unknown) {
   return z
