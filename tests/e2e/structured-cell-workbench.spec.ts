@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { structuredCellFixture } from '../fixtures/structured-cell';
 import { analystEmail, analystPassword } from './support/local-runtime';
-import { caseSpatialFixture } from '../fixtures/case-spatial';
+import rawCaseFixture from '../fixtures/raw-case-input.json';
 
 // Dedicated config starts real Next.js, authenticated Fastify, PostgreSQL and native worker.
 const api = 'http://localhost:4024';
@@ -39,11 +39,27 @@ test('saved case composition, exact fidelity refusal and durable run history', a
   page,
 }) => {
   await signIn(page);
-  const { rawInput, request } = caseSpatialFixture(
-    2,
-    'MFC',
-    `browser-case-cell-${crypto.randomUUID()}`,
-  );
+  // Plain intake data keeps Playwright independent of the server's ESM loaders.
+  const rawInput = {
+    ...rawCaseFixture,
+    case_id: `browser-case-cell-${crypto.randomUUID()}`,
+    mechanistic_model: undefined,
+    stack_blocks: {
+      ...rawCaseFixture.stack_blocks,
+      reactor_architecture: {
+        architecture_type: 'planar',
+        membrane_presence: 'present',
+      },
+    },
+  };
+  const request = {
+    input: structuredCellFixture(),
+    component_domains: [
+      { domain_tag: 'anode', stack_block: 'anode_biofilm_support' },
+      { domain_tag: 'membrane', stack_block: 'membrane_or_separator' },
+      { domain_tag: 'cathode', stack_block: 'cathode_catalyst_support' },
+    ],
+  };
   const evaluationResponse = await page.request.post(
     api + '/api/cases/evaluate',
     { data: rawInput },
