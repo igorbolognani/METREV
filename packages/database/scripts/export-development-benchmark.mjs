@@ -4,6 +4,10 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  BENCHMARK_STRATA,
+  classifyBenchmarkEvidence,
+} from './benchmark-validation-strata.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const extracts = [
@@ -74,6 +78,9 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
   const header = [
     'dataset_role',
     'split',
+    'evidence_stratum',
+    'evidence_status',
+    'eligible_use',
     'source_doi',
     'source_sha256',
     'extract_sha256',
@@ -107,6 +114,9 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
       csv([
         entry.data.dataset_role,
         'development_candidate',
+        classifyBenchmarkEvidence({ dataset_role: entry.data.dataset_role }),
+        'source_traced_candidate_not_validated',
+        'component_comparison_after_condition_match_and_review',
         entry.data.source_doi,
         entry.data.source_sha256,
         entry.extractSha256,
@@ -189,6 +199,9 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
     csv([
       'dataset_role',
       'split',
+      'evidence_stratum',
+      'evidence_status',
+      'eligible_use',
       'source_doi',
       'source_sha256',
       'extract_sha256',
@@ -221,6 +234,9 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
         csv([
           eis.dataset_role,
           'development_candidate',
+          classifyBenchmarkEvidence({ dataset_role: eis.dataset_role }),
+          'source_traced_candidate_not_validated',
+          'component_comparison_after_condition_match_and_review',
           eis.source_doi,
           eis.source_sha256,
           loaded[2].extractSha256,
@@ -260,6 +276,11 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
       return {
         record_kind: 'published_aggregate_or_qualitative_claim',
         split: 'development_candidate',
+        evidence_stratum: classifyBenchmarkEvidence({
+          record_kind: 'published_aggregate_or_qualitative_claim',
+        }),
+        evidence_status: 'unclassified_aggregate_claim_no_tier_credit',
+        eligible_use: 'context_only',
         source_doi: record.doi,
         source_url: record.source_url,
         license: record.license,
@@ -286,7 +307,7 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
   const literatureClaims =
     claims.map((claim) => JSON.stringify(claim)).join('\n') + '\n';
   const manifest = {
-    schema_version: 'metrev-development-benchmark-v1',
+    schema_version: 'metrev-development-benchmark-v2',
     source_doi: candidate.doi,
     source_url: candidate.source_url,
     license: candidate.license,
@@ -331,6 +352,36 @@ export async function buildDevelopmentBenchmark(repoRoot = root) {
       full_cell_wastewater_and_hydrogen_balance: 'not_supplied',
     },
     applicability: [time.applicability, lsv.applicability, eis.applicability],
+    evidence_strata: BENCHMARK_STRATA.map((id, index) => {
+      const tier = String.fromCharCode(65 + index);
+      const isComponent = id === 'component_experiment';
+      return {
+        tier,
+        id,
+        status: isComponent
+          ? 'source_traced_candidate_not_validated'
+          : 'not_present',
+        record_count: isComponent ? rows.length - 1 + eisRows.length - 1 : 0,
+        record_count_basis: isComponent
+          ? 'exported_observation_rows_and_eis_pairs_not_study_count'
+          : 'no_exported_records',
+        validated: false,
+        independent_validation: false,
+      };
+    }),
+    unclassified_aggregate_claim_count: claims.length,
+    validation_gates: {
+      minimum_stratum_by_use: {
+        numerical_verification: 'mathematical_manufactured',
+        published_model_reproduction: 'published_model_reproduction',
+        component_comparison: 'component_experiment',
+        full_cell_comparison: 'condition_matched_full_cell_experiment',
+        independent_validation: 'independent_held_out_validation',
+      },
+      no_lower_stratum_substitution: true,
+      independent_validation_requires_held_out_reviewed_matched_experiment: true,
+      current_export_promotes_no_validation_claims: true,
+    },
   };
   ensure(
     rows.length - 1 === 39540 && eisRows.length - 1 === 290,
