@@ -25,15 +25,33 @@ def transverse_fixture(factor=1):
     value['numerics']['max_evaluations'] = 1000
     return value
 
+def numerical_payload_sha256(output):
+    # Exclude only solver identity and the newly derived, non-numerical extrema.
+    payload = {key: value for key, value in output.items() if key not in {'version', 'field_extrema'}}
+    canonical = json.dumps(
+        payload, sort_keys=True, separators=(',', ':'), allow_nan=False
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
 class CoupledCellVerificationTests(unittest.TestCase):
     def test_three_meshes_nonuniform_fields_and_conservative_observables(self):
         record = json.loads(FIXTURE.with_name('structured-cell-refinement-verification.json').read_text())
         runtime = FIXTURE.parents[1].parent / 'apps/spatial-sidecar/metrev_spatial/structured_cell.py'
         self.assertEqual(record['source_input_fixture_sha256'], hashlib.sha256(FIXTURE.read_bytes()).hexdigest())
         self.assertEqual(record['runtime_source_sha256'], hashlib.sha256(runtime.read_bytes()).hexdigest())
+        self.assertEqual(record['solver_version'], 'structured-cell-fv-v1')
+        self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v3')
+        self.assertEqual(
+            record['numerical_invariance']['baseline_runtime_source_sha256'],
+            '28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c',
+        )
         outputs = [Cell(transverse_fixture(f)).solve() for f in (1, 2, 4)]
         observables = []
-        for output in outputs:
+        for output, level in zip(outputs, record['levels']):
+            self.assertEqual(
+                numerical_payload_sha256(output),
+                level['baseline_numerical_payload_sha256'],
+            )
             self.assertEqual(output['status'], 'converged')
             self.assertEqual(output['termination_reason'], 'nonlinear_and_conservation_passed')
             self.assertTrue(all(r['passed'] for r in output['residuals']))
