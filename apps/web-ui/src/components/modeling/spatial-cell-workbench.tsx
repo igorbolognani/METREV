@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CaseSpatialControls } from './case-spatial-controls';
 import {
   structuredCellInputSchema,
   STRUCTURED_CELL_LIMITS,
@@ -22,9 +23,13 @@ import {
   fetchSpatialArtifact,
 } from '@/lib/spatial-api';
 
-export function SpatialCellWorkbench() {
+export function SpatialCellWorkbench({
+  initialEvaluationId = '',
+}: {
+  initialEvaluationId?: string;
+}) {
   const [source, setSource] = useState('');
-  const [evaluationId, setEvaluationId] = useState('');
+  const [evaluationId, setEvaluationId] = useState(initialEvaluationId);
   const [runId, setRunId] = useState('');
   const [run, setRun] = useState<StructuredCellRunView | null>(null);
   const [error, setError] = useState('');
@@ -216,18 +221,29 @@ export function SpatialCellWorkbench() {
       </label>
       <button
         className="rounded border p-2"
-        disabled={busy || active || !source.trim()}
+        disabled={busy || active || !source.trim() || !!evaluationId.trim()}
         onClick={() =>
           void act(async () =>
             createSpatialCellRun(
               structuredCellInputSchema.parse(JSON.parse(source)),
-              evaluationId.trim() || undefined,
             ),
           )
         }
       >
         Queue cell run
       </button>
+      {!!evaluationId.trim() && (
+        <CaseSpatialControls
+          key={evaluationId}
+          evaluationId={evaluationId}
+          source={source}
+          disabled={busy || active}
+          onRun={(next) => {
+            setRun(next);
+            setRunId(next.id);
+          }}
+        />
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           aria-label="Saved run ID"

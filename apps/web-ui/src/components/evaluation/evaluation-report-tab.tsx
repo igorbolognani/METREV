@@ -35,6 +35,12 @@ export function EvaluationReportTab({
             <Link className="button" href={reportHref}>
               Open printable report
             </Link>
+            <Link
+              className="button secondary"
+              href={`/modeling/spatial?evaluation=${encodeURIComponent(evaluation.evaluation_id)}`}
+            >
+              Open spatial case development
+            </Link>
           </div>
         </WorkspaceDataCard>
       </WorkspaceSection>

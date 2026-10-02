@@ -72,6 +72,7 @@ export function createAuditRecord(input: {
       input.decisionOutput.confidence_and_uncertainty_summary.next_tests,
     provenance_notes: provenanceNotes,
     raw_input_snapshot: input.rawInput,
+    normalized_case_snapshot: input.normalizedCase,
     typed_evidence: typedEvidence,
     evidence_decision_context: input.evidenceDecisionContext ?? null,
     agent_pipeline_trace: buildBioelectroAgentPipelineTrace({

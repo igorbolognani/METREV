@@ -3053,7 +3053,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           evaluationResponseSchema.parse({
             evaluation_id: record.id,
             case_id: record.caseId,
-            normalized_case: record.case.normalizedCase,
+            normalized_case:
+              (record.auditRecord as Record<string, unknown>)
+                .normalized_case_snapshot ?? record.case.normalizedCase,
             decision_output: record.decisionOutput,
             audit_record: record.auditRecord,
             evidence_decision_context:
@@ -3108,7 +3110,9 @@ export class PrismaEvaluationRepository implements EvaluationRepository {
           evaluationResponseSchema.parse({
             evaluation_id: record.id,
             case_id: record.caseId,
-            normalized_case: record.case.normalizedCase,
+            normalized_case:
+              (record.auditRecord as Record<string, unknown>)
+                .normalized_case_snapshot ?? record.case.normalizedCase,
             decision_output: record.decisionOutput,
             audit_record: record.auditRecord,
             evidence_decision_context:

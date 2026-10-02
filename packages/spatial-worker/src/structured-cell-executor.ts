@@ -3,6 +3,7 @@ import { readFile, rm, lstat } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 import {
+  compileStructuredCellEquationGraph,
   structuredCellInputSchema,
   structuredCellTopology,
   STRUCTURED_CELL_LIMITS,
@@ -118,7 +119,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v1';
+  readonly runtimeVersion = 'structured-cell-process-v2';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -146,6 +147,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
     context: SpatialSimulationExecutionContext,
   ): Promise<SpatialSimulationResult> {
     const input = structuredCellInputSchema.parse(context.input);
+    const equationGraph = compileStructuredCellEquationGraph(input);
     const inputHash = spatialRuntimeInputSha256(input);
     const geometryHash = structuredCellGeometrySha256(input);
     if (
@@ -475,6 +477,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
           ]),
         ],
         cell_circuit: response.circuit,
+        equation_graph: equationGraph,
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

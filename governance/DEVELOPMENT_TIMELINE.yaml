@@ -1,9 +1,9 @@
 schema_version: 1
-observed_on: '2026-10-01'
+observed_on: '2026-10-02'
 authority: chronological_reconciliation_not_a_replacement_roadmap
 current_requirements: governance/MASTER_EXECUTION_TASK.md
 current_operating_rules: AGENTS.md
-checkpoint: docs/audits/STRUCTURED_CELL_VERIFICATION_PRODUCT_BATCH_2026-10-01.md
+checkpoint: docs/audits/STACK_SPATIAL_CASE_BATCH_2026-10-02.md
 stages:
   - id: legacy_workspace
     period: April-May 2026
@@ -58,7 +58,9 @@ stages:
     meaning: Reproducible replacement for an unrecovered interrupted patch; restricted steady 2D/3D finite volumes with SciPy Newton and supporting electrolyte, worker/API/artifacts and development slices, not PETSc SNES or full electroneutral DAE.
   - id: structured_cell_verification_product_batch
     period: '2026-10-01'
-    state: development_pr_not_merged
+    state: integrated_main
+    git_revision: 21a3974cd414f740633f8e7e2c716dcf7d722087
+    merged_at: 2026-10-02T07:27:20Z
     branch: codex/spatial-verification-product-batch
     pull_request: 114
     base_main: 72acd35bc027e373e37e163c316ef62b60af1efd
@@ -69,6 +71,20 @@ stages:
       - packages/domain-contracts/src/structured-cell-development-report.ts
       - docs/audits/STRUCTURED_CELL_VERIFICATION_PRODUCT_BATCH_2026-10-01.md
     meaning: Nonuniform restricted 2D refinement and termination verification, native PostgreSQL and real Chromium gates passed at runtime head 6f9217d in CI run 36930062304, hash-bound workbench probes and deterministic development reports. No general catalog promotion or independent validation.
+  - id: stack_spatial_case_integration_batch
+    period: '2026-10-02'
+    state: development_pr_not_merged
+    branch: codex/stack-spatial-case-integration
+    pull_request: pending_creation
+    base_main: 21a3974cd414f740633f8e7e2c716dcf7d722087
+    sources:
+      - packages/electrochem-models/src/case-spatial-composition.ts
+      - packages/domain-contracts/src/structured-cell-equation-graph.ts
+      - apps/api-server/src/services/case-spatial-evaluation.ts
+      - tests/runtime/case-spatial-evaluation.test.ts
+      - tests/postgres/case-spatial-roundtrip.test.ts
+      - docs/audits/STACK_SPATIAL_CASE_BATCH_2026-10-02.md
+    meaning: Restricted saved-case development integration with immutable evaluation revision, explicit layer-to-stack mapping, exact profile resolution, async queue, run history, actual-mesh viewer and source-traced equation graph/report. Current branch persistence/browser CI pending; general catalog, P2/P3 and empirical maturity remain gated.
 sequence:
   - development_batch
   - numerical_verification_and_correction
@@ -78,4 +94,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: map_stack_case_inputs_to_common_equation_graph_with_explicit_data_requirements_before_general_profile_promotion
+next_work: broaden_source_backed_topology_and_equation_modules_with_numerical_verification_before_general_profile_promotion

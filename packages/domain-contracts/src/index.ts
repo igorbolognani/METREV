@@ -22,3 +22,6 @@ export * from './structured-cell-topology';
 export type * from './spatial-physics-types';
 export * from './validator';
 export * from './structured-cell-development-report';
+export * from './structured-cell-equation-graph';
+export * from './structured-cell-case-context';
+export * from './case-spatial-request';

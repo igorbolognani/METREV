@@ -10,6 +10,8 @@ import {
   spatialSimulationRunSnapshotSchema,
   transitionSpatialSimulationRunInputSchema,
   spatialRuntimeInputSchema,
+  caseSpatialRunHistoryEntrySchema,
+  type CaseSpatialRunHistoryEntry,
   type ClaimSpatialSimulationRunInput,
   type CreateSpatialSimulationRunInput,
   type RetrySpatialSimulationRunInput,
@@ -129,6 +131,10 @@ export interface RetrySpatialSimulationRunResult {
 }
 
 export interface SpatialSimulationRunRepository {
+  listOwnedEvaluationRuns(
+    evaluationId: string,
+    ownerId: string,
+  ): Promise<CaseSpatialRunHistoryEntry[]>;
   createOrGet(
     input: CreateSpatialSimulationRunInput,
   ): Promise<CreateSpatialSimulationRunResult>;
@@ -422,6 +428,35 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRunRepository {
+  async listOwnedEvaluationRuns(evaluationId: string, ownerId: string) {
+    const records = await this.prisma.spatialSimulationRunRecord.findMany({
+      where: { evaluationId, ownerId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 25,
+      select: {
+        id: true,
+        evaluationId: true,
+        modelId: true,
+        dimension: true,
+        status: true,
+        progress: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return records.map((r) =>
+      caseSpatialRunHistoryEntrySchema.parse({
+        id: r.id,
+        evaluation_id: r.evaluationId,
+        model_id: r.modelId,
+        dimension: r.dimension,
+        status: fromDatabaseStatus[r.status],
+        progress: r.progress,
+        created_at: r.createdAt.toISOString(),
+        updated_at: r.updatedAt.toISOString(),
+      }),
+    );
+  }
   constructor(private readonly prisma: PrismaClient) {}
 
   async createOrGet(
@@ -994,6 +1029,41 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
 }
 
 export class MemorySpatialSimulationRunRepository implements SpatialSimulationRunRepository {
+  async listOwnedEvaluationRuns(evaluationId: string, ownerId: string) {
+    return [...this.runs.values()]
+      .filter(
+        (r) =>
+          r.ownerId === ownerId && r.snapshot.evaluation_id === evaluationId,
+      )
+      .map((r) => r.snapshot)
+      .sort(
+        (a, b) =>
+          b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+      )
+      .slice(0, 25)
+      .map(
+        ({
+          id,
+          evaluation_id,
+          model_id,
+          dimension,
+          status,
+          progress,
+          created_at,
+          updated_at,
+        }) =>
+          caseSpatialRunHistoryEntrySchema.parse({
+            id,
+            evaluation_id,
+            model_id,
+            dimension,
+            status,
+            progress,
+            created_at,
+            updated_at,
+          }),
+      );
+  }
   private readonly runs = new Map<
     string,
     {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { spatialValueSchema } from './spatial-model-schema';
+import {
+  structuredCellCaseContextSchema,
+  structuredCellDomainMappingMatches,
+} from './structured-cell-case-context';
 
 const id = z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/);
 const value = (unit: string, minimum: number, positive = false) =>
@@ -29,6 +33,7 @@ export const structuredCellInputSchema = z
     dimension: z.union([z.literal(2), z.literal(3)]),
     coordinate_system: z.literal('cartesian'),
     charge_model: z.literal('fixed-conductivity-supporting-electrolyte'),
+    case_context: structuredCellCaseContextSchema.optional(),
     geometry: z
       .object({
         geometry_version: z.literal('structured-layers-v1'),
@@ -174,6 +179,17 @@ export const structuredCellInputSchema = z
       ctx.addIssue({ code: 'custom', message });
     const layers = input.geometry.layers;
     const species = new Map(input.species.map((s) => [s.id, s]));
+    if (input.case_context) {
+      if (
+        !structuredCellDomainMappingMatches(
+          layers,
+          input.case_context.component_domains,
+        )
+      )
+        issue(
+          'Case component mapping must cover every layer with its compatible stack block',
+        );
+    }
     if (
       species.size !== input.species.length ||
       new Set(layers.map((l) => l.tag)).size !== layers.length

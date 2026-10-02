@@ -46,8 +46,8 @@ work_items:
       - packages/domain-contracts/
       - packages/electrochem-models/
     blockers:
-      - v2 covers planar research input; separate spatial-cell-input-v1 validates restricted steady orthogonal 2D/3D cells. Full stack-driven case intake and general dimensional geometry remain pending
-      - Authenticated development API reads hash-verified local mesh/field artifacts; production artifact storage and case-runner integration remain pending
+      - v2 covers planar research input; separate spatial-cell-input-v1 validates restricted steady orthogonal 2D/3D cells. Explicit saved-evaluation planar layer mapping is implemented for the separate restricted cell; general stack-driven intake and dimensional geometry remain pending
+      - Authenticated development API reads hash-verified local mesh/field artifacts; production artifact storage and general catalog case-runner integration remain pending
   - id: P03
     title: Expand the physical vocabulary needed by PDE models
     phase: foundation
@@ -365,7 +365,7 @@ work_items:
       - packages/
       - apps/
     blockers:
-      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider; a restricted structured-cell slice viewer exists with browser acceptance pending
+      - Versioned spatial result manifests are persisted and returned by the authenticated spatial API; P02/P04 remain partial, field reads lack a production provider; a restricted structured-cell slice viewer passed the PR #114 browser gate; new case-bound flow requires its own CI evidence
       - Input-bound results preserve the admitted mesh digest, geometry version, refinement, generator and physical-group map; manifested region kinds/components, boundary roles and oriented interfaces must match that input
       - Returned state fields must contain every requested variable or explicitly composed planar x/y velocity vector and no unrequested variable; independent derived metrics and broader vector output authority beyond planar velocity remain pending
       - The explicit development worker has restricted Darcy-transport and single-liquid Stokes adapters that project solver fields into input-bound result-v2 manifests using owner-scoped local stores; CI verifies both through the pinned native worker/API path, while production artifact storage and general catalog solver admission remain pending. Structured-cell result-v3 additionally retains source-bound JSON fields and numerical mesh for completed and failed runs
@@ -433,7 +433,7 @@ work_items:
   - id: P17
     title: Integrate 2D with the actual case runner
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P01
       - P12
@@ -460,10 +460,11 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+    development_evidence: Explicit saved-evaluation spatial branch resolves the restricted planar profile, sourced input and stack mapping, persists owner-scoped async child jobs and reloads reports. Legacy snapshots require a fresh evaluation; general catalog fidelity remains gated.
   - id: P18
     title: Turn the modeling workbench into a real solver configurator
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P17
     required_gates:
@@ -483,7 +484,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Standalone spatial JSON workbench queues the exact development profile; stack-to-equation graph and full case configuration remain pending
+      - The workbench now previews exact saved-case composition, requires explicit layer mapping, displays fixed-profile equation/state units and reloads case runs. General topology configuration and dynamic PDE equation compilation remain pending
   - id: P19
     title: Build proper 2D visualization
     phase: P2
@@ -858,7 +859,7 @@ work_items:
   - id: P34
     title: Update reports and narrative for spatial models
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P33
     required_gates:
@@ -881,11 +882,11 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Restricted deterministic JSON/Markdown development reports retain provenance, geometry, field summaries, hashes, conservation and precise termination; case-runner decision reduction, per-run refinement evidence and broader spatial report integration remain pending
+      - Restricted deterministic JSON/Markdown development reports retain provenance, geometry, field summaries, hashes, conservation and precise termination; Reports now retain immutable case identity, component mapping and the fixed-profile equation graph. Case-runner decision reduction, per-run refinement evidence and broader spatial report integration remain pending
   - id: P35
     title: Add tests specific to spatial runtime
     phase: P2
-    status: pending
+    status: partial
     depends_on:
       - P13
       - P17
@@ -906,7 +907,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests passed in CI run 36930062304 at runtime head 6f9217d; full catalog/case integration and general spatial verification remain pending
+      - Native structured-cell Python and TypeScript subprocess worker/API tests exist; four cell-specific PostgreSQL and two real-stack browser tests passed in CI run 36930062304 at runtime head 6f9217d; new case-bound native worker/API tests pass locally; PostgreSQL snapshot revision and browser case history gates are added for current CI. Full catalog integration and general spatial verification remain pending
   - id: P36
     title: Expand CI without making every PR prohibitively expensive
     phase: P2

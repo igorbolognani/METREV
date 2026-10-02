@@ -89,4 +89,13 @@ class StructuredCellTests(unittest.TestCase):
             value=self.fixture(); mutate(value)
             with self.assertRaises(ValueError): validate(value)
 
+    def test_case_context_identity_and_component_mapping_are_metadata_only(self):
+        value=self.fixture()
+        expected=Cell(value).solve()['circuit']
+        value['case_context']={'version':'structured-cell-case-context-v1','case_id':'synthetic-case','evaluation_id':'synthetic-evaluation','normalized_case_sha256':'a'*64,'mapping_policy':'explicit_layer_to_case_stack_block_v1','architecture_family':'synthetic-planar','input_role':'source_traced_case_development_input','decision_eligible':False,'component_domains':[{'domain_tag':'anode','stack_block':'anode_biofilm_support'},{'domain_tag':'membrane','stack_block':'membrane_or_separator'},{'domain_tag':'cathode','stack_block':'cathode_catalyst_support'}]}
+        self.assertEqual(Cell(value).solve()['circuit'],expected)
+        for mutate in (lambda c:c.update(decision_eligible=True), lambda c:c.update(normalized_case_sha256='bad'), lambda c:c['component_domains'][1].update(stack_block='reactor_architecture')):
+            invalid=copy.deepcopy(value); mutate(invalid['case_context'])
+            with self.assertRaises(ValueError): validate(invalid)
+
 if __name__ == '__main__': unittest.main()

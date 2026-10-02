@@ -14,7 +14,7 @@ cp .env.example .env
 
 Set a private `AUTH_SECRET` and configure PostgreSQL in `.env` before running the application. Start the Docker workspace with `pnpm run local:view:up`; stop it with `pnpm run local:view:down`. The web app is available at `http://localhost:3012/login`.
 
-Optional structured-cell development execution requires Python numerical dependencies and matching API/worker adapters. Configure the paths and private artifact root as described in [STRUCTURED_CELL.md](apps/spatial-sidecar/STRUCTURED_CELL.md); default API admission remains closed. This path has its own identity and does not activate the catalog's general research profiles.
+Optional structured-cell development execution requires Python numerical dependencies and matching API/worker adapters. Configure the paths and private artifact root as described in [STRUCTURED_CELL.md](apps/spatial-sidecar/STRUCTURED_CELL.md); default API admission remains closed. This path has its own identity and does not activate the catalog's general research profiles. A saved evaluation can explicitly compose a sourced planar 2D/3D cell, map numerical layers to stack components, queue a run and reload its development report through [the case spatial API](docs/api/SPATIAL_SIMULATIONS.md). No case measurements are filled automatically.
 
 Run focused checks:
 

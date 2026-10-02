@@ -4,6 +4,10 @@ import {
   structuredCellInputSchema,
   STRUCTURED_CELL_LIMITS,
 } from './structured-cell-schema';
+import {
+  compileStructuredCellEquationGraph,
+  structuredCellEquationGraphSchema,
+} from './structured-cell-equation-graph';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();
@@ -125,6 +129,7 @@ export const structuredCellRunViewSchema = z
         conservation_residuals: z.array(balance).min(1).max(64),
         convergence: z.array(convergence).min(1).max(16),
         cell_circuit: circuit,
+        equation_graph: structuredCellEquationGraphSchema.optional(),
         warnings: z.array(
           z.object({
             code: id,
@@ -142,10 +147,17 @@ export const structuredCellRunViewSchema = z
       result = run.result;
     if (input.dimension !== run.dimension || input.system !== run.system)
       invalid('Input identity mismatch');
+    if (
+      input.case_context &&
+      input.case_context.evaluation_id !== run.evaluation_id
+    )
+      invalid('Case evaluation identity mismatch');
     if (!result) {
       if (run.status === 'completed') invalid('Completed run needs a result');
       return;
     }
+    if (input.case_context && !result.equation_graph)
+      invalid('Case-bound cell view requires an equation graph');
     if (
       result.run_id !== run.id ||
       result.input_sha256 !== run.input_sha256 ||
@@ -156,6 +168,12 @@ export const structuredCellRunViewSchema = z
       result.mesh.dimension !== run.dimension
     )
       invalid('Result identity mismatch');
+    if (
+      result.equation_graph &&
+      JSON.stringify(result.equation_graph) !==
+        JSON.stringify(compileStructuredCellEquationGraph(input))
+    )
+      invalid('Equation graph differs from admitted input');
     if (
       new Set(result.fields.map((f) => f.field_id)).size !==
       result.fields.length
@@ -242,6 +260,8 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
       request_sha256: run.result.mesh.request_sha256,
     },
     input_snapshot: run.input_snapshot,
+    case_context: run.input_snapshot.case_context ?? null,
+    equation_graph: run.result.equation_graph ?? null,
     numerical_options: run.input_snapshot.numerics,
     verification_status: {
       mesh_refinement: 'not_assessed_for_this_run',
@@ -287,6 +307,36 @@ export function renderStructuredCellDevelopmentReport(
       '# METREV spatial cell development report',
       `Run: ${cell(report.run.id)} · ${report.run.dimension}D · ${report.run.system} · ${report.run.status}`,
       `Role: ${report.result_role}. Decision eligible: false. Independent validation: false.`,
+      ...(report.case_context
+        ? [
+            `Case: ${cell(report.case_context.case_id)}. Evaluation: ${cell(report.case_context.evaluation_id)}. Immutable normalized case SHA-256: ${report.case_context.normalized_case_sha256}.`,
+            rows([
+              ['Domain', 'Case stack block'],
+              ['---', '---'],
+              ...report.case_context.component_domains.map((m) => [
+                m.domain_tag,
+                m.stack_block,
+              ]),
+            ]),
+          ]
+        : []),
+      ...(report.equation_graph
+        ? [
+            `Fixed-profile equation assembly: ${report.equation_graph.nodes.length} nodes, ${report.equation_graph.cell_count} cells, ${report.equation_graph.algebraic_state_count} algebraic states.`,
+            rows([
+              ['Node', 'Equation', 'Domains', 'States and units'],
+              ['---', '---', '---', '---'],
+              ...report.equation_graph.nodes.map((n) => [
+                n.id,
+                n.equation_id,
+                n.domain_tags.join(', '),
+                n.states
+                  .map((s) => s.id + ' [' + s.unit + '] (' + s.role + ')')
+                  .join(', '),
+              ]),
+            ]),
+          ]
+        : []),
       `Produced: ${report.run.produced_at}. Solver: ${cell(report.run.solver_version)}. Runtime: ${cell(report.run.runtime_version)}.`,
       `Input SHA-256: ${report.run.input_sha256}. Mesh SHA-256: ${report.geometry.mesh.sha256}. Geometry request SHA-256: ${report.geometry.request_sha256}.`,
       `Geometry: ${cell(report.geometry.geometry_version)}; ${report.geometry.cell_count} cells; lengths ${report.geometry.lengths_m.join(' × ')} m; out-of-plane depth ${report.geometry.out_of_plane_depth_m ?? 'not applicable'} m.`,
