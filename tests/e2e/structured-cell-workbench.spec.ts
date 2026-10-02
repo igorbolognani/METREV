@@ -178,7 +178,7 @@ test('2D and 3D fields, probes, reload, slices and report downloads', async ({
     page.getByRole('img', { name: 'liquid_potential numerical cell field' }),
   ).toBeVisible();
   await page.reload();
-  await page.getByLabel('Saved run ID', { exact: false }).fill(id);
+  await page.getByLabel('Saved run ID', { exact: true }).fill(id);
   await page.getByRole('button', { name: 'Reload run', exact: true }).click();
   await expect(
     page.getByText('2D · completed · 100%', { exact: true }),
@@ -301,8 +301,12 @@ test('compares saved completed-run summaries only for matching geometry and unit
   await expect(page.getByRole('status')).toContainText(
     'Decision eligible: false.',
   );
-  await expect(page.getByRole('table').last()).toContainText(
+  const comparison = page.getByRole('region', {
+    name: 'Spatial run comparison',
+    exact: true,
+  });
+  await expect(comparison.getByRole('table')).toContainText(
     'concentration_reduced',
   );
-  await expect(page.getByRole('table').last()).toContainText('Δ (B − A)');
+  await expect(comparison.getByRole('table')).toContainText('Δ (B − A)');
 });
