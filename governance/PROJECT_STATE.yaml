@@ -68,12 +68,12 @@ snapshot:
       codeql_run: 36998842485
     - pull_request: 118
       branch: codex/spatial-derived-observables
-      head_sha: 96e0423625898dd6c870e892b8f3162d75c2e3e2
-      review_state: draft
-      ci_state: failed_library_version_sensitive_baseline_hash
+      head_sha: f5ab09d73d86d4a6b63b3f7a2852e461f659da38
+      review_state: ready_for_review
+      ci_state: success
       codeql_state: success
-      ci_run: 37001920031
-      codeql_run: 37001920028
+      ci_run: 37003441585
+      codeql_run: 37003441609
     - pull_request: 119
       branch: codex/p03-parameter-authority-coverage
       head_sha: 6dec1a414f079a3f6d4199d190411e062d20f41b

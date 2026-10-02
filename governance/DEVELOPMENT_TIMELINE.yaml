@@ -138,12 +138,12 @@ stages:
     branch: codex/spatial-derived-observables
     pull_request: 118
     base_main: 664ffb2178d8373569611bb0f54fa60da3b45736
-    head_sha: 96e0423625898dd6c870e892b8f3162d75c2e3e2
-    review_state: draft
-    ci_state: failed_library_version_sensitive_baseline_hash
+    head_sha: f5ab09d73d86d4a6b63b3f7a2852e461f659da38
+    review_state: ready_for_review
+    ci_state: success
     codeql_state: success
-    ci_run: 37001920031
-    codeql_run: 37001920028
+    ci_run: 37003441585
+    codeql_run: 37003441609
     sources:
       - governance/MASTER_EXECUTION_TASK.md
       - docs/adr/ADR-008-structured-cell-development.md
@@ -153,7 +153,7 @@ stages:
       - packages/spatial-worker/src/structured-cell-executor.ts
       - apps/spatial-sidecar/metrev_spatial/structured_cell.py
       - docs/api/SPATIAL_SIMULATIONS.md
-    meaning: Provenance-bound modeled-field minima/maxima without thresholds or decisions. Process protocol v3 is separated from solver identity v1 and leaves queued v2 work for the matching worker/sidecar; the source-hash gate was corrected with baseline numerical golden hashes, and exact-head CI/CodeQL are running.
+    meaning: Provenance-bound modeled-field minima/maxima without thresholds or decisions. Process protocol v3 is separated from solver identity v1 and leaves queued v2 work for the matching worker/sidecar; the binary hash comparison was replaced by declared observable tolerances to accommodate NumPy version changes; exact-head CI and CodeQL passed.
   - id: spatial_parameter_authority_coverage_p03
     period: '2026-10-02'
     state: development_pr_not_merged
