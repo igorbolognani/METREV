@@ -9,6 +9,8 @@ import {
   STRUCTURED_CELL_LIMITS,
   spatialRuntimeInputSha256,
   structuredCellGeometrySha256,
+  serializeStructuredCellInput,
+  serializeStructuredCellGeometry,
   spatialSimulationResultForInputSchema,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
@@ -164,9 +166,9 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       const payload = JSON.stringify({
         operation,
         request_id: requestId,
-        input_json: JSON.stringify(input),
+        input_json: serializeStructuredCellInput(input),
         input_sha256: inputHash,
-        geometry_json: JSON.stringify(input.geometry),
+        geometry_json: serializeStructuredCellGeometry(input),
         geometry_sha256: geometryHash,
       });
       const result = await runSpatialSidecarProcess(

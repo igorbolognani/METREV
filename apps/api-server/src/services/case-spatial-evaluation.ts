@@ -4,6 +4,7 @@ import {
   structuredCellInputSchema,
   spatialRuntimeInputSha256,
   spatialRuntimeMeshRequestSha256,
+  canonicalJsonStringify,
   type CaseSpatialRequest,
 } from '@metrev/domain-contracts';
 import { resolveCaseSpatialComposition } from '@metrev/electrochem-models';
@@ -19,18 +20,8 @@ export class CaseSpatialEvaluationError extends Error {
 }
 // Stable across PostgreSQL JSONB key ordering; arrays retain their scientific order.
 export function caseSnapshotSha256(value: unknown): string {
-  const canonical = (v: unknown): unknown =>
-    Array.isArray(v)
-      ? v.map(canonical)
-      : v && typeof v === 'object'
-        ? Object.fromEntries(
-            Object.entries(v)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([k, child]) => [k, canonical(child)]),
-          )
-        : v;
   return createHash('sha256')
-    .update(JSON.stringify(canonical(value)))
+    .update(canonicalJsonStringify(value))
     .digest('hex');
 }
 export async function getOwnedSpatialCaseEvaluation(

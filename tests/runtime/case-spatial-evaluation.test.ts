@@ -7,7 +7,11 @@ import {
   MemoryEvaluationRepository,
   MemorySpatialSimulationRunRepository,
 } from '@metrev/database';
-import { structuredCellRunViewSchema } from '@metrev/domain-contracts';
+import {
+  structuredCellRunViewSchema,
+  spatialRuntimeInputSha256,
+  structuredCellGeometrySha256,
+} from '@metrev/domain-contracts';
 import { LocalSpatialFieldArtifactStore } from '@metrev/spatial-artifact-store';
 import { buildApp } from '../../apps/api-server/src/app';
 import { createPersistedCaseEvaluation } from '../../apps/api-server/src/services/case-evaluation';
@@ -73,6 +77,19 @@ describe('persisted case spatial execution', () => {
         });
         expect(plan.statusCode).toBe(200);
         expect(plan.json().status).toBe('ready');
+        const bound = plan.json().resolution.input;
+        const reordered = structuredClone(bound);
+        for (const layer of reordered.geometry.layers)
+          layer.diffusivity = {
+            oxidized: layer.diffusivity.oxidized,
+            reduced: layer.diffusivity.reduced,
+          };
+        expect(spatialRuntimeInputSha256(reordered)).toBe(
+          spatialRuntimeInputSha256(bound),
+        );
+        expect(structuredCellGeometrySha256(reordered)).toBe(
+          structuredCellGeometrySha256(bound),
+        );
         expect(
           (
             await app.inject({

@@ -46,7 +46,7 @@ snapshot:
   integrated_pr_ci: success_run_36932021770
   integrated_pr_codeql: success_run_36932021809
   development_branch: codex/stack-spatial-case-integration
-  development_pr: pending_creation
+  development_pr: 115
   integration_state: open_draft_not_merged
   verified_runtime_head: pending_current_branch_required_checks
   runtime_ci: pending_current_branch_required_checks

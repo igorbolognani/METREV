@@ -75,7 +75,7 @@ stages:
     period: '2026-10-02'
     state: development_pr_not_merged
     branch: codex/stack-spatial-case-integration
-    pull_request: pending_creation
+    pull_request: 115
     base_main: 21a3974cd414f740633f8e7e2c716dcf7d722087
     sources:
       - packages/electrochem-models/src/case-spatial-composition.ts

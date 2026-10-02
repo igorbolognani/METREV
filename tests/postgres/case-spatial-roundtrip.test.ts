@@ -104,6 +104,12 @@ describe('case-bound PostgreSQL native worker/API roundtrip', () => {
       });
       const base = `/api/evaluations/${evaluation.evaluation_id}/spatial-simulations`;
       const input = request.input!;
+      input.temperature.conditions = { long_key: 'synthetic', a: 'metadata' };
+      for (const layer of input.geometry.layers)
+        layer.diffusivity = {
+          oxidized: layer.diffusivity.oxidized!,
+          reduced: layer.diffusivity.reduced!,
+        };
       if (failed) input.numerics.max_evaluations = 1;
       const key = `cell-pg-${randomUUID()}`;
       keys.push(key);
