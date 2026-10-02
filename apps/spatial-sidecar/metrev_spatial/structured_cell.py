@@ -23,7 +23,8 @@ import warnings
 
 F = 96485.33212
 R = 8.31446261815324
-VERSION = "structured-cell-fv-v1"
+SOLVER_VERSION = "structured-cell-fv-v1"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v3"
 
 
 def number(v, unit, lower=None, strict=False):
@@ -168,6 +169,54 @@ def topology(inp):
             for sign in [-1,1]:
                 if c[axis]==(0 if sign<0 else shape[axis]-1): boundary.append((i,axis,sign,area,sizes[i,axis]/2))
     return {'shape':shape,'centers':np.array(centers),'sizes':sizes,'regions':np.array(regions),'volumes':volumes,'faces':faces,'boundary':boundary,'count':n}
+
+
+def derive_field_extrema(fields, mesh, layers):
+    """Return deterministic modeled extrema bound to global finite-volume cells."""
+    centers = np.asarray(mesh['centers_m'], dtype=float)
+    sizes = np.asarray(mesh['sizes_m'], dtype=float)
+    regions = np.asarray(mesh['region_index'], dtype=int)
+    if centers.ndim != 2 or sizes.shape != centers.shape or regions.shape != (len(centers),):
+        raise ValueError('Invalid mesh for derived field extrema')
+    layer_tags = [layer['tag'] for layer in layers]
+    if np.any(regions < 0) or np.any(regions >= len(layer_tags)):
+        raise ValueError('Invalid mesh region for derived field extrema')
+
+    output = []
+    for field in fields:
+        values = np.asarray(field['values'], dtype=float)
+        cells = np.asarray(field['cells'], dtype=int)
+        if values.ndim != 1 or cells.shape != values.shape or len(values) == 0:
+            raise ValueError('Invalid field samples for derived extrema')
+        if not np.all(np.isfinite(values)) or np.any(cells < 0) or np.any(cells >= len(centers)):
+            raise ValueError('Field samples exceed the declared mesh')
+        if len(set(cells.tolist())) != len(cells):
+            raise ValueError('Field cells must be unique')
+
+        extrema = {}
+        for statistic, sign in (('minimum', 1), ('maximum', -1)):
+            sample_index = min(
+                range(len(values)),
+                key=lambda index: (sign * values[index], cells[index]),
+            )
+            cell_index = int(cells[sample_index])
+            region_index = int(regions[cell_index])
+            extrema[statistic] = {
+                'value': float(values[sample_index]),
+                'unit': field['unit'],
+                'cell_index': cell_index,
+                'cell_center_m': centers[cell_index].tolist(),
+                'cell_size_m': sizes[cell_index].tolist(),
+                'region_index': region_index,
+                'domain_tag': layer_tags[region_index],
+            }
+        output.append({
+            'field_id': field['id'],
+            'unit': field['unit'],
+            'minimum': extrema['minimum'],
+            'maximum': extrema['maximum'],
+        })
+    return output
 
 
 def bernoulli(x):
@@ -398,8 +447,17 @@ class Cell:
         for e in self.input['electrodes']:
             r=next(r for r,l in enumerate(self.input['geometry']['layers']) if l['tag']==e['domain_tag']); cells=np.flatnonzero(self.mesh['regions']==r)
             fields.append({'id':'solid_potential_'+e['role'],'unit':'V','values':solid[cells].tolist(),'cells':cells.tolist()})
+        field_extrema = derive_field_extrema(
+            fields,
+            {
+                'centers_m': self.mesh['centers'].tolist(),
+                'sizes_m': self.mesh['sizes'].tolist(),
+                'region_index': self.mesh['regions'].tolist(),
+            },
+            self.input['geometry']['layers'],
+        )
         current=float(-collectors[0]); power=current*V
-        return {'version':VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'termination_reason':termination,'history':self.history.copy(),'residuals':residuals,'fields':fields,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()}}
+        return {'version':SOLVER_VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'termination_reason':termination,'history':self.history.copy(),'residuals':residuals,'fields':fields,'field_extrema':field_extrema,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()}}
 
 
 def main():
@@ -414,7 +472,7 @@ def main():
     if json.loads(request['geometry_json'])!=inp['geometry']: raise ValueError('Geometry snapshot mismatch')
     if request['operation']=='prepare':
         m=topology(inp)
-        output={'version':VERSION,'status':'prepared','dimension':inp['dimension'],'mesh':{'shape':m['shape'],'centers_m':m['centers'].tolist(),'sizes_m':m['sizes'].tolist(),'region_index':m['regions'].tolist(),'volumes_m3':m['volumes'].tolist()},'fields':[]}
+        output={'version':SOLVER_VERSION,'status':'prepared','dimension':inp['dimension'],'mesh':{'shape':m['shape'],'centers_m':m['centers'].tolist(),'sizes_m':m['sizes'].tolist(),'region_index':m['regions'].tolist(),'volumes_m3':m['volumes'].tolist()},'fields':[]}
     else:
         output=Cell(inp).solve()
     args.output_dir.mkdir(mode=0o700,parents=True,exist_ok=True)
@@ -423,7 +481,7 @@ def main():
         data=json.dumps(content,allow_nan=False,separators=(',',':')).encode(); filename=f'{name}.json'; path=args.output_dir/filename
         with path.open('xb') as file: file.write(data)
         artifacts.append({'id':name,'path':filename,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
-    output.update({'request_id':request['request_id'],'input_sha256':request['input_sha256'],'geometry_sha256':request['geometry_sha256'],'artifacts':artifacts})
+    output.update({'protocol_version':PROCESS_PROTOCOL_VERSION,'request_id':request['request_id'],'input_sha256':request['input_sha256'],'geometry_sha256':request['geometry_sha256'],'artifacts':artifacts})
     print(json.dumps(output,allow_nan=False,separators=(',',':')))
 
 

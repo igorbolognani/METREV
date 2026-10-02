@@ -12,6 +12,7 @@ import {
   serializeStructuredCellInput,
   serializeStructuredCellGeometry,
   spatialSimulationResultForInputSchema,
+  structuredCellFieldObservablesSchema,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
 } from '@metrev/domain-contracts';
@@ -25,6 +26,7 @@ import type {
   SpatialSimulationExecutionContext,
 } from './worker';
 import {
+  SpatialSimulationExecutionError,
   SpatialNumericalResultError,
   normalizeSpatialSimulationExecutionError,
 } from './execution-error';
@@ -45,12 +47,19 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
+    protocol_version: z.literal('structured-cell-process-v3'),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),
     input_sha256: digest,
     geometry_sha256: digest,
     artifacts: z.array(artifactSchema).min(1).max(16),
+  })
+  .passthrough();
+const envelopeVersionSchema = z
+  .object({
+    version: z.string().optional(),
+    protocol_version: z.string().optional(),
   })
   .passthrough();
 const fieldSchema = z
@@ -68,6 +77,25 @@ const circuitSchema = z
     signed_electrical_power_W: z.number().finite(),
     mfc_generated_power_W: z.number().finite().nullable(),
     mec_electrical_input_W: z.number().finite().nullable(),
+  })
+  .strict();
+const fieldExtremumSchema = z
+  .object({
+    value: z.number().finite(),
+    unit: z.enum(['mol/m3', 'V']),
+    cell_index: z.number().int().nonnegative().max(19999),
+    cell_center_m: z.array(z.number().finite()).min(2).max(3),
+    cell_size_m: z.array(z.number().finite().positive()).min(2).max(3),
+    region_index: z.number().int().nonnegative().max(127),
+    domain_tag: z.string().min(1).max(160),
+  })
+  .strict();
+const fieldExtremaSchema = z
+  .object({
+    field_id: z.string().min(1).max(160),
+    unit: z.enum(['mol/m3', 'V']),
+    minimum: fieldExtremumSchema,
+    maximum: fieldExtremumSchema,
   })
   .strict();
 const residualSchema = z
@@ -103,10 +131,29 @@ const solveSchema = envelopeSchema
     ]),
     history: z.array(z.number().finite().nonnegative()).min(1).max(10001),
     residuals: z.array(residualSchema).min(1).max(64),
+    field_extrema: z.array(fieldExtremaSchema).min(1).max(16),
     circuit: circuitSchema,
     interface_species_flux_mol_s: z.record(z.array(z.number().finite())),
   })
   .strict();
+
+export function parseStructuredCellProcessEnvelope(
+  value: unknown,
+  expected: { solverVersion: string; runtimeVersion: string },
+): z.infer<typeof envelopeSchema> {
+  const versions = envelopeVersionSchema.parse(value);
+  if (versions.protocol_version !== expected.runtimeVersion)
+    throw new SpatialSimulationExecutionError(
+      'spatial_sidecar_protocol_mismatch',
+      `Cell sidecar protocol mismatch: expected ${expected.runtimeVersion}, received ${versions.protocol_version ?? 'missing'}`,
+    );
+  if (versions.version !== expected.solverVersion)
+    throw new SpatialSimulationExecutionError(
+      'spatial_solver_version_mismatch',
+      `Cell solver version mismatch: expected ${expected.solverVersion}, received ${versions.version ?? 'missing'}`,
+    );
+  return envelopeSchema.parse(value);
+}
 
 export interface StructuredCellExecutorOptions extends Omit<
   SidecarProcessOptions,
@@ -121,7 +168,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v2';
+  readonly runtimeVersion = 'structured-cell-process-v3';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -154,11 +201,19 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
     const geometryHash = structuredCellGeometrySha256(input);
     if (
       context.run.input_sha256 !== inputHash ||
-      context.run.mesh_request_sha256 !== geometryHash ||
-      context.run.solver_version !== this.solverVersion ||
-      context.run.runtime_version !== this.runtimeVersion
+      context.run.mesh_request_sha256 !== geometryHash
     )
       throw new Error('Cell run identity mismatch');
+    if (context.run.solver_version !== this.solverVersion)
+      throw new SpatialSimulationExecutionError(
+        'spatial_solver_version_mismatch',
+        `Queued run requires solver ${context.run.solver_version}; active executor provides ${this.solverVersion}`,
+      );
+    if (context.run.runtime_version !== this.runtimeVersion)
+      throw new SpatialSimulationExecutionError(
+        'spatial_runtime_version_mismatch',
+        `Queued run requires runtime ${context.run.runtime_version}; active executor provides ${this.runtimeVersion}`,
+      );
     const expectedMesh = structuredCellTopology(input);
     const directories: string[] = [];
     const invoke = async (operation: 'prepare' | 'solve') => {
@@ -180,7 +235,13 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       if (!result.artifactDirectory)
         throw new Error('Cell output directory missing');
       directories.push(result.artifactDirectory);
-      const response = envelopeSchema.parse(JSON.parse(result.stdout));
+      const response = parseStructuredCellProcessEnvelope(
+        JSON.parse(result.stdout),
+        {
+          solverVersion: this.solverVersion,
+          runtimeVersion: this.runtimeVersion,
+        },
+      );
       if (
         response.request_id !== requestId ||
         response.input_sha256 !== inputHash ||
@@ -313,6 +374,13 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         throw new Error('Invalid cell conservation claim');
       await context.reportProgress({ status: 'postprocessing', progress: 85 });
       const fields: SpatialSimulationResult['fields'] = [];
+      const loadedFields = new Map<
+        string,
+        {
+          data: z.infer<typeof fieldSchema>;
+          artifact: z.infer<typeof artifactSchema>;
+        }
+      >();
       for (const artifact of response.artifacts.filter(
         (a) => a.id !== 'mesh',
       )) {
@@ -390,7 +458,88 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
           field,
         });
         fields.push(field);
+        loadedFields.set(data.id, { data, artifact });
       }
+      const close = (actual: number, expected: number) =>
+        Math.abs(actual - expected) <=
+        1e-12 * Math.max(Math.abs(actual), Math.abs(expected), 1e-30);
+      const derivedFields = response.field_extrema.map((entry) => {
+        const loaded = loadedFields.get(entry.field_id);
+        const manifest = fields.find(
+          (field) => field.field_id === entry.field_id,
+        );
+        if (!loaded || !manifest || entry.unit !== loaded.data.unit)
+          throw new Error(
+            'Cell extrema differ from persisted field identities',
+          );
+        for (const statistic of ['minimum', 'maximum'] as const) {
+          const point = entry[statistic];
+          const sign = statistic === 'minimum' ? 1 : -1;
+          const values: number[] = loaded.data.values;
+          const cells: number[] = loaded.data.cells;
+          let sampleIndex: number = 0;
+          for (let index = 1; index < values.length; index += 1) {
+            const value: number = values[index]!;
+            const current: number = values[sampleIndex]!;
+            if (
+              sign * value < sign * current ||
+              (value === current && cells[index]! < cells[sampleIndex]!)
+            )
+              sampleIndex = index;
+          }
+          const cellIndex: number = cells[sampleIndex]!;
+          const regionIndex = expectedMesh.region_index[cellIndex];
+          const domainTag = input.geometry.layers[regionIndex]?.tag;
+          const center = expectedMesh.centers_m[cellIndex];
+          const size = expectedMesh.sizes_m[cellIndex];
+          if (
+            point.value !== loaded.data.values[sampleIndex] ||
+            point.cell_index !== cellIndex ||
+            point.region_index !== regionIndex ||
+            point.domain_tag !== domainTag ||
+            point.cell_center_m.length !== input.dimension ||
+            point.cell_size_m.length !== input.dimension ||
+            point.cell_center_m.some(
+              (value, axis) => !close(value, center[axis]),
+            ) ||
+            point.cell_size_m.some((value, axis) => !close(value, size[axis]))
+          )
+            throw new Error(
+              'Cell extrema do not match their field samples and mesh',
+            );
+        }
+        return {
+          ...entry,
+          field_artifact_sha256: manifest.artifact.sha256,
+          dataset_path: manifest.artifact.dataset_path,
+          association: manifest.association,
+        };
+      });
+      if (
+        new Set(derivedFields.map((entry) => entry.field_id)).size !==
+          fields.length ||
+        derivedFields.length !== fields.length
+      )
+        throw new Error(
+          'Cell extrema do not cover every persisted field exactly once',
+        );
+      const structuredCellFieldObservables =
+        structuredCellFieldObservablesSchema.parse({
+          contract_version: 'structured-cell-field-extrema-v1',
+          record_kind: 'modeled_field_extremum',
+          source_kind: 'modeled_field_artifact',
+          classification: null,
+          thresholds_applied: false,
+          decision_eligible: false,
+          independent_validation: false,
+          algorithm: 'argmin_argmax_lowest_global_cell_index_v1',
+          input_sha256: inputHash,
+          mesh_sha256: meshArtifact.sha256,
+          geometry_request_sha256: geometryHash,
+          coordinate_system: 'cartesian',
+          position_basis: 'finite_volume_cell_center',
+          fields: derivedFields,
+        });
       const physicalGroups = Object.fromEntries(
         input.geometry.layers.map((l, i) => ['region:' + l.tag, i + 1]),
       );
@@ -480,6 +629,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         ],
         cell_circuit: response.circuit,
         equation_graph: equationGraph,
+        structured_cell_field_observables: structuredCellFieldObservables,
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

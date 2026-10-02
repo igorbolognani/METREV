@@ -4,6 +4,7 @@ export * from './schemas';
 export * from './structured-cell-schema';
 export * from './structured-cell-topology';
 export * from './structured-cell-development-report';
+export * from './structured-cell-observables';
 export * from './structured-cell-equation-graph';
 export * from './structured-cell-case-context';
 export * from './case-spatial-request';

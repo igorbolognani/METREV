@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { structuredCellInputSchema } from './structured-cell-schema';
+import { structuredCellTopology } from './structured-cell-topology';
+import { structuredCellFieldObservablesSchema } from './structured-cell-observables';
 import {
   compileStructuredCellEquationGraph,
   structuredCellEquationGraphSchema,
@@ -560,6 +562,8 @@ export const spatialSimulationResultSchema = z
       })
       .strict()
       .optional(),
+    structured_cell_field_observables:
+      structuredCellFieldObservablesSchema.optional(),
   })
   .strict()
   .superRefine((result, context) => {
@@ -600,6 +604,48 @@ export const spatialSimulationResultSchema = z
           ['cell_circuit'],
           'MEC electrical input and MFC generated output must remain distinct',
         );
+    }
+    const fieldObservables = result.structured_cell_field_observables;
+    if (fieldObservables) {
+      if (
+        result.contract_version !== 'spatial-simulation-result-v3' ||
+        result.input_contract_version !== 'spatial-cell-input-v1' ||
+        result.model_id !== 'structured-cell-supporting-electrolyte-v1'
+      )
+        issue(
+          ['structured_cell_field_observables'],
+          'Field extrema are restricted to the structured-cell development profile',
+        );
+      if (
+        fieldObservables.input_sha256 !== result.input_sha256 ||
+        fieldObservables.mesh_sha256 !== result.mesh.artifact.sha256 ||
+        fieldObservables.geometry_request_sha256 !==
+          result.mesh.request_sha256 ||
+        fieldObservables.fields.length !== result.fields.length
+      )
+        issue(
+          ['structured_cell_field_observables'],
+          'Field extrema must reference this immutable input, geometry request, and mesh',
+        );
+      for (const entry of fieldObservables.fields) {
+        const field = result.fields.find(
+          (candidate) => candidate.field_id === entry.field_id,
+        );
+        if (
+          !field ||
+          field.value_type !== 'scalar' ||
+          field.association !== entry.association ||
+          field.unit !== entry.unit ||
+          field.artifact.sha256 !== entry.field_artifact_sha256 ||
+          field.artifact.dataset_path !== entry.dataset_path ||
+          field.summary.minimum !== entry.minimum.value ||
+          field.summary.maximum !== entry.maximum.value
+        )
+          issue(
+            ['structured_cell_field_observables', 'fields'],
+            'Field extrema must match their persisted field artifact and summary',
+          );
+      }
     }
     if (
       result.contract_version === 'spatial-simulation-result-v1' &&
@@ -976,6 +1022,44 @@ export function spatialSimulationResultForInputSchema(
           f.unit !== (f.field_id.startsWith('concentration_') ? 'mol/m3' : 'V')
         )
           issue('Invalid cell field meaning or unit');
+      const observables = result.structured_cell_field_observables;
+      if (observables) {
+        const expectedMesh = structuredCellTopology(input);
+        const close = (actual: number, expected: number) =>
+          Math.abs(actual - expected) <=
+          1e-12 * Math.max(Math.abs(actual), Math.abs(expected), 1e-30);
+        for (const entry of observables.fields) {
+          const field = result.fields.find(
+            (candidate) => candidate.field_id === entry.field_id,
+          );
+          for (const statistic of ['minimum', 'maximum'] as const) {
+            const point = entry[statistic];
+            const expectedCenter = expectedMesh.centers_m[point.cell_index];
+            const expectedSize = expectedMesh.sizes_m[point.cell_index];
+            const expectedRegion = expectedMesh.region_index[point.cell_index];
+            if (
+              !field ||
+              point.cell_index >= expectedMesh.centers_m.length ||
+              !field.domain_tags.includes(
+                input.geometry.layers[point.region_index]?.tag,
+              ) ||
+              point.region_index !== expectedRegion ||
+              point.domain_tag !== input.geometry.layers[expectedRegion]?.tag ||
+              point.cell_center_m.length !== input.dimension ||
+              point.cell_size_m.length !== input.dimension ||
+              point.cell_center_m.some(
+                (value, axis) => !close(value, expectedCenter[axis]),
+              ) ||
+              point.cell_size_m.some(
+                (value, axis) => !close(value, expectedSize[axis]),
+              )
+            )
+              issue(
+                'Derived extremum position differs from the admitted cell mesh',
+              );
+          }
+        }
+      }
       if (!result.cell_circuit) issue('Cell circuit diagnostics are required');
       if (input.case_context && !result.equation_graph)
         issue(
