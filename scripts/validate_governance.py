@@ -56,10 +56,40 @@ def validate() -> None:
         assert stage["period"] and stage["meaning"] and stage["sources"]
         if stage["state"] in {"current_requirements", "integrated_main", "development_pr_not_merged"}:
             assert all((ROOT / path).is_file() for path in stage["sources"])
-    review_stage = next(stage for stage in stages if stage["state"] == "development_pr_not_merged")
-    assert review_stage["base_main"] == state["snapshot"]["integrated_main_head"]
-    assert review_stage["branch"] == state["snapshot"]["development_branch"]
-    assert review_stage["pull_request"] == state["snapshot"]["development_pr"]
+    integrated_pr_stages = [
+        stage
+        for stage in stages
+        if stage["state"] == "integrated_main" and "pull_request" in stage
+    ]
+    assert any(
+        stage["pull_request"] == state["snapshot"]["integrated_main_pr"]
+        and stage["head_sha"] == state["snapshot"]["verified_runtime_head"]
+        and stage.get("merge_commit") == state["snapshot"]["integrated_main_head"]
+        for stage in integrated_pr_stages
+    ), "Latest integrated PR must match the live main snapshot"
+
+    open_stages = [
+        stage
+        for stage in stages
+        if stage["state"] == "development_pr_not_merged"
+    ]
+    open_prs = state["snapshot"].get("open_development_prs", [])
+    assert len(open_prs) == len(open_stages) > 0
+    assert len({entry["pull_request"] for entry in open_prs}) == len(open_prs)
+    open_by_number = {entry["pull_request"]: entry for entry in open_prs}
+    for stage in open_stages:
+        entry = open_by_number[stage["pull_request"]]
+        assert stage["base_main"] == state["snapshot"]["integrated_main_head"]
+        assert stage["branch"] == entry["branch"]
+        assert stage["head_sha"] == entry["head_sha"]
+        assert stage["review_state"] == entry["review_state"]
+        assert stage["ci_state"] == entry["ci_state"]
+        assert stage["codeql_state"] == entry["codeql_state"]
+        assert stage["ci_run"] == entry["ci_run"]
+        assert stage["codeql_run"] == entry["codeql_run"]
+        assert str(stage["ci_run"]).isdigit() and str(stage["codeql_run"]).isdigit()
+        assert stage["review_state"] in {"draft", "ready_for_review"}
+        assert stage["ci_state"] and stage["codeql_state"]
     assert len(risks["risks"]) >= 10
     for risk in risks["risks"]:
         assert risk["severity"] and risk["likelihood"] and risk["verification"]
