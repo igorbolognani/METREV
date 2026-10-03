@@ -10,6 +10,10 @@ import {
 } from './structured-cell-equation-graph';
 import { structuredCellTopology } from './structured-cell-topology';
 import { structuredCellFieldObservablesSchema } from './structured-cell-observables';
+import {
+  structuredCellFieldReductionSchema,
+  assertStructuredCellFieldReductionBinding,
+} from './structured-cell-field-reduction';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();
@@ -34,7 +38,7 @@ const summary = z.object({
 });
 const field = z.object({
   field_id: id,
-  unit: z.enum(['mol/m3', 'V']),
+  unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
   value_type: z.literal('scalar'),
   association: z.literal('mesh_cells'),
   domain_tags: z.array(id).min(1),
@@ -127,11 +131,13 @@ export const structuredCellRunViewSchema = z
             cell_count: z.number().int().positive().max(20000),
           }),
         }),
-        fields: z.array(field).min(1).max(16),
+        fields: z.array(field).min(1).max(32),
         structured_cell_field_observables:
           structuredCellFieldObservablesSchema.optional(),
+        structured_cell_field_reduction:
+          structuredCellFieldReductionSchema.optional(),
         conservation_residuals: z.array(balance).min(1).max(64),
-        convergence: z.array(convergence).min(1).max(16),
+        convergence: z.array(convergence).min(1).max(32),
         cell_circuit: circuit,
         equation_graph: structuredCellEquationGraphSchema.optional(),
         warnings: z.array(
@@ -173,6 +179,21 @@ export const structuredCellRunViewSchema = z
     )
       invalid('Result identity mismatch');
     const observables = result.structured_cell_field_observables;
+    if (result.structured_cell_field_reduction) {
+      try {
+        assertStructuredCellFieldReductionBinding(
+          result.structured_cell_field_reduction,
+          result,
+          input,
+        );
+      } catch (error) {
+        invalid(
+          error instanceof Error
+            ? error.message
+            : 'Invalid field reduction binding',
+        );
+      }
+    }
     if (observables) {
       const mesh = structuredCellTopology(input);
       const byId = new Map(result.fields.map((f) => [f.field_id, f]));
@@ -329,6 +350,15 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     },
     enabled_physics: [
       'steady_trace_species_diffusion_migration',
+      ...('advection' in run.input_snapshot && run.input_snapshot.advection
+        ? ['prescribed_incompressible_upwind_species_advection']
+        : []),
+      ...('hydraulics' in run.input_snapshot && run.input_snapshot.hydraulics
+        ? [
+            'steady_heterogeneous_porous_darcy',
+            'darcy_upwind_species_advection',
+          ]
+        : []),
       ...new Set(
         run.input_snapshot.reactions.map((r) => `${r.law.kind}_reactions`),
       ),
@@ -342,6 +372,25 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     circuit: run.result.cell_circuit,
     fields: run.result.fields,
     field_extrema: run.result.structured_cell_field_observables ?? null,
+    modeled_field_observations:
+      run.result.structured_cell_field_reduction ?? null,
+    disabled_physics: [
+      ...('hydraulics' in run.input_snapshot && run.input_snapshot.hydraulics
+        ? []
+        : ['hydraulic_pressure_solve']),
+      'free_flow_stokes',
+      'gas_multiphase_transport',
+      'thermal_field',
+      'coupled_proton_speciation',
+      'biofilm_growth',
+      'donnan_equilibrium',
+      'double_layer',
+    ],
+    spatial_image_slice_artifacts: [] as {
+      uri: string;
+      sha256: string;
+      role: 'image' | 'slice';
+    }[],
     parameter_provenance: parameters,
     equation_references: [
       ...run.input_snapshot.reactions.map((r) => r.equation_ref),
@@ -509,6 +558,143 @@ export function renderStructuredCellDevelopmentReport(
             ]),
           ]
         : ['No field extrema were persisted for this run.']),
+      '## Physical volume weighted modeled observations',
+      ...(report.modeled_field_observations
+        ? [
+            `Role: ${report.modeled_field_observations.result_role}. Decision eligible: false. Independent validation: false. Weighting uses physical cell volumes, including the sourced out-of-plane depth in 2D. Current density is a volumetric Faradaic source in A/m3; it is not a surface current density. Current RMS uniformity is abs(weighted mean)/weighted RMS; a zero field has no defined uniformity.`,
+            rows([
+              [
+                'Field',
+                'Domain',
+                'Weighted mean',
+                'Weighted standard deviation',
+                'Physical integral',
+                'Integral unit',
+                'Physical volume (m3)',
+                'Current RMS uniformity',
+              ],
+              ['---', '---', '---', '---', '---', '---', '---', '---'],
+              ...report.modeled_field_observations.fields.flatMap((field) =>
+                field.domains.map((domain) => [
+                  field.field_id,
+                  domain.domain_tag,
+                  domain.statistics.volume_weighted_mean,
+                  domain.statistics.volume_weighted_standard_deviation,
+                  domain.statistics.physical_integral,
+                  domain.statistics.physical_integral_unit,
+                  domain.statistics.physical_volume_m3,
+                  domain.statistics.current_rms_uniformity ?? 'not applicable',
+                ]),
+              ),
+            ]),
+            '## Electrode overpotential extrema',
+            'Overpotential = modeled solid potential − modeled liquid potential − the source-backed equilibrium potential. Peak positions refer to finite-volume cells; no biological hotspot classification is implied.',
+            rows([
+              [
+                'Electrode',
+                'Minimum (V)',
+                'Maximum (V)',
+                'Minimum center (m)',
+                'Maximum center (m)',
+                'Equilibrium potential source',
+              ],
+              ['---', '---', '---', '---', '---', '---'],
+              ...report.modeled_field_observations.electrode_overpotentials.map(
+                (entry) => [
+                  entry.domain_tag,
+                  entry.statistics.minimum.value,
+                  entry.statistics.maximum.value,
+                  entry.statistics.minimum.cell_center_m.join(', '),
+                  entry.statistics.maximum.cell_center_m.join(', '),
+                  entry.equilibrium_potential.source_ref,
+                ],
+              ),
+            ]),
+            ...(report.modeled_field_observations.threshold_regions.length
+              ? [
+                  '## Explicit source-backed modeled threshold regions',
+                  'Fractions use physical cell volumes. The threshold definition and provenance are supplied explicitly; these regions do not establish independent validation or decision eligibility.',
+                  rows([
+                    [
+                      'Threshold',
+                      'Field',
+                      'Domain',
+                      'Predicate',
+                      'Threshold unit',
+                      'Source',
+                      'Volume fraction',
+                      'Matching cells',
+                      'Representative centers (m)',
+                      'Omitted matching cells',
+                    ],
+                    [
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                      '---',
+                    ],
+                    ...report.modeled_field_observations.threshold_regions.map(
+                      (region) => [
+                        region.threshold_id,
+                        region.field_id,
+                        region.domain_tag ?? 'all field domains',
+                        `${region.comparison} ${region.threshold.value}`,
+                        region.threshold.unit,
+                        region.threshold.source_ref,
+                        region.volume_fraction,
+                        region.matching_cells,
+                        region.representative_cells
+                          .map((cell) => `(${cell.cell_center_m.join(', ')})`)
+                          .join('; '),
+                        region.omitted_matching_cells,
+                      ],
+                    ),
+                  ]),
+                ]
+              : []),
+            ...(report.modeled_field_observations
+              .hydraulic_boundary_pressure_differences.length
+              ? [
+                  '## Darcy pressure boundary differences',
+                  'The imposed pressure difference is calculated from the sourced opposing boundary pressures. The solved pressure field is recorded separately at fluid cell centers; cell-center extrema do not equal boundary values.',
+                  rows([
+                    [
+                      'Axis',
+                      'Minimum face pressure (Pa)',
+                      'Maximum face pressure (Pa)',
+                      'Imposed pressure difference (Pa)',
+                      'Sources',
+                      'Pressure field SHA-256',
+                    ],
+                    ['---', '---', '---', '---', '---', '---'],
+                    ...report.modeled_field_observations.hydraulic_boundary_pressure_differences.map(
+                      (difference) => [
+                        difference.axis,
+                        difference.minimum_face_pressure.value,
+                        difference.maximum_face_pressure.value,
+                        difference.imposed_pressure_difference_Pa,
+                        `${difference.minimum_face_pressure.source_ref}; ${difference.maximum_face_pressure.source_ref}`,
+                        difference.pressure_field_sha256,
+                      ],
+                    ),
+                  ]),
+                ]
+              : []),
+            '## Observable boundaries',
+            ...report.modeled_field_observations.unsupported_observables.map(
+              (entry) => `- ${cell(entry.observable)}: ${cell(entry.reason)}`,
+            ),
+          ]
+        : [
+            'No verified weighted field observations were persisted for this run.',
+          ]),
+      `Disabled physics: ${report.disabled_physics.join(', ')}. Spatial image/slice artifacts: ${report.spatial_image_slice_artifacts.length ? report.spatial_image_slice_artifacts.map((artifact) => artifact.uri).join(', ') : 'none persisted for this run'}.`,
       '## Parameter provenance',
       rows([
         [

@@ -59,22 +59,22 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'darcy_boundary_pressure',
     term: 'Darcy pressure boundary/input',
-    authority_parameter_id: null,
+    authority_parameter_id: 'pressure_pa',
   },
   {
     concept_id: 'darcy_flow_rate',
     term: 'Darcy flow rate',
-    authority_parameter_id: null,
+    authority_parameter_id: 'volume_flow_rate_m3_s',
   },
   {
     concept_id: 'darcy_velocity',
     term: 'Darcy velocity field',
-    authority_parameter_id: null,
+    authority_parameter_id: 'velocity_component_m_s',
   },
   {
     concept_id: 'brinkman_closure',
     term: 'Brinkman-specific closure/stress parameter',
-    authority_parameter_id: null,
+    authority_parameter_id: 'brinkman_effective_viscosity_pa_s',
   },
   {
     concept_id: 'species_identity',
@@ -84,12 +84,12 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'species_valence',
     term: 'species valence',
-    authority_parameter_id: null,
+    authority_parameter_id: 'species_valence',
   },
   {
     concept_id: 'molecular_diffusivity',
     term: 'molecular/free-species diffusivity',
-    authority_parameter_id: null,
+    authority_parameter_id: 'molecular_diffusivity_m2_s',
   },
   {
     concept_id: 'effective_diffusivity',
@@ -99,12 +99,12 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'ion_mobility',
     term: 'ion mobility or declared derivation',
-    authority_parameter_id: null,
+    authority_parameter_id: 'ion_mobility_m2_v_s',
   },
   {
     concept_id: 'inlet_concentration',
     term: 'inlet concentration',
-    authority_parameter_id: null,
+    authority_parameter_id: 'inlet_concentration_mol_m3',
   },
   {
     concept_id: 'electronic_conductivity',
@@ -129,17 +129,17 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'donnan_interface_quantities',
     term: 'Donnan interface quantities',
-    authority_parameter_id: null,
+    authority_parameter_id: 'donnan_potential_v',
   },
   {
     concept_id: 'henry_coefficient',
     term: 'Henry coefficient',
-    authority_parameter_id: null,
+    authority_parameter_id: 'henry_coefficient_mol_m3_pa',
   },
   {
     concept_id: 'gas_solubility',
     term: 'gas solubility',
-    authority_parameter_id: null,
+    authority_parameter_id: 'gas_solubility_mol_m3',
   },
   {
     concept_id: 'gas_liquid_transfer',
@@ -154,12 +154,12 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'reaction_electron_count',
     term: 'reaction electron count',
-    authority_parameter_id: null,
+    authority_parameter_id: 'reaction_electron_count',
   },
   {
     concept_id: 'reaction_proton_count',
     term: 'reaction proton count',
-    authority_parameter_id: null,
+    authority_parameter_id: 'reaction_proton_count',
   },
   {
     concept_id: 'accessible_reactive_area',
@@ -179,42 +179,42 @@ export const P03_SPATIAL_PARAMETER_INVENTORY = [
   {
     concept_id: 'initial_biomass_field',
     term: 'initial biomass field',
-    authority_parameter_id: null,
+    authority_parameter_id: 'initial_biomass_density_kg_m3',
   },
   {
     concept_id: 'initial_biofilm_thickness',
     term: 'initial biofilm thickness',
-    authority_parameter_id: null,
+    authority_parameter_id: 'initial_biofilm_thickness_m',
   },
   {
     concept_id: 'biofilm_growth',
     term: 'biofilm growth law parameters',
-    authority_parameter_id: null,
+    authority_parameter_id: 'specific_growth_rate_per_s',
   },
   {
     concept_id: 'biofilm_decay',
     term: 'biofilm decay law parameters',
-    authority_parameter_id: null,
+    authority_parameter_id: 'decay_rate_per_s',
   },
   {
     concept_id: 'biofilm_detachment',
     term: 'biofilm detachment law parameters',
-    authority_parameter_id: null,
+    authority_parameter_id: 'detachment_rate_per_s',
   },
   {
     concept_id: 'buffer_acid_base',
     term: 'buffer and acid-base parameters',
-    authority_parameter_id: null,
+    authority_parameter_id: 'buffer_capacity_mol_m3_ph',
   },
   {
     concept_id: 'temperature_boundary_field',
     term: 'temperature boundary/field',
-    authority_parameter_id: null,
+    authority_parameter_id: 'temperature_k',
   },
   {
     concept_id: 'thermal_properties',
     term: 'thermal properties',
-    authority_parameter_id: null,
+    authority_parameter_id: 'thermal_conductivity_w_m_k',
   },
 ];
 

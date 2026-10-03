@@ -3,6 +3,8 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CaseSpatialControls } from './case-spatial-controls';
+import { SpatialFieldViewer } from './spatial-field-viewer';
+import { SpatialCellConfigurator } from './spatial-cell-configurator';
 import {
   structuredCellInputSchema,
   STRUCTURED_CELL_LIMITS,
@@ -49,8 +51,6 @@ export function SpatialCellWorkbench({
     digest: string;
     value: CellField;
   } | null>(null);
-  const [slice, setSlice] = useState(0);
-  const [probe, setProbe] = useState<number | null>(null);
   const [comparisonRunId, setComparisonRunId] = useState('');
   const [comparisonBusy, setComparisonBusy] = useState(false);
   const [comparisonError, setComparisonError] = useState('');
@@ -95,7 +95,6 @@ export function SpatialCellWorkbench({
   useEffect(() => {
     setMeshAsset(null);
     setFieldAsset(null);
-    setProbe(null);
     if (!run?.result) {
       setMeshAsset(null);
       setFieldAsset(null);
@@ -103,7 +102,6 @@ export function SpatialCellWorkbench({
     }
     let cancelled = false;
     setSelected(run.result.fields[0]?.field_id ?? '');
-    setSlice(0);
     void fetchSpatialArtifact(run.id, null, run.result.mesh.artifact.sha256)
       .then((value) => {
         if (!cancelled)
@@ -125,7 +123,6 @@ export function SpatialCellWorkbench({
     if (!run || !field || !mesh) return;
     let cancelled = false;
     setFieldAsset(null);
-    setProbe(null);
     void fetchSpatialArtifact(run.id, field.field_id, field.artifact.sha256)
       .then((value) => {
         const parsed = readCellField(value, mesh, field, run);
@@ -193,19 +190,6 @@ export function SpatialCellWorkbench({
     a.click();
     URL.revokeObjectURL(url);
   }
-  const values = data?.values ?? [];
-  const minimum = values.length ? Math.min(...values) : 0;
-  const maximum = values.length ? Math.max(...values) : 0;
-  const extent = mesh
-    ? mesh.centers_m.reduce(
-        (m, c, i) => [
-          Math.max(m[0], c[0] + mesh.sizes_m[i][0] / 2),
-          Math.max(m[1], c[1] + mesh.sizes_m[i][1] / 2),
-        ],
-        [0, 0],
-      )
-    : [1, 1];
-  const nz = mesh?.shape[2] ?? 1;
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
       <Link href="/modeling">← Modeling workbench</Link>
@@ -245,6 +229,7 @@ export function SpatialCellWorkbench({
           placeholder="Import a complete sourced spatial-cell-input-v1. No measurements are filled automatically."
         />
       </label>
+      <SpatialCellConfigurator source={source} onChange={setSource} />
       <label className="block">
         Related evaluation ID (optional)
         <input
@@ -343,7 +328,7 @@ export function SpatialCellWorkbench({
           <div aria-live="polite" className="space-y-2">
             {currentComparison.eligible ? (
               <>
-                <p role="status">
+                <p role="status" aria-label="Spatial summary comparison">
                   Summary comparison available. A: {currentComparison.runA.id} (
                   {currentComparison.runA.meshCellCount} mesh cells); B:{' '}
                   {currentComparison.runB.id} (
@@ -483,6 +468,7 @@ export function SpatialCellWorkbench({
               <label className="block">
                 Numerical field{' '}
                 <select
+                  aria-label="Numerical field"
                   value={selected}
                   onChange={(event) => setSelected(event.target.value)}
                 >
@@ -493,92 +479,13 @@ export function SpatialCellWorkbench({
                   ))}
                 </select>
               </label>
-              {run.dimension === 3 && (
-                <label className="block">
-                  3D mesh · XY slice {slice + 1}/{nz}
-                  <input
-                    aria-label="Z slice"
-                    type="range"
-                    min={0}
-                    max={nz - 1}
-                    step={1}
-                    value={slice}
-                    onChange={(event) => {
-                      setSlice(Number(event.target.value));
-                      setProbe(null);
-                    }}
-                  />
-                </label>
-              )}
               {mesh && data && (
-                <>
-                  <p>
-                    {data.id} · {data.unit} · range {minimum.toPrecision(5)}–
-                    {maximum.toPrecision(5)} ·{' '}
-                    {run.dimension === 3
-                      ? 'XY slice of the solved 3D mesh'
-                      : 'solved 2D mesh'}
-                  </p>
-                  <svg
-                    viewBox="0 0 700 420"
-                    role="img"
-                    aria-label={`${data.id} numerical cell field`}
-                    className="w-full rounded border bg-slate-50"
-                  >
-                    {data.cells.map((cell, index) => {
-                      if (
-                        cell >= mesh.centers_m.length ||
-                        (run.dimension === 3 && cell % nz !== slice)
-                      )
-                        return null;
-                      const c = mesh.centers_m[cell],
-                        s = mesh.sizes_m[cell];
-                      const hue =
-                        240 *
-                        (1 -
-                          (maximum === minimum
-                            ? 0.5
-                            : (data.values[index] - minimum) /
-                              (maximum - minimum)));
-                      return (
-                        <rect
-                          key={cell}
-                          tabIndex={0}
-                          role="button"
-                          aria-label={`Probe cell ${cell}`}
-                          onClick={() => setProbe(cell)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              setProbe(cell);
-                            }
-                          }}
-                          x={20 + (660 * (c[0] - s[0] / 2)) / extent[0]}
-                          y={400 - (380 * (c[1] + s[1] / 2)) / extent[1]}
-                          width={(660 * s[0]) / extent[0]}
-                          height={(380 * s[1]) / extent[1]}
-                          fill={`hsl(${hue} 75% 50%)`}
-                          stroke="white"
-                          strokeWidth=".25"
-                        >
-                          <title>{`Cell ${cell}: ${data.values[index]} ${data.unit}`}</title>
-                        </rect>
-                      );
-                    })}
-                  </svg>
-                  {probe !== null && data.cells.includes(probe) && (
-                    <p role="status">
-                      Cell {probe} · region{' '}
-                      {
-                        run.input_snapshot.geometry.layers[
-                          mesh.region_index[probe]
-                        ].tag
-                      }{' '}
-                      · center ({mesh.centers_m[probe].join(', ')}) m ·{' '}
-                      {data.values[data.cells.indexOf(probe)]} {data.unit}
-                    </p>
-                  )}
-                </>
+                <SpatialFieldViewer
+                  key={`${run.id}-${manifest?.artifact.sha256}`}
+                  run={run}
+                  mesh={mesh}
+                  data={data}
+                />
               )}
               {run.result.cell_circuit && (
                 <p>

@@ -170,6 +170,7 @@ export function solveCoupledCell1d(
     throw new RangeError(
       `coupled-cell-1d input: ${checked.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`,
     );
+  input = checked.data;
   const temperature = positive(
     input.anode.temperature,
     'K',

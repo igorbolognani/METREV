@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Spatial material fields in spatial-input-v1/v2; no case parameter values or solver defaults are supplied here.",
+  "scope": "Canonical source-backed material, species, kinetic and boundary parameters for spatial contracts and shared coefficient adapters. Definitions supply no parameter values, solver defaults or evidence of an implemented physical module.",
   "allowed_source_kinds": [
     "measured",
     "literature",
@@ -299,6 +299,444 @@
       "bounds": {
         "min": 0
       }
+    },
+    "pressure_pa": {
+      "meaning": "Pressure relative to the explicitly stated pressure datum",
+      "unit": "Pa",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["hydraulics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {}
+    },
+    "volume_flow_rate_m3_s": {
+      "meaning": "Signed volumetric flow through a declared port, positive in its specified orientation",
+      "unit": "m3/s",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["hydraulics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {}
+    },
+    "velocity_component_m_s": {
+      "meaning": "Signed Cartesian or declared normal velocity component",
+      "unit": "m/s",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["hydraulics", "species_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": {}
+    },
+    "brinkman_effective_viscosity_pa_s": {
+      "meaning": "Effective viscosity multiplying the Brinkman viscous-stress operator under a stated closure",
+      "unit": "Pa*s",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "membrane", "separator", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["brinkman_flow"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "species_valence": {
+      "meaning": "Signed integer electrical charge number of the explicitly identified species",
+      "unit": "1",
+      "form": "scalar",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["ionic_migration"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "integer": true
+      }
+    },
+    "molecular_diffusivity_m2_s": {
+      "meaning": "Free molecular diffusivity of an explicitly identified species at declared conditions",
+      "unit": "m2/s",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["species_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "ion_mobility_m2_v_s": {
+      "meaning": "Magnitude of electrical drift velocity per electric-field strength, with signed valence specified separately",
+      "unit": "m2/V/s",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["ionic_migration"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "inlet_concentration_mol_m3": {
+      "meaning": "Species molar concentration imposed at an identified inlet or interface",
+      "unit": "mol/m3",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["species_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "donnan_potential_v": {
+      "meaning": "Interfacial electrolyte potential jump under an explicitly declared Donnan equilibrium convention",
+      "unit": "V",
+      "form": "scalar_or_field",
+      "domains": ["membrane"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["donnan_partition"],
+      "dimensions": [1, 2, 3],
+      "bounds": {}
+    },
+    "henry_coefficient_mol_m3_pa": {
+      "meaning": "Dissolved species concentration divided by gas partial pressure at the declared temperature and matrix",
+      "unit": "mol/m3/Pa",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid", "cathode", "gas"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["gas_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "gas_solubility_mol_m3": {
+      "meaning": "Species-specific dissolved-gas concentration at stated gas pressure, temperature and liquid conditions",
+      "unit": "mol/m3",
+      "form": "scalar_or_field",
+      "domains": ["bulk_liquid", "cathode", "gas"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["gas_transport"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "reaction_electron_count": {
+      "meaning": "Nonnegative integer electron count per explicitly balanced reaction event",
+      "unit": "1",
+      "form": "scalar",
+      "domains": ["anode", "biofilm", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["heterogeneous_reaction"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "reaction_proton_count": {
+      "meaning": "Signed integer proton count under the explicitly declared reaction direction",
+      "unit": "1",
+      "form": "scalar",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["heterogeneous_reaction", "acid_base"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "integer": true
+      }
+    },
+    "reaction_stoichiometric_coefficient": {
+      "meaning": "Signed nonzero coefficient per declared reaction event, negative for consumed species",
+      "unit": "1",
+      "form": "scalar",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["heterogeneous_reaction", "homogeneous_reaction"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "nonzero": true
+      }
+    },
+    "initial_biomass_density_kg_m3": {
+      "meaning": "Initial local biomass mass per declared reference volume",
+      "unit": "kg/m3",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "initial_biofilm_thickness_m": {
+      "meaning": "Initial biofilm thickness from its declared supporting interface",
+      "unit": "m",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "specific_growth_rate_per_s": {
+      "meaning": "Specific biomass growth-rate coefficient of an explicitly declared microbial kinetic law",
+      "unit": "1/s",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "decay_rate_per_s": {
+      "meaning": "First-order biomass decay-rate coefficient under a stated population and condition",
+      "unit": "1/s",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "detachment_rate_per_s": {
+      "meaning": "First-order biomass detachment-rate coefficient for an explicitly declared detachment law",
+      "unit": "1/s",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["biofilm_kinetics"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0
+      }
+    },
+    "buffer_capacity_mol_m3_ph": {
+      "meaning": "Differential buffer capacity per liquid or pore-liquid volume and pH unit",
+      "unit": "mol/(m3*pH)",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["acid_base"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "acid_dissociation_constant_mol_m3": {
+      "meaning": "Concentration-form acid dissociation constant under a stated activity convention and species identity",
+      "unit": "mol/m3",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["acid_base"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "temperature_k": {
+      "meaning": "Absolute temperature of the declared phase, field or boundary",
+      "unit": "K",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas",
+        "wall"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["thermal", "species_transport", "charge_transfer"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "thermal_conductivity_w_m_k": {
+      "meaning": "Thermal conductivity of the declared phase and temperature regime",
+      "unit": "W/(m*K)",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas",
+        "wall"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["thermal"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "specific_heat_capacity_j_kg_k": {
+      "meaning": "Mass-specific heat capacity of the declared phase and temperature regime",
+      "unit": "J/(kg*K)",
+      "form": "scalar_or_field",
+      "domains": [
+        "bulk_liquid",
+        "anode",
+        "biofilm",
+        "membrane",
+        "separator",
+        "cathode",
+        "gas",
+        "wall"
+      ],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["thermal"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "exclusive_min": 0
+      }
+    },
+    "accessible_reactive_area_fraction": {
+      "meaning": "Fraction of supplied internal area accessible to the declared electroactive population",
+      "unit": "1",
+      "form": "scalar_or_field",
+      "domains": ["anode", "biofilm", "cathode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["heterogeneous_reaction"],
+      "dimensions": [1, 2, 3],
+      "bounds": {
+        "min": 0,
+        "max": 1
+      }
+    },
+    "imposed_anode_potential_v": {
+      "meaning": "Imposed local electrode material potential relative to the explicitly stated reference",
+      "unit": "V",
+      "form": "scalar_or_field",
+      "domains": ["anode"],
+      "derivable": false,
+      "derivation_rule": null,
+      "physics": ["charge_transfer"],
+      "dimensions": [1, 2, 3],
+      "bounds": {}
     }
   }
 }

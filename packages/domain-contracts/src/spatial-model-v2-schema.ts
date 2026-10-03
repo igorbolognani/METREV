@@ -139,11 +139,19 @@ const boundarySchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-type Bounds = { min?: number; max?: number; exclusive_min?: number };
+type Bounds = {
+  min?: number;
+  max?: number;
+  exclusive_min?: number;
+  integer?: boolean;
+  nonzero?: boolean;
+};
 const outsideBounds = (value: number, bounds: Bounds) =>
   (bounds.min !== undefined && value < bounds.min) ||
   (bounds.max !== undefined && value > bounds.max) ||
-  (bounds.exclusive_min !== undefined && value <= bounds.exclusive_min);
+  (bounds.exclusive_min !== undefined && value <= bounds.exclusive_min) ||
+  (bounds.integer === true && !Number.isInteger(value)) ||
+  (bounds.nonzero === true && value === 0);
 const sameJsonValue = (left: unknown, right: unknown): boolean => {
   if (left === right) return true;
   if (Array.isArray(left) || Array.isArray(right))
@@ -480,6 +488,15 @@ export const spatialModelInputV2Schema = z
       if (!spec)
         issue([...path, 'parameter_id'], 'Unknown spatial material parameter');
       else {
+        if (
+          'form' in spec &&
+          spec.form === 'scalar' &&
+          entry.field.kind !== 'constant'
+        )
+          issue(
+            [...path, 'field'],
+            'Material parameter requires a constant scalar',
+          );
         if (
           layer &&
           (!spec.domains.includes(layer.kind) || !spec.dimensions.includes(2))

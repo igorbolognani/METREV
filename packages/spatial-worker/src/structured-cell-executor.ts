@@ -13,6 +13,8 @@ import {
   serializeStructuredCellGeometry,
   spatialSimulationResultForInputSchema,
   structuredCellFieldObservablesSchema,
+  deriveStructuredCellFieldReduction,
+  validateStructuredCellFieldSamples,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
 } from '@metrev/domain-contracts';
@@ -47,13 +49,13 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
-    protocol_version: z.literal('structured-cell-process-v3'),
+    protocol_version: z.literal('structured-cell-process-v4'),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),
     input_sha256: digest,
     geometry_sha256: digest,
-    artifacts: z.array(artifactSchema).min(1).max(16),
+    artifacts: z.array(artifactSchema).min(1).max(32),
   })
   .passthrough();
 const envelopeVersionSchema = z
@@ -65,7 +67,7 @@ const envelopeVersionSchema = z
 const fieldSchema = z
   .object({
     id: z.string(),
-    unit: z.enum(['mol/m3', 'V']),
+    unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
     values: z.array(z.number().finite()).min(1).max(20000),
     cells: z.array(z.number().int().nonnegative()).min(1).max(20000),
   })
@@ -82,7 +84,7 @@ const circuitSchema = z
 const fieldExtremumSchema = z
   .object({
     value: z.number().finite(),
-    unit: z.enum(['mol/m3', 'V']),
+    unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
     cell_index: z.number().int().nonnegative().max(19999),
     cell_center_m: z.array(z.number().finite()).min(2).max(3),
     cell_size_m: z.array(z.number().finite().positive()).min(2).max(3),
@@ -93,7 +95,7 @@ const fieldExtremumSchema = z
 const fieldExtremaSchema = z
   .object({
     field_id: z.string().min(1).max(160),
-    unit: z.enum(['mol/m3', 'V']),
+    unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
     minimum: fieldExtremumSchema,
     maximum: fieldExtremumSchema,
   })
@@ -106,10 +108,11 @@ const residualSchema = z
       'ionic_charge',
       'solid_charge',
       'circuit_closure',
+      'fluid_volume',
     ]),
     scope: z.literal('global'),
     absolute_residual: z.number().finite().nonnegative(),
-    unit: z.enum(['mol/s', 'A', 'V']),
+    unit: z.enum(['mol/s', 'A', 'V', 'm3/s']),
     relative_residual: z.number().finite().nonnegative(),
     tolerance: z.number().finite().positive(),
     passed: z.boolean(),
@@ -131,7 +134,7 @@ const solveSchema = envelopeSchema
     ]),
     history: z.array(z.number().finite().nonnegative()).min(1).max(10001),
     residuals: z.array(residualSchema).min(1).max(64),
-    field_extrema: z.array(fieldExtremaSchema).min(1).max(16),
+    field_extrema: z.array(fieldExtremaSchema).min(1).max(32),
     circuit: circuitSchema,
     interface_species_flux_mol_s: z.record(z.array(z.number().finite())),
   })
@@ -168,7 +171,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v3';
+  readonly runtimeVersion = 'structured-cell-process-v4';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -324,13 +327,15 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       ) as (keyof typeof expectedMesh)[])
         if (!equal(meshData[key], expectedMesh[key]))
           throw new Error('Cell mesh differs from its declared geometry');
-      await this.options.artifactStore.storeArtifact({
+      const meshPublication = {
         sourceFilePath: mesh.path,
         ownerId: context.ownerId,
         runId: context.run.id,
         fieldId: '_mesh',
         artifact: reference(meshArtifact, '/mesh'),
-      });
+        signal: context.signal,
+      };
+      await this.options.artifactStore.storeArtifact(meshPublication);
       await context.reportProgress({
         status: 'solving',
         progress: 30,
@@ -344,6 +349,15 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       )
         throw new Error('Cell mesh changed during solve');
       const names = [
+        'faradaic_current_density',
+        ...('hydraulics' in input && input.hydraulics
+          ? [
+              'darcy_pressure',
+              ...['x', 'y', ...(input.dimension === 3 ? ['z'] : [])].map(
+                (axis) => 'darcy_velocity_' + axis,
+              ),
+            ]
+          : []),
         'liquid_potential',
         'solid_potential_anode',
         'solid_potential_cathode',
@@ -385,7 +399,12 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         (a) => a.id !== 'mesh',
       )) {
         const loaded = await load(solved.directory, artifact);
-        const data = fieldSchema.parse(loaded.data);
+        const data = validateStructuredCellFieldSamples(
+          fieldSchema.parse(loaded.data),
+          input,
+        );
+        const hydraulicField =
+          data.id === 'darcy_pressure' || data.id.startsWith('darcy_velocity_');
         const region =
           artifact.id === 'solid_potential_anode'
             ? 0
@@ -393,12 +412,23 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
               ? input.geometry.layers.length - 1
               : null;
         const expectedCells = expectedMesh.region_index.flatMap((r, i) =>
-          region === null || region === r ? [i] : [],
+          (region === null || region === r) &&
+          (!hydraulicField || input.geometry.layers[r].kind !== 'membrane')
+            ? [i]
+            : [],
         );
         if (
           data.id !== artifact.id ||
           data.unit !==
-            (data.id.startsWith('concentration_') ? 'mol/m3' : 'V') ||
+            (data.id.startsWith('concentration_')
+              ? 'mol/m3'
+              : data.id === 'faradaic_current_density'
+                ? 'A/m3'
+                : data.id === 'darcy_pressure'
+                  ? 'Pa'
+                  : data.id.startsWith('darcy_velocity_')
+                    ? 'm/s'
+                    : 'V') ||
           data.values.length !== expectedCells.length ||
           data.cells.join() !== expectedCells.join() ||
           (data.unit === 'mol/m3' && data.values.some((v) => v < 0))
@@ -430,7 +460,9 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
           association: 'mesh_cells',
           domain_tags:
             region === null
-              ? input.geometry.layers.map((l) => l.tag)
+              ? input.geometry.layers
+                  .filter((l) => !hydraulicField || l.kind !== 'membrane')
+                  .map((l) => l.tag)
               : [input.geometry.layers[region].tag],
           artifact: reference(artifact, '/values'),
           sampled_at: new Date().toISOString(),
@@ -442,21 +474,31 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
             mean,
             integral,
             integral_unit:
-              data.unit === 'V'
-                ? `V*m${input.dimension}`
-                : input.dimension === 2
-                  ? 'mol/m'
-                  : 'mol',
+              data.unit === 'Pa'
+                ? `Pa*m${input.dimension}`
+                : data.unit === 'm/s'
+                  ? `m${input.dimension + 1}/s`
+                  : data.unit === 'A/m3'
+                    ? input.dimension === 2
+                      ? 'A/m'
+                      : 'A'
+                    : data.unit === 'V'
+                      ? `V*m${input.dimension}`
+                      : input.dimension === 2
+                        ? 'mol/m'
+                        : 'mol',
             integration_measure:
               input.dimension === 2 ? 'domain_area' : 'domain_volume',
           },
         };
-        await this.options.artifactStore.storeField({
+        const fieldPublication = {
           sourceFilePath: loaded.path,
           ownerId: context.ownerId,
           runId: context.run.id,
           field,
-        });
+          signal: context.signal,
+        };
+        await this.options.artifactStore.storeField(fieldPublication);
         fields.push(field);
         loadedFields.set(data.id, { data, artifact });
       }
@@ -543,6 +585,17 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       const physicalGroups = Object.fromEntries(
         input.geometry.layers.map((l, i) => ['region:' + l.tag, i + 1]),
       );
+      const fieldReduction = deriveStructuredCellFieldReduction({
+        input,
+        input_sha256: inputHash,
+        mesh_sha256: meshArtifact.sha256,
+        geometry_request_sha256: geometryHash,
+        numerical_status: response.status,
+        fields: [...loadedFields.values()].map(({ data, artifact }) => ({
+          samples: data,
+          artifact_sha256: artifact.sha256,
+        })),
+      });
       const result = spatialSimulationResultForInputSchema(input).parse({
         contract_version: 'spatial-simulation-result-v3',
         run_id: context.run.id,
@@ -630,6 +683,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         cell_circuit: response.circuit,
         equation_graph: equationGraph,
         structured_cell_field_observables: structuredCellFieldObservables,
+        structured_cell_field_reduction: fieldReduction,
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

@@ -227,7 +227,9 @@ export class LocalSpatialFieldArtifactStore {
     fieldId: string;
     uri: string;
     datasetPath: string;
+    signal?: AbortSignal;
   }): Promise<Readable> {
+    input.signal?.throwIfAborted();
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
     const fieldId = fieldIdSchema.parse(input.fieldId);
@@ -246,23 +248,62 @@ export class LocalSpatialFieldArtifactStore {
         'Field is not authorized for this run',
       );
     const artifact = manifest.artifact;
-    const stored = await this.bytes(
+    const file = await open(
       join(
         this.root,
         'field-objects',
         artifact.sha256.slice(0, 2),
         `${artifact.sha256}.bin`,
       ),
+      constants.O_RDONLY | constants.O_NOFOLLOW,
     );
-    if (
-      stored.byteLength !== artifact.bytes ||
-      digest(stored) !== artifact.sha256
-    )
-      throw new SpatialArtifactStoreError(
-        'integrity_failure',
-        'Field content failed digest verification',
-      );
-    return Readable.from([stored]);
+    try {
+      const stat = await file.stat();
+      if (
+        !stat.isFile() ||
+        stat.size !== artifact.bytes ||
+        stat.size > this.maxFieldBytes
+      )
+        throw new SpatialArtifactStoreError(
+          'integrity_failure',
+          'Invalid field size or type',
+        );
+      const hash = createHash('sha256');
+      const buffer = Buffer.alloc(64 * 1024);
+      let position = 0;
+      while (position < artifact.bytes) {
+        input.signal?.throwIfAborted();
+        const { bytesRead } = await file.read(
+          buffer,
+          0,
+          Math.min(buffer.length, artifact.bytes - position),
+          position,
+        );
+        if (!bytesRead)
+          throw new SpatialArtifactStoreError(
+            'integrity_failure',
+            'Field truncated during verification',
+          );
+        hash.update(buffer.subarray(0, bytesRead));
+        position += bytesRead;
+      }
+      if (hash.digest('hex') !== artifact.sha256)
+        throw new SpatialArtifactStoreError(
+          'integrity_failure',
+          'Field content failed digest verification',
+        );
+      input.signal?.throwIfAborted();
+      // Use the verified descriptor, not a second path lookup; memory stays bounded.
+      return file.createReadStream({
+        start: 0,
+        highWaterMark: 64 * 1024,
+        autoClose: true,
+        signal: input.signal,
+      });
+    } catch (error) {
+      await file.close();
+      throw error;
+    }
   }
 
   private async loadManifest(path: string): Promise<FieldManifest> {

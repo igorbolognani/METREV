@@ -46,9 +46,16 @@ describe('P03 spatial parameter-authority coverage', () => {
       .filter((parameter) => parameter.definition_status === 'pending')
       .map((parameter) => parameter.concept_id);
 
-    expect(pendingIds).toContain('molecular_diffusivity');
-    expect(pendingIds).toContain('donnan_interface_quantities');
-    expect(pendingIds).toContain('buffer_acid_base');
+    expect(pendingIds).toEqual(['species_identity', 'reaction_stoichiometry']);
+    expect(
+      report.parameters.find(
+        (entry) => entry.concept_id === 'molecular_diffusivity',
+      ),
+    ).toMatchObject({
+      definition_status: 'known',
+      canonical_unit: 'm2/s',
+      value_source_status: 'not_supplied_by_parameter_authority',
+    });
     expect(report.summary.definition_status.known).toBeGreaterThan(0);
     expect(report.summary.definition_status.pending).toBeGreaterThan(0);
     expect(

@@ -1,13 +1,13 @@
-import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Transform, type Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { createReadStream } from 'node:fs';
+import type { Readable } from 'node:stream';
+import {
+  stageVerifiedSpatialArtifact,
+  SpatialArtifactDownloadError,
+} from '../services/spatial-artifact-download';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { registerSpatialFieldReductionRoutes } from './spatial-field-reductions';
 
 import { AuthorizationError, requireRole } from '@metrev/auth';
 import {
@@ -50,54 +50,8 @@ export interface SpatialFieldArtifactReader {
     fieldId: string;
     uri: string;
     datasetPath: string;
+    signal?: AbortSignal;
   }): Promise<Readable>;
-}
-
-class FieldArtifactIntegrityError extends Error {
-  constructor() {
-    super('Spatial field artifact bytes do not match the persisted manifest');
-    this.name = 'FieldArtifactIntegrityError';
-  }
-}
-
-async function stageVerifiedField(input: {
-  source: Readable;
-  sha256: string;
-  bytes: number;
-}): Promise<{ directory: string; path: string }> {
-  if (!Number.isSafeInteger(input.bytes))
-    throw new FieldArtifactIntegrityError();
-  const directory = await mkdtemp(join(tmpdir(), 'metrev-spatial-field-'));
-  const path = join(directory, 'field.bin');
-  const digest = createHash('sha256');
-  let byteLength = 0;
-  const verifier = new Transform({
-    transform(chunk: Buffer | Uint8Array, _encoding, callback) {
-      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      byteLength += bytes.byteLength;
-      if (byteLength > input.bytes)
-        return callback(new FieldArtifactIntegrityError());
-      digest.update(bytes);
-      callback(null, bytes);
-    },
-    flush(callback) {
-      if (byteLength !== input.bytes || digest.digest('hex') !== input.sha256)
-        return callback(new FieldArtifactIntegrityError());
-      callback();
-    },
-  });
-
-  try {
-    await pipeline(
-      input.source,
-      verifier,
-      createWriteStream(path, { flags: 'wx', mode: 0o600 }),
-    );
-    return { directory, path };
-  } catch (error) {
-    await rm(directory, { recursive: true, force: true });
-    throw error;
-  }
 }
 
 declare module 'fastify' {
@@ -162,6 +116,7 @@ function idempotencyKey(request: FastifyRequest): string | null {
 export async function registerSpatialSimulationRoutes(
   app: FastifyInstance,
 ): Promise<void> {
+  await registerSpatialFieldReductionRoutes(app);
   app.post('/', { bodyLimit: 2 * 1024 * 1024 }, async (request, reply) => {
     const actor = authorize(request, reply, 'ANALYST');
     if (!actor) return reply;
@@ -349,26 +304,31 @@ export async function registerSpatialSimulationRoutes(
     const reader = app.spatialFieldArtifactReader;
     if (!reader)
       return reply.code(503).send({ error: 'artifact_store_unavailable' });
-    let stagedDirectory: string | null = null;
+    const abort = new AbortController();
+    const cancel = () => abort.abort();
+    request.raw.once('aborted', cancel);
+    let cleanup: (() => Promise<void>) | undefined;
     try {
-      const source = await reader.readField({
-        ownerId: actor.userId,
-        runId: run.id,
-        fieldId: field.field_id,
-        uri: field.artifact.uri,
-        datasetPath: field.artifact.dataset_path,
-      });
-      const staged = await stageVerifiedField({
-        source,
+      const staged = await stageVerifiedSpatialArtifact({
+        controller: app.spatialArtifactDownloads,
         sha256: field.artifact.sha256,
         bytes: field.artifact.bytes,
+        signal: abort.signal,
+        source: (signal) =>
+          reader.readField({
+            ownerId: actor.userId,
+            runId: run.id,
+            fieldId: field.field_id,
+            uri: field.artifact.uri,
+            datasetPath: field.artifact.dataset_path,
+            signal,
+          }),
       });
-      stagedDirectory = staged.directory;
-      const download = createReadStream(staged.path);
+      cleanup = staged.cleanup;
+      const download = createReadStream(staged.path, { signal: abort.signal });
       download.once('close', () => {
-        void rm(staged.directory, { recursive: true, force: true }).catch(
-          () => undefined,
-        );
+        request.raw.off('aborted', cancel);
+        void staged.cleanup().catch(() => undefined);
       });
       reply.header('Content-Type', 'application/octet-stream');
       reply.header('Content-Length', String(field.artifact.bytes));
@@ -378,10 +338,19 @@ export async function registerSpatialSimulationRoutes(
       reply.header('X-Content-Type-Options', 'nosniff');
       return reply.send(download);
     } catch (error) {
-      if (stagedDirectory)
-        await rm(stagedDirectory, { recursive: true, force: true });
-      if (error instanceof FieldArtifactIntegrityError)
-        return reply.code(502).send({ error: 'artifact_integrity_failure' });
+      request.raw.off('aborted', cancel);
+      await cleanup?.();
+      if (error instanceof SpatialArtifactDownloadError) {
+        const code =
+          error.code === 'artifact_size_limit'
+            ? 413
+            : error.code === 'artifact_download_busy'
+              ? 503
+              : error.code === 'artifact_read_timeout'
+                ? 504
+                : 502;
+        return reply.code(code).send({ error: error.code });
+      }
       return reply.code(502).send({ error: 'artifact_store_read_failed' });
     }
   };

@@ -74,7 +74,7 @@ def validate() -> None:
         if stage["state"] == "development_pr_not_merged"
     ]
     open_prs = state["snapshot"].get("open_development_prs", [])
-    assert len(open_prs) == len(open_stages) > 0
+    assert len(open_prs) == len(open_stages), "Open PR snapshots must match; a fully merged batch may have none"
     assert len({entry["pull_request"] for entry in open_prs}) == len(open_prs)
     open_by_number = {entry["pull_request"]: entry for entry in open_prs}
     for stage in open_stages:

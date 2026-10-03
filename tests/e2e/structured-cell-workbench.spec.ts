@@ -170,9 +170,11 @@ test('2D and 3D fields, probes, reload, slices and report downloads', async ({
     }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Probe cell 0', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('region anode');
+  await expect(
+    page.getByRole('status', { name: 'Selected cell probe', exact: true }),
+  ).toContainText('region anode');
   await page
-    .getByLabel('Numerical field', { exact: false })
+    .getByLabel('Numerical field', { exact: true })
     .selectOption('liquid_potential');
   await expect(
     page.getByRole('img', { name: 'liquid_potential numerical cell field' }),
@@ -238,7 +240,27 @@ test('2D and 3D fields, probes, reload, slices and report downloads', async ({
   await page
     .getByRole('button', { name: 'Probe cell 1', exact: true })
     .press('Enter');
-  await expect(page.getByRole('status')).toContainText('Cell 1');
+  await expect(
+    page.getByRole('status', { name: 'Selected cell probe', exact: true }),
+  ).toContainText('Cell 1');
+  for (const plane of ['XZ', 'YZ', 'XY']) {
+    await page.getByLabel('Slice plane', { exact: true }).selectOption(plane);
+    await expect(
+      page.getByText(`${plane} slice of the solved 3D mesh`, { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Probe cell 0', exact: true }),
+    ).toBeVisible();
+  }
+  await page.getByLabel('Profile axis', { exact: true }).selectOption('2');
+  const profileDownload = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Export profile CSV', exact: true })
+    .click();
+  const csv = await readFile((await (await profileDownload).path())!, 'utf8');
+  expect(csv).toContain('"field_sha256"');
+  expect(csv).toContain('"modeled_development_result"');
+  expect(csv.trim().split('\r\n')).toHaveLength(3);
   expect(errors).toEqual([]);
 });
 
@@ -296,11 +318,24 @@ test('compares saved completed-run summaries only for matching geometry and unit
   await page
     .getByRole('button', { name: 'Compare summaries', exact: true })
     .click();
-  await expect(page.getByRole('status')).toContainText(`A: ${runB}`);
-  await expect(page.getByRole('status')).toContainText(`B: ${runA}`);
-  await expect(page.getByRole('status')).toContainText(
-    'Decision eligible: false.',
-  );
+  await expect(
+    page.getByRole('status', {
+      name: 'Spatial summary comparison',
+      exact: true,
+    }),
+  ).toContainText(`A: ${runB}`);
+  await expect(
+    page.getByRole('status', {
+      name: 'Spatial summary comparison',
+      exact: true,
+    }),
+  ).toContainText(`B: ${runA}`);
+  await expect(
+    page.getByRole('status', {
+      name: 'Spatial summary comparison',
+      exact: true,
+    }),
+  ).toContainText('Decision eligible: false.');
   const comparison = page.getByRole('region', {
     name: 'Spatial run comparison',
     exact: true,

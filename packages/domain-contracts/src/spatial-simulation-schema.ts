@@ -3,6 +3,10 @@ import { structuredCellInputSchema } from './structured-cell-schema';
 import { structuredCellTopology } from './structured-cell-topology';
 import { structuredCellFieldObservablesSchema } from './structured-cell-observables';
 import {
+  structuredCellFieldReductionSchema,
+  assertStructuredCellFieldReductionBinding,
+} from './structured-cell-field-reduction';
+import {
   compileStructuredCellEquationGraph,
   structuredCellEquationGraphSchema,
 } from './structured-cell-equation-graph';
@@ -292,6 +296,7 @@ const fieldMeasureLengthPower: Record<
 // units; adding a new state unit requires adding its SI dimensions here.
 const fieldUnitDimensions: Record<string, Record<string, number>> = {
   'mol/m3': { mol: 1, m: -3 },
+  'A/m3': { A: 1, m: -3 },
   V: { V: 1 },
   Pa: { Pa: 1 },
   'm/s': { m: 1, s: -1 },
@@ -353,6 +358,7 @@ const conservationResidualSchema = z
       'ionic_charge',
       'solid_charge',
       'circuit_closure',
+      'fluid_volume',
       'energy',
       'other',
     ]),
@@ -564,6 +570,8 @@ export const spatialSimulationResultSchema = z
       .optional(),
     structured_cell_field_observables:
       structuredCellFieldObservablesSchema.optional(),
+    structured_cell_field_reduction:
+      structuredCellFieldReductionSchema.optional(),
   })
   .strict()
   .superRefine((result, context) => {
@@ -606,6 +614,29 @@ export const spatialSimulationResultSchema = z
         );
     }
     const fieldObservables = result.structured_cell_field_observables;
+    if (result.structured_cell_field_reduction) {
+      if (
+        result.contract_version !== 'spatial-simulation-result-v3' ||
+        result.model_id !== 'structured-cell-supporting-electrolyte-v1'
+      )
+        issue(
+          ['structured_cell_field_reduction'],
+          'Field reduction requires the structured-cell development profile',
+        );
+      try {
+        assertStructuredCellFieldReductionBinding(
+          result.structured_cell_field_reduction,
+          result,
+        );
+      } catch (error) {
+        issue(
+          ['structured_cell_field_reduction'],
+          error instanceof Error
+            ? error.message
+            : 'Invalid field reduction binding',
+        );
+      }
+    }
     if (fieldObservables) {
       if (
         result.contract_version !== 'spatial-simulation-result-v3' ||
@@ -991,6 +1022,17 @@ export function spatialSimulationResultForInputSchema(
       )
         issue('Cell mesh differs from its geometry request');
       const expected = [
+        ...(result.runtime_version === 'structured-cell-process-v4'
+          ? ['faradaic_current_density']
+          : []),
+        ...('hydraulics' in input && input.hydraulics
+          ? [
+              'darcy_pressure',
+              ...['x', 'y', ...(input.dimension === 3 ? ['z'] : [])].map(
+                (axis) => 'darcy_velocity_' + axis,
+              ),
+            ]
+          : []),
         'liquid_potential',
         'solid_potential_anode',
         'solid_potential_cathode',
@@ -1019,10 +1061,41 @@ export function spatialSimulationResultForInputSchema(
           f.variable_id !== f.field_id ||
           f.association !== 'mesh_cells' ||
           f.value_type !== 'scalar' ||
-          f.unit !== (f.field_id.startsWith('concentration_') ? 'mol/m3' : 'V')
+          f.unit !==
+            (f.field_id.startsWith('concentration_')
+              ? 'mol/m3'
+              : f.field_id === 'faradaic_current_density'
+                ? 'A/m3'
+                : f.field_id === 'darcy_pressure'
+                  ? 'Pa'
+                  : f.field_id.startsWith('darcy_velocity_')
+                    ? 'm/s'
+                    : 'V')
         )
           issue('Invalid cell field meaning or unit');
       const observables = result.structured_cell_field_observables;
+      if (
+        result.runtime_version === 'structured-cell-process-v4' &&
+        !result.structured_cell_field_reduction
+      )
+        issue(
+          'Process-v4 cell results require persisted modeled field reduction',
+        );
+      if (result.structured_cell_field_reduction) {
+        try {
+          assertStructuredCellFieldReductionBinding(
+            result.structured_cell_field_reduction,
+            result,
+            input,
+          );
+        } catch (error) {
+          issue(
+            error instanceof Error
+              ? error.message
+              : 'Invalid cell field reduction binding',
+          );
+        }
+      }
       if (observables) {
         const expectedMesh = structuredCellTopology(input);
         const close = (actual: number, expected: number) =>

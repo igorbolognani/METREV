@@ -3,6 +3,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { evaluateModelPhaseAdmission } from './model-phase-admission.mjs';
 
 const CURATED_MANIFEST = 'packages/database/data/curated-bigdata-manifest.json';
 const CANDIDATE_INDEX = 'packages/database/data/research-candidates/index.json';
@@ -1017,6 +1018,68 @@ export async function buildDoctorReport(repoRoot, options = {}) {
       payload: database,
     },
   ];
+
+  if (options.verificationEvidence) {
+    try {
+      const verificationPath = resolve(repoRoot, options.verificationEvidence);
+      const bundle = JSON.parse(readFileSync(verificationPath, 'utf8'));
+      if (!Array.isArray(bundle.scopes) || bundle.scopes.length === 0)
+        throw new Error('No executed model scopes in evidence bundle');
+      const runtimeSourceHash = createHash('sha256')
+        .update(
+          readFileSync(
+            resolve(
+              repoRoot,
+              'apps/spatial-sidecar/metrev_spatial/structured_cell.py',
+            ),
+          ),
+        )
+        .digest('hex');
+      if (
+        bundle.scopes.some(
+          (scope) => scope.runtime_source_sha256 !== runtimeSourceHash,
+        )
+      )
+        throw new Error(
+          'Evidence runtime source hash differs from current solver',
+        );
+      const admissions = bundle.scopes.map((scope) =>
+        evaluateModelPhaseAdmission(bundle, scope),
+      );
+      const measuredFailure = admissions.some((admission) =>
+        Object.values(admission.groups).some((group) =>
+          group.gaps.some((gap) =>
+            [
+              'executed_check_failed',
+              'measured_assertion_failed',
+              'assertion_nonfinite_or_invalid',
+              'assertion_identity_missing',
+            ].includes(gap.reason),
+          ),
+        ),
+      );
+      checks.push({
+        label: 'model-phase-admission',
+        status:
+          measuredFailure ||
+          bundle.evidence.some((entry) => entry.status === 'failed')
+            ? 'FAIL'
+            : admissions.every((entry) => entry.admission.production_eligible)
+              ? 'PASS'
+              : 'WARN',
+        payload: {
+          admissions,
+          note: 'Evidence is evaluated by exact model/run identity; unresolved scientific and product gates remain explicit.',
+        },
+      });
+    } catch (error) {
+      checks.push({
+        label: 'model-phase-admission',
+        status: 'FAIL',
+        payload: { error: String(error.message ?? error).slice(0, 400) },
+      });
+    }
+  }
 
   if (options.full) {
     const layoutSummaryPath = resolve(
