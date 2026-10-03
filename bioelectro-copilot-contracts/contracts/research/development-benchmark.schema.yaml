@@ -1,4 +1,4 @@
-version: metrev-development-benchmark-v1
+version: metrev-development-benchmark-v2
 purpose: Portable, source-traced numeric observations for provisional development comparisons.
 entrypoint: packages/database/scripts/export-development-benchmark.mjs
 manifest_required:
@@ -16,9 +16,15 @@ manifest_required:
   - study_context
   - exclusions
   - applicability
+  - evidence_strata
+  - unclassified_aggregate_claim_count
+  - validation_gates
 observation_columns:
   - dataset_role
   - split
+  - evidence_stratum
+  - evidence_status
+  - eligible_use
   - source_doi
   - source_sha256
   - extract_sha256
@@ -37,6 +43,9 @@ observation_columns:
 eis_pair_columns:
   - dataset_role
   - split
+  - evidence_stratum
+  - evidence_status
+  - eligible_use
   - source_doi
   - source_sha256
   - extract_sha256
@@ -50,6 +59,9 @@ eis_pair_columns:
 literature_claim_fields:
   - record_kind
   - split
+  - evidence_stratum
+  - evidence_status
+  - eligible_use
   - source_doi
   - source_url
   - license
@@ -72,3 +84,65 @@ rules:
   - Use development_candidate until explicit split and independent condition matching exist.
   - A hash check proves file identity only. It does not approve a source or validate a solver.
   - Literature claims retain aggregate, range, uncertainty, or qualitative shapes; they are not raw paired observations or calibration targets without condition matching.
+  - Every record names its evidence stratum explicitly; missing or ambiguous evidence remains unclassified and receives no validation credit.
+  - unclassified_aggregate_claim is a sentinel outside tiers A-E and grants context-only use with no benchmark or validation credit.
+  - Manifest record_count counts exported observation rows and EIS pairs, not independent experiments or studies.
+  - Tier A (mathematical_manufactured) supports numerical verification only; it is not experimental evidence.
+  - Tier B (published_model_reproduction) supports model reproduction only; it is not experimental validation.
+  - Tier C (component_experiment) cannot support a full-cell validation claim.
+  - Tier D (condition_matched_full_cell_experiment) cannot support independent predictive validation without a separate held-out dataset.
+  - Tier E (independent_held_out_validation) requires an independent_validation role, held_out split, matched conditions, approved source review, reviewer identity/time, and measured or literature observations.
+  - A test fixture may support Tier A numerical verification only when explicitly marked analytical or manufactured; it never counts as experimental evidence.
+  - A lower tier cannot be promoted by a model output, DOI, title, or successful software test.
+evidence_strata:
+  - tier: A
+    id: mathematical_manufactured
+    definition: Analytical or manufactured numerical verification cases.
+  - tier: B
+    id: published_model_reproduction
+    definition: Reproduction of a published model under its declared conditions.
+  - tier: C
+    id: component_experiment
+    definition: Experimental evidence for a named component, not a full cell.
+  - tier: D
+    id: condition_matched_full_cell_experiment
+    definition: Experimental full-cell evidence with conditions matched to the modeled case.
+  - tier: E
+    id: independent_held_out_validation
+    definition: Reviewed, condition-matched full-cell evidence held out from development and calibration.
+unclassified_stratum:
+  id: unclassified_aggregate_claim
+  definition: Aggregate or qualitative literature claim without enough paired data and conditions for a validation-ladder tier.
+  eligible_use: context_only
+manifest_stratum_fields:
+  - tier
+  - id
+  - status
+  - record_count
+  - record_count_basis
+  - validated
+  - independent_validation
+validation_gates:
+  - use: numerical_verification
+    required_stratum: mathematical_manufactured
+    requirements: [analytical_or_manufactured_case]
+  - use: published_model_reproduction
+    required_stratum: published_model_reproduction
+  - use: component_comparison
+    required_stratum: component_experiment
+    requirements: [matched_conditions, approved_source_review]
+  - use: full_cell_comparison
+    required_stratum: condition_matched_full_cell_experiment
+    requirements:
+      [matched_conditions, approved_source_review, not_calibration_data]
+  - use: independent_validation
+    required_stratum: independent_held_out_validation
+    requirements:
+      [
+        independent_validation_role,
+        held_out_split,
+        matched_conditions,
+        approved_source_review,
+        reviewer_identity_and_time,
+        measured_or_literature_source,
+      ]
