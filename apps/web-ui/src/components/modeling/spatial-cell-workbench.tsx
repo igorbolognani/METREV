@@ -328,7 +328,7 @@ export function SpatialCellWorkbench({
           <div aria-live="polite" className="space-y-2">
             {currentComparison.eligible ? (
               <>
-                <p role="status">
+                <p role="status" aria-label="Spatial summary comparison">
                   Summary comparison available. A: {currentComparison.runA.id} (
                   {currentComparison.runA.meshCellCount} mesh cells); B:{' '}
                   {currentComparison.runB.id} (
@@ -468,6 +468,7 @@ export function SpatialCellWorkbench({
               <label className="block">
                 Numerical field{' '}
                 <select
+                  aria-label="Numerical field"
                   value={selected}
                   onChange={(event) => setSelected(event.target.value)}
                 >

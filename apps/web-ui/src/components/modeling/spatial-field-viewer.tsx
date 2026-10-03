@@ -79,7 +79,7 @@ export function SpatialFieldViewer({
     URL.revokeObjectURL(url);
   }
   return (
-    <section className="space-y-3" aria-label="Numerical field viewer">
+    <section className="space-y-3" aria-label="Solved field viewer">
       <div className="flex flex-wrap gap-4">
         {mesh.shape.length === 3 && (
           <>
@@ -210,7 +210,7 @@ export function SpatialFieldViewer({
           {extent[axes.vertical].toExponential(3)}
         </text>
       </svg>
-      <p role="status">
+      <p role="status" aria-label="Selected cell probe">
         Cell {probe} · region {layerTags[mesh.region_index[probe]]} · center (
         {mesh.centers_m[probe].join(', ')}) m ·{' '}
         {data.values[data.cells.indexOf(probe)]} {data.unit}
