@@ -5,12 +5,20 @@
   "independent_validation": false,
   "source": "tests/contracts/test_spatial_cell_verification.py:transverse_fixture",
   "source_input_fixture_sha256": "e01169d6183e02e29bb92e95fdc32b161c42534f87dfd39e651dd97b493525dc",
-  "runtime_source_sha256": "28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c",
-  "numerical_library_versions": {
+  "runtime_source_sha256": "317d048e64260672648b46fce94ad0f153de2b5d24e59af84007280a0db91492",
+  "solver_version": "structured-cell-fv-v1",
+  "process_protocol_version": "structured-cell-process-v3",
+  "numerical_comparison": {
+    "baseline_runtime_source_sha256": "28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c",
+    "comparison": "CI compares modeled current, voltage and volume-weighted concentration against baseline observables using the declared tolerances. Floating-point payload hashes are not used; bitwise equality across numerical-library versions is not claimed."
+  },
+  "baseline_generation_numerical_library_versions": {
     "numpy": "2.3.5",
     "scipy": "1.17.0"
   },
   "observable_tolerances": {
+    "baseline_current_relative": 1e-6,
+    "baseline_weighted_mean_relative": 1e-8,
     "successive_difference_ratio_maximum": 0.4,
     "medium_fine_current_relative_maximum": 2e-5,
     "medium_fine_mean_absolute_mol_m3_maximum": 1e-5

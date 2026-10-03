@@ -8,6 +8,8 @@ import {
   compileStructuredCellEquationGraph,
   structuredCellEquationGraphSchema,
 } from './structured-cell-equation-graph';
+import { structuredCellTopology } from './structured-cell-topology';
+import { structuredCellFieldObservablesSchema } from './structured-cell-observables';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();
@@ -126,6 +128,8 @@ export const structuredCellRunViewSchema = z
           }),
         }),
         fields: z.array(field).min(1).max(16),
+        structured_cell_field_observables:
+          structuredCellFieldObservablesSchema.optional(),
         conservation_residuals: z.array(balance).min(1).max(64),
         convergence: z.array(convergence).min(1).max(16),
         cell_circuit: circuit,
@@ -168,6 +172,61 @@ export const structuredCellRunViewSchema = z
       result.mesh.dimension !== run.dimension
     )
       invalid('Result identity mismatch');
+    const observables = result.structured_cell_field_observables;
+    if (observables) {
+      const mesh = structuredCellTopology(input);
+      const byId = new Map(result.fields.map((f) => [f.field_id, f]));
+      const close = (actual: number, expected: number) =>
+        Math.abs(actual - expected) <=
+        1e-12 * Math.max(Math.abs(actual), Math.abs(expected), 1e-30);
+      if (
+        observables.input_sha256 !== result.input_sha256 ||
+        observables.mesh_sha256 !== result.mesh.artifact.sha256 ||
+        observables.geometry_request_sha256 !== result.mesh.request_sha256 ||
+        observables.fields.length !== result.fields.length ||
+        observables.fields.some((entry) => {
+          const f = byId.get(entry.field_id);
+          return (
+            !f ||
+            entry.field_artifact_sha256 !== f.artifact.sha256 ||
+            entry.dataset_path !== f.artifact.dataset_path ||
+            entry.association !== f.association ||
+            entry.unit !== f.unit ||
+            entry.minimum.value !== f.summary.minimum ||
+            entry.maximum.value !== f.summary.maximum
+          );
+        })
+      )
+        invalid('Derived extrema differ from the persisted field/run identity');
+      for (const entry of observables.fields)
+        for (const statistic of ['minimum', 'maximum'] as const) {
+          const point = entry[statistic];
+          const expectedCenter = mesh.centers_m[point.cell_index];
+          const expectedSize = mesh.sizes_m[point.cell_index];
+          const expectedRegion = mesh.region_index[point.cell_index];
+          if (
+            point.cell_index >= mesh.centers_m.length ||
+            point.region_index !== expectedRegion ||
+            point.domain_tag !== input.geometry.layers[expectedRegion]?.tag ||
+            !byId
+              .get(entry.field_id)
+              ?.domain_tags.includes(
+                input.geometry.layers[point.region_index]?.tag,
+              ) ||
+            point.cell_center_m.length !== input.dimension ||
+            point.cell_size_m.length !== input.dimension ||
+            point.cell_center_m.some(
+              (value, axis) => !close(value, expectedCenter[axis]),
+            ) ||
+            point.cell_size_m.some(
+              (value, axis) => !close(value, expectedSize[axis]),
+            )
+          )
+            invalid(
+              'Derived extremum position differs from the admitted cell mesh',
+            );
+        }
+    }
     if (
       result.equation_graph &&
       JSON.stringify(result.equation_graph) !==
@@ -282,6 +341,7 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     conservation_residuals: run.result.conservation_residuals,
     circuit: run.result.cell_circuit,
     fields: run.result.fields,
+    field_extrema: run.result.structured_cell_field_observables ?? null,
     parameter_provenance: parameters,
     equation_references: [
       ...run.input_snapshot.reactions.map((r) => r.equation_ref),
@@ -399,6 +459,56 @@ export function renderStructuredCellDevelopmentReport(
           f.artifact.sha256,
         ]),
       ]),
+      '## Deterministic modeled field extrema',
+      ...(report.field_extrema
+        ? [
+            'These descriptive extrema are selected from modeled field artifacts by value, with ties assigned to the lowest global mesh-cell index. Positions identify finite-volume cell centers and are linked to the immutable input, geometry request, mesh, and field digests. They are not hotspot classifications and are not decision eligible.',
+            `Input SHA-256: ${report.field_extrema.input_sha256}. Geometry request SHA-256: ${report.field_extrema.geometry_request_sha256}. Mesh SHA-256: ${report.field_extrema.mesh_sha256}.`,
+            rows([
+              [
+                'Field',
+                'Statistic',
+                'Value',
+                'Unit',
+                'Global cell index (zero-based)',
+                'Center (m)',
+                'Cell size (m)',
+                'Region index',
+                'Domain',
+                'Field SHA-256',
+              ],
+              [
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+                '---',
+              ],
+              ...report.field_extrema.fields.flatMap((entry) =>
+                (['minimum', 'maximum'] as const).map((statistic) => {
+                  const point = entry[statistic];
+                  return [
+                    entry.field_id,
+                    statistic,
+                    point.value,
+                    point.unit,
+                    point.cell_index,
+                    point.cell_center_m.join(', '),
+                    point.cell_size_m.join(', '),
+                    point.region_index,
+                    point.domain_tag,
+                    entry.field_artifact_sha256,
+                  ];
+                }),
+              ),
+            ]),
+          ]
+        : ['No field extrema were persisted for this run.']),
       '## Parameter provenance',
       rows([
         [

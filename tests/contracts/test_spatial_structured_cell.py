@@ -6,7 +6,7 @@ import sys
 import unittest
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'apps/spatial-sidecar'))
-from metrev_spatial.structured_cell import Cell, validate
+from metrev_spatial.structured_cell import Cell, derive_field_extrema, validate
 
 FIXTURE = Path(__file__).resolve().parents[1] / 'fixtures/structured-cell.json'
 
@@ -80,6 +80,53 @@ class StructuredCellTests(unittest.TestCase):
         circuit=output['circuit']; self.assertIsNone(circuit['mfc_generated_power_W'])
         self.assertGreater(circuit['mec_electrical_input_W'],0)
         self.assertEqual(circuit['mec_electrical_input_W'],-circuit['signed_electrical_power_W'])
+
+    def test_derived_extrema_use_global_cell_centers_and_stable_tie_break(self):
+        fields = [{'id': 'solid_potential_anode', 'unit': 'V',
+                   'values': [2.0, 1.0, 1.0, 4.0], 'cells': [3, 7, 2, 4]}]
+        mesh = {
+            'centers_m': [[0.1, 0.2], [0.2, 0.2], [0.3, 0.2],
+                          [0.4, 0.2], [0.5, 0.2], [0.6, 0.2],
+                          [0.7, 0.2], [0.8, 0.2]],
+            'sizes_m': [[0.1, 0.2]] * 8,
+            'region_index': [0, 0, 1, 1, 1, 1, 2, 2],
+        }
+        layers = [{'tag': 'anode'}, {'tag': 'membrane'}, {'tag': 'cathode'}]
+
+        result = derive_field_extrema(fields, mesh, layers)
+
+        self.assertEqual(result[0]['minimum'], {
+            'value': 1.0, 'unit': 'V', 'cell_index': 2, 'cell_center_m': [0.3, 0.2],
+            'cell_size_m': [0.1, 0.2], 'region_index': 1, 'domain_tag': 'membrane',
+        })
+        self.assertEqual(result[0]['maximum']['cell_index'], 4)
+        invalid = copy.deepcopy(fields)
+        invalid[0]['cells'][0] = len(mesh['centers_m'])
+        with self.assertRaises(ValueError):
+            derive_field_extrema(invalid, mesh, layers)
+
+    def test_solve_extrema_match_each_persisted_field_and_mesh(self):
+        output = Cell(self.fixture()).solve()
+        self.assertEqual(len(output['field_extrema']), len(output['fields']))
+        by_id = {field['id']: field for field in output['fields']}
+        tags = [layer['tag'] for layer in self.fixture()['geometry']['layers']]
+        for entry in output['field_extrema']:
+            field = by_id[entry['field_id']]
+            for statistic, sign in (('minimum', 1), ('maximum', -1)):
+                point = entry[statistic]
+                sample = min(
+                    range(len(field['values'])),
+                    key=lambda index: (
+                        sign * field['values'][index], field['cells'][index],
+                    ),
+                )
+                cell = field['cells'][sample]
+                self.assertEqual(point['value'], field['values'][sample])
+                self.assertEqual(point['cell_index'], cell)
+                self.assertEqual(point['cell_center_m'], output['mesh']['centers_m'][cell])
+                self.assertEqual(point['cell_size_m'], output['mesh']['sizes_m'][cell])
+                self.assertEqual(point['region_index'], output['mesh']['region_index'][cell])
+                self.assertEqual(point['domain_tag'], tags[point['region_index']])
 
     def test_units_provenance_stoichiometry_and_artifact_identity_fail_closed(self):
         for mutate in (lambda v:v['species'][0]['initial_concentration'].pop('source_ref'),

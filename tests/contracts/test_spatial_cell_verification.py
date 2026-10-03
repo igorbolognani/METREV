@@ -31,6 +31,12 @@ class CoupledCellVerificationTests(unittest.TestCase):
         runtime = FIXTURE.parents[1].parent / 'apps/spatial-sidecar/metrev_spatial/structured_cell.py'
         self.assertEqual(record['source_input_fixture_sha256'], hashlib.sha256(FIXTURE.read_bytes()).hexdigest())
         self.assertEqual(record['runtime_source_sha256'], hashlib.sha256(runtime.read_bytes()).hexdigest())
+        self.assertEqual(record['solver_version'], 'structured-cell-fv-v1')
+        self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v3')
+        self.assertEqual(
+            record['numerical_comparison']['baseline_runtime_source_sha256'],
+            '28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c',
+        )
         outputs = [Cell(transverse_fixture(f)).solve() for f in (1, 2, 4)]
         observables = []
         for output in outputs:
@@ -47,14 +53,29 @@ class CoupledCellVerificationTests(unittest.TestCase):
             voltage = output['circuit']['collector_voltage_V']
             self.assertAlmostEqual(voltage, current*1e7, delta=1e-7)
             observables.append([current, voltage, np.average(concentrations, weights=volume)])
-        np.testing.assert_allclose([v[0] for v in observables], [v['circuit']['anodic_current_A'] for v in record['levels']], rtol=1e-6)
-        np.testing.assert_allclose([v[2] for v in observables], [v['volume_weighted_reduced_mean_mol_m3'] for v in record['levels']], rtol=1e-8)
+        tolerances = record['observable_tolerances']
+        np.testing.assert_allclose(
+            [v[0] for v in observables],
+            [v['circuit']['anodic_current_A'] for v in record['levels']],
+            rtol=tolerances['baseline_current_relative'],
+        )
+        np.testing.assert_allclose(
+            [v[2] for v in observables],
+            [v['volume_weighted_reduced_mean_mol_m3'] for v in record['levels']],
+            rtol=tolerances['baseline_weighted_mean_relative'],
+        )
         observables = np.array(observables)
         changes = np.abs(np.diff(observables, axis=0))
         # Successive differences reduce; no manufactured exact cell solution is claimed.
-        self.assertTrue((changes[1] < .4*changes[0]).all())
-        self.assertLess(changes[1, 0]/abs(observables[2, 0]), 2e-5)
-        self.assertLess(changes[1, 2], 1e-5)  # mol/m3
+        ratio_limit = tolerances['successive_difference_ratio_maximum']
+        self.assertTrue((changes[1] < ratio_limit*changes[0]).all())
+        self.assertLess(
+            changes[1, 0]/abs(observables[2, 0]),
+            tolerances['medium_fine_current_relative_maximum'],
+        )
+        self.assertLess(
+            changes[1, 2], tolerances['medium_fine_mean_absolute_mol_m3_maximum']
+        )  # mol/m3
 
     def test_nonlinear_tolerance_sensitivity(self):
         loose = transverse_fixture(); tight = copy.deepcopy(loose)

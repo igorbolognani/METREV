@@ -8,6 +8,12 @@ The solver assembles simultaneous species, liquid potential, electrode solid pot
 
 Convergence requires both the admitted scaled nonlinear tolerance and local/global species, liquid/solid charge, collector and load closure tolerances. A nonconverged run is failed, with verified fields, mesh and diagnostics retained. Solver process errors, timeout, cancellation and integrity failures follow the existing bounded worker lifecycle. No solve executes inside the HTTP request.
 
+## Runtime/protocol version and queued-run compatibility
+
+The numerical solver identifier remains `structured-cell-fv-v1`; this change does not alter equations or scientific results. The sidecar response now declares `protocol_version: structured-cell-process-v3`, matching the executor's `runtimeVersion`. The existing `version: structured-cell-fv-v1` response member identifies the solver. Version 3 adds validated field-extrema metadata to that response, so the worker rejects a sidecar that reports a different or missing process protocol or solver version.
+
+Queue claims match both the persisted solver and runtime versions exactly. A v3 worker therefore ignores runs already queued with `structured-cell-process-v2`; they remain queued until a worker running the matching v2 executor and sidecar claims them. During rollout, keep that legacy pair deployed until its queue is drained. If it is unavailable, an operator must explicitly cancel the old run and create a new v3 run from its immutable input using a new idempotency key. Do not rewrite a persisted run's version fields or send its old sidecar response through the v3 executor. The v3 executor also rejects a directly supplied v2 run before starting the sidecar.
+
 ## Explicit development configuration
 
 Install Python numerical requirements and normal workspace dependencies. The pinned sidecar container also includes SciPy. Run the existing spatial worker CLI separately from API and web. API and worker must use the same private artifact root and configured PostgreSQL repository. With a TypeScript loader, set both module paths to the absolute path of `packages/spatial-worker/src/structured-cell-development-adapter.ts`:
@@ -23,7 +29,7 @@ The default API remains closed to spatial execution until an operator supplies a
 
 ## Verification and remaining gates
 
-Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Existing v2 worker/process/container/API tests must remain green.
+Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Legacy v2 worker/process/container/API checks remain compatibility regressions; v3 workers do not claim v2 queue items.
 
 These checks are mathematical software verification only. A synthetic nonuniform 18/72/288-cell study and tolerance sensitivity are checked in `tests/contracts/test_spatial_cell_verification.py`; larger-mesh robustness, coupled hydraulic advection, full electroneutral ionic closure, selective charged-membrane interfaces, independent empirical validation, deployment with durable production artifact storage, cell-specific PostgreSQL and browser gates are implemented in CI and require successful runs on their exact branch head. General roadmap capabilities are not marked complete. No merge is part of this batch.
 
