@@ -178,7 +178,7 @@ test('2D and 3D fields, probes, reload, slices and report downloads', async ({
     page.getByRole('img', { name: 'liquid_potential numerical cell field' }),
   ).toBeVisible();
   await page.reload();
-  await page.getByLabel('Saved run ID', { exact: false }).fill(id);
+  await page.getByLabel('Saved run ID', { exact: true }).fill(id);
   await page.getByRole('button', { name: 'Reload run', exact: true }).click();
   await expect(
     page.getByText('2D · completed · 100%', { exact: true }),
@@ -274,4 +274,39 @@ test('failed solve retains diagnostic fields and cannot become a completed resul
   expect(await readFile((await (await markdown).path())!, 'utf8')).toContain(
     'maximum_evaluations',
   );
+});
+
+test('compares saved completed-run summaries only for matching geometry and units', async ({
+  page,
+}) => {
+  await signIn(page);
+  const runA = await enqueue(page, 2);
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+  const runB = await enqueue(page, 2);
+  await expect(
+    page.getByText('2D · completed · 100%', { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(/does not interpolate or remap meshes/i),
+  ).toBeVisible();
+  await page.getByLabel('Second saved run ID', { exact: true }).fill(runA);
+  await page
+    .getByRole('button', { name: 'Compare summaries', exact: true })
+    .click();
+  await expect(page.getByRole('status')).toContainText(`A: ${runB}`);
+  await expect(page.getByRole('status')).toContainText(`B: ${runA}`);
+  await expect(page.getByRole('status')).toContainText(
+    'Decision eligible: false.',
+  );
+  const comparison = page.getByRole('region', {
+    name: 'Spatial run comparison',
+    exact: true,
+  });
+  await expect(comparison.getByRole('table')).toContainText(
+    'concentration_reduced',
+  );
+  await expect(comparison.getByRole('table')).toContainText('Δ (B − A)');
 });

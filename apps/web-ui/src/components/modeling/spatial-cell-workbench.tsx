@@ -22,6 +22,10 @@ import {
   cancelSpatialRun,
   fetchSpatialArtifact,
 } from '@/lib/spatial-api';
+import {
+  compareSpatialRunSummaries,
+  type SpatialRunComparison,
+} from '@/lib/spatial-run-comparison';
 
 export function SpatialCellWorkbench({
   initialEvaluationId = '',
@@ -47,6 +51,13 @@ export function SpatialCellWorkbench({
   } | null>(null);
   const [slice, setSlice] = useState(0);
   const [probe, setProbe] = useState<number | null>(null);
+  const [comparisonRunId, setComparisonRunId] = useState('');
+  const [comparisonBusy, setComparisonBusy] = useState(false);
+  const [comparisonError, setComparisonError] = useState('');
+  const [comparison, setComparison] = useState<{
+    currentRunId: string;
+    result: SpatialRunComparison;
+  } | null>(null);
   const manifest = run?.result?.fields.find((f) => f.field_id === selected);
   const mesh =
     meshAsset?.runId === run?.id &&
@@ -60,6 +71,10 @@ export function SpatialCellWorkbench({
       : null;
   const active =
     run !== null && !['completed', 'failed', 'cancelled'].includes(run.status);
+  const currentComparison =
+    comparison && run && comparison.currentRunId === run.id
+      ? comparison.result
+      : null;
   useEffect(() => {
     if (!run || !active) return;
     let cancelled = false;
@@ -139,6 +154,25 @@ export function SpatialCellWorkbench({
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
+    }
+  }
+  async function compareRun() {
+    if (!run || !comparisonRunId.trim()) return;
+    setComparisonBusy(true);
+    setComparisonError('');
+    setComparison(null);
+    try {
+      const other = await fetchSpatialRun(comparisonRunId.trim());
+      setComparison({
+        currentRunId: run.id,
+        result: compareSpatialRunSummaries(run, other),
+      });
+    } catch (reason) {
+      setComparisonError(
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    } finally {
+      setComparisonBusy(false);
     }
   }
   function download(format: 'json' | 'md') {
@@ -268,6 +302,138 @@ export function SpatialCellWorkbench({
           </button>
         )}
       </div>
+      <section
+        className="space-y-3 rounded border p-4"
+        aria-label="Spatial run comparison"
+      >
+        <h2 className="text-xl">Compare spatial run summaries</h2>
+        <p>
+          Compare deterministic metadata and field summaries from two completed
+          runs. The profile, dimension, system, physical geometry, field IDs,
+          domains and units must match. This view does not interpolate or remap
+          meshes and does not compare experimental measurements or affect
+          decision eligibility.
+        </p>
+        <label className="block">
+          Second saved run ID
+          <input
+            aria-label="Second saved run ID"
+            className="ml-2 rounded border p-2"
+            value={comparisonRunId}
+            onChange={(event) => setComparisonRunId(event.target.value)}
+            placeholder="Second saved run ID"
+          />
+        </label>
+        <button
+          className="rounded border p-2"
+          disabled={
+            comparisonBusy ||
+            run?.status !== 'completed' ||
+            !run.result ||
+            !comparisonRunId.trim()
+          }
+          onClick={() => void compareRun()}
+        >
+          Compare summaries
+        </button>
+        {comparisonError && (
+          <p role="alert">Could not load comparison run: {comparisonError}</p>
+        )}
+        {currentComparison && (
+          <div aria-live="polite" className="space-y-2">
+            {currentComparison.eligible ? (
+              <>
+                <p role="status">
+                  Summary comparison available. A: {currentComparison.runA.id} (
+                  {currentComparison.runA.meshCellCount} mesh cells); B:{' '}
+                  {currentComparison.runB.id} (
+                  {currentComparison.runB.meshCellCount} mesh cells). Δ is B −
+                  A. Decision eligible: false.
+                </p>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>Metric</th>
+                      <th>Run A</th>
+                      <th>Run B</th>
+                      <th>Δ (B − A)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentComparison.metrics.flatMap((metric) =>
+                      (
+                        [
+                          [
+                            'minimum',
+                            metric.runA.minimum,
+                            metric.runB.minimum,
+                            metric.deltaBMinusA.minimum,
+                            metric.unit,
+                          ],
+                          [
+                            'maximum',
+                            metric.runA.maximum,
+                            metric.runB.maximum,
+                            metric.deltaBMinusA.maximum,
+                            metric.unit,
+                          ],
+                          [
+                            'mean',
+                            metric.runA.mean,
+                            metric.runB.mean,
+                            metric.deltaBMinusA.mean,
+                            metric.unit,
+                          ],
+                          [
+                            'integral',
+                            metric.runA.integral,
+                            metric.runB.integral,
+                            metric.deltaBMinusA.integral,
+                            metric.integralUnit,
+                          ],
+                        ] as const
+                      ).map(([label, a, b, delta, unit]) => (
+                        <tr key={`${metric.fieldId}-${label}`}>
+                          <td>{metric.fieldId}</td>
+                          <td>{label}</td>
+                          <td>
+                            {a.toPrecision(6)} {unit}
+                          </td>
+                          <td>
+                            {b.toPrecision(6)} {unit}
+                          </td>
+                          <td>
+                            {delta.toPrecision(6)} {unit}
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+                <ul className="list-disc pl-6 text-sm">
+                  {currentComparison.metrics.map((metric) => (
+                    <li key={`${metric.fieldId}-sample-count`}>
+                      {metric.fieldId}: {metric.runA.sampleCount} /{' '}
+                      {metric.runB.sampleCount} summarized cells; integral
+                      measure {metric.integrationMeasure}.
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div role="alert">
+                <p>These runs are not eligible for summary comparison:</p>
+                <ul className="list-disc pl-6">
+                  {currentComparison.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
       {error && (
         <p role="alert" className="text-red-700">
           {error}
