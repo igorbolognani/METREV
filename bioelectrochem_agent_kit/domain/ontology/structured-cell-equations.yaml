@@ -10,9 +10,9 @@ state:
 equations:
   - id: cell-species-steady-v1
     expression: div(N_i) = sum(nu_ir * r_r) + nu_ie * j_F / (n_e * F)
-    flux: N_i = -D_i * (grad(c_i) + z_i * F * c_i * grad(phi_l) / (R * T))
-    method: Finite volumes with Scharfetter-Gummel face flux and harmonic diffusivity.
-    boundary: x insulating; explicitly selected transverse reservoir faces impose species concentration.
+    flux: N_i = u * c_i - D_i * (grad(c_i) + z_i * F * c_i * grad(phi_l) / (R * T))
+    method: Finite volumes with Scharfetter-Gummel diffusion/migration, harmonic diffusivity, and conservative first-order upwind convection when explicitly declared.
+    boundary: x insulating; explicitly selected transverse reservoir faces impose diffusive species concentration. Source-backed prescribed inflow concentrations and solved upwind outflow states independently define convective boundary flux.
   - id: cell-liquid-charge-v1
     expression: div(-kappa * grad(phi_l)) = j_F
     boundary: No total ionic current across exterior faces; supporting electrolyte compensates trace species reservoir current.
@@ -30,7 +30,8 @@ equations:
     expression: MFC V = I * R_load; MEC V = -V_applied; I = minus outward anode collector current.
     power: Signed electrical power I*V; MEC electrical input -I*V, never generated energy.
 assumptions:
-  - Steady, isothermal, orthogonal structured layers; zero convection.
+  - Steady, isothermal, orthogonal structured layers; zero convection unless a complete sourced locally divergence-free superficial face velocity is supplied.
+  - Prescribed velocity is not a hydraulic solution; no membrane convection/water transport or flow across outer collectors.
   - Fixed source-traced conductivity of an unmodeled supporting electrolyte; trace species do not determine total conductivity.
   - Continuous interface concentrations and potential; each shared face flux enters neighbors with opposite signs.
   - Volumetric electrode kinetics, not resolved electrode surface or pore/nanoscale transfer.

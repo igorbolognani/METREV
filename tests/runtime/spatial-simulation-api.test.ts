@@ -409,4 +409,52 @@ describe('spatial simulation API', () => {
       await app.close();
     }
   });
+  it('maps size, concurrency and provider-deadline limits without serving unchecked bytes', async () => {
+    const fieldBytes = Buffer.from('verified scalar field payload');
+    const spatialRuns = new MemorySpatialSimulationRunRepository();
+    const completed = await completeRun(
+      spatialRuns,
+      'bounded-field-run',
+      fieldBytes,
+    );
+    for (const mode of ['size', 'busy', 'timeout'] as const) {
+      const policy = {
+        maxArtifactBytes: mode === 'size' ? 1 : 1024,
+        timeoutMs: 50,
+        maxConcurrentDownloads: 1,
+      };
+      let reads = 0;
+      const app = await buildApp({
+        repository: new MemoryEvaluationRepository(),
+        spatialSimulationRunRepository: spatialRuns,
+        spatialArtifactDownloadPolicy: policy,
+        spatialFieldArtifactReader: {
+          readField: async () => {
+            reads++;
+            return new Promise<Readable>(() => undefined);
+          },
+        },
+        rateLimit: false,
+        sessionResolver: async () => analyst,
+      });
+      const release =
+        mode === 'busy'
+          ? app.spatialArtifactDownloads.acquire(fieldBytes.length)
+          : () => undefined;
+      try {
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/spatial-simulations/${completed.id}/fields/substrate_concentration_final`,
+        });
+        expect(response.statusCode).toBe(
+          mode === 'size' ? 413 : mode === 'busy' ? 503 : 504,
+        );
+        expect(reads).toBe(mode === 'timeout' ? 1 : 0);
+        expect(response.headers['content-disposition']).toBeUndefined();
+      } finally {
+        release();
+        await app.close();
+      }
+    }
+  });
 });

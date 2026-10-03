@@ -528,6 +528,10 @@ export const mechanisticModelInputSchema = z.object({
   model_version: z.literal('coupled-0d-dae-v1').default('coupled-0d-dae-v1'),
   /** Optional named scenario profile; old saved cases remain readable. */
   model_profile_id: z.string().trim().min(1).optional(),
+  required_physics_modules: z
+    .array(z.string().trim().min(1))
+    .max(32)
+    .optional(),
   /** Requested spatial/time fidelity. Only coupled-0d-dae-v1 is executable today. */
   model_fidelity_id: z
     .enum([
@@ -617,6 +621,8 @@ export const mechanisticModelDraftInputSchema = z.object({
     .enum(['coupled-0d-dae-v1', 'coupled-cell-1d-restricted-v1'])
     .default('coupled-0d-dae-v1'),
   model_profile_id: z.string().trim().min(1).optional(),
+  required_physics_modules:
+    mechanisticModelInputSchema.shape.required_physics_modules,
   model_fidelity_id: mechanisticModelInputSchema.shape.model_fidelity_id,
   /** Full, source-backed restricted cell input; never inferred from 0D fields. */
   cell_1d: coupledCell1dInputSchema.optional(),

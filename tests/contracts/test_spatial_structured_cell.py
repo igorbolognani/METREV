@@ -33,7 +33,7 @@ class StructuredCellTests(unittest.TestCase):
         output = cell.solve()
         values = np.concatenate([np.array(f['values']) for f in output['fields'][:2]]) / cell.cs
         liquid = np.array(output['fields'][2]['values']) / cell.ps
-        solid = np.concatenate([np.array(f['values']) for f in output['fields'][3:]]) / cell.ps
+        solid = np.concatenate([np.array(f['values']) for f in output['fields'] if f['id'].startswith('solid_potential_')]) / cell.ps
         x = np.concatenate([values, liquid, solid, [output['circuit']['collector_voltage_V']/cell.ps]])
         direction = np.random.default_rng(7).normal(size=len(x))
         h = 1e-7
@@ -69,7 +69,7 @@ class StructuredCellTests(unittest.TestCase):
         value=self.fixture(); value['numerics']['max_evaluations']=1
         output=Cell(value).solve()
         self.assertEqual(output['status'],'not_converged')
-        self.assertEqual(len(output['fields']),5)
+        self.assertEqual(len(output['fields']),6)
         self.assertTrue(any(not r['passed'] for r in output['residuals']))
 
     def test_mec_input_is_separate_from_generated_energy(self):

@@ -94,6 +94,7 @@ field_groups:
     model_fidelity_id:
       values:
         - coupled-0d-dae-v1
+        - coupled-cell-1d-restricted-v1
         - biofilm-1d-direct-transfer-research-v1
         - biofilm-2d-electrode-research-v1
         - cell-3d-multiphysics-research-v1
@@ -101,6 +102,12 @@ field_groups:
         - porous-electrode-micro-3d-research-v1
         - electrode-interface-nano-research-v1
       rule: Research-only selections block the 0D solver; they are never silently downgraded.
+    required_physics_modules:
+      shape: optional array of explicit module identifiers
+      rule: Required modules must have a matching executable implementation at the selected fidelity; unavailable requirements return not_implemented.
+    cell_1d:
+      runtime_contract: packages/domain-contracts/src/coupled-cell-1d-schema.ts
+      rule: Restricted planar 1D cell quantities may be supplied cellwise or compiled from explicit source-backed field_profiles; generated cells and original fields remain in the persisted input snapshot.
     parameter_contract:
       { value: number, unit: string, source_kind: string, source_ref: string }
     optional_parameter_fields: [uncertainty, uncertainty_unit]

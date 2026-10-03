@@ -11,18 +11,22 @@ numerical_sidecar: isolated_python_mesh_cli_development_not_deployed
 mesh_runtime: planar_gmsh_verified_development_plus_structured_orthogonal_2d_3d_cell_mesh_development
 spatial_artifact_storage: development_local_content_addressed_owner_scoped_mesh_and_field_adapters_no_production_provider
 async_simulation_jobs: durable_queue_owner_scoped_api_structured_worker_events_safe_failure_codes_and_opt_in_darcy_stokes_development_executors_product_solver_admission_required
-spatial_viewer: development_structured_cell_xy_slices_bound_to_run_digest_with_cell_probe_real_browser_gate_verified
+spatial_viewer: development_structured_cell_xy_xz_yz_slices_domain_filter_probes_grid_profiles_hash_bound_csv_current_browser_gate_pending
 notes:
   - Baseline main SHA is immutable; use git rev-parse and fetch to inspect live state.
   - Catalog status is execution availability, separate from scientific maturity.
   - The local mesh adapter verifies sidecar hashes and owner-scoped reads; it is not a production storage provider or product authorization path.
-  - Spatial job creation and retries fail closed by default; operator-configured development adapters can admit their exact supported input. No production field-artifact provider or general 2D/3D catalog solver is registered.
-  - The spatial worker bounds its asynchronous wait even if an executor ignores AbortSignal; the sidecar client terminates its isolated process group on cancellation or timeout; service shutdown aborts the active executor and records worker_shutdown without cancelling queued jobs. An explicit per-run container profile enforces bounded CPU/memory/PID/temp limits; deployment of the worker, database and production artifact store remains pending.
-  - Worker runs emit structured claim, progress, completion, failure, cancellation, and lease-loss events; known sidecar failures persist stable safe codes without stderr or local-path details.
+  - Spatial job creation and retries fail closed by default; operator-configured development adapters can admit their exact supported input. No production
+    field-artifact provider or general 2D/3D catalog solver is registered.
+  - The spatial worker bounds its asynchronous wait even if an executor ignores AbortSignal; the sidecar client terminates its isolated process group on cancellation
+    or timeout; service shutdown aborts the active executor and records worker_shutdown without cancelling queued jobs. An explicit per-run container profile
+    enforces bounded CPU/memory/PID/temp limits; deployment of the worker, database and production artifact store remains pending.
+  - Worker runs emit structured claim, progress, completion, failure, cancellation, and lease-loss events; known sidecar failures persist stable safe codes
+    without stderr or local-path details.
 spatial_input_contract: spatial_input_v1_legacy_v2_planar_research_and_separate_spatial_cell_input_v1_2d_3d_development
 spatial_result_contract: spatial_simulation_result_v3_structured_cell_with_v1_v2_read_compatibility
 spatial_run_metadata: postgresql_owner_scoped_lifecycle_with_hash_bound_snapshots_worker_leases_and_authenticated_api
-physics_composition: catalog_dependency_descriptors_plus_explicit_saved_case_fixed_profile_equation_graph
+physics_composition: configured_0d_1d_module_admission_and_executable_source_field_sampling_plus_saved_case_fixed_spatial_profile
 coupled_1d_case_runner: development_with_complete_cell_1d
 sensitivity_persistence: migration_and_roundtrip_implemented
 spatial_parameter_authority: version_1_material_and_variable_boundary_units
@@ -32,71 +36,27 @@ spatial_diffusion_verification: isolated_orthogonal_1d_2d_3d_steady_transient_la
 spatial_stokes_species_transport: development_same_mesh_p2_velocity_to_neutral_p1_scalar_worker_and_field_api_native_ci_required
 spatial_execution_isolation: optional_bounded_no_network_read_only_container_profile_native_ci_required
 spatial_native_scalar_source_loss: development_only_explicit_constant_production_first_order_loss_measured_input_bound_species_budget_native_refinement_and_worker_api_gates_no_cell_reaction_network
-
 spatial_structured_cell: restricted_steady_2d_3d_supporting_electrolyte_species_reactions_liquid_solid_charge_circuit_sparse_newton_development_only
 spatial_structured_cell_verification: synthetic_nonuniform_18_72_288_cell_refinement_tolerance_sensitivity_failure_matrix_and_native_worker_api_report_checks_not_independent_validation
 development_timeline: DEVELOPMENT_TIMELINE.yaml
-reconciliation_checkpoint: docs/audits/MASTER_PLAN_PARALLEL_BATCH_2026-10-02.md
+reconciliation_checkpoint: docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.md
 current_direction: one_stack_configured_physics_runtime_with_composable_modules_no_silent_fidelity_downgrade
 spatial_development_reports: deterministic_v1_json_markdown_source_traced_failed_diagnostics_owner_scoped_no_decision_eligibility
 snapshot:
-  observed_on: '2026-10-02'
-  integrated_main_head: 664ffb2178d8373569611bb0f54fa60da3b45736
-  integrated_main_pr: 115
-  integrated_pr_ci: success_run_36994575598_all_seven_jobs
-  integrated_pr_codeql: success_run_36994575602
-  integration_state: parallel_development_open_not_merged
-  verified_runtime_head: 27f82c3f5aba277ceebaaf7607d7d80c20f42657
-  runtime_ci: success_run_36994575598_all_seven_jobs
-  runtime_codeql: success_run_36994575602
-  open_development_prs:
-    - pull_request: 116
-      branch: codex/spatial-run-comparison
-      head_sha: 5d90ebdb219e37b184c20d832f94b6d05d43b64b
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 37000474578
-      codeql_run: 37000474560
-    - pull_request: 117
-      branch: codex/solver-evidence-coverage
-      head_sha: fe1d5dd036985341a3f59462db0f880166f9e549
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 36998842540
-      codeql_run: 36998842485
-    - pull_request: 118
-      branch: codex/spatial-derived-observables
-      head_sha: f5ab09d73d86d4a6b63b3f7a2852e461f659da38
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 37003441585
-      codeql_run: 37003441609
-    - pull_request: 119
-      branch: codex/p03-parameter-authority-coverage
-      head_sha: 6dec1a414f079a3f6d4199d190411e062d20f41b
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 37000713110
-      codeql_run: 37000713033
-    - pull_request: 120
-      branch: codex/p01-composition-fail-closed
-      head_sha: c34137e622fc00d29e04a265382d3b81a040b5ec
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 37000815251
-      codeql_run: 37000815219
-    - pull_request: 121
-      branch: codex/benchmark-validation-strata
-      head_sha: 27725ebb0bdb7a77bd1e7f948745c0272e56d94c
-      review_state: ready_for_review
-      ci_state: success
-      codeql_state: success
-      ci_run: 37001331846
-      codeql_run: 37001331959
-  release_gate: pending_independent_review_required_ci_and_general_product_dependencies
+  observed_on: '2026-10-03'
+  integrated_main_head: a84c6b7f50a2d58667d9a5f61e58cc8d5fd649a9
+  integrated_main_pr: 122
+  integration_state: prs_115_through_122_merged_new_runtime_batch_not_merged
+  verified_runtime_head: a84c6b7f50a2d58667d9a5f61e58cc8d5fd649a9
+  runtime_ci: remote_not_rechecked_local_570_js_passed_44_python_3_skipped
+  runtime_codeql: remote_not_rechecked
+  open_development_prs: []
+  release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
+development_batch:
+  branch: codex/spatial-complete-batch
+  base_main: a84c6b7f50a2d58667d9a5f61e58cc8d5fd649a9
+  state: review_candidate_local_checks_passed_not_merged
+  scientific_maturity_promoted: false
+  decision_eligible: false
+  source: docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.md

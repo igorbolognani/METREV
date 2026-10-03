@@ -114,10 +114,20 @@ export function compileStructuredCellEquationGraph(
         ...input.geometry.layers.map(
           (_, j) => `geometry.layers.${j}.diffusivity.${species.id}`,
         ),
+        ...(input.advection
+          ? [
+              'advection.face_normal_velocity',
+              'advection.boundary_normal_velocity',
+              'advection.inlet_concentrations',
+            ]
+          : []),
       ],
       boundary:
         'x insulating; declared transverse reservoir faces: ' +
-        input.reservoir_faces.join(', '),
+        input.reservoir_faces.join(', ') +
+        (input.advection
+          ? '; prescribed incompressible superficial face flow; sourced inflow concentration; solved upwind outflow; impermeable membrane'
+          : '; zero convection'),
     });
     couplings.push({
       from: 'liquid_charge',

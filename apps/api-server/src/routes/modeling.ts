@@ -7,6 +7,7 @@ import {
 import {
   resolvePhysicsComposition,
   runConfiguredElectrochemicalModel,
+  UnsupportedPhysicsCompositionError,
 } from '@metrev/electrochem-models';
 
 /** Read-only development calculation. It never persists a case or admits evidence. */
@@ -38,6 +39,14 @@ export async function registerModelingRoutes(
       try {
         requireRole(request.actor, 'ANALYST');
       } catch (error) {
+        if (error instanceof UnsupportedPhysicsCompositionError)
+          return reply.code(422).send({
+            error: 'not_implemented',
+            missing_modules: error.composition.composition.missingModules,
+            unsupported_configuration:
+              error.composition.composition.unsupportedConfiguration,
+            message: error.message,
+          });
         if (error instanceof AuthorizationError)
           return reply
             .code(error.statusCode)

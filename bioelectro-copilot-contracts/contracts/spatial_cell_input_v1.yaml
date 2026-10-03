@@ -30,6 +30,25 @@ optional_case_context:
   authority: Authenticated saved-evaluation service assigns case/evaluation IDs and canonical normalized-case hash; clients cannot assert this binding.
   mapping: Explicit complete compatible layer-to-stack-block mapping; no scientific parameters inferred from 0D.
   eligibility: Development only; decision_eligible is false.
+optional_advection:
+  version: structured-cell-prescribed-flow-v1
+  kind: Explicit source-backed prescribed superficial face-normal velocity; no hydraulic field inferred or solved.
+  required:
+    [
+      version,
+      face_normal_velocity,
+      boundary_normal_velocity,
+      inlet_concentrations,
+    ]
+  velocity_unit: m/s
+  ordering: packages/domain-contracts/src/structured-cell-topology.ts#structuredCellTransportFaces matches Python numpy.ndindex cell-major, axis-major ordering.
+  interior_orientation: Positive from left_cell to right_cell along the positive coordinate axis.
+  exterior_orientation: Positive outward from cell, negative entering from sourced inlet concentration.
+  inlet_concentrations: Exactly every flowing inlet face name and every declared species, in mol/m3 with provenance.
+  constraints: Every mesh face requires an explicit velocity including zero walls; local incompressible volume conservation must pass. Exterior x collectors and all membrane-incident faces are impermeable.
+  diffusive_boundary: reservoir_faces retain explicitly selected concentration boundaries independently of advective inlet/outlet flux. Unselected exterior faces have zero diffusive flux.
+  discretization: Conservative first-order upwind; each interior molar flux enters adjacent cells with opposite signs, exterior species budgets include both diffusion and convection.
+  compatibility: Absent advection retains the zero-convection input behavior. Queue/runtime protocol v4 prevents older workers from silently ignoring prescribed flow.
 geometry:
   version: structured-layers-v1
   dimensions: [2, 3]

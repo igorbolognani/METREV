@@ -121,6 +121,21 @@ describe('METREV bootstrap and automation', () => {
     expect(ciWorkflow).toContain('pnpm run validate:local:smoke');
     expect(ciWorkflow).toContain('pnpm run validate:advanced');
     expect(ciWorkflow).toContain('Require implementation PRs to target main');
+    expect(ciWorkflow).toContain('validate-numerical-smoke:');
+    expect(ciWorkflow).toContain(
+      'scripts/run-spatial-verification.py --mode=fast',
+    );
+    const numericalWorkflow = readRepoFile(
+      '.github/workflows/numerical-regression.yml',
+    );
+    expect(numericalWorkflow).toContain('workflow_dispatch:');
+    expect(numericalWorkflow).toContain('schedule:');
+    expect(numericalWorkflow).toContain(
+      'scripts/run-spatial-verification.py --mode=full',
+    );
+    expect(numericalWorkflow).toContain(
+      'scripts/run-spatial-contract-tests.py --mode=full',
+    );
     const archiveWorkflow = readRepoFile(
       '.github/workflows/branch-archive.yml',
     );

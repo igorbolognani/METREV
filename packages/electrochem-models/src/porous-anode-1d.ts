@@ -53,6 +53,8 @@ export interface SourcedSpatialValue<Unit extends string = string> {
   unit: Unit;
   source_kind: SourceKind;
   source_ref: string;
+  source_locator?: string;
+  conditions?: Record<string, string>;
   original_value?: number;
   original_unit?: string;
   normalization_rule_id?: string;

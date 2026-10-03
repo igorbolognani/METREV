@@ -6,6 +6,9 @@ export type StackPhysicsSelection = {
   system: 'MFC' | 'MEC' | 'biosensor';
   architecture?: string;
   separator?: string;
+  /** Declared extra physical requirements; unimplemented modules fail closed. */
+  requiredModules?: string[];
+  integratedSensor?: boolean;
 };
 
 export type PhysicsComposition = {
@@ -42,20 +45,25 @@ export function resolvePhysicsComposition(
     };
 
   const activeModules = [
-    'reactor',
-    'anode',
-    'biofilm',
-    'cathode',
-    'circuit',
-    ...(selection.separator && selection.separator !== 'membrane-free'
-      ? ['membrane_or_separator']
-      : []),
-    ...(selection.architecture === 'flow-through' ||
-    selection.architecture === 'upflow'
-      ? ['hydraulics']
-      : []),
-    ...(selection.system === 'MEC' ? ['hydrogen_accounting'] : []),
-    ...(selection.system === 'biosensor' ? ['sensor'] : []),
+    ...new Set([
+      'reactor',
+      'anode',
+      'biofilm',
+      'cathode',
+      'circuit',
+      ...(selection.separator && selection.separator !== 'membrane-free'
+        ? ['membrane_or_separator']
+        : []),
+      ...(selection.architecture === 'flow-through' ||
+      selection.architecture === 'upflow'
+        ? ['hydraulics']
+        : []),
+      ...(selection.system === 'MEC' ? ['hydrogen_accounting'] : []),
+      ...(selection.system === 'biosensor' || selection.integratedSensor
+        ? ['sensor']
+        : []),
+      ...(selection.requiredModules ?? []),
+    ]),
   ];
   const unsupportedConfiguration: string[] = [];
   if (!profile.systems.includes(selection.system))

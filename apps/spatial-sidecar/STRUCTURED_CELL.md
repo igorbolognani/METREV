@@ -10,9 +10,17 @@ Convergence requires both the admitted scaled nonlinear tolerance and local/glob
 
 ## Runtime/protocol version and queued-run compatibility
 
-The numerical solver identifier remains `structured-cell-fv-v1`; this change does not alter equations or scientific results. The sidecar response now declares `protocol_version: structured-cell-process-v3`, matching the executor's `runtimeVersion`. The existing `version: structured-cell-fv-v1` response member identifies the solver. Version 3 adds validated field-extrema metadata to that response, so the worker rejects a sidecar that reports a different or missing process protocol or solver version.
+The numerical solver identifier remains `structured-cell-fv-v1`; the separately versioned process protocol is now `structured-cell-process-v4`. Version 4 adds the actual volumetric `faradaic_current_density` field in A/m³ and admits optional explicitly prescribed convective species transport. Without advection, the previous equations are retained; the new field is derived from the solved source rather than an inferred surface current density.
 
-Queue claims match both the persisted solver and runtime versions exactly. A v3 worker therefore ignores runs already queued with `structured-cell-process-v2`; they remain queued until a worker running the matching v2 executor and sidecar claims them. During rollout, keep that legacy pair deployed until its queue is drained. If it is unavailable, an operator must explicitly cancel the old run and create a new v3 run from its immutable input using a new idempotency key. Do not rewrite a persisted run's version fields or send its old sidecar response through the v3 executor. The v3 executor also rejects a directly supplied v2 run before starting the sidecar.
+Queue claims match both the persisted solver and runtime versions exactly. A v4 worker ignores runs queued with `structured-cell-process-v2` or `structured-cell-process-v3`. Keep matching legacy executor/sidecar pairs deployed until their queues drain, or explicitly cancel a legacy run and create a v4 run from its immutable input using a new idempotency key. Never rewrite persisted version fields. The v4 executor rejects older directly supplied runs before starting the sidecar.
+
+## Explicit prescribed-flow transport
+
+An optional `advection` block with version `structured-cell-prescribed-flow-v1` declares superficial face-normal velocities in m/s with source provenance. `structuredCellTransportFaces(input)` in the domain contracts returns the exact interior/boundary ordering also used by Python: lexicographic cell order, then coordinate axis. Interior signs point from left cell to right cell; boundary signs point outward. Every face must be supplied, including zero walls. `inlet_concentrations` covers each inflowing named transverse boundary and every species in sourced mol/m³.
+
+Admission verifies local incompressible volume balance before solving. All membrane-incident faces and exterior collector faces require zero velocity. Diffusive boundaries remain separately and explicitly selected by `reservoir_faces`; omitted faces have zero diffusive flux. The conservative upwind flux uses sourced inlet states, solved outlet states and opposite contributions at each shared interior face. Species conservation diagnostics include the total diffusive and advective boundary flux. The analytic sparse Jacobian contains the upwind derivatives, and positivity-limited Newton remains unchanged.
+
+This is prescribed-flow transport, not a solved Stokes/Darcy cell hydraulic coupling. No pressure, water transport, membrane partition or flow regime is inferred. Synthetic tests cover forward/reverse flow, exact zero-flow reduction, constant-state preservation, analytic reaction/advection/diffusion refinement in 2D/3D (including z direction), high Peclet positivity, directional Jacobian, sourced input rejection and retained failed diagnostics. These are mathematical checks, not empirical validation.
 
 ## Explicit development configuration
 
@@ -29,9 +37,9 @@ The default API remains closed to spatial execution until an operator supplies a
 
 ## Verification and remaining gates
 
-Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Legacy v2 worker/process/container/API checks remain compatibility regressions; v3 workers do not claim v2 queue items.
+Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Legacy v2 worker/process/container/API checks remain compatibility regressions; v4 workers do not claim v2/v3 queue items.
 
-These checks are mathematical software verification only. A synthetic nonuniform 18/72/288-cell study and tolerance sensitivity are checked in `tests/contracts/test_spatial_cell_verification.py`; larger-mesh robustness, coupled hydraulic advection, full electroneutral ionic closure, selective charged-membrane interfaces, independent empirical validation, deployment with durable production artifact storage, cell-specific PostgreSQL and browser gates are implemented in CI and require successful runs on their exact branch head. General roadmap capabilities are not marked complete. No merge is part of this batch.
+These checks are mathematical software verification only. A synthetic nonuniform 18/72/288-cell study and tolerance sensitivity are checked in `tests/contracts/test_spatial_cell_verification.py`; larger-mesh robustness, solved hydraulic cell-flow coupling, full electroneutral ionic closure, selective charged-membrane interfaces, independent empirical validation, deployment with durable production artifact storage, cell-specific PostgreSQL and browser gates are implemented in CI and require successful runs on their exact branch head. General roadmap capabilities are not marked complete. No merge is part of this batch.
 
 ### Batch checkpoint, 2026-10-01
 

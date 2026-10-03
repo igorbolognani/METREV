@@ -15,6 +15,9 @@ const options = {
   databaseReadonly: process.argv.includes('--database-readonly'),
   json: process.argv.includes('--json'),
   probeProviders: process.argv.includes('--probe-providers'),
+  verificationEvidence: process.argv
+    .find((argument) => argument.startsWith('--verification-evidence='))
+    ?.slice('--verification-evidence='.length),
 };
 const environmentProxyConfigured = [
   'HTTP_PROXY',

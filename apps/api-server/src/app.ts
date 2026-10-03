@@ -26,6 +26,8 @@ import { registerExportRoutes } from './routes/exports';
 import { registerExternalEvidenceRoutes } from './routes/external-evidence';
 import { registerHealthRoutes } from './routes/health';
 import { registerModelingRoutes } from './routes/modeling';
+import { registerSpatialFieldComparisonRoutes } from './routes/spatial-field-comparison';
+import { registerMultiscaleDevelopmentRoutes } from './routes/multiscale-development';
 import { registerResearchRoutes } from './routes/research';
 import {
   registerSpatialSimulationRoutes,
@@ -33,6 +35,11 @@ import {
   type SpatialSimulationRunAdmission,
 } from './routes/spatial-simulations';
 import { registerWorkspaceRoutes } from './routes/workspace';
+import {
+  SpatialArtifactDownloadController,
+  spatialArtifactDownloadPolicyFromEnvironment,
+  type SpatialArtifactDownloadPolicy,
+} from './services/spatial-artifact-download';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -42,6 +49,7 @@ declare module 'fastify' {
     spatialSimulationRunRepository: SpatialSimulationRunRepository;
     spatialSimulationRunAdmission: SpatialSimulationRunAdmission | null;
     spatialFieldArtifactReader: SpatialFieldArtifactReader | null;
+    spatialArtifactDownloads: SpatialArtifactDownloadController;
   }
 }
 
@@ -54,6 +62,7 @@ export interface BuildAppOptions {
   spatialFieldArtifactReader?: SpatialFieldArtifactReader;
   spatialSimulationRunAdmission?: SpatialSimulationRunAdmission;
   spatialSimulationRunRepository?: SpatialSimulationRunRepository;
+  spatialArtifactDownloadPolicy?: Partial<SpatialArtifactDownloadPolicy>;
 }
 
 function parseRateLimitMax() {
@@ -68,6 +77,10 @@ export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
+  const spatialArtifactDownloads = new SpatialArtifactDownloadController(
+    options.spatialArtifactDownloadPolicy ??
+      spatialArtifactDownloadPolicyFromEnvironment(process.env),
+  );
   const repository = options.repository ?? createEvaluationRepository();
   const researchRepository =
     options.researchRepository ??
@@ -86,6 +99,7 @@ export async function buildApp(
       : createSpatialSimulationRunRepository());
 
   app.decorate('evaluationRepository', repository);
+  app.decorate('spatialArtifactDownloads', spatialArtifactDownloads);
   app.decorate('evidenceAuditRepository', evidenceAuditRepository);
   app.decorate('researchRepository', researchRepository);
   app.decorate(
@@ -131,6 +145,12 @@ export async function buildApp(
     prefix: '/api/spatial-simulations',
   });
   await app.register(registerModelingRoutes, { prefix: '/api/modeling' });
+  await app.register(registerSpatialFieldComparisonRoutes, {
+    prefix: '/api/spatial-simulations',
+  });
+  await app.register(registerMultiscaleDevelopmentRoutes, {
+    prefix: '/api/modeling',
+  });
   await app.register(registerWorkspaceRoutes, { prefix: '/api/workspace' });
   await app.register(registerExportRoutes, { prefix: '/api/exports' });
 

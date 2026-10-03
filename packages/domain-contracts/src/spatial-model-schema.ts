@@ -56,48 +56,82 @@ const regionKind = z.enum([
   'outlet',
 ]);
 
-export const spatialFieldSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('constant'), value: spatialValueSchema }).strict(),
-  z
-    .object({
-      kind: z.literal('piecewise'),
-      regions: z
-        .array(
-          z
-            .object({ tag: z.string().min(1), value: spatialValueSchema })
-            .strict(),
-        )
-        .min(1),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('sampled'),
-      interpolation: z.enum(['nearest', 'linear']),
-      samples: z
-        .array(
-          z
-            .object({
-              position_m: z.array(z.number().finite()),
-              value: spatialValueSchema,
-            })
-            .strict(),
-        )
-        .min(2),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('artifact'),
-      uri: z.string().trim().min(1),
-      sha256: z.string().regex(/^[a-f0-9]{64}$/),
-      unit: z.string().trim().min(1),
-      source_kind: scientificSourceKindSchema,
-      source_ref: z.string().trim().min(1),
-      format: z.enum(['XDMF', 'HDF5', 'VTU']),
-    })
-    .strict(),
-]);
+export const spatialFieldSchema = z
+  .discriminatedUnion('kind', [
+    z
+      .object({ kind: z.literal('constant'), value: spatialValueSchema })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('piecewise'),
+        regions: z
+          .array(
+            z
+              .object({ tag: z.string().min(1), value: spatialValueSchema })
+              .strict(),
+          )
+          .min(1),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('sampled'),
+        interpolation: z.enum(['nearest', 'linear']),
+        samples: z
+          .array(
+            z
+              .object({
+                position_m: z.array(z.number().finite()).min(1).max(3),
+                value: spatialValueSchema,
+              })
+              .strict(),
+          )
+          .min(2),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('artifact'),
+        uri: z.string().trim().min(1),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        unit: z.string().trim().min(1),
+        source_kind: scientificSourceKindSchema,
+        source_ref: z.string().trim().min(1),
+        format: z.enum(['XDMF', 'HDF5', 'VTU']),
+      })
+      .strict(),
+  ])
+  .superRefine((field, context) => {
+    const issue = (path: (string | number)[], message: string) =>
+      context.addIssue({ code: 'custom', path, message });
+    if (field.kind === 'piecewise') {
+      if (
+        new Set(field.regions.map(({ tag }) => tag)).size !==
+        field.regions.length
+      )
+        issue(['regions'], 'Piecewise domain tags must be unique');
+      if (new Set(field.regions.map(({ value }) => value.unit)).size !== 1)
+        issue(['regions'], 'All field values must use one canonical unit');
+    }
+    if (field.kind === 'sampled') {
+      if (
+        new Set(
+          field.samples.map(({ position_m }) => JSON.stringify(position_m)),
+        ).size !== field.samples.length
+      )
+        issue(['samples'], 'Sample coordinates must be unique');
+      if (new Set(field.samples.map(({ value }) => value.unit)).size !== 1)
+        issue(['samples'], 'All field values must use one canonical unit');
+      if (
+        new Set(field.samples.map(({ position_m }) => position_m.length))
+          .size !== 1
+      )
+        issue(
+          ['samples'],
+          'All samples must use the same coordinate dimension',
+        );
+    }
+  });
 
 export const spatialModelInputSchema = z
   .object({
@@ -277,7 +311,13 @@ export const spatialModelInputSchema = z
       candidate: z.infer<typeof spatialFieldSchema>,
       path: (string | number)[],
       expectedUnit?: string,
-      bounds?: { min?: number; max?: number; exclusive_min?: number },
+      bounds?: {
+        min?: number;
+        max?: number;
+        exclusive_min?: number;
+        integer?: boolean;
+        nonzero?: boolean;
+      },
     ) => {
       const values =
         candidate.kind === 'constant'
@@ -301,7 +341,9 @@ export const spatialModelInputSchema = z
           (bounds?.min !== undefined && entry.value < bounds.min) ||
           (bounds?.max !== undefined && entry.value > bounds.max) ||
           (bounds?.exclusive_min !== undefined &&
-            entry.value <= bounds.exclusive_min)
+            entry.value <= bounds.exclusive_min) ||
+          (bounds?.integer === true && !Number.isInteger(entry.value)) ||
+          (bounds?.nonzero === true && entry.value === 0)
         )
           issue([...path, i], 'Value outside parameter bounds');
       });
@@ -312,10 +354,17 @@ export const spatialModelInputSchema = z
       }
       if (candidate.kind === 'sampled') {
         candidate.samples.forEach((sample, i) => {
-          if (sample.position_m.length !== input.dimension)
+          if (
+            sample.position_m.length !== input.dimension ||
+            sample.position_m.some(
+              (coordinate, axis) =>
+                coordinate < 0 ||
+                coordinate > input.geometry.extents_m[axis]?.value,
+            )
+          )
             issue(
               [...path, 'samples', i, 'position_m'],
-              'Sample coordinate count must match dimension',
+              'Samples must lie inside the declared geometry with matching dimension',
             );
         });
       }
@@ -330,7 +379,14 @@ export const spatialModelInputSchema = z
             unit: string;
             domains: string[];
             dimensions: number[];
-            bounds: { min?: number; max?: number; exclusive_min?: number };
+            bounds: {
+              min?: number;
+              max?: number;
+              exclusive_min?: number;
+              integer?: boolean;
+              nonzero?: boolean;
+            };
+            form: string;
           }
         >
       )[entry.parameter_id];
@@ -353,6 +409,11 @@ export const spatialModelInputSchema = z
             ['material_fields', i, 'parameter_id'],
             'Parameter is not defined for this dimension',
           );
+        if (parameter.form === 'scalar' && entry.field.kind !== 'constant')
+          issue(
+            ['material_fields', i, 'field'],
+            'Parameter requires a constant scalar',
+          );
         checkField(
           entry.field,
           ['material_fields', i, 'field'],
@@ -371,6 +432,21 @@ export const spatialModelInputSchema = z
         exclusive_min: 0,
       });
     });
+    if (
+      new Set(input.species.map(({ id }) => id)).size !== input.species.length
+    )
+      issue(['species'], 'Species IDs must be unique');
+    if (
+      new Set(
+        input.material_fields.map(
+          ({ parameter_id, domain_tag }) => `${parameter_id}:${domain_tag}`,
+        ),
+      ).size !== input.material_fields.length
+    )
+      issue(
+        ['material_fields'],
+        'Material parameter/domain assignments must be unique',
+      );
     input.initial_conditions.forEach((entry, i) => {
       if (!tags.includes(entry.domain_tag))
         issue(['initial_conditions', i, 'domain_tag'], 'Unknown region');
@@ -415,5 +491,7 @@ export const physicsCompositionRequestSchema = z
     system: z.enum(['MFC', 'MEC', 'biosensor']),
     architecture: z.string().trim().optional(),
     separator: z.string().trim().optional(),
+    requiredModules: z.array(z.string().trim().min(1)).max(32).optional(),
+    integratedSensor: z.boolean().optional(),
   })
   .strict();

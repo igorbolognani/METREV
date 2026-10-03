@@ -7,7 +7,7 @@ const identifier = z.string().trim().min(1).max(160);
 export const structuredCellFieldExtremumSchema = z
   .object({
     value: finite,
-    unit: z.enum(['mol/m3', 'V']),
+    unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
     cell_index: z.number().int().nonnegative().max(19999),
     cell_center_m: z.array(finite).min(2).max(3),
     cell_size_m: z.array(z.number().finite().positive()).min(2).max(3),
@@ -30,7 +30,7 @@ const structuredCellFieldObservablesEntrySchema = z
     field_artifact_sha256: digest,
     dataset_path: z.literal('/values'),
     association: z.literal('mesh_cells'),
-    unit: z.enum(['mol/m3', 'V']),
+    unit: z.enum(['mol/m3', 'V', 'A/m3', 'Pa', 'm/s']),
     minimum: structuredCellFieldExtremumSchema,
     maximum: structuredCellFieldExtremumSchema,
   })
@@ -69,7 +69,7 @@ export const structuredCellFieldObservablesSchema = z
     geometry_request_sha256: digest,
     coordinate_system: z.literal('cartesian'),
     position_basis: z.literal('finite_volume_cell_center'),
-    fields: z.array(structuredCellFieldObservablesEntrySchema).min(1).max(16),
+    fields: z.array(structuredCellFieldObservablesEntrySchema).min(1).max(32),
   })
   .strict()
   .superRefine((observables, context) => {

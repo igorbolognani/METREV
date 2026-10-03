@@ -14,10 +14,15 @@ import {
 } from './mechanistic';
 import {
   solveCoupledCell1d,
-  type CoupledCell1dInput,
   type CoupledCell1dResult,
 } from './coupled-cell-1d';
-import { resolvePhysicsComposition } from './physics-composition';
+import {
+  compileElectrochemicalModel,
+  UnsupportedPhysicsCompositionError,
+  type ConfiguredElectrochemicalModel,
+  type ExecutablePhysicsPlan,
+} from './model-composition-runtime';
+import { coupledCell1dInputSchema } from '@metrev/domain-contracts';
 import {
   CASE_RUNNER_1D_MODEL,
   coupledCell1dEnrichment,
@@ -34,6 +39,15 @@ export {
 } from './case-spatial-composition';
 export type { CaseSpatialComposition } from './case-spatial-composition';
 export { PHYSICS_MODULES, composeModules } from './physics-modules';
+export {
+  compileElectrochemicalModel,
+  UnsupportedPhysicsCompositionError,
+} from './model-composition-runtime';
+export type {
+  ConfiguredElectrochemicalModel,
+  ExecutablePhysicsPlan,
+  PhysicsImplementationBinding,
+} from './model-composition-runtime';
 export type {
   PhysicsComposition,
   StackPhysicsSelection,
@@ -256,6 +270,18 @@ export function isSimulationEligible(
 
 export const defaultInternalModelProvider: ModelProvider = {
   evaluate({ normalizedCase }) {
+    const requested = normalizedCase.mechanistic_model?.model_fidelity_id;
+    if (
+      (normalizedCase.technology_family === 'microbial_fuel_cell' ||
+        normalizedCase.technology_family === 'microbial_electrolysis_cell') &&
+      (!requested || requested === 'coupled-0d-dae-v1')
+    ) {
+      const calculation = runConfiguredElectrochemicalModel({
+        model: 'coupled-0d-dae-v1',
+        normalizedCase,
+      });
+      if (calculation.model === 'coupled-0d-dae-v1') return calculation.result;
+    }
     return toEnrichment(simulateMechanisticCase(normalizedCase));
   },
 };
@@ -338,16 +364,36 @@ export function evaluateSimulationEnrichment(input: {
       const calculation = runConfiguredElectrochemicalModel({
         model: CASE_RUNNER_1D_MODEL,
         cell: cell!,
+        requiredModules: model.required_physics_modules,
       });
       if (calculation.model !== CASE_RUNNER_1D_MODEL)
         throw new Error('Wrong fidelity dispatch for restricted 1D case');
-      return coupledCell1dEnrichment(cell!, calculation.result);
+      const enriched = coupledCell1dEnrichment(cell!, calculation.result);
+      return {
+        ...enriched,
+        input_snapshot: {
+          ...enriched.input_snapshot,
+          physics_composition: calculation.composition,
+        },
+      };
     } catch (error) {
       const failure = emptyEnrichment({
-        status: error instanceof RangeError ? 'insufficient_data' : 'failed',
+        status:
+          error instanceof UnsupportedPhysicsCompositionError
+            ? 'not_implemented'
+            : error instanceof RangeError
+              ? 'insufficient_data'
+              : 'failed',
         note: 'Restricted 1D case could not be solved.',
         failureDetail: {
           error: error instanceof Error ? error.message : String(error),
+          ...(error instanceof UnsupportedPhysicsCompositionError
+            ? {
+                missing_modules: error.composition.composition.missingModules,
+                unsupported_configuration:
+                  error.composition.composition.unsupportedConfiguration,
+              }
+            : {}),
         },
       });
       return {
@@ -377,39 +423,75 @@ export function evaluateSimulationEnrichment(input: {
   }
 }
 
-/** The selected configuration determines which equations are coupled. */
-export type ConfiguredElectrochemicalModel =
-  | { model: 'coupled-0d-dae-v1'; normalizedCase: NormalizedCaseInput }
-  | { model: 'coupled-cell-1d-restricted-v1'; cell: CoupledCell1dInput };
-
 export type ConfiguredElectrochemicalResult =
-  | { model: 'coupled-0d-dae-v1'; result: SimulationEnrichment }
-  | { model: 'coupled-cell-1d-restricted-v1'; result: CoupledCell1dResult };
+  | {
+      model: 'coupled-0d-dae-v1';
+      result: SimulationEnrichment;
+      composition: ExecutablePhysicsPlan;
+    }
+  | {
+      model: 'coupled-cell-1d-restricted-v1';
+      result: CoupledCell1dResult;
+      composition: ExecutablePhysicsPlan;
+    };
 
 export function runConfiguredElectrochemicalModel(
   input: ConfiguredElectrochemicalModel,
 ): ConfiguredElectrochemicalResult {
+  const composition = compileElectrochemicalModel(input);
   if (input.model === 'coupled-0d-dae-v1') {
     const selected = input.normalizedCase.mechanistic_model?.model_fidelity_id;
     if (selected && selected !== input.model)
       throw new RangeError(
         `Configured 0D dispatcher cannot execute selected fidelity ${selected}`,
       );
+    if (composition.status === 'not_implemented') {
+      const unavailable = emptyEnrichment({
+        status: 'not_implemented',
+        note: composition.composition.note,
+        failureDetail: {
+          missing_modules: composition.composition.missingModules,
+          model_blockers: composition.composition.unsupportedConfiguration,
+        },
+      });
+      return {
+        model: input.model,
+        composition,
+        result: {
+          ...unavailable,
+          input_snapshot: {
+            ...unavailable.input_snapshot,
+            physics_composition: composition,
+          },
+        },
+      };
+    }
+    const result = toEnrichment(simulateMechanisticCase(input.normalizedCase));
     return {
       model: input.model,
-      result: toEnrichment(simulateMechanisticCase(input.normalizedCase)),
+      composition,
+      result: {
+        ...result,
+        input_snapshot: {
+          ...result.input_snapshot,
+          physics_composition: composition,
+        },
+      },
     };
   }
   if (input.model === 'coupled-cell-1d-restricted-v1') {
-    const resolution = resolvePhysicsComposition({
-      modelId: input.model,
-      system: input.cell.system,
-      architecture: 'planar',
-      separator: 'binary-electroneutral',
-    });
-    if (resolution.status !== 'case_runner_development')
-      throw new RangeError(resolution.note);
-    return { model: input.model, result: solveCoupledCell1d(input.cell) };
+    if (composition.status !== 'ready')
+      throw composition.status === 'not_implemented'
+        ? new UnsupportedPhysicsCompositionError(composition)
+        : new RangeError(composition.missing_inputs.join(', '));
+    return {
+      model: input.model,
+      composition,
+      result: solveCoupledCell1d(coupledCell1dInputSchema.parse(input.cell)),
+    };
   }
   throw new RangeError('Unknown configured electrochemical model');
 }
+
+export { solveLinearStackNetwork } from './stack-network';
+export { calculateLayeredScaleTransfer } from './scale-transfer';

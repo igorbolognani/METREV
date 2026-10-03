@@ -16,7 +16,7 @@ const hash = (bytes: Buffer) =>
 describe('local spatial field artifacts', () => {
   it('binds immutable field bytes to owner, run, field and dataset path and detects tampering', async () => {
     const root = await mkdtemp(join(tmpdir(), 'metrev-field-store-'));
-    const bytes = Buffer.from('synthetic field bytes');
+    const bytes = Buffer.alloc(1024 * 1024, 17);
     const sha256 = hash(bytes);
     const sourceFilePath = join(root, 'source.vtu');
     const store = new LocalSpatialFieldArtifactStore({
@@ -61,6 +61,13 @@ describe('local spatial field artifacts', () => {
       const chunks: Buffer[] = [];
       for await (const chunk of stream) chunks.push(Buffer.from(chunk));
       expect(Buffer.concat(chunks)).toEqual(bytes);
+      expect(chunks.length).toBeGreaterThan(1);
+      expect(chunks.every((chunk) => chunk.length <= 64 * 1024)).toBe(true);
+      const abort = new AbortController();
+      abort.abort();
+      await expect(
+        store.readField({ ...lookup, signal: abort.signal }),
+      ).rejects.toBeDefined();
       for (const mismatch of [
         { ownerId: 'other-owner' },
         { runId: 'other-run' },

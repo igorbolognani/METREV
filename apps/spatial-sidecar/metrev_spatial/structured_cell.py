@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v3"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v4"
 
 
 def number(v, unit, lower=None, strict=False):
@@ -46,7 +46,7 @@ def number(v, unit, lower=None, strict=False):
 
 def validate(inp):
     required = {'contract_version','model_id','system','dimension','coordinate_system','charge_model','geometry','temperature','reservoir_faces','species','reactions','electrodes','circuit','numerics'}
-    if not isinstance(inp,dict) or set(inp) - {'case_context'} != required:
+    if not isinstance(inp,dict) or set(inp) - {'case_context', 'advection'} != required:
         raise ValueError('Invalid cell input properties')
     if (inp['contract_version']!='spatial-cell-input-v1' or inp['model_id']!='structured-cell-supporting-electrolyte-v1' or inp['dimension'] not in [2,3] or inp['coordinate_system']!='cartesian' or inp['charge_model']!='fixed-conductivity-supporting-electrolyte'):
         raise ValueError('Unsupported cell profile or fidelity')
@@ -142,6 +142,8 @@ def validate(inp):
     for key in ['nonlinear_tolerance','conservation_tolerance']:
         if isinstance(num[key],bool) or not math.isfinite(num[key]) or not 0<num[key]<=1e-3: raise ValueError('Invalid tolerance')
     for key,unit in [('concentration_scale','mol/m3'),('potential_scale','V'),('species_rate_scale','mol/(m3*s)'),('charge_rate_scale','A/m3')]: number(num[key],unit,0,True)
+    if 'advection' in inp:
+        prescribed_flow(inp, topology(inp))
     return inp
 
 
@@ -169,6 +171,60 @@ def topology(inp):
             for sign in [-1,1]:
                 if c[axis]==(0 if sign<0 else shape[axis]-1): boundary.append((i,axis,sign,area,sizes[i,axis]/2))
     return {'shape':shape,'centers':np.array(centers),'sizes':sizes,'regions':np.array(regions),'volumes':volumes,'faces':faces,'boundary':boundary,'count':n}
+
+
+def prescribed_flow(inp, mesh):
+    """Explicit superficial face velocity; never a reconstructed hydraulic solve.
+
+    Interior velocity is oriented from i to j; exterior velocity is outward.
+    Every face is declared, including zero-velocity walls. Local discrete volume
+    balance is an admission requirement, independently of species convergence.
+    Membrane water transport is absent from this fidelity and is rejected.
+    """
+    block = inp.get('advection')
+    if block is None:
+        return np.zeros(len(mesh['faces'])), np.zeros(len(mesh['boundary']))
+    required = {'version', 'face_normal_velocity', 'boundary_normal_velocity', 'inlet_concentrations'}
+    if not isinstance(block, dict) or set(block) != required or block['version'] != 'structured-cell-prescribed-flow-v1':
+        raise ValueError('Invalid prescribed flow properties')
+    interior, exterior = [], []
+    for values, faces, target in ((block['face_normal_velocity'], mesh['faces'], interior),
+                                  (block['boundary_normal_velocity'], mesh['boundary'], exterior)):
+        if not isinstance(values, list) or len(values) != len(faces):
+            raise ValueError('Prescribed velocity must cover every ordered mesh face')
+        target.extend(number(v, 'm/s') for v in values)
+    divergence = np.zeros(mesh['count'])
+    throughput = np.zeros(mesh['count'])
+    layers = inp['geometry']['layers']
+    membrane = {r for r, layer in enumerate(layers) if layer['kind'] == 'membrane'}
+    inflow = set()
+    for velocity, (i, j, _, area, *_) in zip(interior, mesh['faces']):
+        if velocity != 0 and (mesh['regions'][i] in membrane or mesh['regions'][j] in membrane):
+            raise ValueError('Membrane convection/water transport is not implemented')
+        flow = velocity * area
+        divergence[i] += flow; divergence[j] -= flow
+        throughput[i] += abs(flow); throughput[j] += abs(flow)
+    for velocity, (i, axis, sign, area, _) in zip(exterior, mesh['boundary']):
+        if velocity != 0 and (axis == 0 or mesh['regions'][i] in membrane):
+            raise ValueError('Collector and membrane boundaries do not admit flow')
+        flow = velocity * area
+        divergence[i] += flow; throughput[i] += abs(flow)
+        if velocity < 0:
+            inflow.add('xyz'[axis] + ('_min' if sign < 0 else '_max'))
+    if not np.isfinite(divergence).all() or not np.isfinite(throughput).all():
+        raise ValueError('Prescribed flow produces nonfinite volumetric flux')
+    if np.any(np.abs(divergence) > 1e-12 * np.maximum(throughput, 1e-30)):
+        raise ValueError('Prescribed flow violates local incompressible volume conservation')
+    concentrations = block['inlet_concentrations']
+    if not isinstance(concentrations, dict) or set(concentrations) != inflow:
+        raise ValueError('Every flowing inlet requires explicit species concentrations')
+    ids = {s['id'] for s in inp['species']}
+    for values in concentrations.values():
+        if not isinstance(values, dict) or set(values) != ids:
+            raise ValueError('Inlet concentrations must cover exactly all species')
+        for value in values.values():
+            number(value, 'mol/m3', 0)
+    return np.asarray(interior), np.asarray(exterior)
 
 
 def derive_field_extrema(fields, mesh, layers):
@@ -248,6 +304,7 @@ class Cell:
         self.valence=np.array([s['valence']['value'] for s in inp['species']]); self.refs=np.array([s['reference_concentration']['value'] for s in inp['species']])
         self.cs=inp['numerics']['concentration_scale']['value']; self.ps=inp['numerics']['potential_scale']['value']
         self.rs=inp['numerics']['species_rate_scale']['value']; self.js=inp['numerics']['charge_rate_scale']['value']; self.rt=R*inp['temperature']['value']
+        self.face_velocity, self.boundary_velocity = prescribed_flow(inp, m)
         self.history=[]
 
     def unpack(self,x):
@@ -265,21 +322,31 @@ class Cell:
     def balances(self,x):
         c,phi,solid,V=self.unpack(x); m=self.mesh; div=np.zeros_like(c); ionic=np.zeros(self.n); electronic=np.zeros(self.n)
         source=np.zeros_like(c); jr=np.zeros(self.n); boundary_species=np.zeros_like(c); collector=np.zeros(2); interface_flux={}
-        for i,j,axis,area,hi,hj in m['faces']:
+        for velocity,(i,j,axis,area,hi,hj) in zip(self.face_velocity,m['faces']):
             conductance=area/(hi/self.D[:,i]+hj/self.D[:,j]); psi=self.valence*F*(phi[j]-phi[i])/self.rt
-            flux=conductance*(bernoulli(psi)*c[:,i]-bernoulli(-psi)*c[:,j]); div[:,i]+=flux; div[:,j]-=flux
+            flux=conductance*(bernoulli(psi)*c[:,i]-bernoulli(-psi)*c[:,j])
+            flux += area * velocity * (c[:,i] if velocity >= 0 else c[:,j])
+            div[:,i]+=flux; div[:,j]-=flux
             il=area/(hi/self.kappa[i]+hj/self.kappa[j])*(phi[i]-phi[j]); ionic[i]+=il; ionic[j]-=il
             if self.sigma[i]>0 and self.sigma[j]>0:
                 iss=area/(hi/self.sigma[i]+hj/self.sigma[j])*(solid[i]-solid[j]); electronic[i]+=iss; electronic[j]-=iss
             if m['regions'][i]!=m['regions'][j]:
                 key=f"interface:{self.input['geometry']['layers'][m['regions'][i]]['tag']}:{self.input['geometry']['layers'][m['regions'][j]]['tag']}"
                 interface_flux[key]=interface_flux.get(key,np.zeros(self.ns))+flux
-        for i,axis,sign,area,h in m['boundary']:
+        for velocity,(i,axis,sign,area,h) in zip(self.boundary_velocity,m['boundary']):
             name='xyz'[axis]+('_min' if sign<0 else '_max')
             if name in self.input['reservoir_faces']:
                 reservoir=np.array([s['reservoir_concentration']['value'] for s in self.input['species']])
                 flux=self.D[:,i]*area/h*(c[:,i]-reservoir)
                 div[:,i]+=flux; boundary_species[:,i]+=flux
+            if velocity != 0:
+                # Outflow uses the solved cell state; inflow is source-backed.
+                upstream = c[:,i] if velocity > 0 else np.array([
+                    self.input['advection']['inlet_concentrations'][name][s['id']]['value']
+                    for s in self.input['species']
+                ])
+                flux = area * velocity * upstream
+                div[:,i] += flux; boundary_species[:,i] += flux
             if axis==0 and self.sigma[i]>0:
                 index=0 if sign<0 else 1; contact=0. if index==0 else V
                 iss=self.sigma[i]*area/h*(solid[i]-contact); electronic[i]+=iss; collector[index]+=iss
@@ -333,20 +400,23 @@ class Cell:
         def add(row,col,val): J[row,col]+=val*(self.cs if col<self.ns*n else self.ps)/row_scale(row)
         def prow(i): return self.ns*n+i
         def srow(i): return (self.ns+1)*n+self.solid_index[i]
-        for i,j,_,area,hi,hj in m['faces']:
+        for velocity,(i,j,_,area,hi,hj) in zip(self.face_velocity,m['faces']):
             psi=self.valence*F*(phi[j]-phi[i])/self.rt; G=area/(hi/self.D[:,i]+hj/self.D[:,j])
             dphi=G*(bernoulli_derivative(psi)*c[:,i]+bernoulli_derivative(-psi)*c[:,j])*self.valence*F/self.rt
             for k in range(self.ns):
                 for row,sign in [(k*n+i,1),(k*n+j,-1)]:
                     add(row,k*n+i,sign*G[k]*bernoulli(psi)[k]); add(row,k*n+j,-sign*G[k]*bernoulli(-psi)[k]); add(row,prow(i),-sign*dphi[k]); add(row,prow(j),sign*dphi[k])
+                    add(row,k*n+(i if velocity >= 0 else j),sign*area*velocity)
             G=area/(hi/self.kappa[i]+hj/self.kappa[j])
             for row,sign in [(prow(i),1),(prow(j),-1)]: add(row,prow(i),sign*G); add(row,prow(j),-sign*G)
             if self.sigma[i]>0 and self.sigma[j]>0:
                 G=area/(hi/self.sigma[i]+hj/self.sigma[j])
                 for row,sign in [(srow(i),1),(srow(j),-1)]: add(row,srow(i),sign*G); add(row,srow(j),-sign*G)
-        for i,axis,sign,area,h in m['boundary']:
+        for velocity,(i,axis,sign,area,h) in zip(self.boundary_velocity,m['boundary']):
             if 'xyz'[axis]+('_min' if sign<0 else '_max') in self.input['reservoir_faces']:
                 for k in range(self.ns): add(k*n+i,k*n+i,self.D[k,i]*area/h)
+            if velocity > 0:
+                for k in range(self.ns): add(k*n+i,k*n+i,area*velocity)
             if axis==0 and self.sigma[i]>0:
                 G=self.sigma[i]*area/h; add(srow(i),srow(i),G)
                 if sign>0: add(srow(i),self.size-1,-G)
@@ -447,6 +517,7 @@ class Cell:
         for e in self.input['electrodes']:
             r=next(r for r,l in enumerate(self.input['geometry']['layers']) if l['tag']==e['domain_tag']); cells=np.flatnonzero(self.mesh['regions']==r)
             fields.append({'id':'solid_potential_'+e['role'],'unit':'V','values':solid[cells].tolist(),'cells':cells.tolist()})
+        fields.append({'id':'faradaic_current_density','unit':'A/m3','values':(jr/self.mesh['volumes']).tolist(),'cells':list(range(n))})
         field_extrema = derive_field_extrema(
             fields,
             {

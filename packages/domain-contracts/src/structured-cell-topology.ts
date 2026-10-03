@@ -42,3 +42,84 @@ export function structuredCellTopology(input: StructuredCellInput) {
   }
   return { shape, centers_m, sizes_m, region_index, volumes_m3 };
 }
+
+/** Explicit finite-volume face order used by prescribed-flow source arrays. */
+export function structuredCellTransportFaces(input: {
+  dimension: 2 | 3;
+  geometry: {
+    lengths_m: { value: number }[];
+    transverse_cells: number[];
+    out_of_plane_depth?: { value: number };
+    layers: { width_m: { value: number }; cells: number; kind: string }[];
+  };
+}) {
+  const widths = input.geometry.layers.flatMap((layer) =>
+    Array.from(
+      { length: layer.cells },
+      () => layer.width_m.value / layer.cells,
+    ),
+  );
+  const regions = input.geometry.layers.flatMap((layer, region) =>
+    Array.from({ length: layer.cells }, () => region),
+  );
+  const shape = [widths.length, ...input.geometry.transverse_cells];
+  const strides = shape.map((_, axis) =>
+    shape.slice(axis + 1).reduce((a, b) => a * b, 1),
+  );
+  const count = shape.reduce((a, b) => a * b, 1);
+  const interior: {
+    left_cell: number;
+    right_cell: number;
+    axis: number;
+    area_m2: number;
+    left_region: number;
+    right_region: number;
+  }[] = [];
+  const boundary: {
+    cell_index: number;
+    axis: number;
+    sign: -1 | 1;
+    face: string;
+    area_m2: number;
+    region_index: number;
+  }[] = [];
+  for (let cell = 0; cell < count; cell++) {
+    const coordinate = strides.map(
+      (stride, axis) => Math.floor(cell / stride) % shape[axis],
+    );
+    const sizes = [
+      widths[coordinate[0]],
+      ...shape
+        .slice(1)
+        .map((n, index) => input.geometry.lengths_m[index + 1].value / n),
+    ];
+    const volume =
+      sizes.reduce((a, b) => a * b, 1) *
+      (input.dimension === 2 ? input.geometry.out_of_plane_depth!.value : 1);
+    for (let axis = 0; axis < input.dimension; axis++) {
+      const area = volume / sizes[axis];
+      if (coordinate[axis] < shape[axis] - 1) {
+        const other = cell + strides[axis];
+        interior.push({
+          left_cell: cell,
+          right_cell: other,
+          axis,
+          area_m2: area,
+          left_region: regions[coordinate[0]],
+          right_region: regions[Math.floor(other / strides[0])],
+        });
+      }
+      for (const sign of [-1, 1] as const)
+        if (coordinate[axis] === (sign < 0 ? 0 : shape[axis] - 1))
+          boundary.push({
+            cell_index: cell,
+            axis,
+            sign,
+            face: `${'xyz'[axis]}_${sign < 0 ? 'min' : 'max'}`,
+            area_m2: area,
+            region_index: regions[coordinate[0]],
+          });
+    }
+  }
+  return { interior, boundary, cell_count: count };
+}
