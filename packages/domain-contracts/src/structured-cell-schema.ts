@@ -531,20 +531,16 @@ export const structuredCellInputSchema = z
     }
   });
 
-export const structuredCellRunAdmissionSchema = structuredCellInputSchema.superRefine(
-  (input, context) => {
-    if (
-      input.hydraulics?.version ===
-      'structured-cell-prescribed-darcy-v1'
-    )
+export const structuredCellRunAdmissionSchema =
+  structuredCellInputSchema.superRefine((input, context) => {
+    if (input.hydraulics?.version === 'structured-cell-prescribed-darcy-v1')
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['hydraulics', 'cell_pressure'],
         message:
           'New runs must use the boundary-driven Darcy pressure solve; mesh-sized cell_pressure provenance arrays cannot be stored in run snapshots.',
       });
-  },
-);
+  });
 
 export type StructuredCellInput = z.infer<typeof structuredCellInputSchema>;
 export const STRUCTURED_CELL_LIMITS = [
