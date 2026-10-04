@@ -14,6 +14,7 @@ import {
   spatialSimulationResultForInputSchema,
   structuredCellRunViewSchema,
   structuredCellTransportFaces,
+  structuredCellTopology,
   compileStructuredCellEquationGraph,
   structuredCellFieldReductionSchema,
 } from '@metrev/domain-contracts';
@@ -401,12 +402,14 @@ describe('structured cell native worker and authenticated artifacts', () => {
             version: 'structured-cell-prescribed-darcy-v1',
             dynamic_viscosity: solvedHydraulics.dynamic_viscosity,
             permeability_by_region: solvedHydraulics.permeability_by_region,
-            cell_pressure: solvedPressure.values.map((value) => ({
-              value,
-              unit: 'Pa',
-              source_kind: 'test_fixture',
-              source_ref: 'synthetic:legacy-v5-prescribed-pressure',
-            })),
+            cell_pressure: structuredCellTopology(legacyInput).centers_m.map(
+              (center) => ({
+                value: 10 - 1000 * center[1],
+                unit: 'Pa',
+                source_kind: 'test_fixture',
+                source_ref: 'synthetic:legacy-v5-prescribed-pressure',
+              }),
+            ),
             boundary_pressure: solvedHydraulics.boundary_pressure,
             impermeable_faces: solvedHydraulics.impermeable_faces,
             inlet_concentrations: solvedHydraulics.inlet_concentrations,
