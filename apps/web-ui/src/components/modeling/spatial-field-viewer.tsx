@@ -8,6 +8,11 @@ import {
   fieldProfileCSV,
   fieldSliceCells,
   slicePlanes,
+  vectorAtCell,
+  vectorSliceCells,
+  vectorSliceCSV,
+  type CartesianAxis,
+  type CellVectorField,
   type SlicePlane,
 } from '@/lib/spatial-field-view';
 
@@ -15,10 +20,14 @@ export function SpatialFieldViewer({
   run,
   mesh,
   data,
+  vectorData,
+  vectorHashes,
 }: {
   run: StructuredCellRunView;
   mesh: CellMesh;
   data: CellField;
+  vectorData?: CellVectorField | null;
+  vectorHashes?: Partial<Record<CartesianAxis, string>>;
 }) {
   const [plane, setPlane] = useState<SlicePlane>('XY');
   const [slice, setSlice] = useState(0);
@@ -37,6 +46,25 @@ export function SpatialFieldViewer({
     slice,
     domain === 'all' ? null : Number(domain),
   );
+  const vectorCells = vectorData
+    ? vectorSliceCells(
+        mesh,
+        vectorData,
+        plane,
+        slice,
+        domain === 'all' ? null : Number(domain),
+      )
+    : [];
+  const maximumProjectedMagnitude = Math.max(
+    0,
+    ...vectorCells.map((sample) =>
+      Math.hypot(
+        sample.components[axes.horizontal],
+        sample.components[axes.vertical],
+      ),
+    ),
+  );
+  const vectorStride = Math.max(1, Math.ceil(vectorCells.length / 400));
   const minimum = Math.min(...data.values),
     maximum = Math.max(...data.values);
   const extent = mesh.shape.map((_, axis) =>
@@ -78,6 +106,33 @@ export function SpatialFieldViewer({
     anchor.click();
     URL.revokeObjectURL(url);
   }
+  function exportVectorCSV() {
+    if (!vectorData) return;
+    const content = vectorSliceCSV({
+      mesh,
+      field: vectorData,
+      plane,
+      slice,
+      region: domain === 'all' ? null : Number(domain),
+      domainTags: layerTags,
+      componentHashes: vectorHashes ?? {},
+      binding: {
+        run_id: run.id,
+        input_sha256: run.input_sha256,
+        mesh_sha256: run.result!.mesh.artifact.sha256,
+        numerical_status: run.status,
+      },
+    });
+    const url = URL.createObjectURL(
+      new Blob([content], { type: 'text/csv;charset=utf-8' }),
+    );
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `metrev-${run.id}-${vectorData.id}-${plane}-slice-${slice}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+  const probeVector = vectorData ? vectorAtCell(vectorData, probe) : null;
   return (
     <section className="space-y-3" aria-label="Solved field viewer">
       <div className="flex flex-wrap gap-4">
@@ -154,6 +209,19 @@ export function SpatialFieldViewer({
         aria-label={`${data.id} numerical cell field`}
         className="w-full rounded border bg-slate-50"
       >
+        <defs>
+          <marker
+            id="spatial-vector-arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+          </marker>
+        </defs>
         {cells.map(({ cell, value }) => {
           const center = mesh.centers_m[cell],
             size = mesh.sizes_m[cell];
@@ -196,6 +264,45 @@ export function SpatialFieldViewer({
             </rect>
           );
         })}
+        {vectorData &&
+          vectorCells.map((sample, index) => {
+            if (index % vectorStride !== 0 || sample.magnitude === 0)
+              return null;
+            const center = mesh.centers_m[sample.cell];
+            const horizontal = sample.components[axes.horizontal];
+            const vertical = sample.components[axes.vertical];
+            const transformedX = (horizontal * 620) / extent[axes.horizontal];
+            const transformedY = (-vertical * 330) / extent[axes.vertical];
+            const transformedMagnitude = Math.hypot(transformedX, transformedY);
+            if (transformedMagnitude === 0) return null;
+            const projectedMagnitude = Math.hypot(horizontal, vertical);
+            const relativeMagnitude =
+              maximumProjectedMagnitude === 0
+                ? 0
+                : projectedMagnitude / maximumProjectedMagnitude;
+            const length = 8 + 20 * relativeMagnitude;
+            const dx = (length * transformedX) / transformedMagnitude;
+            const dy = (length * transformedY) / transformedMagnitude;
+            const x =
+              45 + (620 * center[axes.horizontal]) / extent[axes.horizontal];
+            const y =
+              370 - (330 * center[axes.vertical]) / extent[axes.vertical];
+            return (
+              <line
+                key={`vector-${sample.cell}`}
+                x1={x - dx / 2}
+                y1={y - dy / 2}
+                x2={x + dx / 2}
+                y2={y + dy / 2}
+                stroke="black"
+                strokeWidth="1.4"
+                markerEnd="url(#spatial-vector-arrow)"
+                pointerEvents="none"
+              >
+                <title>{`Cell ${sample.cell}: (${sample.components.join(', ')}) ${vectorData.unit}; magnitude ${sample.magnitude} ${vectorData.unit}`}</title>
+              </line>
+            );
+          })}
         <text x="45" y="391">
           0
         </text>
@@ -210,10 +317,31 @@ export function SpatialFieldViewer({
           {extent[axes.vertical].toExponential(3)}
         </text>
       </svg>
+      {vectorData && (
+        <p aria-label="Vector field legend">
+          {vectorData.id} quiver · direction in physical {plane} coordinates ·
+          arrow length shows projected magnitude relative to this visible slice
+          (maximum {maximumProjectedMagnitude.toPrecision(5)} {vectorData.unit}
+          ). Every{' '}
+          {vectorStride === 1
+            ? 'visible cell is shown'
+            : `${vectorStride}th visible cell is shown`}
+          . These arrows are solved cell velocities; they are not particle paths
+          or streamlines.
+        </p>
+      )}
       <p role="status" aria-label="Selected cell probe">
         Cell {probe} · region {layerTags[mesh.region_index[probe]]} · center (
         {mesh.centers_m[probe].join(', ')}) m ·{' '}
         {data.values[data.cells.indexOf(probe)]} {data.unit}
+        {probeVector && (
+          <>
+            {' '}
+            · {vectorData!.id} ({probeVector.components.join(', ')}){' '}
+            {vectorData!.unit} · magnitude {probeVector.magnitude}{' '}
+            {vectorData!.unit}
+          </>
+        )}
       </p>
       <label>
         Profile axis{' '}
@@ -275,6 +403,11 @@ export function SpatialFieldViewer({
       <button className="rounded border p-2" onClick={exportCSV}>
         Export profile CSV
       </button>
+      {vectorData && (
+        <button className="rounded border p-2" onClick={exportVectorCSV}>
+          Export visible vector slice CSV
+        </button>
+      )}
     </section>
   );
 }

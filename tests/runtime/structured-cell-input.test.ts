@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { structuredCellInputSchema } from '../../packages/domain-contracts/src/structured-cell-schema';
 import { spatialRuntimeInputSha256 } from '../../packages/domain-contracts/src/spatial-runtime-input';
 import { structuredCellFixture } from '../fixtures/structured-cell';
-import { structuredCellTransportFaces } from '../../packages/domain-contracts/src/structured-cell-topology';
+import {
+  structuredCellTopology,
+  structuredCellTransportFaces,
+} from '../../packages/domain-contracts/src/structured-cell-topology';
 import { compileStructuredCellEquationGraph } from '../../packages/domain-contracts/src/structured-cell-equation-graph';
 
 function prescribedFixture(dimension: 2 | 3 = 2, speed = 1e-6) {
@@ -34,6 +37,64 @@ function prescribedFixture(dimension: 2 | 3 = 2, speed = 1e-6) {
               ]),
             ),
           },
+  };
+  return input;
+}
+
+function darcyFixture(dimension: 2 | 3 = 2) {
+  const input = structuredCellFixture(dimension);
+  input.geometry.layers[1].kind = 'separator';
+  const mesh = structuredCellTopology(input);
+  const v = (value: number, unit: string) => ({
+    value,
+    unit,
+    source_kind: 'test_fixture' as const,
+    source_ref: 'synthetic:prescribed-darcy-linear-pressure',
+  });
+  const pressureAt = (y: number) => 10 - 1000 * y;
+  input.hydraulics = {
+    version: 'structured-cell-prescribed-darcy-v1',
+    dynamic_viscosity: v(1e-3, 'Pa*s'),
+    permeability_by_region: Object.fromEntries(
+      input.geometry.layers.map((layer) => [layer.tag, v(1e-12, 'm2')]),
+    ),
+    cell_pressure: mesh.centers_m.map((center) =>
+      v(pressureAt(center[1]), 'Pa'),
+    ),
+    boundary_pressure: {
+      y_min: v(pressureAt(0), 'Pa'),
+      y_max: v(pressureAt(input.geometry.lengths_m[1].value), 'Pa'),
+    },
+    impermeable_faces: dimension === 3 ? ['z_min', 'z_max'] : [],
+    inlet_concentrations: {
+      y_min: Object.fromEntries(
+        input.species.map((species) => [
+          species.id,
+          { ...species.reservoir_concentration },
+        ]),
+      ),
+    },
+  };
+  return input;
+}
+
+function prescribedDarcy(input: ReturnType<typeof darcyFixture>) {
+  const flow = input.hydraulics;
+  if (!flow || flow.version !== 'structured-cell-prescribed-darcy-v1')
+    throw new Error('Expected prescribed Darcy fixture');
+  return flow;
+}
+
+function solvedDarcyFixture(dimension: 2 | 3 = 2) {
+  const input = darcyFixture(dimension);
+  const flow = prescribedDarcy(input);
+  input.hydraulics = {
+    version: 'structured-cell-darcy-pressure-solve-v1',
+    dynamic_viscosity: flow.dynamic_viscosity,
+    permeability_by_region: flow.permeability_by_region,
+    boundary_pressure: flow.boundary_pressure,
+    impermeable_faces: flow.impermeable_faces,
+    inlet_concentrations: flow.inlet_concentrations,
   };
   return input;
 }
@@ -134,5 +195,75 @@ describe('restricted structured spatial cell admission', () => {
       mutate(input);
       expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
     }
+  });
+  it.each([2, 3] as const)(
+    'admits source-backed conservative prescribed Darcy flow in %iD',
+    (dimension) => {
+      const input = darcyFixture(dimension);
+      expect(structuredCellInputSchema.parse(input).hydraulics).toEqual(
+        input.hydraulics,
+      );
+      const graph = compileStructuredCellEquationGraph(input);
+      expect(graph.nodes[0].parameter_paths).toContain(
+        'hydraulics.permeability_by_region',
+      );
+      expect(graph.nodes[0].boundary).toContain('no pressure solve');
+    },
+  );
+  it('rejects incomplete, divergent and ambiguous prescribed Darcy inputs', () => {
+    const mutations: ((input: ReturnType<typeof darcyFixture>) => void)[] = [
+      (input) => prescribedDarcy(input).cell_pressure.pop(),
+      (input) => {
+        prescribedDarcy(input).cell_pressure[0].value += 1;
+      },
+      (input) => {
+        delete input.hydraulics!.permeability_by_region.anode;
+      },
+      (input) => {
+        input.hydraulics!.dynamic_viscosity.unit = 'Pa';
+      },
+      (input) => {
+        input.hydraulics!.impermeable_faces.push('y_min');
+      },
+      (input) => {
+        input.hydraulics!.inlet_concentrations = {};
+      },
+      (input) => {
+        input.geometry.layers[1].kind = 'membrane';
+      },
+      (input) => {
+        input.advection = prescribedFixture().advection;
+      },
+    ];
+    for (const mutate of mutations) {
+      const input = darcyFixture();
+      mutate(input);
+      expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
+    }
+  });
+  it.each([2, 3] as const)(
+    'admits boundary-driven finite-volume Darcy pressure in %iD',
+    (dimension) => {
+      const input = solvedDarcyFixture(dimension);
+      const parsed = structuredCellInputSchema.parse(input);
+      expect(parsed.hydraulics?.version).toBe(
+        'structured-cell-darcy-pressure-solve-v1',
+      );
+      const graph = compileStructuredCellEquationGraph(parsed);
+      expect(graph.nodes[0].boundary).toContain('pressure solve');
+      expect(graph.nodes[0].parameter_paths).not.toContain(
+        'hydraulics.cell_pressure',
+      );
+    },
+  );
+  it('rejects an unanchored Darcy pressure solve', () => {
+    const input = solvedDarcyFixture();
+    const flow = input.hydraulics!;
+    if (flow.version !== 'structured-cell-darcy-pressure-solve-v1')
+      throw new Error('Expected solved Darcy fixture');
+    flow.boundary_pressure = {};
+    flow.impermeable_faces = ['y_min', 'y_max'];
+    flow.inlet_concentrations = {};
+    expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
   });
 });

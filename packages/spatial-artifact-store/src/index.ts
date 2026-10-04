@@ -14,6 +14,15 @@ import {
 import { z } from 'zod';
 
 export { LocalSpatialFieldArtifactStore } from './field-store';
+export { spatialArtifactStoreConfigFromEnvironment } from './config';
+export {
+  FilesystemSpatialArtifactProvider,
+  type ArtifactRecoveryReport,
+  type DurableSpatialArtifactProvider,
+  type FilesystemArtifactProviderOptions,
+  type VerifiedArtifactRead,
+  type VerifiedArtifactWrite,
+} from './object-provider';
 
 const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const meshUriSchema = z

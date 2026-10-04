@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateLayeredScaleTransfer,
   solveLinearStackNetwork,
+  solveStackHydraulicNetwork,
 } from '@metrev/electrochem-models';
 import {
   scaleTransferInputSchema,
   stackNetworkInputSchema,
+  stackHydraulicNetworkInputSchema,
   type StackNetworkInput,
+  type StackHydraulicNetworkInput,
   type ScaleTransferInput,
 } from '@metrev/domain-contracts';
 import { MemoryEvaluationRepository } from '@metrev/database';
@@ -78,7 +81,71 @@ function transfer(): ScaleTransferInput {
     target_temperature: q(300, 'K'),
   });
 }
+function hydraulicNetwork(): StackHydraulicNetworkInput {
+  return stackHydraulicNetworkInputSchema.parse({
+    contract_version: 'stack-hydraulic-network-input-v1',
+    model_id: 'stack-hydraulic-network-development-v1',
+    nodes: ['reservoir', 'inlet'],
+    reference_node: 'reservoir',
+    reference_pressure: q(101_325, 'Pa'),
+    branches: [
+      {
+        id: 'pump',
+        from: 'reservoir',
+        to: 'inlet',
+        kind: 'pump',
+        hydraulic_resistance: q(0.1, 'Pa*s/m3'),
+        pressure_rise: q(3, 'Pa'),
+      },
+      {
+        id: 'cell-a',
+        from: 'inlet',
+        to: 'reservoir',
+        kind: 'cell_channel',
+        hydraulic_resistance: q(1, 'Pa*s/m3'),
+        cell_run_ref: 'test-fixture://cell-a',
+      },
+      {
+        id: 'cell-b',
+        from: 'inlet',
+        to: 'reservoir',
+        kind: 'cell_channel',
+        hydraulic_resistance: q(2, 'Pa*s/m3'),
+        cell_run_ref: 'test-fixture://cell-b',
+      },
+    ],
+  });
+}
 describe('separate scale numerical development', () => {
+  it('solves a source-bound stack hydraulic graph and quantifies cell maldistribution', () => {
+    const result = solveStackHydraulicNetwork(hydraulicNetwork());
+    expect(result.node_pressure_Pa.inlet - 101_325).toBeCloseTo(60 / 23, 9);
+    expect(
+      result.branches.find((branch) => branch.id === 'cell-a')!.flow_m3_s,
+    ).toBeCloseTo(60 / 23, 9);
+    expect(
+      result.branches.find((branch) => branch.id === 'cell-b')!.flow_m3_s,
+    ).toBeCloseTo(30 / 23, 9);
+    expect(result.distribution.cell_flow_coefficient_of_variation).toBeCloseTo(
+      1 / 3,
+      9,
+    );
+    expect(result.conservation.passed).toBe(true);
+    expect(result.decision_eligible).toBe(false);
+  });
+  it('rejects unreferenced cells, undriven networks and wrong hydraulic units', () => {
+    const missingCell = hydraulicNetwork();
+    delete missingCell.branches[1].cell_run_ref;
+    expect(() => solveStackHydraulicNetwork(missingCell)).toThrow();
+    const noPump = hydraulicNetwork();
+    noPump.branches = noPump.branches.filter(
+      (branch) => branch.kind !== 'pump',
+    );
+    expect(() => solveStackHydraulicNetwork(noPump)).toThrow();
+    const wrongUnit = hydraulicNetwork();
+    wrongUnit.branches[0].hydraulic_resistance.unit = 'ohm';
+    expect(() => solveStackHydraulicNetwork(wrongUnit)).toThrow();
+  });
   it('reproduces series and parallel circuits with KCL and electrical conservation', () => {
     const one = solveLinearStackNetwork(network());
     expect(one.node_potential_V.terminal).toBeCloseTo(0.9, 12);
@@ -219,6 +286,17 @@ describe('separate scale numerical development', () => {
       });
       expect(mapped.statusCode).toBe(200);
       expect(mapped.json().value.source_kind).toBe('modeled');
+      const hydraulic = await app.inject({
+        method: 'POST',
+        url: '/api/modeling/stack-hydraulic-network',
+        payload: hydraulicNetwork(),
+      });
+      expect(hydraulic.statusCode).toBe(200);
+      expect(hydraulic.json()).toMatchObject({
+        status: 'converged',
+        scope: 'stack_hydraulic_network_development',
+        decision_eligible: false,
+      });
       expect(
         (
           await app.inject({

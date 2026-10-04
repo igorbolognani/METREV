@@ -30,6 +30,49 @@ import { structuredCellFixture } from '../fixtures/structured-cell';
 
 // This gate really invokes the native numerical process: numpy/scipy are required.
 describe('structured cell native worker and authenticated artifacts', () => {
+  it('validates refinement run IDs and scopes lookups to the authenticated owner', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    let role: 'ANALYST' | 'VIEWER' = 'ANALYST';
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      spatialSimulationRunRepository: repository,
+      rateLimit: false,
+      sessionResolver: async () => ({
+        userId: 'refinement-owner',
+        email: 'refinement@example.invalid',
+        role,
+        sessionId: 'refinement-session',
+        sessionToken: 'refinement-token',
+      }),
+    });
+    try {
+      const url = '/api/spatial-simulations/medium/refinement-evidence';
+      const duplicate = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'medium'] },
+      });
+      expect(duplicate.statusCode).toBe(400);
+
+      const missing = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'fine'] },
+      });
+      expect(missing.statusCode).toBe(404);
+
+      role = 'VIEWER';
+      const viewer = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'fine'] },
+      });
+      expect(viewer.statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('keeps queued v2 runs on their matching executor and rejects them clearly on v3', async () => {
     const input = structuredCellFixture(2);
     const repository = new MemorySpatialSimulationRunRepository();
@@ -77,7 +120,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v4',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v6',
       ),
     });
   });
@@ -89,12 +132,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v4',
+      runtimeVersion: 'structured-cell-process-v6',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v4, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -102,7 +145,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v4, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -119,13 +162,15 @@ describe('structured cell native worker and authenticated artifacts', () => {
   });
 
   it.each([
-    [2, false, false],
-    [3, false, false],
-    [2, true, false],
-    [2, false, true],
+    [2, false, false, false],
+    [3, false, false, false],
+    [2, true, false, false],
+    [2, false, true, false],
+    [2, false, false, true],
+    [3, false, false, true],
   ] as const)(
-    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s',
-    async (dimension, nonconverged, advection) => {
+    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s, solved Darcy=%s',
+    async (dimension, nonconverged, advection, solveDarcy) => {
       const root = await mkdtemp(join(tmpdir(), 'structured-cell-test-'));
       const store = new LocalSpatialFieldArtifactStore({
         rootDirectory: join(root, 'fields'),
@@ -155,6 +200,38 @@ describe('structured cell native worker and authenticated artifacts', () => {
           boundary_normal_velocity: faces.boundary.map((face) =>
             velocity(face.axis === 1 ? face.sign * 1e-6 : 0),
           ),
+          inlet_concentrations: {
+            y_min: Object.fromEntries(
+              input.species.map((species) => [
+                species.id,
+                species.reservoir_concentration,
+              ]),
+            ),
+          },
+        };
+      }
+      if (solveDarcy) {
+        input.geometry.layers[1].kind = 'separator';
+        const sourced = (value: number, unit: string) => ({
+          value,
+          unit,
+          source_kind: 'test_fixture' as const,
+          source_ref: 'synthetic:boundary-driven-darcy-pressure-solve',
+        });
+        input.hydraulics = {
+          version: 'structured-cell-darcy-pressure-solve-v1',
+          dynamic_viscosity: sourced(1e-3, 'Pa*s'),
+          permeability_by_region: Object.fromEntries(
+            input.geometry.layers.map((layer) => [
+              layer.tag,
+              sourced(1e-12, 'm2'),
+            ]),
+          ),
+          boundary_pressure: {
+            y_min: sourced(10, 'Pa'),
+            y_max: sourced(9, 'Pa'),
+          },
+          impermeable_faces: dimension === 3 ? ['z_min', 'z_max'] : [],
           inlet_concentrations: {
             y_min: Object.fromEntries(
               input.species.map((species) => [
@@ -198,7 +275,9 @@ describe('structured cell native worker and authenticated artifacts', () => {
           failed: nonconverged ? 1 : 0,
         });
         expect(snapshot?.status).toBe(nonconverged ? 'failed' : 'completed');
-        expect(snapshot?.result?.fields).toHaveLength(6);
+        expect(snapshot?.result?.fields).toHaveLength(
+          solveDarcy ? (dimension === 2 ? 9 : 10) : 6,
+        );
         expect(snapshot?.result?.contract_version).toBe(
           'spatial-simulation-result-v3',
         );
@@ -271,9 +350,27 @@ describe('structured cell native worker and authenticated artifacts', () => {
             'prescribed_incompressible_upwind_species_advection',
           ),
         ).toBe(advection);
-        expect(report.verification_status.mesh_refinement).toBe(
-          'not_assessed_for_this_run',
-        );
+        if (solveDarcy) {
+          expect(
+            snapshot?.result?.fields.map((field) => field.field_id),
+          ).toEqual(
+            expect.arrayContaining([
+              'darcy_pressure',
+              'darcy_velocity_x',
+              'darcy_velocity_y',
+              ...(dimension === 3 ? ['darcy_velocity_z'] : []),
+            ]),
+          );
+          expect(
+            snapshot?.result?.conservation_residuals.find(
+              (entry) => entry.balance_id === 'darcy_local_volume',
+            ),
+          ).toMatchObject({ passed: true, kind: 'fluid_volume' });
+        }
+        expect(report.verification_status.mesh_refinement).toBe('unavailable');
+        expect(
+          report.verification_status.mesh_refinement_unavailable_reason,
+        ).toBe('three_completed_runs_required');
         let actor = 'cell-owner';
         let tamperArtifacts = false;
         const app = await buildApp({

@@ -10,6 +10,7 @@ import {
   compileStructuredCellEquationGraph,
   structuredCellEquationGraphSchema,
 } from './structured-cell-equation-graph';
+import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence-schema';
 import {
   spatialRuntimeInputSchema,
   spatialRuntimeInputSha256,
@@ -572,6 +573,8 @@ export const spatialSimulationResultSchema = z
       structuredCellFieldObservablesSchema.optional(),
     structured_cell_field_reduction:
       structuredCellFieldReductionSchema.optional(),
+    structured_cell_mesh_refinement_evidence:
+      structuredCellMeshRefinementEvidenceSchema.optional(),
   })
   .strict()
   .superRefine((result, context) => {
@@ -678,6 +681,17 @@ export const spatialSimulationResultSchema = z
           );
       }
     }
+    const refinementEvidence = result.structured_cell_mesh_refinement_evidence;
+    if (
+      refinementEvidence &&
+      (result.contract_version !== 'spatial-simulation-result-v3' ||
+        result.model_id !== 'structured-cell-supporting-electrolyte-v1' ||
+        refinementEvidence.current_run_id !== result.run_id)
+    )
+      issue(
+        ['structured_cell_mesh_refinement_evidence'],
+        'Mesh-refinement evidence must identify this structured-cell result-v3 run',
+      );
     if (
       result.contract_version === 'spatial-simulation-result-v1' &&
       result.linear_solver_diagnostics !== undefined
@@ -1022,7 +1036,11 @@ export function spatialSimulationResultForInputSchema(
       )
         issue('Cell mesh differs from its geometry request');
       const expected = [
-        ...(result.runtime_version === 'structured-cell-process-v4'
+        ...([
+          'structured-cell-process-v4',
+          'structured-cell-process-v5',
+          'structured-cell-process-v6',
+        ].includes(result.runtime_version)
           ? ['faradaic_current_density']
           : []),
         ...('hydraulics' in input && input.hydraulics
@@ -1075,7 +1093,11 @@ export function spatialSimulationResultForInputSchema(
           issue('Invalid cell field meaning or unit');
       const observables = result.structured_cell_field_observables;
       if (
-        result.runtime_version === 'structured-cell-process-v4' &&
+        [
+          'structured-cell-process-v4',
+          'structured-cell-process-v5',
+          'structured-cell-process-v6',
+        ].includes(result.runtime_version) &&
         !result.structured_cell_field_reduction
       )
         issue(

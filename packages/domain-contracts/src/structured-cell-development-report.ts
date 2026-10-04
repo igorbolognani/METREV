@@ -14,6 +14,7 @@ import {
   structuredCellFieldReductionSchema,
   assertStructuredCellFieldReductionBinding,
 } from './structured-cell-field-reduction';
+import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence-schema';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();
@@ -136,6 +137,8 @@ export const structuredCellRunViewSchema = z
           structuredCellFieldObservablesSchema.optional(),
         structured_cell_field_reduction:
           structuredCellFieldReductionSchema.optional(),
+        structured_cell_mesh_refinement_evidence:
+          structuredCellMeshRefinementEvidenceSchema.optional(),
         conservation_residuals: z.array(balance).min(1).max(64),
         convergence: z.array(convergence).min(1).max(32),
         cell_circuit: circuit,
@@ -194,6 +197,11 @@ export const structuredCellRunViewSchema = z
         );
       }
     }
+    if (
+      result.structured_cell_mesh_refinement_evidence &&
+      result.structured_cell_mesh_refinement_evidence.current_run_id !== run.id
+    )
+      invalid('Mesh-refinement evidence identifies a different run');
     if (observables) {
       const mesh = structuredCellTopology(input);
       const byId = new Map(result.fields.map((f) => [f.field_id, f]));
@@ -344,7 +352,12 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     equation_graph: run.result.equation_graph ?? null,
     numerical_options: run.input_snapshot.numerics,
     verification_status: {
-      mesh_refinement: 'not_assessed_for_this_run',
+      mesh_refinement:
+        run.result.structured_cell_mesh_refinement_evidence?.status ??
+        'unavailable',
+      mesh_refinement_unavailable_reason:
+        run.result.structured_cell_mesh_refinement_evidence
+          ?.unavailable_reason ?? 'evidence_record_not_persisted',
       time_refinement: 'not_applicable_steady',
       benchmark_reference: 'tests/contracts/test_spatial_cell_verification.py',
     },
@@ -374,6 +387,8 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     field_extrema: run.result.structured_cell_field_observables ?? null,
     modeled_field_observations:
       run.result.structured_cell_field_reduction ?? null,
+    mesh_refinement_evidence:
+      run.result.structured_cell_mesh_refinement_evidence ?? null,
     disabled_physics: [
       ...('hydraulics' in run.input_snapshot && run.input_snapshot.hydraulics
         ? []
@@ -449,7 +464,41 @@ export function renderStructuredCellDevelopmentReport(
       `Produced: ${report.run.produced_at}. Solver: ${cell(report.run.solver_version)}. Runtime: ${cell(report.run.runtime_version)}.`,
       `Input SHA-256: ${report.run.input_sha256}. Mesh SHA-256: ${report.geometry.mesh.sha256}. Geometry request SHA-256: ${report.geometry.request_sha256}.`,
       `Geometry: ${cell(report.geometry.geometry_version)}; ${report.geometry.cell_count} cells; lengths ${report.geometry.lengths_m.join(' × ')} m; out-of-plane depth ${report.geometry.out_of_plane_depth_m ?? 'not applicable'} m.`,
-      `Mesh refinement: ${report.verification_status.mesh_refinement}. Time refinement: ${report.verification_status.time_refinement}. Enabled physics: ${report.enabled_physics.join(', ')}.`,
+      `Mesh refinement: ${report.verification_status.mesh_refinement}${report.verification_status.mesh_refinement_unavailable_reason ? ` (${report.verification_status.mesh_refinement_unavailable_reason})` : ''}. Time refinement: ${report.verification_status.time_refinement}. Enabled physics: ${report.enabled_physics.join(', ')}.`,
+      '## Mesh-refinement evidence',
+      ...(report.mesh_refinement_evidence
+        ? report.mesh_refinement_evidence.status === 'assessed'
+          ? [
+              'This is mathematical software verification. Error values are differences to the finest computed solution, not exact or empirical errors.',
+              `Compared runs: ${report.mesh_refinement_evidence.compared_run_ids.join(', ')}. Characteristic refinement ratio: ${report.mesh_refinement_evidence.refinement_ratio}.`,
+              rows([
+                [
+                  'Observable',
+                  'Unit',
+                  'Coarse error',
+                  'Medium error',
+                  'Medium relative error',
+                  'Observed order',
+                  'Order unavailable reason',
+                ],
+                ['---', '---', '---', '---', '---', '---', '---'],
+                ...report.mesh_refinement_evidence.observables.map(
+                  (observable) => [
+                    observable.observable_id,
+                    observable.unit,
+                    observable.estimated_discretization_error.coarse_absolute,
+                    observable.estimated_discretization_error.medium_absolute,
+                    observable.estimated_discretization_error.medium_relative,
+                    observable.observed_order,
+                    observable.observed_order_unavailable_reason,
+                  ],
+                ),
+              ]),
+            ]
+          : [
+              `Unavailable: ${report.mesh_refinement_evidence.unavailable_reason}. Compared runs: ${report.mesh_refinement_evidence.compared_run_ids.join(', ') || 'none'}.`,
+            ]
+        : ['Unavailable: evidence_record_not_persisted.']),
       '## Numerical diagnostics',
       rows([
         ['Solver', 'Status', 'Termination', 'Final scaled residual'],

@@ -10,9 +10,9 @@ Convergence requires both the admitted scaled nonlinear tolerance and local/glob
 
 ## Runtime/protocol version and queued-run compatibility
 
-The numerical solver identifier remains `structured-cell-fv-v1`; the separately versioned process protocol is now `structured-cell-process-v4`. Version 4 adds the actual volumetric `faradaic_current_density` field in A/m³ and admits optional explicitly prescribed convective species transport. Without advection, the previous equations are retained; the new field is derived from the solved source rather than an inferred surface current density.
+The numerical solver identifier remains `structured-cell-fv-v1`; the separately versioned process protocol is `structured-cell-process-v6`. Version 4 added volumetric `faradaic_current_density` and prescribed convective transport; version 5 added prescribed Darcy face flow; version 6 adds a finite-volume Darcy pressure solve from source-backed transverse boundary pressures and regional permeability. Older protocol results remain readable, while the active executor claims only runs queued for its exact runtime version.
 
-Queue claims match both the persisted solver and runtime versions exactly. A v4 worker ignores runs queued with `structured-cell-process-v2` or `structured-cell-process-v3`. Keep matching legacy executor/sidecar pairs deployed until their queues drain, or explicitly cancel a legacy run and create a v4 run from its immutable input using a new idempotency key. Never rewrite persisted version fields. The v4 executor rejects older directly supplied runs before starting the sidecar.
+Queue claims match both the persisted solver and runtime versions exactly. Keep matching legacy executor/sidecar pairs deployed until their queues drain, or explicitly cancel a legacy run and create a new run from its immutable input with a new idempotency key. Never rewrite persisted version fields. The v6 executor rejects older directly supplied runs before starting the sidecar.
 
 ## Explicit prescribed-flow transport
 
@@ -20,7 +20,13 @@ An optional `advection` block with version `structured-cell-prescribed-flow-v1` 
 
 Admission verifies local incompressible volume balance before solving. All membrane-incident faces and exterior collector faces require zero velocity. Diffusive boundaries remain separately and explicitly selected by `reservoir_faces`; omitted faces have zero diffusive flux. The conservative upwind flux uses sourced inlet states, solved outlet states and opposite contributions at each shared interior face. Species conservation diagnostics include the total diffusive and advective boundary flux. The analytic sparse Jacobian contains the upwind derivatives, and positivity-limited Newton remains unchanged.
 
-This is prescribed-flow transport, not a solved Stokes/Darcy cell hydraulic coupling. No pressure, water transport, membrane partition or flow regime is inferred. Synthetic tests cover forward/reverse flow, exact zero-flow reduction, constant-state preservation, analytic reaction/advection/diffusion refinement in 2D/3D (including z direction), high Peclet positivity, directional Jacobian, sourced input rejection and retained failed diagnostics. These are mathematical checks, not empirical validation.
+This mode prescribes velocity; it does not solve Stokes or Darcy pressure. No pressure, membrane water transport, membrane partition or flow regime is inferred. Synthetic tests cover forward/reverse flow, exact zero-flow reduction, constant-state preservation, analytic reaction/advection/diffusion refinement in 2D/3D (including z direction), high Peclet positivity, directional Jacobian, sourced input rejection and retained failed diagnostics. These are mathematical checks, not empirical validation.
+
+## Darcy pressure and cell transport
+
+The `hydraulics` contract supports two explicit modes. `structured-cell-prescribed-darcy-v1` evaluates face flow from source-backed pressure at every ordered cell plus transverse boundary pressures. `structured-cell-darcy-pressure-solve-v1` assembles the orthogonal finite-volume conductance matrix from positive, source-backed regional permeability, dynamic viscosity, boundary pressures and impermeable faces, then solves for cell-center pressure. At least one transverse pressure boundary anchors the solve. There are no volumetric hydraulic sources.
+
+Both modes use the same face transmissibilities, check local incompressible volume balance, require sourced concentrations for every inflowing boundary, and pass the resulting Darcy velocity into the conservative upwind species flux. The solved pressure and reconstructed velocity components are persisted as cell fields and included in the modeled-field report. The pressure-solved mode is a restricted, steady, single-phase Darcy calculation. It does not implement bulk-to-porous interface laws, Brinkman/Navier–Stokes flow, variable/tensor permeability, membrane water transport, or a full-cell hydraulic product solver. Linear homogeneous 2D/3D cases verify the boundary-driven solve; this is mathematical software verification, not empirical validation.
 
 ## Explicit development configuration
 
@@ -37,9 +43,9 @@ The default API remains closed to spatial execution until an operator supplies a
 
 ## Verification and remaining gates
 
-Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Legacy v2 worker/process/container/API checks remain compatibility regressions; v4 workers do not claim v2/v3 queue items.
+Focused checks: native equilibrium in 2D/3D, analytic directional Jacobian, extruded physical current consistency, MEC input-energy sign, prescribed and boundary-solved Darcy flow in 2D/3D, local volume balance, nonconvergence retention, input rejection, real subprocess worker persistence and authenticated artifact download. Legacy process/container/API checks remain compatibility regressions; workers do not claim runs queued for another runtime version.
 
-These checks are mathematical software verification only. A synthetic nonuniform 18/72/288-cell study and tolerance sensitivity are checked in `tests/contracts/test_spatial_cell_verification.py`; larger-mesh robustness, solved hydraulic cell-flow coupling, full electroneutral ionic closure, selective charged-membrane interfaces, independent empirical validation, deployment with durable production artifact storage, cell-specific PostgreSQL and browser gates are implemented in CI and require successful runs on their exact branch head. General roadmap capabilities are not marked complete. No merge is part of this batch.
+These checks are mathematical software verification only. A synthetic nonuniform 18/72/288-cell study and tolerance sensitivity are checked in `tests/contracts/test_spatial_cell_verification.py`; larger-mesh robustness, bulk/porous hydraulic interface coupling, full electroneutral ionic closure, selective charged-membrane interfaces, independent empirical validation and durable production artifact storage remain open. Cell-specific PostgreSQL and browser gates require successful runs on the exact PR head. General roadmap capabilities are not marked complete. No merge is part of this batch.
 
 ### Batch checkpoint, 2026-10-01
 

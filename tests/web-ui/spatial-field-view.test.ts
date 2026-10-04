@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { structuredCellTopology } from '@metrev/domain-contracts';
 import { structuredCellFixture } from '../fixtures/structured-cell';
 import {
+  cellVectorField,
   cellGridIndex,
   cellLineProfile,
   fieldProfileCSV,
   fieldSliceCells,
+  vectorAtCell,
+  vectorSliceCells,
+  vectorSliceCSV,
 } from '../../apps/web-ui/src/lib/spatial-field-view';
 
 function fixture(dimension: 2 | 3 = 3) {
@@ -105,5 +109,97 @@ describe('verified numerical field views', () => {
     expect(() => fieldSliceCells(mesh, field, 'XZ', 0)).toThrow();
     expect(() => fieldSliceCells(mesh, field, 'XY', 1)).toThrow();
     expect(() => cellLineProfile(mesh, field, 0, 2)).toThrow();
+  });
+
+  it('composes only complete velocity components and cuts quiver samples in physical planes', () => {
+    const { mesh, field } = fixture();
+    const components = ['x', 'y', 'z'].map((axis, axisIndex) => ({
+      ...field,
+      id: `darcy_velocity_${axis}`,
+      unit: 'm/s',
+      values: field.cells.map((cell) =>
+        axisIndex === 0
+          ? mesh.centers_m[cell][0]
+          : axisIndex === 1
+            ? -2 * mesh.centers_m[cell][1]
+            : 3 * mesh.centers_m[cell][2],
+      ),
+    }));
+    const vector = cellVectorField('darcy_velocity', 3, components);
+    const samples = vectorSliceCells(mesh, vector, 'XZ', 1, 2);
+    expect(samples.length).toBeGreaterThan(0);
+    expect(
+      samples.every(
+        (sample) =>
+          cellGridIndex(mesh, sample.cell)[1] === 1 &&
+          mesh.region_index[sample.cell] === 2,
+      ),
+    ).toBe(true);
+    const first = samples[0];
+    expect(first.components).toEqual([
+      mesh.centers_m[first.cell][0],
+      -2 * mesh.centers_m[first.cell][1],
+      3 * mesh.centers_m[first.cell][2],
+    ]);
+    expect(first.magnitude).toBeCloseTo(Math.hypot(...first.components));
+    expect(vectorAtCell(vector, first.cell)).toEqual({
+      components: first.components,
+      magnitude: first.magnitude,
+    });
+  });
+
+  it('exports vector components, magnitude, slice identity and component hashes', () => {
+    const { input, mesh, field } = fixture(2);
+    const vector = cellVectorField('darcy_velocity', 2, [
+      { ...field, id: 'darcy_velocity_x', unit: 'm/s' },
+      {
+        ...field,
+        id: 'darcy_velocity_y',
+        unit: 'm/s',
+        values: field.values.map((value) => -value),
+      },
+    ]);
+    const csv = vectorSliceCSV({
+      mesh,
+      field: vector,
+      plane: 'XY',
+      slice: 0,
+      region: null,
+      domainTags: input.geometry.layers.map((layer) => layer.tag),
+      componentHashes: { x: 'd'.repeat(64), y: 'e'.repeat(64) },
+      binding: {
+        run_id: 'run-vector',
+        input_sha256: 'a'.repeat(64),
+        mesh_sha256: 'b'.repeat(64),
+        numerical_status: 'completed',
+      },
+    });
+    const rows = csv.trim().split('\r\n');
+    expect(rows).toHaveLength(mesh.centers_m.length + 1);
+    expect(rows[0]).toContain('"component_x"');
+    expect(rows[0]).toContain('"magnitude"');
+    expect(rows[1]).toContain('"XY"');
+    expect(rows[1]).toContain('"modeled_development_result"');
+    expect(rows[1]).toContain('"' + 'd'.repeat(64) + '"');
+    expect(rows[1]).toContain('"' + 'e'.repeat(64) + '"');
+  });
+
+  it('rejects incomplete and topologically incompatible vector components', () => {
+    const { field } = fixture(2);
+    expect(() =>
+      cellVectorField('darcy_velocity', 2, [
+        { ...field, id: 'darcy_velocity_x', unit: 'm/s' },
+      ]),
+    ).toThrow(/Missing darcy_velocity_y/);
+    expect(() =>
+      cellVectorField('darcy_velocity', 2, [
+        { ...field, id: 'darcy_velocity_x', unit: 'm/s' },
+        {
+          ...field,
+          id: 'darcy_velocity_y',
+          unit: 'cm/s',
+        },
+      ]),
+    ).toThrow(/incompatible units or topology/);
   });
 });

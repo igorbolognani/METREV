@@ -37,7 +37,10 @@ export {
   resolveCaseSpatialComposition,
   RESTRICTED_CELL_PHYSICS,
 } from './case-spatial-composition';
-export type { CaseSpatialComposition } from './case-spatial-composition';
+export type {
+  CaseSpatialComposition,
+  CaseSpatialStackSelection,
+} from './case-spatial-composition';
 export { PHYSICS_MODULES, composeModules } from './physics-modules';
 export {
   compileElectrochemicalModel,
@@ -68,6 +71,25 @@ export type {
   MembraneIonInput,
   MembraneIonResult,
 } from './membrane-ion-1d';
+export {
+  CHARGED_INTERFACE_REACTION_KERNEL,
+  assembleChargedInterfaceFlux,
+  assembleDonnanInterface,
+  assembleHomogeneousReactions,
+  solveDonnanInterface,
+} from './charged-interface-reaction';
+export type {
+  ChargedSpeciesContract,
+  UnsupportedChargedEffects,
+  DonnanInterfaceInput,
+  DonnanInterfaceSolution,
+  ChargedInterfaceFluxInput,
+  ChargedInterfaceFluxResult,
+  HomogeneousReactionContract,
+  HomogeneousReactionInput,
+  HomogeneousReactionResult,
+  LocalResidualJacobian,
+} from './charged-interface-reaction';
 export { COUPLED_CELL_1D_SOURCES, solveCoupledCell1d } from './coupled-cell-1d';
 export type {
   CoupledCell1dInput,
@@ -494,4 +516,5 @@ export function runConfiguredElectrochemicalModel(
 }
 
 export { solveLinearStackNetwork } from './stack-network';
+export { solveStackHydraulicNetwork } from './stack-hydraulic-network';
 export { calculateLayeredScaleTransfer } from './scale-transfer';

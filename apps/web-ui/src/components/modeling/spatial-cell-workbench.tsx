@@ -28,6 +28,12 @@ import {
   compareSpatialRunSummaries,
   type SpatialRunComparison,
 } from '@/lib/spatial-run-comparison';
+import {
+  cellVectorField,
+  structuredCellVectorComponentIds,
+  type CartesianAxis,
+  type CellVectorField,
+} from '@/lib/spatial-field-view';
 
 export function SpatialCellWorkbench({
   initialEvaluationId = '',
@@ -51,6 +57,12 @@ export function SpatialCellWorkbench({
     digest: string;
     value: CellField;
   } | null>(null);
+  const [vectorAsset, setVectorAsset] = useState<{
+    runId: string;
+    signature: string;
+    value: CellVectorField;
+    hashes: Partial<Record<CartesianAxis, string>>;
+  } | null>(null);
   const [comparisonRunId, setComparisonRunId] = useState('');
   const [comparisonBusy, setComparisonBusy] = useState(false);
   const [comparisonError, setComparisonError] = useState('');
@@ -68,6 +80,26 @@ export function SpatialCellWorkbench({
     fieldAsset?.runId === run?.id &&
     fieldAsset?.digest === manifest?.artifact.sha256
       ? (fieldAsset?.value ?? null)
+      : null;
+  const vectorComponentManifests =
+    run?.result && selected.startsWith('darcy_velocity_')
+      ? structuredCellVectorComponentIds(run.dimension).map(
+          ({ axis, fieldId }) => ({
+            axis,
+            manifest: run.result!.fields.find(
+              (field) => field.field_id === fieldId,
+            ),
+          }),
+        )
+      : [];
+  const vectorSignature = vectorComponentManifests
+    .map(({ manifest }) => manifest?.artifact.sha256 ?? '')
+    .join(':');
+  const vectorData =
+    vectorAsset &&
+    vectorAsset.runId === run?.id &&
+    vectorAsset.signature === vectorSignature
+      ? vectorAsset
       : null;
   const active =
     run !== null && !['completed', 'failed', 'cancelled'].includes(run.status);
@@ -140,6 +172,68 @@ export function SpatialCellWorkbench({
       cancelled = true;
     };
   }, [run, selected, mesh]);
+  useEffect(() => {
+    setVectorAsset(null);
+    const components =
+      run?.result && selected.startsWith('darcy_velocity_')
+        ? structuredCellVectorComponentIds(run.dimension).map(
+            ({ axis, fieldId }) => ({
+              axis,
+              manifest: run.result!.fields.find(
+                (field) => field.field_id === fieldId,
+              ),
+            }),
+          )
+        : [];
+    if (
+      !run?.result ||
+      !mesh ||
+      !selected.startsWith('darcy_velocity_') ||
+      components.length !== run.dimension ||
+      components.some(({ manifest }) => !manifest)
+    )
+      return;
+    let cancelled = false;
+    void Promise.all(
+      components.map(async ({ axis, manifest }) => {
+        const resolved = manifest!;
+        const value = await fetchSpatialArtifact(
+          run.id,
+          resolved.field_id,
+          resolved.artifact.sha256,
+        );
+        return {
+          axis,
+          manifest: resolved,
+          field: readCellField(value, mesh, resolved, run),
+        };
+      }),
+    )
+      .then((components) => {
+        if (cancelled) return;
+        setVectorAsset({
+          runId: run.id,
+          signature: vectorSignature,
+          value: cellVectorField(
+            'darcy_velocity',
+            run.dimension,
+            components.map(({ field }) => field),
+          ),
+          hashes: Object.fromEntries(
+            components.map(({ axis, manifest }) => [
+              axis,
+              manifest.artifact.sha256,
+            ]),
+          ),
+        });
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(String(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [run, selected, mesh, vectorSignature]);
   async function act(action: () => Promise<StructuredCellRunView>) {
     setBusy(true);
     setError('');
@@ -485,6 +579,8 @@ export function SpatialCellWorkbench({
                   run={run}
                   mesh={mesh}
                   data={data}
+                  vectorData={vectorData?.value}
+                  vectorHashes={vectorData?.hashes}
                 />
               )}
               {run.result.cell_circuit && (

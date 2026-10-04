@@ -18,7 +18,10 @@ import { createPersistedCaseEvaluation } from '../../apps/api-server/src/service
 import { caseSnapshotSha256 } from '../../apps/api-server/src/services/case-spatial-evaluation';
 import { StructuredCellDevelopmentExecutor } from '../../packages/spatial-worker/src/structured-cell-executor';
 import { runSpatialSimulationWorkerCycle } from '../../packages/spatial-worker/src/worker';
-import { caseSpatialFixture } from '../fixtures/case-spatial';
+import {
+  caseSpatialFixture,
+  configureCaseSpatialDarcy,
+} from '../fixtures/case-spatial';
 
 const owner = {
   userId: 'case-cell-owner',
@@ -29,13 +32,14 @@ const owner = {
 };
 describe('persisted case spatial execution', () => {
   it.each([
-    [2, 'MFC', false],
-    [3, 'MFC', false],
-    [2, 'MEC', false],
-    [2, 'MFC', true],
+    [2, 'MFC', false, false],
+    [3, 'MFC', false, false],
+    [2, 'MEC', false, false],
+    [2, 'MFC', true, false],
+    [2, 'MFC', false, true],
   ] as const)(
-    'queues/reloads %sD %s diagnostics with failure=%s',
-    async (dimension, system, failed) => {
+    'queues/reloads %sD %s diagnostics with failure=%s and Darcy=%s',
+    async (dimension, system, failed, darcy) => {
       const root = await mkdtemp(join(tmpdir(), 'metrev-case-cell-'));
       const store = new LocalSpatialFieldArtifactStore({
         rootDirectory: join(root, 'fields'),
@@ -60,6 +64,7 @@ describe('persisted case spatial execution', () => {
       });
       try {
         const { rawInput, request } = caseSpatialFixture(dimension, system);
+        if (darcy) configureCaseSpatialDarcy(request);
         const evaluation = await createPersistedCaseEvaluation({
           rawInput,
           actor: owner,
@@ -78,6 +83,15 @@ describe('persisted case spatial execution', () => {
         expect(plan.statusCode).toBe(200);
         expect(plan.json().status).toBe('ready');
         const bound = plan.json().resolution.input;
+        expect(plan.json().resolution.stack_selections).toHaveLength(3);
+        if (darcy) {
+          expect(plan.json().resolution.enabled_physics).toContain(
+            'hydraulics',
+          );
+          expect(
+            plan.json().resolution.equation_graph.nodes[0].parameter_paths,
+          ).toContain('hydraulics.boundary_pressure');
+        }
         const reordered = structuredClone(bound);
         for (const layer of reordered.geometry.layers)
           layer.diffusivity = {
@@ -141,6 +155,20 @@ describe('persisted case spatial execution', () => {
         });
         expect(view.statusCode).toBe(200);
         const parsed = structuredCellRunViewSchema.parse(view.json().run);
+        if (darcy) {
+          expect(parsed.result?.fields.map((field) => field.field_id)).toEqual(
+            expect.arrayContaining([
+              'darcy_pressure',
+              'darcy_velocity_x',
+              'darcy_velocity_y',
+            ]),
+          );
+          expect(
+            parsed.result?.conservation_residuals.find(
+              (entry) => entry.balance_id === 'darcy_local_volume',
+            ),
+          ).toMatchObject({ passed: true, kind: 'fluid_volume' });
+        }
         expect(parsed.result?.equation_graph).toEqual(
           plan.json().resolution.equation_graph,
         );
@@ -162,6 +190,13 @@ describe('persisted case spatial execution', () => {
             ? 'failed_run_diagnostics'
             : 'modeled_development_result',
         });
+        if (darcy)
+          expect(report.json().enabled_physics).toEqual(
+            expect.arrayContaining([
+              'steady_heterogeneous_porous_darcy',
+              'darcy_upwind_species_advection',
+            ]),
+          );
         const tampered = structuredClone(parsed);
         tampered.result!.equation_graph!.nodes[0].boundary = 'forged';
         expect(() => structuredCellRunViewSchema.parse(tampered)).toThrow();
@@ -236,7 +271,7 @@ describe('persisted case spatial execution', () => {
       const base = `/api/evaluations/${evaluation.evaluation_id}/spatial-simulations`;
       for (const [payload, status] of [
         [{ ...request, input: undefined }, 'insufficient_data'],
-        [{ ...request, required_physics: ['hydraulics'] }, 'not_implemented'],
+        [{ ...request, required_physics: ['hydraulics'] }, 'insufficient_data'],
       ] as const) {
         const res = await app.inject({
           method: 'POST',
@@ -292,5 +327,42 @@ describe('persisted case spatial execution', () => {
       caseSnapshotSha256({ a: [1, 2], b: { a: 2, z: 1 } }),
     );
     expect(caseSnapshotSha256([1, 2])).not.toBe(caseSnapshotSha256([2, 1]));
+  });
+  it('canonicalizes component mappings before hashing and persistence', async () => {
+    const repository = new MemoryEvaluationRepository();
+    const runs = new MemorySpatialSimulationRunRepository();
+    const { rawInput, request } = caseSpatialFixture();
+    const evaluation = await createPersistedCaseEvaluation({
+      rawInput,
+      actor: owner,
+      evaluationRepository: repository,
+      logger: { warn: vi.fn() },
+      environment: 'test',
+      simulationMode: 'disabled',
+    });
+    const app = await buildApp({
+      repository,
+      spatialSimulationRunRepository: runs,
+      rateLimit: false,
+      sessionResolver: async () => owner,
+    });
+    try {
+      request.component_domains!.reverse();
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/evaluations/${evaluation.evaluation_id}/spatial-simulations/plan`,
+        payload: request,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(
+        response.json().resolution.input.case_context.component_domains,
+      ).toEqual([
+        expect.objectContaining({ domain_tag: 'anode' }),
+        expect.objectContaining({ domain_tag: 'membrane' }),
+        expect.objectContaining({ domain_tag: 'cathode' }),
+      ]);
+    } finally {
+      await app.close();
+    }
   });
 });

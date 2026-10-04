@@ -121,7 +121,7 @@ def run(mode):
             record('zero_reaction', [assertion('equilibrium_uniform_concentration_error', equilibrium_concentration_error, tolerance=1e-12, unit='mol/m3'),
                                      assertion('equilibrium_current', zero['circuit']['anodic_current_A'], tolerance=1e-18, unit='A')],
                    'No homogeneous reaction is selected; execute zero net Faradaic drive and verify the uniform, source-free concentration solution.')
-            if PROCESS_PROTOCOL_VERSION == 'structured-cell-process-v4':
+            if PROCESS_PROTOCOL_VERSION in ['structured-cell-process-v4', 'structured-cell-process-v5', 'structured-cell-process-v6']:
                 no_flow = copy.deepcopy(inp)
                 mesh = topology(no_flow)
                 velocity = dict(value=0, unit='m/s', source_kind='test_fixture', source_ref='synthetic:zero-prescribed-flow-limit')

@@ -5,9 +5,9 @@
   "independent_validation": false,
   "source": "tests/contracts/test_spatial_cell_verification.py:transverse_fixture",
   "source_input_fixture_sha256": "e01169d6183e02e29bb92e95fdc32b161c42534f87dfd39e651dd97b493525dc",
-  "runtime_source_sha256": "137cb32836b8e080db9139f143389fb44bd71129cc1e04099b9649f8a69d07a2",
+  "runtime_source_sha256": "ac882e25f1ef707b895e43c80bfd2f764908800bf430050e05f93b671f2a2327",
   "solver_version": "structured-cell-fv-v1",
-  "process_protocol_version": "structured-cell-process-v4",
+  "process_protocol_version": "structured-cell-process-v6",
   "numerical_comparison": {
     "baseline_runtime_source_sha256": "28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c",
     "comparison": "CI compares modeled current, voltage and volume-weighted concentration against baseline observables using the declared tolerances. Floating-point payload hashes are not used; bitwise equality across numerical-library versions is not claimed."

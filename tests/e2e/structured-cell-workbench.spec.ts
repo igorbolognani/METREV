@@ -46,6 +46,7 @@ test('saved case composition, exact fidelity refusal and durable run history', a
     mechanistic_model: undefined,
     stack_blocks: {
       ...rawCaseFixture.stack_blocks,
+      membrane_or_separator: { type: 'Nafion cation exchange membrane' },
       reactor_architecture: {
         architecture_type: 'planar',
         membrane_presence: 'present',

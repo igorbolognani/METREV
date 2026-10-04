@@ -121,13 +121,29 @@ export function compileStructuredCellEquationGraph(
               'advection.inlet_concentrations',
             ]
           : []),
+        ...(input.hydraulics
+          ? [
+              'hydraulics.dynamic_viscosity',
+              'hydraulics.permeability_by_region',
+              'hydraulics.boundary_pressure',
+              'hydraulics.inlet_concentrations',
+              ...(input.hydraulics.version ===
+              'structured-cell-prescribed-darcy-v1'
+                ? ['hydraulics.cell_pressure']
+                : []),
+            ]
+          : []),
       ],
       boundary:
         'x insulating; declared transverse reservoir faces: ' +
         input.reservoir_faces.join(', ') +
         (input.advection
           ? '; prescribed incompressible superficial face flow; sourced inflow concentration; solved upwind outflow; impermeable membrane'
-          : '; zero convection'),
+          : input.hydraulics
+            ? input.hydraulics.version === 'structured-cell-prescribed-darcy-v1'
+              ? '; source-backed cell and boundary pressures drive conservative Darcy flow and upwind transport; no pressure solve'
+              : '; source-backed boundary pressures and regional permeability drive a finite-volume Darcy pressure solve and conservative upwind transport'
+            : '; zero convection'),
     });
     couplings.push({
       from: 'liquid_charge',

@@ -186,8 +186,10 @@ export function SpatialCellConfigurator({
           </label>
         ))}
         <p>
-          Changing a prescribed-flow mesh requires a new complete face-velocity
-          specification. Geometry and fidelity are preserved.
+          A prescribed face-velocity or prescribed cell-pressure vector must be
+          regenerated after changing the mesh. Boundary-driven Darcy pressure is
+          recomputed from the declared boundary pressures. Geometry and fidelity
+          are preserved.
         </p>
       </fieldset>
       {error && <p role="alert">Change rejected: {error}</p>}

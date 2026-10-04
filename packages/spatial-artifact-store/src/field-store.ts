@@ -11,6 +11,10 @@ import {
 } from '@metrev/domain-contracts';
 
 import { SpatialArtifactStoreError } from './index';
+import {
+  FilesystemSpatialArtifactProvider,
+  type ArtifactRecoveryReport,
+} from './object-provider';
 import { z } from 'zod';
 
 const digestPattern = /^[a-f0-9]{64}$/;
@@ -54,8 +58,15 @@ function canonical(value: unknown): string {
 export class LocalSpatialFieldArtifactStore {
   private readonly root: string;
   private readonly maxFieldBytes: number;
+  private readonly objects: FilesystemSpatialArtifactProvider;
+  private initialRecovery?: Promise<ArtifactRecoveryReport>;
 
-  constructor(options: { rootDirectory: string; maxFieldBytes?: number }) {
+  constructor(options: {
+    rootDirectory: string;
+    maxFieldBytes?: number;
+    chunkBytes?: number;
+    stagingTtlMs?: number;
+  }) {
     if (!options.rootDirectory.trim())
       throw new SpatialArtifactStoreError(
         'invalid_input',
@@ -68,6 +79,16 @@ export class LocalSpatialFieldArtifactStore {
         'invalid_input',
         'Invalid field size limit',
       );
+    this.objects = new FilesystemSpatialArtifactProvider({
+      rootDirectory: this.root,
+      maxObjectBytes: this.maxFieldBytes,
+      ...(options.chunkBytes === undefined
+        ? {}
+        : { chunkBytes: options.chunkBytes }),
+      ...(options.stagingTtlMs === undefined
+        ? {}
+        : { stagingTtlMs: options.stagingTtlMs }),
+    });
   }
 
   private async directory(...segments: string[]): Promise<string> {
@@ -152,6 +173,7 @@ export class LocalSpatialFieldArtifactStore {
     ownerId: string;
     runId: string;
     field: Field;
+    signal?: AbortSignal;
   }): Promise<FieldManifest> {
     const field = spatialFieldManifestSchema.parse(input.field);
     return this.storeArtifact({
@@ -160,6 +182,7 @@ export class LocalSpatialFieldArtifactStore {
       runId: input.runId,
       fieldId: field.field_id,
       artifact: field.artifact,
+      signal: input.signal,
     });
   }
 
@@ -170,7 +193,9 @@ export class LocalSpatialFieldArtifactStore {
     runId: string;
     fieldId: string;
     artifact: z.infer<typeof spatialFieldArtifactSchema>;
+    signal?: AbortSignal;
   }): Promise<FieldManifest> {
+    await this.recoverOnFirstUse();
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
     const field = {
@@ -182,21 +207,7 @@ export class LocalSpatialFieldArtifactStore {
         'size_limit',
         'Field exceeds configured size limit',
       );
-    const source = await this.bytes(input.sourceFilePath);
-    if (
-      source.byteLength !== field.artifact.bytes ||
-      digest(source) !== field.artifact.sha256
-    )
-      throw new SpatialArtifactStoreError(
-        'integrity_failure',
-        'Field bytes differ from the declared reference',
-      );
-    const objectDirectory = await this.directory(
-      'field-objects',
-      field.artifact.sha256.slice(0, 2),
-    );
     await this.directory('field-owners', ownerSha.slice(0, 2), ownerSha, runId);
-    const objectPath = join(objectDirectory, `${field.artifact.sha256}.bin`);
     const manifestPath = this.manifestPath(ownerSha, runId, fieldId);
     const content = {
       version: 'spatial-field-artifact-v1' as const,
@@ -209,7 +220,13 @@ export class LocalSpatialFieldArtifactStore {
       ...content,
       manifest_sha256: digest(canonical(content)),
     };
-    await this.immutable(objectPath, source);
+    await this.objects.writeVerifiedFile({
+      sourceFilePath: input.sourceFilePath,
+      objectKey: this.objectKey(field.artifact.sha256),
+      expectedSha256: field.artifact.sha256,
+      expectedBytes: field.artifact.bytes,
+      signal: input.signal,
+    });
     await this.immutable(manifestPath, Buffer.from(`${canonical(manifest)}\n`));
     const stored = await this.loadManifest(manifestPath);
     if (canonical(stored) !== canonical(manifest))
@@ -230,6 +247,7 @@ export class LocalSpatialFieldArtifactStore {
     signal?: AbortSignal;
   }): Promise<Readable> {
     input.signal?.throwIfAborted();
+    await this.recoverOnFirstUse();
     const ownerSha = this.owner(input.ownerId);
     const runId = identity(input.runId, 'run ID');
     const fieldId = fieldIdSchema.parse(input.fieldId);
@@ -248,62 +266,30 @@ export class LocalSpatialFieldArtifactStore {
         'Field is not authorized for this run',
       );
     const artifact = manifest.artifact;
-    const file = await open(
-      join(
-        this.root,
-        'field-objects',
-        artifact.sha256.slice(0, 2),
-        `${artifact.sha256}.bin`,
-      ),
-      constants.O_RDONLY | constants.O_NOFOLLOW,
-    );
-    try {
-      const stat = await file.stat();
-      if (
-        !stat.isFile() ||
-        stat.size !== artifact.bytes ||
-        stat.size > this.maxFieldBytes
-      )
-        throw new SpatialArtifactStoreError(
-          'integrity_failure',
-          'Invalid field size or type',
-        );
-      const hash = createHash('sha256');
-      const buffer = Buffer.alloc(64 * 1024);
-      let position = 0;
-      while (position < artifact.bytes) {
-        input.signal?.throwIfAborted();
-        const { bytesRead } = await file.read(
-          buffer,
-          0,
-          Math.min(buffer.length, artifact.bytes - position),
-          position,
-        );
-        if (!bytesRead)
-          throw new SpatialArtifactStoreError(
-            'integrity_failure',
-            'Field truncated during verification',
-          );
-        hash.update(buffer.subarray(0, bytesRead));
-        position += bytesRead;
-      }
-      if (hash.digest('hex') !== artifact.sha256)
-        throw new SpatialArtifactStoreError(
-          'integrity_failure',
-          'Field content failed digest verification',
-        );
-      input.signal?.throwIfAborted();
-      // Use the verified descriptor, not a second path lookup; memory stays bounded.
-      return file.createReadStream({
-        start: 0,
-        highWaterMark: 64 * 1024,
-        autoClose: true,
-        signal: input.signal,
-      });
-    } catch (error) {
-      await file.close();
-      throw error;
-    }
+    return this.objects.readVerified({
+      objectKey: this.objectKey(artifact.sha256),
+      expectedSha256: artifact.sha256,
+      expectedBytes: artifact.bytes,
+      signal: input.signal,
+    });
+  }
+
+  /** Removes abandoned partial writes without touching published objects. */
+  async recoverIncompleteWrites(options?: {
+    olderThanMs?: number;
+    maxEntries?: number;
+    nowMs?: number;
+  }): Promise<ArtifactRecoveryReport> {
+    return this.objects.recoverIncompleteWrites(options);
+  }
+
+  private objectKey(sha256: string): string {
+    return `field-objects/${sha256.slice(0, 2)}/${sha256}.bin`;
+  }
+
+  private recoverOnFirstUse(): Promise<ArtifactRecoveryReport> {
+    this.initialRecovery ??= this.objects.recoverIncompleteWrites();
+    return this.initialRecovery;
   }
 
   private async loadManifest(path: string): Promise<FieldManifest> {
