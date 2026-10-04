@@ -29,6 +29,7 @@ export * from './validator';
 export * from './structured-cell-development-report';
 export * from './structured-cell-observables';
 export * from './structured-cell-field-reduction';
+export * from './structured-cell-refinement-evidence-schema';
 export * from './structured-cell-refinement-evidence';
 export * from './structured-cell-equation-graph';
 export * from './structured-cell-case-context';

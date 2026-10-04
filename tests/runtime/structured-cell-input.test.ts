@@ -78,6 +78,27 @@ function darcyFixture(dimension: 2 | 3 = 2) {
   return input;
 }
 
+function prescribedDarcy(input: ReturnType<typeof darcyFixture>) {
+  const flow = input.hydraulics;
+  if (!flow || flow.version !== 'structured-cell-prescribed-darcy-v1')
+    throw new Error('Expected prescribed Darcy fixture');
+  return flow;
+}
+
+function solvedDarcyFixture(dimension: 2 | 3 = 2) {
+  const input = darcyFixture(dimension);
+  const flow = prescribedDarcy(input);
+  input.hydraulics = {
+    version: 'structured-cell-darcy-pressure-solve-v1',
+    dynamic_viscosity: flow.dynamic_viscosity,
+    permeability_by_region: flow.permeability_by_region,
+    boundary_pressure: flow.boundary_pressure,
+    impermeable_faces: flow.impermeable_faces,
+    inlet_concentrations: flow.inlet_concentrations,
+  };
+  return input;
+}
+
 describe('restricted structured spatial cell admission', () => {
   it.each([2, 3] as const)('retains dimension %i and provenance', (dim) => {
     const input = structuredCellInputSchema.parse(structuredCellFixture(dim));
@@ -191,9 +212,9 @@ describe('restricted structured spatial cell admission', () => {
   );
   it('rejects incomplete, divergent and ambiguous prescribed Darcy inputs', () => {
     const mutations: ((input: ReturnType<typeof darcyFixture>) => void)[] = [
-      (input) => input.hydraulics!.cell_pressure.pop(),
+      (input) => prescribedDarcy(input).cell_pressure.pop(),
       (input) => {
-        input.hydraulics!.cell_pressure[0].value += 1;
+        prescribedDarcy(input).cell_pressure[0].value += 1;
       },
       (input) => {
         delete input.hydraulics!.permeability_by_region.anode;
@@ -219,5 +240,30 @@ describe('restricted structured spatial cell admission', () => {
       mutate(input);
       expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
     }
+  });
+  it.each([2, 3] as const)(
+    'admits boundary-driven finite-volume Darcy pressure in %iD',
+    (dimension) => {
+      const input = solvedDarcyFixture(dimension);
+      const parsed = structuredCellInputSchema.parse(input);
+      expect(parsed.hydraulics?.version).toBe(
+        'structured-cell-darcy-pressure-solve-v1',
+      );
+      const graph = compileStructuredCellEquationGraph(parsed);
+      expect(graph.nodes[0].boundary).toContain('pressure solve');
+      expect(graph.nodes[0].parameter_paths).not.toContain(
+        'hydraulics.cell_pressure',
+      );
+    },
+  );
+  it('rejects an unanchored Darcy pressure solve', () => {
+    const input = solvedDarcyFixture();
+    const flow = input.hydraulics!;
+    if (flow.version !== 'structured-cell-darcy-pressure-solve-v1')
+      throw new Error('Expected solved Darcy fixture');
+    flow.boundary_pressure = {};
+    flow.impermeable_faces = ['y_min', 'y_max'];
+    flow.inlet_concentrations = {};
+    expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
   });
 });

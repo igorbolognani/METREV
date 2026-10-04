@@ -14,7 +14,7 @@ import {
   structuredCellFieldReductionSchema,
   assertStructuredCellFieldReductionBinding,
 } from './structured-cell-field-reduction';
-import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence';
+import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence-schema';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();

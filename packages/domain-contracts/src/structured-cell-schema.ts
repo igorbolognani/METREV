@@ -27,6 +27,36 @@ const orders = z.record(
     'This rate profile supports nonnegative integer orders',
   ),
 );
+const darcyHydraulicParameters = {
+  dynamic_viscosity: positive('Pa*s'),
+  permeability_by_region: z.record(id, positive('m2')),
+  boundary_pressure: z.record(
+    z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
+    signed('Pa'),
+  ),
+  impermeable_faces: z
+    .array(z.enum(['y_min', 'y_max', 'z_min', 'z_max']))
+    .max(4),
+  inlet_concentrations: z.record(
+    z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
+    z.record(id, value('mol/m3', 0)),
+  ),
+};
+const darcyHydraulicsSchema = z.discriminatedUnion('version', [
+  z
+    .object({
+      ...darcyHydraulicParameters,
+      version: z.literal('structured-cell-prescribed-darcy-v1'),
+      cell_pressure: z.array(signed('Pa')).max(20000),
+    })
+    .strict(),
+  z
+    .object({
+      ...darcyHydraulicParameters,
+      version: z.literal('structured-cell-darcy-pressure-solve-v1'),
+    })
+    .strict(),
+]);
 
 /** A separately versioned, restricted steady cell. It never replaces a requested research fidelity. */
 export const structuredCellInputSchema = z
@@ -50,26 +80,7 @@ export const structuredCellInputSchema = z
       })
       .strict()
       .optional(),
-    hydraulics: z
-      .object({
-        version: z.literal('structured-cell-prescribed-darcy-v1'),
-        dynamic_viscosity: positive('Pa*s'),
-        permeability_by_region: z.record(id, positive('m2')),
-        cell_pressure: z.array(signed('Pa')).max(20000),
-        boundary_pressure: z.record(
-          z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
-          signed('Pa'),
-        ),
-        impermeable_faces: z
-          .array(z.enum(['y_min', 'y_max', 'z_min', 'z_max']))
-          .max(4),
-        inlet_concentrations: z.record(
-          z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
-          z.record(id, value('mol/m3', 0)),
-        ),
-      })
-      .strict()
-      .optional(),
+    hydraulics: darcyHydraulicsSchema.optional(),
     geometry: z
       .object({
         geometry_version: z.literal('structured-layers-v1'),
@@ -369,56 +380,64 @@ export const structuredCellInputSchema = z
         issue('Darcy permeability must cover exactly every region');
       if (layers.some((layer) => layer.kind === 'membrane'))
         issue('Darcy membrane flow requires an unsupported membrane water law');
-      try {
-        const faces = structuredCellPrescribedDarcyFlow({
-          ...input,
-          hydraulics: flow,
-        });
-        const divergence = Array<number>(count).fill(0);
-        const throughput = Array<number>(count).fill(0);
-        const inflow = new Set<string>();
-        faces.interior.forEach((face, index) => {
-          const q = face.area_m2 * faces.interior_velocity_m_s[index];
-          divergence[face.left_cell] += q;
-          divergence[face.right_cell] -= q;
-          throughput[face.left_cell] += Math.abs(q);
-          throughput[face.right_cell] += Math.abs(q);
-        });
-        faces.boundary.forEach((face, index) => {
-          const velocity = faces.boundary_velocity_m_s[index];
-          const q = face.area_m2 * velocity;
-          divergence[face.cell_index] += q;
-          throughput[face.cell_index] += Math.abs(q);
-          if (velocity < 0) inflow.add(face.face);
-        });
-        if (
-          divergence.some((q) => !Number.isFinite(q)) ||
-          throughput.some((q) => !Number.isFinite(q))
-        )
-          issue('Prescribed Darcy flow produces nonfinite volumetric flux');
-        if (
-          divergence.some(
-            (q, cell) =>
-              Math.abs(q) > 1e-12 * Math.max(throughput[cell], 1e-30),
-          )
-        )
-          issue(
-            'Prescribed Darcy pressure violates local incompressible volume conservation',
-          );
-        if (
-          [...inflow].sort().join() !==
-          Object.keys(flow.inlet_concentrations).sort().join()
-        )
-          issue('Every Darcy inflow requires explicit species concentrations');
-        for (const concentrations of Object.values(flow.inlet_concentrations))
+      let prescribedInflow: Set<string> | null = null;
+      if (flow.version === 'structured-cell-prescribed-darcy-v1') {
+        try {
+          const faces = structuredCellPrescribedDarcyFlow({
+            ...input,
+            hydraulics: flow,
+          });
+          const divergence = Array<number>(count).fill(0);
+          const throughput = Array<number>(count).fill(0);
+          prescribedInflow = new Set<string>();
+          faces.interior.forEach((face, index) => {
+            const q = face.area_m2 * faces.interior_velocity_m_s[index];
+            divergence[face.left_cell] += q;
+            divergence[face.right_cell] -= q;
+            throughput[face.left_cell] += Math.abs(q);
+            throughput[face.right_cell] += Math.abs(q);
+          });
+          faces.boundary.forEach((face, index) => {
+            const velocity = faces.boundary_velocity_m_s[index];
+            const q = face.area_m2 * velocity;
+            divergence[face.cell_index] += q;
+            throughput[face.cell_index] += Math.abs(q);
+            if (velocity < 0) prescribedInflow!.add(face.face);
+          });
           if (
-            Object.keys(concentrations).sort().join() !==
-            [...species.keys()].sort().join()
+            divergence.some((q) => !Number.isFinite(q)) ||
+            throughput.some((q) => !Number.isFinite(q))
           )
-            issue('Darcy inlet concentrations must cover exactly all species');
-      } catch (error) {
-        issue(error instanceof Error ? error.message : 'Invalid Darcy flow');
+            issue('Prescribed Darcy flow produces nonfinite volumetric flux');
+          if (
+            divergence.some(
+              (q, cell) =>
+                Math.abs(q) > 1e-12 * Math.max(throughput[cell], 1e-30),
+            )
+          )
+            issue(
+              'Prescribed Darcy pressure violates local incompressible volume conservation',
+            );
+        } catch (error) {
+          issue(error instanceof Error ? error.message : 'Invalid Darcy flow');
+        }
+      } else if (boundaryNames.length === 0) {
+        issue('A Darcy pressure solve requires at least one pressure boundary');
       }
+      const inletFaces = Object.keys(flow.inlet_concentrations);
+      if (
+        (prescribedInflow &&
+          [...prescribedInflow].sort().join() !== inletFaces.sort().join()) ||
+        (!prescribedInflow &&
+          inletFaces.some((face) => !boundaryNames.includes(face)))
+      )
+        issue('Every Darcy inflow requires explicit species concentrations');
+      for (const concentrations of Object.values(flow.inlet_concentrations))
+        if (
+          Object.keys(concentrations).sort().join() !==
+          [...species.keys()].sort().join()
+        )
+          issue('Darcy inlet concentrations must cover exactly all species');
     }
     if ((input.system === 'MFC') !== (input.circuit.kind === 'external_load'))
       issue('Circuit must match MFC load or MEC applied voltage');
@@ -513,7 +532,7 @@ export const structuredCellInputSchema = z
 
 export type StructuredCellInput = z.infer<typeof structuredCellInputSchema>;
 export const STRUCTURED_CELL_LIMITS = [
-  'Steady Cartesian orthogonal layers with isothermal coefficients; optional sourced incompressible face advection or a source-backed prescribed-pressure Darcy constitutive evaluation. The cell profile does not solve pressure.',
+  'Steady Cartesian orthogonal layers with isothermal coefficients; optional sourced face advection, prescribed-cell-pressure Darcy flow, or a boundary-driven finite-volume Darcy pressure solve. No bulk/porous interface, variable or tensor permeability, membrane water law, or independent experimental validation.',
   'Trace-species Nernst–Planck transport; fixed conductivity represents an unmodeled supporting electrolyte.',
   'Continuous concentration/potential interfaces; no partition, Donnan or fixed membrane charge.',
   'No double layer, biofilm growth, gas phases, thermal field or independently validated prediction.',

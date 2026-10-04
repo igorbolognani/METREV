@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v5"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v6"
 
 
 def number(v, unit, lower=None, strict=False):
@@ -231,20 +231,29 @@ def prescribed_flow(inp, mesh):
     return np.asarray(interior), np.asarray(exterior)
 
 
-def prescribed_darcy_flow(inp, mesh):
-    """Evaluate Darcy's law on every FV face from supplied pressures.
+def darcy_flow(inp, mesh):
+    """Evaluate Darcy fluxes from sourced cell pressure or solve pressure.
 
-    Cell pressures are source-backed model inputs. This function verifies their
-    conservative face fluxes; it does not assemble or solve a pressure equation.
+    The boundary-solved mode is a steady, single-phase, incompressible Darcy
+    finite-volume solve with no volumetric source. Membrane water transport and
+    bulk/porous interface laws are outside this model.
     """
     block = inp.get('hydraulics')
     if block is None:
         return np.zeros(len(mesh['faces'])), np.zeros(len(mesh['boundary'])), None
-    required = {'version', 'dynamic_viscosity', 'permeability_by_region',
-                'cell_pressure', 'boundary_pressure', 'impermeable_faces',
-                'inlet_concentrations'}
-    if not isinstance(block, dict) or set(block) != required or block['version'] != 'structured-cell-prescribed-darcy-v1':
-        raise ValueError('Invalid prescribed Darcy properties')
+    common = {
+        'dynamic_viscosity', 'permeability_by_region', 'boundary_pressure',
+        'impermeable_faces', 'inlet_concentrations',
+    }
+    version = block.get('version') if isinstance(block, dict) else None
+    if version == 'structured-cell-prescribed-darcy-v1':
+        required = common | {'version', 'cell_pressure'}
+    elif version == 'structured-cell-darcy-pressure-solve-v1':
+        required = common | {'version'}
+    else:
+        raise ValueError('Unsupported Darcy pressure mode')
+    if not isinstance(block, dict) or set(block) != required:
+        raise ValueError('Invalid Darcy properties')
     viscosity = number(block['dynamic_viscosity'], 'Pa*s', 0, True)
     layers = inp['geometry']['layers']
     if any(layer['kind'] == 'membrane' for layer in layers):
@@ -254,10 +263,6 @@ def prescribed_darcy_flow(inp, mesh):
         raise ValueError('Darcy permeability must cover exactly every region')
     mobility = np.array([number(permeability[layer['tag']], 'm2', 0, True) / viscosity
                          for layer in layers])
-    pressures = block['cell_pressure']
-    if not isinstance(pressures, list) or len(pressures) != mesh['count']:
-        raise ValueError('Darcy pressure must cover every ordered mesh cell')
-    pressure = np.array([number(value, 'Pa') for value in pressures])
     allowed = {'y_min', 'y_max'} | ({'z_min', 'z_max'} if inp['dimension'] == 3 else set())
     boundary_pressure = block['boundary_pressure']
     impermeable_values = block['impermeable_faces']
@@ -268,6 +273,40 @@ def prescribed_darcy_flow(inp, mesh):
         raise ValueError('Every transverse Darcy face must declare pressure or impermeability exactly once')
     boundary_values = {name: number(value, 'Pa') for name, value in boundary_pressure.items()}
     impermeable = set(impermeable_values)
+    if version == 'structured-cell-prescribed-darcy-v1':
+        pressures = block['cell_pressure']
+        if not isinstance(pressures, list) or len(pressures) != mesh['count']:
+            raise ValueError('Darcy pressure must cover every ordered mesh cell')
+        pressure = np.array([number(value, 'Pa') for value in pressures])
+    else:
+        if not boundary_values:
+            raise ValueError('A Darcy pressure solve requires a pressure boundary')
+        matrix = lil_matrix((mesh['count'], mesh['count']), dtype=float)
+        rhs = np.zeros(mesh['count'])
+        for i, j, _, area, hi, hj in mesh['faces']:
+            resistance = hi / mobility[mesh['regions'][i]] + hj / mobility[mesh['regions'][j]]
+            conductance = area / resistance
+            matrix[i, i] += conductance
+            matrix[j, j] += conductance
+            matrix[i, j] -= conductance
+            matrix[j, i] -= conductance
+        for i, axis, sign, area, distance in mesh['boundary']:
+            name = 'xyz'[axis] + ('_min' if sign < 0 else '_max')
+            if axis == 0 or name in impermeable:
+                continue
+            resistance = distance / mobility[mesh['regions'][i]]
+            conductance = area / resistance
+            matrix[i, i] += conductance
+            rhs[i] += conductance * boundary_values[name]
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', MatrixRankWarning)
+            pressure = np.asarray(spsolve(matrix.tocsr(), rhs), dtype=float)
+        if pressure.shape != (mesh['count'],) or not np.isfinite(pressure).all():
+            raise ValueError('Darcy pressure solve produced invalid cell pressures')
+        linear_residual = matrix.tocsr() @ pressure - rhs
+        linear_scale = max(float(np.max(np.abs(rhs))), 1e-30)
+        if float(np.max(np.abs(linear_residual))) > 1e-10 * linear_scale:
+            raise ValueError('Darcy pressure solve did not satisfy its linear balance')
     interior = []
     for i, j, axis, _, hi, hj in mesh['faces']:
         resistance = hi / mobility[mesh['regions'][i]] + hj / mobility[mesh['regions'][j]]
@@ -280,20 +319,25 @@ def prescribed_darcy_flow(inp, mesh):
         else:
             resistance = h / mobility[mesh['regions'][i]]
             exterior.append(-(boundary_values[name] - pressure[i]) / resistance)
-    divergence = np.zeros(mesh['count']); throughput = np.zeros(mesh['count']); inflow = set()
+    divergence = np.zeros(mesh['count'])
+    throughput = np.zeros(mesh['count'])
+    inflow = set()
     for velocity, (i, j, _, area, *_) in zip(interior, mesh['faces']):
         flow = velocity * area
-        divergence[i] += flow; divergence[j] -= flow
-        throughput[i] += abs(flow); throughput[j] += abs(flow)
+        divergence[i] += flow
+        divergence[j] -= flow
+        throughput[i] += abs(flow)
+        throughput[j] += abs(flow)
     for velocity, (i, axis, sign, area, _) in zip(exterior, mesh['boundary']):
         flow = velocity * area
-        divergence[i] += flow; throughput[i] += abs(flow)
+        divergence[i] += flow
+        throughput[i] += abs(flow)
         if velocity < 0:
             inflow.add('xyz'[axis] + ('_min' if sign < 0 else '_max'))
     if not np.isfinite(divergence).all() or not np.isfinite(throughput).all():
-        raise ValueError('Prescribed Darcy flow produces nonfinite volumetric flux')
+        raise ValueError('Darcy flow produces nonfinite volumetric flux')
     if np.any(np.abs(divergence) > 1e-12 * np.maximum(throughput, 1e-30)):
-        raise ValueError('Prescribed Darcy pressure violates local incompressible volume conservation')
+        raise ValueError('Darcy pressure violates local incompressible volume conservation')
     concentrations = block['inlet_concentrations']
     if not isinstance(concentrations, dict) or set(concentrations) != inflow:
         raise ValueError('Every Darcy inflow requires explicit species concentrations')
@@ -307,8 +351,13 @@ def prescribed_darcy_flow(inp, mesh):
         'pressure': pressure,
         'divergence': divergence,
         'throughput': throughput,
+        'pressure_mode': version,
     }
 
+
+def prescribed_darcy_flow(inp, mesh):
+    """Backward-compatible name for the restricted Darcy face calculation."""
+    return darcy_flow(inp, mesh)
 
 def derive_field_extrema(fields, mesh, layers):
     """Return deterministic modeled extrema bound to global finite-volume cells."""

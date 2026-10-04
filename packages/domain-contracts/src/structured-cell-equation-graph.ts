@@ -125,9 +125,12 @@ export function compileStructuredCellEquationGraph(
           ? [
               'hydraulics.dynamic_viscosity',
               'hydraulics.permeability_by_region',
-              'hydraulics.cell_pressure',
               'hydraulics.boundary_pressure',
               'hydraulics.inlet_concentrations',
+              ...(input.hydraulics.version ===
+              'structured-cell-prescribed-darcy-v1'
+                ? ['hydraulics.cell_pressure']
+                : []),
             ]
           : []),
       ],
@@ -137,7 +140,9 @@ export function compileStructuredCellEquationGraph(
         (input.advection
           ? '; prescribed incompressible superficial face flow; sourced inflow concentration; solved upwind outflow; impermeable membrane'
           : input.hydraulics
-            ? '; source-backed prescribed pressure and Darcy face law; conservative superficial upwind flow; no pressure solve'
+            ? input.hydraulics.version === 'structured-cell-prescribed-darcy-v1'
+              ? '; source-backed cell and boundary pressures drive conservative Darcy flow and upwind transport; no pressure solve'
+              : '; source-backed boundary pressures and regional permeability drive a finite-volume Darcy pressure solve and conservative upwind transport'
             : '; zero convection'),
     });
     couplings.push({

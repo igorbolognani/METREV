@@ -10,7 +10,7 @@ import {
   compileStructuredCellEquationGraph,
   structuredCellEquationGraphSchema,
 } from './structured-cell-equation-graph';
-import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence';
+import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence-schema';
 import {
   spatialRuntimeInputSchema,
   spatialRuntimeInputSha256,
@@ -1039,6 +1039,7 @@ export function spatialSimulationResultForInputSchema(
         ...([
           'structured-cell-process-v4',
           'structured-cell-process-v5',
+          'structured-cell-process-v6',
         ].includes(result.runtime_version)
           ? ['faradaic_current_density']
           : []),
@@ -1092,9 +1093,11 @@ export function spatialSimulationResultForInputSchema(
           issue('Invalid cell field meaning or unit');
       const observables = result.structured_cell_field_observables;
       if (
-        ['structured-cell-process-v4', 'structured-cell-process-v5'].includes(
-          result.runtime_version,
-        ) &&
+        [
+          'structured-cell-process-v4',
+          'structured-cell-process-v5',
+          'structured-cell-process-v6',
+        ].includes(result.runtime_version) &&
         !result.structured_cell_field_reduction
       )
         issue(

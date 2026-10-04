@@ -50,7 +50,7 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
-    protocol_version: z.literal('structured-cell-process-v5'),
+    protocol_version: z.literal('structured-cell-process-v6'),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),
@@ -172,7 +172,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v5';
+  readonly runtimeVersion = 'structured-cell-process-v6';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
