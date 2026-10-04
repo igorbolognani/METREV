@@ -51,7 +51,14 @@ snapshot:
   runtime_ci: github_actions_run_37195960957_passed
   runtime_codeql: github_codeql_run_37195960964_passed
   open_development_prs:
-    - 125
+    - pull_request: 125
+      branch: codex/runtime-review-remediation-2026-10-04
+      head_sha: 3e1b7ed95ee77e6f878bff2b3c0fb2b056bc1602
+      review_state: ready_for_review
+      ci_state: failed_governance_snapshot_alignment
+      codeql_state: success
+      ci_run: 37225915813
+      codeql_run: 37225915815
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
 development_batch:

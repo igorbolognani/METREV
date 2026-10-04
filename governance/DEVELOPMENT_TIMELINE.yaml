@@ -327,13 +327,16 @@ stages:
       Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
   - id: runtime_review_remediation_pr125
     period: '2026-10-04'
-    state: open_review
+    state: development_pr_not_merged
     branch: codex/runtime-review-remediation-2026-10-04
     pull_request: 125
     base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
-    head_sha: a4c671b52679009b61fecd846df5c69650872400
-    initial_ci_run: 37224772294
-    initial_ci_state: failed_unused_import_in_spatial_worker
+    head_sha: 3e1b7ed95ee77e6f878bff2b3c0fb2b056bc1602
+    review_state: ready_for_review
+    ci_state: failed_governance_snapshot_alignment
+    codeql_state: success
+    ci_run: 37225915813
+    codeql_run: 37225915815
     sources:
       - packages/spatial-worker/src/structured-cell-executor.ts
       - governance/MASTER_EXECUTION_TASK.md
