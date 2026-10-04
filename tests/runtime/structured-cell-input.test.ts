@@ -119,7 +119,9 @@ describe('restricted structured spatial cell admission', () => {
       );
 
     const solved = solvedDarcyFixture();
-    expect(structuredCellRunAdmissionSchema.safeParse(solved).success).toBe(true);
+    expect(structuredCellRunAdmissionSchema.safeParse(solved).success).toBe(
+      true,
+    );
   });
 
   it('rejects mismatched electron charge and atoms', () => {
