@@ -47,7 +47,7 @@ snapshot:
   integrated_main_head: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
   integrated_main_pr: 124
   integration_state: prs_115_through_124_merged_spatial_runtime_foundations_integrated
-  verified_runtime_head: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
+  verified_runtime_head: 8ca77c860e5fd7c277048cbc36f4f12350e98963
   runtime_ci: github_actions_run_37195960957_passed
   runtime_codeql: github_codeql_run_37195960964_passed
   open_development_prs:
