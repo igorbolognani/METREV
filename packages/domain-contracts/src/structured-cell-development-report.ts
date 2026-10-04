@@ -355,11 +355,10 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
       mesh_refinement:
         run.result.structured_cell_mesh_refinement_evidence?.status ??
         'unavailable',
-      mesh_refinement_unavailable_reason:
-        run.result.structured_cell_mesh_refinement_evidence
-          ? run.result.structured_cell_mesh_refinement_evidence
-              .unavailable_reason
-          : 'evidence_record_not_persisted',
+      mesh_refinement_unavailable_reason: run.result
+        .structured_cell_mesh_refinement_evidence
+        ? run.result.structured_cell_mesh_refinement_evidence.unavailable_reason
+        : 'evidence_record_not_persisted',
       time_refinement: 'not_applicable_steady',
       benchmark_reference: 'tests/contracts/test_spatial_cell_verification.py',
     },
