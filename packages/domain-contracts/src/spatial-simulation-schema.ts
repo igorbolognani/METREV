@@ -1050,7 +1050,10 @@ export function spatialSimulationResultForInputSchema(
                 'structured-cell-darcy-pressure-solve-v1' ||
               (input.hydraulics.version ===
                 'structured-cell-prescribed-darcy-v1' &&
-                result.runtime_version === 'structured-cell-process-v6')
+                [
+                  'structured-cell-process-v5',
+                  'structured-cell-process-v6',
+                ].includes(result.runtime_version))
                 ? ['darcy_pressure']
                 : []),
               ...['x', 'y', ...(input.dimension === 3 ? ['z'] : [])].map(

@@ -51,7 +51,15 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
-    protocol_version: z.literal('structured-cell-process-v6'),
+    protocol_version: z.enum([
+      'structured-cell-process-v1',
+      'structured-cell-process-v2',
+      'structured-cell-process-v3',
+      'structured-cell-process-v4',
+      'structured-cell-process-v5',
+      'structured-cell-process-v6',
+      'structured-cell-process-v7',
+    ]),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),

@@ -337,8 +337,12 @@ stages:
     sources:
       - packages/spatial-worker/src/structured-cell-executor.ts
       - governance/MASTER_EXECUTION_TASK.md
+    review_findings:
+      - process-v7 envelope validation still required process-v6
+      - process-v5 prescribed-Darcy pressure fields were omitted from legacy result validation
+    review_findings_state: addressed_in_follow_up_commit
     meaning:
-      Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors and zero-state reaction derivatives. The first exact-head CI exposed one unused import; the source fix is in this review batch. No maturity promotion.
+      Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors, zero-state reaction derivatives and legacy protocol compatibility. Initial CI exposed an unused import; automated review identified envelope and v5 compatibility gaps. Fixes and regressions are included in this review batch. No maturity promotion.
 
 sequence:
   - development_batch
@@ -350,5 +354,5 @@ phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
 next_work:
-  Fix the PR #125 exact-head validation finding, complete all applicable CI and CodeQL gates, then continue functional implementation of the partial and pending master-plan points. Keep
+  Complete exact-head CI and CodeQL for PR #125, then continue the dependency-ready functional implementation of the partial and pending master-plan points. Keep
   broader product integration, independent validation and maturity promotion behind their declared gates.
