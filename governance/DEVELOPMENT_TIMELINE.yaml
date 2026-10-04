@@ -304,8 +304,7 @@ stages:
       - packages/electrochem-models/src/model-composition-runtime.ts
       - packages/domain-contracts/src/spatial-observation-comparison.ts
       - governance/MASTER_EXECUTION_TASK.md
-    meaning:
-      Integrates sourced runtime composition, conservative spatial fields and scale reductions. Development status only; no maturity promotion.
+    meaning: Integrates sourced runtime composition, conservative spatial fields and scale reductions. Development status only; no maturity promotion.
   - id: spatial_runtime_foundations_pr124
     period: '2026-10-04'
     state: integrated_main
@@ -323,8 +322,7 @@ stages:
       - packages/spatial-artifact-store/src/object-provider.ts
       - apps/spatial-sidecar/metrev_spatial/structured_cell.py
       - governance/MASTER_EXECUTION_TASK.md
-    meaning:
-      Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
+    meaning: Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
   - id: runtime_review_remediation_pr125
     period: '2026-10-04'
     state: development_pr_not_merged
@@ -344,8 +342,7 @@ stages:
       - process-v7 envelope validation still required process-v6
       - process-v5 prescribed-Darcy pressure fields were omitted from legacy result validation
     review_findings_state: addressed_in_follow_up_commit
-    meaning:
-      Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors, zero-state reaction derivatives and legacy protocol compatibility. Initial CI exposed an unused import; automated review identified envelope and v5 compatibility gaps. Fixes and regressions are included in this review batch. No maturity promotion.
+    meaning: Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors, zero-state reaction derivatives and legacy protocol compatibility. Initial CI exposed an unused import; automated review identified envelope and v5 compatibility gaps. Fixes and regressions are included in this review batch. No maturity promotion.
 
 sequence:
   - development_batch
