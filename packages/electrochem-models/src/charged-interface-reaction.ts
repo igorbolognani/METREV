@@ -544,13 +544,18 @@ function concentrationProduct(
   label: string,
 ): { value: number; derivative: Record<string, number> } {
   let value = 1;
-  const factors: Record<string, { exponent: number; state: number; scale: number }> = {};
+  const factors: Record<
+    string,
+    { exponent: number; state: number; scale: number }
+  > = {};
   for (const [id, item] of Object.entries(order)) {
     if (!speciesIds.has(id))
       throw new RangeError(`${label}.${id}: unknown species`);
     const exponent = sourced(item, '1', `${label}.${id}`, { min: 0 });
     if (!Number.isInteger(exponent))
-      throw new RangeError(`${label}.${id}: nonnegative integer order required`);
+      throw new RangeError(
+        `${label}.${id}: nonnegative integer order required`,
+      );
     const state = nonnegativeState(
       concentration[id],
       `concentrationMolM3.${id}`,
