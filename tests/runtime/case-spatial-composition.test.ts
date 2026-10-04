@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { compileStructuredCellEquationGraph } from '@metrev/domain-contracts';
 import { resolveCaseSpatialComposition } from '@metrev/electrochem-models';
-import { caseSpatialFixture } from '../fixtures/case-spatial';
+import {
+  caseSpatialFixture,
+  configureCaseSpatialDarcy,
+} from '../fixtures/case-spatial';
 
 describe('exact case/stack composition for the restricted cell', () => {
   it.each([
@@ -83,7 +86,10 @@ describe('exact case/stack composition for the restricted cell', () => {
       }),
     ).toMatchObject({
       status: 'not_implemented',
-      missing_modules: ['hydraulics', 'fixed_membrane_charge'],
+      missing_inputs: expect.arrayContaining([
+        'input.hydraulics: source-backed Darcy pressure and inlet conditions',
+      ]),
+      missing_modules: ['fixed_membrane_charge'],
     });
     expect(
       resolveCaseSpatialComposition(normalized, { ...request, dimension: 3 }),
@@ -157,8 +163,45 @@ describe('exact case/stack composition for the restricted cell', () => {
         caseRequired.request,
       ),
     ).toMatchObject({
-      status: 'not_implemented',
-      missing_modules: ['hydraulics'],
+      status: 'insufficient_data',
+      missing_inputs: [
+        'input.hydraulics: source-backed Darcy pressure and inlet conditions',
+      ],
+    });
+
+    const explicitDarcy = caseSpatialFixture();
+    configureCaseSpatialDarcy(explicitDarcy.request);
+    const darcyPlan = resolveCaseSpatialComposition(
+      explicitDarcy.normalized,
+      explicitDarcy.request,
+    );
+    expect(darcyPlan).toMatchObject({
+      status: 'ready',
+      enabled_physics: expect.arrayContaining(['hydraulics']),
+      input: {
+        hydraulics: {
+          version: 'structured-cell-darcy-pressure-solve-v1',
+        },
+      },
+    });
+    expect(darcyPlan.equation_graph?.nodes[0]?.parameter_paths).toContain(
+      'hydraulics.permeability_by_region',
+    );
+
+    const undeclaredDarcy = caseSpatialFixture();
+    configureCaseSpatialDarcy(undeclaredDarcy.request);
+    undeclaredDarcy.request.required_physics =
+      undeclaredDarcy.request.required_physics.filter(
+        (physics) => physics !== 'hydraulics',
+      );
+    expect(
+      resolveCaseSpatialComposition(
+        undeclaredDarcy.normalized,
+        undeclaredDarcy.request,
+      ),
+    ).toMatchObject({
+      status: 'insufficient_data',
+      missing_inputs: ['required_physics:hydraulics'],
     });
 
     const reactive = caseSpatialFixture();

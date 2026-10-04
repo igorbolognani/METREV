@@ -27,6 +27,7 @@ const orders = z.record(
     'This rate profile supports nonnegative integer orders',
   ),
 );
+export const STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10;
 const darcyHydraulicParameters = {
   dynamic_viscosity: positive('Pa*s'),
   permeability_by_region: z.record(id, positive('m2')),

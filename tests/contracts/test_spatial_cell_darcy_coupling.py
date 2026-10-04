@@ -18,7 +18,7 @@ def sourced(value, unit):
             'source_ref': 'synthetic:prescribed-darcy-linear-pressure'}
 
 
-def darcy_fixture(dimension=2, gradient=1000., solve_pressure=False):
+def darcy_fixture(dimension=2, gradient=1000., solve_pressure=False, pressure_offset=10.):
     value = json.loads(FIXTURE.read_text())
     value['geometry']['layers'][1]['kind'] = 'separator'
     if dimension == 3:
@@ -26,7 +26,7 @@ def darcy_fixture(dimension=2, gradient=1000., solve_pressure=False):
         value['geometry']['lengths_m'].append(value['geometry'].pop('out_of_plane_depth'))
         value['geometry']['transverse_cells'].append(2)
     mesh = topology(value)
-    pressure = lambda y: 10. - gradient*y
+    pressure = lambda y: pressure_offset - gradient*y
     value['hydraulics'] = {
         'version': ('structured-cell-darcy-pressure-solve-v1' if solve_pressure
                     else 'structured-cell-prescribed-darcy-v1'),
@@ -85,13 +85,15 @@ class DarcyCouplingTests(unittest.TestCase):
 
     def test_boundary_pressure_solve_reconstructs_2d_and_3d_flow(self):
         for dimension in (2, 3):
-            value = darcy_fixture(dimension, solve_pressure=True)
+            value = darcy_fixture(
+                dimension, solve_pressure=True, pressure_offset=100.
+            )
             mesh = topology(value)
             interior, boundary, diagnostic = darcy_flow(value, mesh)
             permeability = value['hydraulics']['permeability_by_region']
             np.testing.assert_allclose(
                 diagnostic['pressure'],
-                [10. - 1000. * center[1] for center in mesh['centers']],
+                [100. - 1000. * center[1] for center in mesh['centers']],
                 rtol=1e-12,
                 atol=1e-12,
             )

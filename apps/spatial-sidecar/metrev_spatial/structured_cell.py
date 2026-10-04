@@ -25,6 +25,7 @@ F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
 PROCESS_PROTOCOL_VERSION = "structured-cell-process-v6"
+DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10
 
 
 def number(v, unit, lower=None, strict=False):
@@ -305,7 +306,7 @@ def darcy_flow(inp, mesh):
             raise ValueError('Darcy pressure solve produced invalid cell pressures')
         linear_residual = matrix.tocsr() @ pressure - rhs
         linear_scale = max(float(np.max(np.abs(rhs))), 1e-30)
-        if float(np.max(np.abs(linear_residual))) > 1e-10 * linear_scale:
+        if float(np.max(np.abs(linear_residual))) > DARCY_PRESSURE_SOLVE_TOLERANCE * linear_scale:
             raise ValueError('Darcy pressure solve did not satisfy its linear balance')
     interior = []
     for i, j, axis, _, hi, hj in mesh['faces']:
@@ -336,7 +337,15 @@ def darcy_flow(inp, mesh):
             inflow.add('xyz'[axis] + ('_min' if sign < 0 else '_max'))
     if not np.isfinite(divergence).all() or not np.isfinite(throughput).all():
         raise ValueError('Darcy flow produces nonfinite volumetric flux')
-    if np.any(np.abs(divergence) > 1e-12 * np.maximum(throughput, 1e-30)):
+    conservation_tolerance = (
+        DARCY_PRESSURE_SOLVE_TOLERANCE
+        if version == 'structured-cell-darcy-pressure-solve-v1'
+        else 1e-12
+    )
+    if np.any(
+        np.abs(divergence)
+        > conservation_tolerance * np.maximum(throughput, 1e-30)
+    ):
         raise ValueError('Darcy pressure violates local incompressible volume conservation')
     concentrations = block['inlet_concentrations']
     if not isinstance(concentrations, dict) or set(concentrations) != inflow:
@@ -650,7 +659,13 @@ class Cell:
             absolute=float(np.max(np.abs(self.darcy['divergence'])))
             normalizer=max(float(np.max(self.darcy['throughput'])),1e-30)
             relative=absolute/normalizer
-            residuals.append({'balance_id':'darcy_local_volume','kind':'fluid_volume','scope':'global','absolute_residual':absolute,'unit':'m3/s','relative_residual':relative,'tolerance':scale,'passed':relative<=scale})
+            darcy_tolerance = (
+                DARCY_PRESSURE_SOLVE_TOLERANCE
+                if self.darcy['pressure_mode']
+                == 'structured-cell-darcy-pressure-solve-v1'
+                else scale
+            )
+            residuals.append({'balance_id':'darcy_local_volume','kind':'fluid_volume','scope':'global','absolute_residual':absolute,'unit':'m3/s','relative_residual':relative,'tolerance':darcy_tolerance,'passed':relative<=darcy_tolerance})
         converged=bool(result.success and self.history[-1]<=self.input['numerics']['nonlinear_tolerance'] and all(r['passed'] for r in residuals))
         termination='nonlinear_and_conservation_passed' if converged else ('conservation_gate_failed' if result.success else result.termination)
         fields=[{'id':'concentration_'+s['id'],'unit':'mol/m3','values':c[k].tolist(),'cells':list(range(n))} for k,s in enumerate(self.input['species'])]

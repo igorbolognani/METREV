@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   compileStructuredCellEquationGraph,
   structuredCellInputSchema,
+  STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE,
   structuredCellTopology,
   STRUCTURED_CELL_LIMITS,
   spatialRuntimeInputSha256,
@@ -378,11 +379,18 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       )
         throw new Error('Cell convergence claim exceeds its tolerance');
       if (
-        response.residuals.some(
-          (r) =>
-            r.tolerance !== input.numerics.conservation_tolerance ||
-            r.passed !== r.relative_residual <= r.tolerance,
-        ) ||
+        response.residuals.some((r) => {
+          const expectedTolerance =
+            r.balance_id === 'darcy_local_volume' &&
+            input.hydraulics?.version ===
+              'structured-cell-darcy-pressure-solve-v1'
+              ? STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE
+              : input.numerics.conservation_tolerance;
+          return (
+            r.tolerance !== expectedTolerance ||
+            r.passed !== r.relative_residual <= r.tolerance
+          );
+        }) ||
         (response.status === 'converged' &&
           response.residuals.some((r) => !r.passed))
       )

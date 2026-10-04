@@ -14,6 +14,7 @@ export const RESTRICTED_CELL_PHYSICS = [
   'solid_charge',
   'electrode_reactions',
   'homogeneous_reactions',
+  'hydraulics',
   'circuit',
   'continuous_interfaces',
 ] as const;
@@ -164,6 +165,7 @@ export function resolveCaseSpatialComposition(
 
     out.enabled_physics = [
       ...BASE_RESTRICTED_CELL_PHYSICS,
+      ...(request.input.hydraulics ? (['hydraulics'] as const) : []),
       ...(request.input.reactions.length
         ? (['homogeneous_reactions'] as const)
         : []),
@@ -171,14 +173,21 @@ export function resolveCaseSpatialComposition(
     for (const physics of out.enabled_physics)
       if (!declaredPhysics.has(physics))
         out.missing_inputs.push(`required_physics:${physics}`);
-    for (const physics of declaredPhysics)
+    for (const physics of declaredPhysics) {
       if (
         (RESTRICTED_CELL_PHYSICS as readonly string[]).includes(physics) &&
         !out.enabled_physics.includes(physics as RestrictedCellPhysics)
-      )
-        out.unsupported_configuration.push(
-          `required_physics_not_configured:${physics}`,
-        );
+      ) {
+        if (physics === 'hydraulics')
+          out.missing_inputs.push(
+            'input.hydraulics: source-backed Darcy pressure and inlet conditions',
+          );
+        else
+          out.unsupported_configuration.push(
+            `required_physics_not_configured:${physics}`,
+          );
+      }
+    }
   }
   if (out.missing_modules.length || out.unsupported_configuration.length)
     return out;

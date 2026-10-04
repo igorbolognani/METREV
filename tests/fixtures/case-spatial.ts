@@ -66,3 +66,39 @@ export function caseSpatialFixture(
   };
   return { rawInput, normalized: normalizeCaseInput(rawInput), request };
 }
+
+/** Explicit, synthetic Darcy input for case-composition and worker integration tests. */
+export function configureCaseSpatialDarcy(request: CaseSpatialRequest) {
+  const input = request.input;
+  if (!input) throw new Error('Case fixture requires a spatial-cell input');
+  input.geometry.layers[1]!.kind = 'separator';
+  const sourced = (value: number, unit: string) => ({
+    value,
+    unit,
+    source_kind: 'test_fixture' as const,
+    source_ref: 'synthetic:case-spatial-boundary-darcy',
+  });
+  input.hydraulics = {
+    version: 'structured-cell-darcy-pressure-solve-v1',
+    dynamic_viscosity: sourced(1e-3, 'Pa*s'),
+    permeability_by_region: Object.fromEntries(
+      input.geometry.layers.map((layer) => [layer.tag, sourced(1e-12, 'm2')]),
+    ),
+    boundary_pressure: {
+      y_min: sourced(100, 'Pa'),
+      y_max: sourced(99, 'Pa'),
+    },
+    impermeable_faces: input.dimension === 3 ? ['z_min', 'z_max'] : [],
+    inlet_concentrations: {
+      y_min: Object.fromEntries(
+        input.species.map((species) => [
+          species.id,
+          structuredClone(species.reservoir_concentration),
+        ]),
+      ),
+    },
+  };
+  if (!request.required_physics.includes('hydraulics'))
+    request.required_physics.push('hydraulics');
+  return request;
+}
