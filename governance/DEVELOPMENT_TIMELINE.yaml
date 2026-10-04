@@ -353,6 +353,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work:
-  Complete exact-head CI and CodeQL for PR #125, then continue the dependency-ready functional implementation of the partial and pending master-plan points. Keep
-  broader product integration, independent validation and maturity promotion behind their declared gates.
+next_work: Complete exact-head CI and CodeQL for PR #125, then continue dependency-ready functional work on the partial and pending master-plan points; keep product integration, independent validation, and maturity promotion behind their declared gates.
