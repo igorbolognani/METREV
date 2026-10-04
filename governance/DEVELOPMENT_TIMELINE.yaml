@@ -325,6 +325,21 @@ stages:
       - governance/MASTER_EXECUTION_TASK.md
     meaning:
       Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
+  - id: runtime_review_remediation_pr125
+    period: '2026-10-04'
+    state: open_review
+    branch: codex/runtime-review-remediation-2026-10-04
+    pull_request: 125
+    base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
+    head_sha: a4c671b52679009b61fecd846df5c69650872400
+    initial_ci_run: 37224772294
+    initial_ci_state: failed_unused_import_in_spatial_worker
+    sources:
+      - packages/spatial-worker/src/structured-cell-executor.ts
+      - governance/MASTER_EXECUTION_TASK.md
+    meaning:
+      Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors and zero-state reaction derivatives. The first exact-head CI exposed one unused import; the source fix is in this review batch. No maturity promotion.
+
 sequence:
   - development_batch
   - numerical_verification_and_correction
@@ -335,5 +350,5 @@ phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
 next_work:
-  Resolve remaining PR #124 review findings with exact-head CI, then continue functional implementation of the partial and pending master-plan points. Keep
+  Fix the PR #125 exact-head validation finding, complete all applicable CI and CodeQL gates, then continue functional implementation of the partial and pending master-plan points. Keep
   broader product integration, independent validation and maturity promotion behind their declared gates.

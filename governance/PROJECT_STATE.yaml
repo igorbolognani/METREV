@@ -50,16 +50,15 @@ snapshot:
   verified_runtime_head: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
   runtime_ci: github_actions_run_37195960957_passed
   runtime_codeql: github_codeql_run_37195960964_passed
-  open_development_prs: []
+  open_development_prs:
+    - 125
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
 development_batch:
-  branch: codex/spatial-runtime-foundations
-  base_main: 18f577d4a41a8c89f81b809a5bcb9ab9b449980a
-  head_sha: 8ca77c860e5fd7c277048cbc36f4f12350e98963
-  pull_request: 124
-  merge_commit: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
-  state: integrated_main
+  branch: codex/runtime-review-remediation-2026-10-04
+  base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
+  pull_request: 125
+  state: open_review
   scientific_maturity_promoted: false
   decision_eligible: false
-  source: PR_124_spatial_runtime_foundations
+  source: PR_125_runtime_review_remediation

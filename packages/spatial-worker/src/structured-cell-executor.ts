@@ -4,7 +4,6 @@ import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 import {
   compileStructuredCellEquationGraph,
-  structuredCellInputSchema,
   structuredCellRunAdmissionSchema,
   STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE,
   structuredCellTopology,
