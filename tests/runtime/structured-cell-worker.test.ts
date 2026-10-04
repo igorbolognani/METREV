@@ -164,7 +164,6 @@ describe('structured cell native worker and authenticated artifacts', () => {
     );
   });
 
-
   it('accepts a complete active process-v7 sidecar envelope', () => {
     const digest = 'a'.repeat(64);
     const envelope = {
@@ -175,9 +174,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
       request_id: '00000000-0000-4000-8000-000000000001',
       input_sha256: digest,
       geometry_sha256: digest,
-      artifacts: [
-        { id: 'mesh', path: 'mesh.json', sha256: digest, bytes: 1 },
-      ],
+      artifacts: [{ id: 'mesh', path: 'mesh.json', sha256: digest, bytes: 1 }],
     };
     expect(
       parseStructuredCellProcessEnvelope(envelope, {
@@ -384,7 +381,9 @@ describe('structured cell native worker and authenticated artifacts', () => {
             !result.structured_cell_field_reduction ||
             !result.structured_cell_field_observables
           )
-            throw new Error('Expected persisted structured-cell result evidence');
+            throw new Error(
+              'Expected persisted structured-cell result evidence',
+            );
           const solvedPressure = result.fields.find(
             (field) => field.field_id === 'darcy_pressure',
           );
