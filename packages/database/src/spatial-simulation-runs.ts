@@ -20,6 +20,7 @@ import {
   type SpatialSimulationRunStatus,
   type SpatialSimulationRunLeaseInput,
   type TransitionSpatialSimulationRunInput,
+  type StructuredCellMeshRefinementEvidence,
 } from '@metrev/domain-contracts';
 
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
@@ -146,6 +147,11 @@ export interface SpatialSimulationRunRepository {
     runId: string,
     ownerId: string,
   ): Promise<SpatialRuntimeInput | null>;
+  persistMeshRefinementEvidence(
+    runId: string,
+    ownerId: string,
+    evidence: StructuredCellMeshRefinementEvidence,
+  ): Promise<SpatialSimulationRunSnapshot | null>;
   transition(
     input: TransitionSpatialSimulationRunInput,
   ): Promise<SpatialSimulationRunSnapshot | null>;
@@ -550,6 +556,52 @@ export class PrismaSpatialSimulationRunRepository implements SpatialSimulationRu
     });
     if (!record?.inputSnapshot) return null;
     return spatialRuntimeInputSchema.parse(record.inputSnapshot);
+  }
+
+  async persistMeshRefinementEvidence(
+    runId: string,
+    ownerId: string,
+    evidence: StructuredCellMeshRefinementEvidence,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const record = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: runId, ownerId },
+    });
+    if (!record) return null;
+    const current = fromRecord(record);
+    if (
+      !current.result ||
+      !['completed', 'failed'].includes(current.status) ||
+      evidence.current_run_id !== runId
+    )
+      return null;
+    const result = spatialSimulationResultSchema.parse({
+      ...current.result,
+      structured_cell_mesh_refinement_evidence: evidence,
+    });
+    const resultJson = serializeResultManifest(result);
+    if (!resultJson) return null;
+    const updatedAt = new Date();
+    const updated = await this.prisma.spatialSimulationRunRecord.updateMany({
+      where: {
+        id: runId,
+        ownerId,
+        status: record.status,
+        updatedAt: record.updatedAt,
+      },
+      data: {
+        resultManifest: JSON.parse(resultJson) as Prisma.InputJsonValue,
+        updatedAt,
+      },
+    });
+    if (updated.count !== 1)
+      throw new SpatialSimulationRunError(
+        'stale_state',
+        'The run changed while refinement evidence was being persisted',
+      );
+    const persisted = await this.prisma.spatialSimulationRunRecord.findFirst({
+      where: { id: runId, ownerId },
+    });
+    return persisted ? fromRecord(persisted) : null;
   }
 
   async transition(
@@ -1153,6 +1205,33 @@ export class MemorySpatialSimulationRunRepository implements SpatialSimulationRu
   ): Promise<SpatialRuntimeInput | null> {
     const record = this.runs.get(runId);
     return record?.ownerId === ownerId ? record.input : null;
+  }
+
+  async persistMeshRefinementEvidence(
+    runId: string,
+    ownerId: string,
+    evidence: StructuredCellMeshRefinementEvidence,
+  ): Promise<SpatialSimulationRunSnapshot | null> {
+    const record = this.runs.get(runId);
+    if (
+      !record ||
+      record.ownerId !== ownerId ||
+      !record.snapshot.result ||
+      !['completed', 'failed'].includes(record.snapshot.status) ||
+      evidence.current_run_id !== runId
+    )
+      return null;
+    const result = spatialSimulationResultSchema.parse({
+      ...record.snapshot.result,
+      structured_cell_mesh_refinement_evidence: evidence,
+    });
+    serializeResultManifest(result);
+    record.snapshot = spatialSimulationRunSnapshotSchema.parse({
+      ...record.snapshot,
+      result,
+      updated_at: this.now().toISOString(),
+    });
+    return record.snapshot;
   }
 
   async transition(

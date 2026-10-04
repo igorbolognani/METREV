@@ -19,8 +19,10 @@ import {
   spatialRuntimeInputSha256,
   spatialRuntimeMeshRequestSha256,
   buildStructuredCellDevelopmentReport,
+  deriveStructuredCellMeshRefinementEvidence,
   renderStructuredCellDevelopmentReport,
   structuredCellRunViewSchema,
+  structuredCellInputSchema,
   type SpatialRuntimeInput,
 } from '@metrev/domain-contracts';
 
@@ -34,6 +36,16 @@ const createRequestSchema = z
   .object({
     input: spatialRuntimeInputSchema,
     evaluation_id: z.string().trim().min(1).max(160).nullable().optional(),
+  })
+  .strict();
+const refinementEvidenceRequestSchema = z
+  .object({
+    run_ids: z
+      .array(z.string().trim().min(1).max(160))
+      .length(3)
+      .refine((values) => new Set(values).size === values.length, {
+        message: 'Three distinct run IDs are required',
+      }),
   })
   .strict();
 
@@ -264,6 +276,84 @@ export async function registerSpatialSimulationRoutes(
         .type('text/markdown; charset=utf-8')
         .send(renderStructuredCellDevelopmentReport(report));
     return reply.send(report);
+  });
+
+  app.post('/:runId/refinement-evidence', async (request, reply) => {
+    const actor = authorize(request, reply, 'ANALYST');
+    if (!actor) return reply;
+    const params = runParamsSchema.safeParse(request.params);
+    const body = refinementEvidenceRequestSchema.safeParse(request.body);
+    if (!params.success || !body.success)
+      return reply.code(400).send({ error: 'invalid_input' });
+    if (!body.data.run_ids.includes(params.data.runId))
+      return reply.code(400).send({
+        error: 'invalid_input',
+        message: 'The addressed run must be part of the refinement series',
+      });
+    const loaded = await Promise.all(
+      body.data.run_ids.map(async (runId) => ({
+        run: await app.spatialSimulationRunRepository.getOwnedRun(
+          runId,
+          actor.userId,
+        ),
+        input: await app.spatialSimulationRunRepository.getOwnedInput(
+          runId,
+          actor.userId,
+        ),
+      })),
+    );
+    if (loaded.some(({ run, input }) => !run || !input))
+      return reply.code(404).send({ error: 'not_found' });
+    if (
+      loaded.some(
+        ({ run }) =>
+          !run?.result ||
+          run.model_id !== 'structured-cell-supporting-electrolyte-v1' ||
+          !['completed', 'failed'].includes(run.status),
+      )
+    )
+      return reply.code(409).send({ error: 'refinement_evidence_unavailable' });
+    const candidates = [];
+    for (const { run, input } of loaded) {
+      const structuredInput = structuredCellInputSchema.safeParse(input);
+      if (!run || !structuredInput.success || !run.result)
+        return reply
+          .code(409)
+          .send({ error: 'refinement_evidence_unavailable' });
+      candidates.push({
+        run_id: run.id,
+        status: run.status as 'completed' | 'failed',
+        input_sha256: run.input_sha256,
+        solver_version: run.solver_version,
+        runtime_version: run.runtime_version,
+        input: structuredInput.data,
+        result: run.result,
+      });
+    }
+    const evidence = deriveStructuredCellMeshRefinementEvidence(
+      params.data.runId,
+      candidates,
+    );
+    const target =
+      await app.spatialSimulationRunRepository.persistMeshRefinementEvidence(
+        params.data.runId,
+        actor.userId,
+        evidence,
+      );
+    if (!target?.result)
+      return reply.code(409).send({ error: 'refinement_evidence_unavailable' });
+    const targetInput = structuredCellInputSchema.parse(
+      loaded.find(({ run }) => run?.id === params.data.runId)!.input,
+    );
+    const report = buildStructuredCellDevelopmentReport({
+      ...target,
+      input_snapshot: targetInput,
+    });
+    reply.header('Cache-Control', 'private, no-store');
+    return reply.send({
+      evidence: target.result.structured_cell_mesh_refinement_evidence,
+      report,
+    });
   });
 
   const downloadArtifact = async (

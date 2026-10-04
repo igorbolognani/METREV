@@ -14,6 +14,7 @@ import {
   spatialSimulationResultForInputSchema,
   structuredCellFieldObservablesSchema,
   deriveStructuredCellFieldReduction,
+  structuredCellMeshRefinementEvidenceSchema,
   validateStructuredCellFieldSamples,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
@@ -49,7 +50,7 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
-    protocol_version: z.literal('structured-cell-process-v4'),
+    protocol_version: z.literal('structured-cell-process-v5'),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),
@@ -171,7 +172,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v4';
+  readonly runtimeVersion = 'structured-cell-process-v5';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -684,6 +685,23 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         equation_graph: equationGraph,
         structured_cell_field_observables: structuredCellFieldObservables,
         structured_cell_field_reduction: fieldReduction,
+        structured_cell_mesh_refinement_evidence:
+          structuredCellMeshRefinementEvidenceSchema.parse({
+            contract_version: 'structured-cell-mesh-refinement-evidence-v1',
+            record_kind: 'numerical_mesh_refinement_evidence',
+            evidence_role: 'mathematical_software_verification',
+            decision_eligible: false,
+            independent_validation: false,
+            current_run_id: context.run.id,
+            algorithm:
+              'three_level_finest_solution_difference_uniform_characteristic_h_v1',
+            status: 'unavailable',
+            unavailable_reason: 'three_completed_runs_required',
+            compared_run_ids: [context.run.id],
+            levels: [],
+            refinement_ratio: null,
+            observables: [],
+          }),
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

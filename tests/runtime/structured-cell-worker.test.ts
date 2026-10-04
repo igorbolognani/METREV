@@ -30,6 +30,49 @@ import { structuredCellFixture } from '../fixtures/structured-cell';
 
 // This gate really invokes the native numerical process: numpy/scipy are required.
 describe('structured cell native worker and authenticated artifacts', () => {
+  it('validates refinement run IDs and scopes lookups to the authenticated owner', async () => {
+    const repository = new MemorySpatialSimulationRunRepository();
+    let role: 'ANALYST' | 'VIEWER' = 'ANALYST';
+    const app = await buildApp({
+      repository: new MemoryEvaluationRepository(),
+      spatialSimulationRunRepository: repository,
+      rateLimit: false,
+      sessionResolver: async () => ({
+        userId: 'refinement-owner',
+        email: 'refinement@example.invalid',
+        role,
+        sessionId: 'refinement-session',
+        sessionToken: 'refinement-token',
+      }),
+    });
+    try {
+      const url = '/api/spatial-simulations/medium/refinement-evidence';
+      const duplicate = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'medium'] },
+      });
+      expect(duplicate.statusCode).toBe(400);
+
+      const missing = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'fine'] },
+      });
+      expect(missing.statusCode).toBe(404);
+
+      role = 'VIEWER';
+      const viewer = await app.inject({
+        method: 'POST',
+        url,
+        payload: { run_ids: ['coarse', 'medium', 'fine'] },
+      });
+      expect(viewer.statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('keeps queued v2 runs on their matching executor and rejects them clearly on v3', async () => {
     const input = structuredCellFixture(2);
     const repository = new MemorySpatialSimulationRunRepository();
@@ -77,7 +120,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v4',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v5',
       ),
     });
   });
@@ -89,12 +132,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v4',
+      runtimeVersion: 'structured-cell-process-v5',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v4, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v5, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -102,7 +145,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v4, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v5, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -271,9 +314,10 @@ describe('structured cell native worker and authenticated artifacts', () => {
             'prescribed_incompressible_upwind_species_advection',
           ),
         ).toBe(advection);
-        expect(report.verification_status.mesh_refinement).toBe(
-          'not_assessed_for_this_run',
-        );
+        expect(report.verification_status.mesh_refinement).toBe('unavailable');
+        expect(
+          report.verification_status.mesh_refinement_unavailable_reason,
+        ).toBe('three_completed_runs_required');
         let actor = 'cell-owner';
         let tamperArtifacts = false;
         const app = await buildApp({

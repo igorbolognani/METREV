@@ -24,6 +24,18 @@ export function caseSpatialFixture(
         architecture_type: 'planar',
         membrane_presence: 'present',
       },
+      anode_biofilm_support: {
+        ...raw.stack_blocks.anode_biofilm_support,
+        material_family: 'carbon felt',
+      },
+      cathode_catalyst_support: {
+        ...raw.stack_blocks.cathode_catalyst_support,
+        catalyst_family: 'platinum test catalyst',
+      },
+      membrane_or_separator: {
+        ...raw.stack_blocks.membrane_or_separator,
+        type: 'cation exchange membrane test article',
+      },
     },
   });
   const input = structuredCellFixture(dimension);

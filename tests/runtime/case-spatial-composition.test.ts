@@ -20,6 +20,14 @@ describe('exact case/stack composition for the restricted cell', () => {
         missing_modules: [],
         unsupported_configuration: [],
         decision_eligible: false,
+        enabled_physics: [
+          'trace_species_transport',
+          'liquid_charge',
+          'solid_charge',
+          'electrode_reactions',
+          'circuit',
+          'continuous_interfaces',
+        ],
       });
       expect(plan.input).toEqual(request.input);
       expect(plan.input?.case_context).toBeUndefined();
@@ -28,6 +36,20 @@ describe('exact case/stack composition for the restricted cell', () => {
         algebraic_state_count: dimension === 2 ? 49 : 97,
         dimension,
       });
+      expect(plan.stack_selections).toEqual([
+        expect.objectContaining({
+          stack_block: 'anode_biofilm_support',
+          selector_value: 'carbon felt',
+        }),
+        expect.objectContaining({
+          stack_block: 'membrane_or_separator',
+          selector_value: 'cation exchange membrane test article',
+        }),
+        expect.objectContaining({
+          stack_block: 'cathode_catalyst_support',
+          selector_value: 'platinum test catalyst',
+        }),
+      ]);
       expect(
         plan.equation_graph!.nodes.some(
           (n) => n.equation_id === 'cell-homogeneous-reactions-v1',
@@ -103,6 +125,97 @@ describe('exact case/stack composition for the restricted cell', () => {
     request.input!.temperature.unit = 'K';
     request.input!.temperature.source_ref = '';
     expect(() => resolveCaseSpatialComposition(normalized, request)).toThrow();
+  });
+  it('binds declared stack selections and the actual configured physics', () => {
+    const { normalized, request } = caseSpatialFixture();
+    normalized.stack_blocks.cathode_catalyst_support.catalyst_family =
+      'unknown';
+    expect(resolveCaseSpatialComposition(normalized, request)).toMatchObject({
+      status: 'insufficient_data',
+      missing_inputs: ['stack_blocks.cathode_catalyst_support.catalyst_family'],
+      equation_graph: null,
+    });
+
+    const fixture = caseSpatialFixture();
+    fixture.request.required_physics = fixture.request.required_physics.filter(
+      (physics) => physics !== 'solid_charge',
+    );
+    expect(
+      resolveCaseSpatialComposition(fixture.normalized, fixture.request),
+    ).toMatchObject({
+      status: 'insufficient_data',
+      missing_inputs: ['required_physics:solid_charge'],
+    });
+
+    const caseRequired = caseSpatialFixture();
+    caseRequired.normalized.mechanistic_model = {
+      required_physics_modules: ['hydraulics'],
+    };
+    expect(
+      resolveCaseSpatialComposition(
+        caseRequired.normalized,
+        caseRequired.request,
+      ),
+    ).toMatchObject({
+      status: 'not_implemented',
+      missing_modules: ['hydraulics'],
+    });
+
+    const reactive = caseSpatialFixture();
+    const neutral = structuredClone(reactive.request.input!.species[0]);
+    neutral.id = 'neutral';
+    reactive.request.input!.species.push(neutral);
+    for (const layer of reactive.request.input!.geometry.layers)
+      layer.diffusivity.neutral = structuredClone(layer.diffusivity.reduced!);
+    reactive.request.input!.reactions = [
+      {
+        id: 'declared-source',
+        domain_tag: 'membrane',
+        equation_ref: 'synthetic:declared-source',
+        stoichiometry: {
+          reduced: {
+            value: -1,
+            unit: '1',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://case-spatial',
+          },
+          neutral: {
+            value: 1,
+            unit: '1',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://case-spatial',
+          },
+        },
+        law: {
+          kind: 'mass_action',
+          rate: {
+            value: 1e-6,
+            unit: 'mol/(m3*s)',
+            source_kind: 'test_fixture',
+            source_ref: 'test-fixture://case-spatial',
+          },
+          orders: {
+            reduced: {
+              value: 1,
+              unit: '1',
+              source_kind: 'test_fixture',
+              source_ref: 'test-fixture://case-spatial',
+            },
+          },
+        },
+      },
+    ];
+    expect(
+      resolveCaseSpatialComposition(reactive.normalized, reactive.request),
+    ).toMatchObject({
+      status: 'insufficient_data',
+      missing_inputs: ['required_physics:homogeneous_reactions'],
+      enabled_physics: expect.arrayContaining(['homogeneous_reactions']),
+    });
+    reactive.request.required_physics.push('homogeneous_reactions');
+    expect(
+      resolveCaseSpatialComposition(reactive.normalized, reactive.request),
+    ).toMatchObject({ status: 'ready' });
   });
   it('keeps declared homogeneous sources in the equation graph with input paths', () => {
     const { request } = caseSpatialFixture();

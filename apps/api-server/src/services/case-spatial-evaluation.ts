@@ -82,7 +82,7 @@ export async function createPersistedCaseSpatialEvaluation(
       evaluation_id: evaluationId,
       normalized_case_sha256: caseSnapshotSha256(snapshot),
       mapping_policy: 'explicit_layer_to_case_stack_block_v1',
-      component_domains: request.component_domains,
+      component_domains: resolution.component_domains,
       architecture_family: snapshot.architecture_family,
       input_role: 'source_traced_case_development_input',
       decision_eligible: false,

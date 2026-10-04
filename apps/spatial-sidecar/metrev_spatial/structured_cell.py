@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v4"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v5"
 
 
 def number(v, unit, lower=None, strict=False):
@@ -46,7 +46,7 @@ def number(v, unit, lower=None, strict=False):
 
 def validate(inp):
     required = {'contract_version','model_id','system','dimension','coordinate_system','charge_model','geometry','temperature','reservoir_faces','species','reactions','electrodes','circuit','numerics'}
-    if not isinstance(inp,dict) or set(inp) - {'case_context', 'advection'} != required:
+    if not isinstance(inp,dict) or set(inp) - {'case_context', 'advection', 'hydraulics'} != required:
         raise ValueError('Invalid cell input properties')
     if (inp['contract_version']!='spatial-cell-input-v1' or inp['model_id']!='structured-cell-supporting-electrolyte-v1' or inp['dimension'] not in [2,3] or inp['coordinate_system']!='cartesian' or inp['charge_model']!='fixed-conductivity-supporting-electrolyte'):
         raise ValueError('Unsupported cell profile or fidelity')
@@ -142,8 +142,12 @@ def validate(inp):
     for key in ['nonlinear_tolerance','conservation_tolerance']:
         if isinstance(num[key],bool) or not math.isfinite(num[key]) or not 0<num[key]<=1e-3: raise ValueError('Invalid tolerance')
     for key,unit in [('concentration_scale','mol/m3'),('potential_scale','V'),('species_rate_scale','mol/(m3*s)'),('charge_rate_scale','A/m3')]: number(num[key],unit,0,True)
+    if 'advection' in inp and 'hydraulics' in inp:
+        raise ValueError('Prescribed velocity and prescribed Darcy flow are mutually exclusive')
     if 'advection' in inp:
         prescribed_flow(inp, topology(inp))
+    if 'hydraulics' in inp:
+        prescribed_darcy_flow(inp, topology(inp))
     return inp
 
 
@@ -227,6 +231,85 @@ def prescribed_flow(inp, mesh):
     return np.asarray(interior), np.asarray(exterior)
 
 
+def prescribed_darcy_flow(inp, mesh):
+    """Evaluate Darcy's law on every FV face from supplied pressures.
+
+    Cell pressures are source-backed model inputs. This function verifies their
+    conservative face fluxes; it does not assemble or solve a pressure equation.
+    """
+    block = inp.get('hydraulics')
+    if block is None:
+        return np.zeros(len(mesh['faces'])), np.zeros(len(mesh['boundary'])), None
+    required = {'version', 'dynamic_viscosity', 'permeability_by_region',
+                'cell_pressure', 'boundary_pressure', 'impermeable_faces',
+                'inlet_concentrations'}
+    if not isinstance(block, dict) or set(block) != required or block['version'] != 'structured-cell-prescribed-darcy-v1':
+        raise ValueError('Invalid prescribed Darcy properties')
+    viscosity = number(block['dynamic_viscosity'], 'Pa*s', 0, True)
+    layers = inp['geometry']['layers']
+    if any(layer['kind'] == 'membrane' for layer in layers):
+        raise ValueError('Darcy membrane flow requires an unsupported membrane water law')
+    permeability = block['permeability_by_region']
+    if not isinstance(permeability, dict) or set(permeability) != {layer['tag'] for layer in layers}:
+        raise ValueError('Darcy permeability must cover exactly every region')
+    mobility = np.array([number(permeability[layer['tag']], 'm2', 0, True) / viscosity
+                         for layer in layers])
+    pressures = block['cell_pressure']
+    if not isinstance(pressures, list) or len(pressures) != mesh['count']:
+        raise ValueError('Darcy pressure must cover every ordered mesh cell')
+    pressure = np.array([number(value, 'Pa') for value in pressures])
+    allowed = {'y_min', 'y_max'} | ({'z_min', 'z_max'} if inp['dimension'] == 3 else set())
+    boundary_pressure = block['boundary_pressure']
+    impermeable_values = block['impermeable_faces']
+    if (not isinstance(boundary_pressure, dict) or not isinstance(impermeable_values, list)
+            or len(set(impermeable_values)) != len(impermeable_values)
+            or bool(set(boundary_pressure) & set(impermeable_values))
+            or (set(boundary_pressure) | set(impermeable_values)) != allowed):
+        raise ValueError('Every transverse Darcy face must declare pressure or impermeability exactly once')
+    boundary_values = {name: number(value, 'Pa') for name, value in boundary_pressure.items()}
+    impermeable = set(impermeable_values)
+    interior = []
+    for i, j, axis, _, hi, hj in mesh['faces']:
+        resistance = hi / mobility[mesh['regions'][i]] + hj / mobility[mesh['regions'][j]]
+        interior.append(-(pressure[j] - pressure[i]) / resistance)
+    exterior = []
+    for i, axis, sign, _, h in mesh['boundary']:
+        name = 'xyz'[axis] + ('_min' if sign < 0 else '_max')
+        if axis == 0 or name in impermeable:
+            exterior.append(0.)
+        else:
+            resistance = h / mobility[mesh['regions'][i]]
+            exterior.append(-(boundary_values[name] - pressure[i]) / resistance)
+    divergence = np.zeros(mesh['count']); throughput = np.zeros(mesh['count']); inflow = set()
+    for velocity, (i, j, _, area, *_) in zip(interior, mesh['faces']):
+        flow = velocity * area
+        divergence[i] += flow; divergence[j] -= flow
+        throughput[i] += abs(flow); throughput[j] += abs(flow)
+    for velocity, (i, axis, sign, area, _) in zip(exterior, mesh['boundary']):
+        flow = velocity * area
+        divergence[i] += flow; throughput[i] += abs(flow)
+        if velocity < 0:
+            inflow.add('xyz'[axis] + ('_min' if sign < 0 else '_max'))
+    if not np.isfinite(divergence).all() or not np.isfinite(throughput).all():
+        raise ValueError('Prescribed Darcy flow produces nonfinite volumetric flux')
+    if np.any(np.abs(divergence) > 1e-12 * np.maximum(throughput, 1e-30)):
+        raise ValueError('Prescribed Darcy pressure violates local incompressible volume conservation')
+    concentrations = block['inlet_concentrations']
+    if not isinstance(concentrations, dict) or set(concentrations) != inflow:
+        raise ValueError('Every Darcy inflow requires explicit species concentrations')
+    ids = {species['id'] for species in inp['species']}
+    for values in concentrations.values():
+        if not isinstance(values, dict) or set(values) != ids:
+            raise ValueError('Darcy inlet concentrations must cover exactly all species')
+        for value in values.values():
+            number(value, 'mol/m3', 0)
+    return np.asarray(interior), np.asarray(exterior), {
+        'pressure': pressure,
+        'divergence': divergence,
+        'throughput': throughput,
+    }
+
+
 def derive_field_extrema(fields, mesh, layers):
     """Return deterministic modeled extrema bound to global finite-volume cells."""
     centers = np.asarray(mesh['centers_m'], dtype=float)
@@ -304,7 +387,11 @@ class Cell:
         self.valence=np.array([s['valence']['value'] for s in inp['species']]); self.refs=np.array([s['reference_concentration']['value'] for s in inp['species']])
         self.cs=inp['numerics']['concentration_scale']['value']; self.ps=inp['numerics']['potential_scale']['value']
         self.rs=inp['numerics']['species_rate_scale']['value']; self.js=inp['numerics']['charge_rate_scale']['value']; self.rt=R*inp['temperature']['value']
-        self.face_velocity, self.boundary_velocity = prescribed_flow(inp, m)
+        self.darcy = None
+        if 'hydraulics' in inp:
+            self.face_velocity, self.boundary_velocity, self.darcy = prescribed_darcy_flow(inp, m)
+        else:
+            self.face_velocity, self.boundary_velocity = prescribed_flow(inp, m)
         self.history=[]
 
     def unpack(self,x):
@@ -342,7 +429,7 @@ class Cell:
             if velocity != 0:
                 # Outflow uses the solved cell state; inflow is source-backed.
                 upstream = c[:,i] if velocity > 0 else np.array([
-                    self.input['advection']['inlet_concentrations'][name][s['id']]['value']
+                    (self.input.get('advection') or self.input['hydraulics'])['inlet_concentrations'][name][s['id']]['value']
                     for s in self.input['species']
                 ])
                 flux = area * velocity * upstream
@@ -510,6 +597,11 @@ class Cell:
         diagnostic('collector_current','circuit_closure',[collectors.sum()],max(np.max(np.abs(collectors)),charge_scale),'A')
         circuit_residual=float(abs(self.residual(result.x)[-1]))
         residuals.append({'balance_id':'load_voltage','kind':'circuit_closure','scope':'global','absolute_residual':circuit_residual*self.ps,'unit':'V','relative_residual':circuit_residual,'tolerance':scale,'passed':circuit_residual<=scale})
+        if self.darcy is not None:
+            absolute=float(np.max(np.abs(self.darcy['divergence'])))
+            normalizer=max(float(np.max(self.darcy['throughput'])),1e-30)
+            relative=absolute/normalizer
+            residuals.append({'balance_id':'darcy_local_volume','kind':'fluid_volume','scope':'global','absolute_residual':absolute,'unit':'m3/s','relative_residual':relative,'tolerance':scale,'passed':relative<=scale})
         converged=bool(result.success and self.history[-1]<=self.input['numerics']['nonlinear_tolerance'] and all(r['passed'] for r in residuals))
         termination='nonlinear_and_conservation_passed' if converged else ('conservation_gate_failed' if result.success else result.termination)
         fields=[{'id':'concentration_'+s['id'],'unit':'mol/m3','values':c[k].tolist(),'cells':list(range(n))} for k,s in enumerate(self.input['species'])]
@@ -518,6 +610,18 @@ class Cell:
             r=next(r for r,l in enumerate(self.input['geometry']['layers']) if l['tag']==e['domain_tag']); cells=np.flatnonzero(self.mesh['regions']==r)
             fields.append({'id':'solid_potential_'+e['role'],'unit':'V','values':solid[cells].tolist(),'cells':cells.tolist()})
         fields.append({'id':'faradaic_current_density','unit':'A/m3','values':(jr/self.mesh['volumes']).tolist(),'cells':list(range(n))})
+        if self.darcy is not None:
+            fields.append({'id':'darcy_pressure','unit':'Pa','values':self.darcy['pressure'].tolist(),'cells':list(range(n))})
+            velocity=np.zeros((n,self.input['dimension'])); samples=[[[] for _ in range(self.input['dimension'])] for _ in range(n)]
+            for value,(i,j,axis,*_) in zip(self.face_velocity,self.mesh['faces']):
+                samples[i][axis].append(value); samples[j][axis].append(value)
+            for value,(i,axis,sign,*_) in zip(self.boundary_velocity,self.mesh['boundary']):
+                samples[i][axis].append(sign*value)
+            for i in range(n):
+                for axis in range(self.input['dimension']):
+                    velocity[i,axis]=float(np.mean(samples[i][axis]))
+            for axis in range(self.input['dimension']):
+                fields.append({'id':'darcy_velocity_'+'xyz'[axis],'unit':'m/s','values':velocity[:,axis].tolist(),'cells':list(range(n))})
         field_extrema = derive_field_extrema(
             fields,
             {

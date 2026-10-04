@@ -123,3 +123,69 @@ export function structuredCellTransportFaces(input: {
   }
   return { interior, boundary, cell_count: count };
 }
+
+/**
+ * Reconstruct one conservative, prescribed Darcy face field from sourced cell
+ * and boundary pressures. This is an algebraic constitutive evaluation; it is
+ * deliberately not a pressure solve.
+ */
+export function structuredCellPrescribedDarcyFlow(input: {
+  dimension: 2 | 3;
+  geometry: {
+    lengths_m: { value: number }[];
+    transverse_cells: number[];
+    out_of_plane_depth?: { value: number };
+    layers: {
+      tag: string;
+      kind: string;
+      width_m: { value: number };
+      cells: number;
+    }[];
+  };
+  hydraulics: {
+    dynamic_viscosity: { value: number };
+    permeability_by_region: Record<string, { value: number }>;
+    cell_pressure: { value: number }[];
+    boundary_pressure: Record<string, { value: number }>;
+    impermeable_faces: string[];
+  };
+}) {
+  const faces = structuredCellTransportFaces(input);
+  if (input.hydraulics.cell_pressure.length !== faces.cell_count)
+    throw new RangeError('Darcy pressure must cover every ordered mesh cell');
+  const regionMobility = input.geometry.layers.map((layer) => {
+    const permeability = input.hydraulics.permeability_by_region[layer.tag];
+    if (!permeability)
+      throw new RangeError('Darcy permeability must cover every region');
+    return permeability.value / input.hydraulics.dynamic_viscosity.value;
+  });
+  const pressures = input.hydraulics.cell_pressure.map((value) => value.value);
+  const topology = structuredCellTopology(
+    input as Parameters<typeof structuredCellTopology>[0],
+  );
+  const interior = faces.interior.map((face) => {
+    const leftDistance = topology.sizes_m[face.left_cell][face.axis] / 2;
+    const rightDistance = topology.sizes_m[face.right_cell][face.axis] / 2;
+    const resistance =
+      leftDistance / regionMobility[face.left_region] +
+      rightDistance / regionMobility[face.right_region];
+    return (
+      -(pressures[face.right_cell] - pressures[face.left_cell]) / resistance
+    );
+  });
+  const impermeable = new Set(input.hydraulics.impermeable_faces);
+  const boundary = faces.boundary.map((face) => {
+    if (face.axis === 0 || impermeable.has(face.face)) return 0;
+    const prescribed = input.hydraulics.boundary_pressure[face.face];
+    if (!prescribed)
+      throw new RangeError('Every transverse Darcy boundary must be declared');
+    const distance = topology.sizes_m[face.cell_index][face.axis] / 2;
+    const resistance = distance / regionMobility[face.region_index];
+    return -(prescribed.value - pressures[face.cell_index]) / resistance;
+  });
+  return {
+    ...faces,
+    interior_velocity_m_s: interior,
+    boundary_velocity_m_s: boundary,
+  };
+}

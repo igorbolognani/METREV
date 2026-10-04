@@ -3,6 +3,7 @@ import { resolve, join } from 'node:path';
 import {
   LocalSpatialArtifactStore,
   LocalSpatialFieldArtifactStore,
+  spatialArtifactStoreConfigFromEnvironment,
 } from '@metrev/spatial-artifact-store';
 import { validateSpatialContainerOptions } from '@metrev/spatial-sidecar-client';
 
@@ -35,6 +36,7 @@ export function developmentSidecarConfiguration(
   const artifactRoot = resolve(
     required(environment, 'METREV_SPATIAL_DEVELOPMENT_ARTIFACT_ROOT'),
   );
+  const artifactPolicy = spatialArtifactStoreConfigFromEnvironment(environment);
   const image = environment.METREV_SPATIAL_SIDECAR_IMAGE;
   const container =
     image === undefined
@@ -98,9 +100,13 @@ export function developmentSidecarConfiguration(
     ...(container ? { container } : {}),
     meshArtifactStore: new LocalSpatialArtifactStore({
       rootDirectory: join(artifactRoot, 'mesh-artifacts'),
+      maxMeshBytes: artifactPolicy.maxObjectBytes,
     }),
     fieldArtifactStore: new LocalSpatialFieldArtifactStore({
       rootDirectory: join(artifactRoot, 'field-artifacts'),
+      maxFieldBytes: artifactPolicy.maxObjectBytes,
+      chunkBytes: artifactPolicy.chunkBytes,
+      stagingTtlMs: artifactPolicy.stagingTtlMs,
     }),
   };
 }

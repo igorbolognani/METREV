@@ -78,6 +78,7 @@ describe('persisted case spatial execution', () => {
         expect(plan.statusCode).toBe(200);
         expect(plan.json().status).toBe('ready');
         const bound = plan.json().resolution.input;
+        expect(plan.json().resolution.stack_selections).toHaveLength(3);
         const reordered = structuredClone(bound);
         for (const layer of reordered.geometry.layers)
           layer.diffusivity = {
@@ -292,5 +293,42 @@ describe('persisted case spatial execution', () => {
       caseSnapshotSha256({ a: [1, 2], b: { a: 2, z: 1 } }),
     );
     expect(caseSnapshotSha256([1, 2])).not.toBe(caseSnapshotSha256([2, 1]));
+  });
+  it('canonicalizes component mappings before hashing and persistence', async () => {
+    const repository = new MemoryEvaluationRepository();
+    const runs = new MemorySpatialSimulationRunRepository();
+    const { rawInput, request } = caseSpatialFixture();
+    const evaluation = await createPersistedCaseEvaluation({
+      rawInput,
+      actor: owner,
+      evaluationRepository: repository,
+      logger: { warn: vi.fn() },
+      environment: 'test',
+      simulationMode: 'disabled',
+    });
+    const app = await buildApp({
+      repository,
+      spatialSimulationRunRepository: runs,
+      rateLimit: false,
+      sessionResolver: async () => owner,
+    });
+    try {
+      request.component_domains!.reverse();
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/evaluations/${evaluation.evaluation_id}/spatial-simulations/plan`,
+        payload: request,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(
+        response.json().resolution.input.case_context.component_domains,
+      ).toEqual([
+        expect.objectContaining({ domain_tag: 'anode' }),
+        expect.objectContaining({ domain_tag: 'membrane' }),
+        expect.objectContaining({ domain_tag: 'cathode' }),
+      ]);
+    } finally {
+      await app.close();
+    }
   });
 });
