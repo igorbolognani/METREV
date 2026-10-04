@@ -70,11 +70,11 @@ class DarcyCouplingTests(unittest.TestCase):
                 self.assertAlmostEqual(velocity, target, delta=1e-15)
             np.testing.assert_allclose(diagnostic['divergence'], 0., atol=1e-24)
 
-    def test_darcy_flow_drives_cell_and_exports_pressure_velocity_fields(self):
+    def test_prescribed_darcy_exports_velocity_without_claiming_input_pressure(self):
         output = Cell(darcy_fixture()).solve()
         self.assertEqual(output['status'], 'converged')
         fields = {field['id']: field for field in output['fields']}
-        self.assertIn('darcy_pressure', fields)
+        self.assertNotIn('darcy_pressure', fields)
         self.assertIn('darcy_velocity_x', fields)
         self.assertIn('darcy_velocity_y', fields)
         np.testing.assert_allclose(fields['darcy_velocity_x']['values'], 0., atol=1e-15)

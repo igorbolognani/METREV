@@ -99,10 +99,13 @@ describe('exact case/stack composition for the restricted cell', () => {
         'input_identity_differs_from_requested_case_fidelity',
       ],
     });
-    normalized.stack_blocks.reactor_architecture.architecture_type = 'unknown';
-    expect(resolveCaseSpatialComposition(normalized, request).status).toBe(
-      'insufficient_data',
-    );
+    for (const placeholder of ['unknown', 'Unknown', 'NEEDS_CLASSIFICATION']) {
+      normalized.stack_blocks.reactor_architecture.architecture_type =
+        placeholder;
+      expect(resolveCaseSpatialComposition(normalized, request).status).toBe(
+        'insufficient_data',
+      );
+    }
     normalized.stack_blocks.reactor_architecture.architecture_type = 'tubular';
     expect(resolveCaseSpatialComposition(normalized, request).status).toBe(
       'not_implemented',
@@ -135,7 +138,7 @@ describe('exact case/stack composition for the restricted cell', () => {
   it('binds declared stack selections and the actual configured physics', () => {
     const { normalized, request } = caseSpatialFixture();
     normalized.stack_blocks.cathode_catalyst_support.catalyst_family =
-      'unknown';
+      'NEEDS_CLASSIFICATION';
     expect(resolveCaseSpatialComposition(normalized, request)).toMatchObject({
       status: 'insufficient_data',
       missing_inputs: ['stack_blocks.cathode_catalyst_support.catalyst_family'],

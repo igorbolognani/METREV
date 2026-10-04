@@ -2,6 +2,7 @@ import {
   caseSpatialRequestSchema,
   compileStructuredCellEquationGraph,
   structuredCellDomainMappingMatches,
+  structuredCellRunAdmissionSchema,
   type CaseSpatialRequest,
   type NormalizedCaseInput,
   type StructuredCellEquationGraph,
@@ -53,6 +54,12 @@ const STACK_SELECTIONS = {
 } as const;
 
 type StackBlock = keyof typeof STACK_SELECTIONS;
+
+function isUnresolvedSelection(value: string): boolean {
+  return ['unknown', 'needs_classification'].includes(
+    value.trim().toLowerCase(),
+  );
+}
 
 export type CaseSpatialStackSelection = {
   stack_block: StackBlock;
@@ -120,7 +127,7 @@ export function resolveCaseSpatialComposition(
     out.unsupported_configuration.push('case_system_requires_MFC_or_MEC');
   const architecture =
     caseInput.stack_blocks.reactor_architecture.architecture_type;
-  if (['needs_classification', 'unknown'].includes(architecture))
+  if (isUnresolvedSelection(architecture))
     out.missing_inputs.push(
       'stack_blocks.reactor_architecture.architecture_type: explicit planar declaration',
     );
@@ -135,6 +142,10 @@ export function resolveCaseSpatialComposition(
       'component_domains: explicit layer-to-stack mapping',
     );
   if (request.input) {
+    if (!structuredCellRunAdmissionSchema.safeParse(request.input).success)
+      out.unsupported_configuration.push(
+        'input.hydraulics: new runs require the boundary-driven Darcy pressure solve; prescribed cell_pressure arrays remain read-compatible only',
+      );
     if (request.input.case_context)
       throw new RangeError(
         'Case context is assigned by the authenticated service',
@@ -223,7 +234,7 @@ export function resolveCaseSpatialComposition(
   for (const [stackBlock, domainTags] of groupedDomains) {
     const selector = STACK_SELECTIONS[stackBlock];
     const value = selector.read(caseInput).trim();
-    if (!value || ['unknown', 'needs_classification'].includes(value))
+    if (!value || isUnresolvedSelection(value))
       out.missing_inputs.push(selector.path);
     else
       out.stack_selections.push({

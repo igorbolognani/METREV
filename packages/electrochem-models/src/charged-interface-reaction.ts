@@ -181,6 +181,12 @@ function positiveState(value: number | undefined, label: string): number {
   return value;
 }
 
+function nonnegativeState(value: number | undefined, label: string): number {
+  if (value === undefined || !Number.isFinite(value) || value < 0)
+    throw new RangeError(`${label}: nonnegative finite mol/m3 state required`);
+  return value;
+}
+
 function rejectUnsupported(
   requested: UnsupportedChargedEffects | undefined,
   label: string,
@@ -538,12 +544,22 @@ function concentrationProduct(
   label: string,
 ): { value: number; derivative: Record<string, number> } {
   let value = 1;
-  const numericOrder: Record<string, number> = {};
+  const factors: Record<
+    string,
+    { exponent: number; state: number; scale: number }
+  > = {};
   for (const [id, item] of Object.entries(order)) {
     if (!speciesIds.has(id))
       throw new RangeError(`${label}.${id}: unknown species`);
     const exponent = sourced(item, '1', `${label}.${id}`, { min: 0 });
-    const state = positiveState(concentration[id], `concentrationMolM3.${id}`);
+    if (!Number.isInteger(exponent))
+      throw new RangeError(
+        `${label}.${id}: nonnegative integer order required`,
+      );
+    const state = nonnegativeState(
+      concentration[id],
+      `concentrationMolM3.${id}`,
+    );
     const scale = sourced(
       reference[id],
       'mol/m3',
@@ -553,15 +569,28 @@ function concentrationProduct(
       },
     );
     value *= (state / scale) ** exponent;
-    numericOrder[id] = exponent;
+    factors[id] = { exponent, state, scale };
   }
   return {
     value,
     derivative: Object.fromEntries(
-      Object.entries(numericOrder).map(([id, exponent]) => [
-        id,
-        exponent ? (value * exponent) / (concentration[id] as number) : 0,
-      ]),
+      Object.entries(factors).map(([id, factor]) => {
+        const otherProduct = Object.entries(factors)
+          .filter(([otherId]) => otherId !== id)
+          .reduce(
+            (product, [, other]) =>
+              product * (other.state / other.scale) ** other.exponent,
+            1,
+          );
+        const derivative =
+          factor.exponent === 0
+            ? 0
+            : (factor.exponent *
+                (factor.state / factor.scale) ** (factor.exponent - 1) *
+                otherProduct) /
+              factor.scale;
+        return [id, derivative];
+      }),
     ),
   };
 }
@@ -580,7 +609,7 @@ export function assembleHomogeneousReactions(
   const species = validateSpecies(input.species);
   const ids = new Set(species.map((item) => item.id));
   species.forEach((item) =>
-    positiveState(
+    nonnegativeState(
       input.concentrationMolM3[item.id],
       `concentrationMolM3.${item.id}`,
     ),

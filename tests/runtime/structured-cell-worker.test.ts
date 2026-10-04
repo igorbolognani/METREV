@@ -11,8 +11,11 @@ import {
   spatialRuntimeInputSha256,
   structuredCellGeometrySha256,
   buildStructuredCellDevelopmentReport,
+  spatialSimulationResultForInputSchema,
   structuredCellRunViewSchema,
   structuredCellTransportFaces,
+  structuredCellTopology,
+  compileStructuredCellEquationGraph,
   structuredCellFieldReductionSchema,
 } from '@metrev/domain-contracts';
 import { LocalSpatialFieldArtifactStore } from '@metrev/spatial-artifact-store';
@@ -120,7 +123,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v6',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v7',
       ),
     });
   });
@@ -132,12 +135,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v6',
+      runtimeVersion: 'structured-cell-process-v7',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -145,7 +148,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -159,6 +162,26 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).toThrow(
       'Cell solver version mismatch: expected structured-cell-fv-v1, received structured-cell-fv-v2',
     );
+  });
+
+  it('accepts a complete active process-v7 sidecar envelope', () => {
+    const digest = 'a'.repeat(64);
+    const envelope = {
+      version: 'structured-cell-fv-v1',
+      protocol_version: 'structured-cell-process-v7',
+      status: 'prepared',
+      dimension: 2,
+      request_id: '00000000-0000-4000-8000-000000000001',
+      input_sha256: digest,
+      geometry_sha256: digest,
+      artifacts: [{ id: 'mesh', path: 'mesh.json', sha256: digest, bytes: 1 }],
+    };
+    expect(
+      parseStructuredCellProcessEnvelope(envelope, {
+        solverVersion: 'structured-cell-fv-v1',
+        runtimeVersion: 'structured-cell-process-v7',
+      }),
+    ).toMatchObject({ protocol_version: 'structured-cell-process-v7' });
   });
 
   it.each([
@@ -350,6 +373,67 @@ describe('structured cell native worker and authenticated artifacts', () => {
             'prescribed_incompressible_upwind_species_advection',
           ),
         ).toBe(advection);
+        if (solveDarcy && !nonconverged) {
+          const result = snapshot?.result;
+          if (
+            !result ||
+            result.contract_version !== 'spatial-simulation-result-v3' ||
+            !result.structured_cell_field_reduction ||
+            !result.structured_cell_field_observables
+          )
+            throw new Error(
+              'Expected persisted structured-cell result evidence',
+            );
+          const solvedPressure = result.fields.find(
+            (field) => field.field_id === 'darcy_pressure',
+          );
+          const solvedHydraulics = input.hydraulics;
+          if (
+            !solvedPressure ||
+            !solvedHydraulics ||
+            solvedHydraulics.version !==
+              'structured-cell-darcy-pressure-solve-v1'
+          )
+            throw new Error('Expected a solved Darcy pressure field');
+          const legacyInput = structuredCellFixture(dimension);
+          legacyInput.geometry.layers[1].kind = 'separator';
+          legacyInput.hydraulics = {
+            version: 'structured-cell-prescribed-darcy-v1',
+            dynamic_viscosity: solvedHydraulics.dynamic_viscosity,
+            permeability_by_region: solvedHydraulics.permeability_by_region,
+            cell_pressure: structuredCellTopology(legacyInput).centers_m.map(
+              (center) => ({
+                value: 10 - 1000 * center[1],
+                unit: 'Pa',
+                source_kind: 'test_fixture',
+                source_ref: 'synthetic:legacy-v5-prescribed-pressure',
+              }),
+            ),
+            boundary_pressure: solvedHydraulics.boundary_pressure,
+            impermeable_faces: solvedHydraulics.impermeable_faces,
+            inlet_concentrations: solvedHydraulics.inlet_concentrations,
+          };
+          const legacyInputHash = spatialRuntimeInputSha256(legacyInput);
+          const legacyResult = {
+            ...result,
+            runtime_version: 'structured-cell-process-v5',
+            input_sha256: legacyInputHash,
+            equation_graph: compileStructuredCellEquationGraph(legacyInput),
+            structured_cell_field_observables: {
+              ...result.structured_cell_field_observables,
+              input_sha256: legacyInputHash,
+            },
+            structured_cell_field_reduction: {
+              ...result.structured_cell_field_reduction,
+              input_sha256: legacyInputHash,
+            },
+          };
+          expect(
+            spatialSimulationResultForInputSchema(legacyInput).safeParse(
+              legacyResult,
+            ).success,
+          ).toBe(true);
+        }
         if (solveDarcy) {
           expect(
             snapshot?.result?.fields.map((field) => field.field_id),

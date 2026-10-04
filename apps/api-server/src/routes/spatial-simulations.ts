@@ -334,12 +334,21 @@ export async function registerSpatialSimulationRoutes(
       params.data.runId,
       candidates,
     );
-    const target =
-      await app.spatialSimulationRunRepository.persistMeshRefinementEvidence(
-        params.data.runId,
-        actor.userId,
-        evidence,
-      );
+    let target: Awaited<
+      ReturnType<
+        typeof app.spatialSimulationRunRepository.persistMeshRefinementEvidence
+      >
+    >;
+    try {
+      target =
+        await app.spatialSimulationRunRepository.persistMeshRefinementEvidence(
+          params.data.runId,
+          actor.userId,
+          evidence,
+        );
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
     if (!target?.result)
       return reply.code(409).send({ error: 'refinement_evidence_unavailable' });
     const targetInput = structuredCellInputSchema.parse(

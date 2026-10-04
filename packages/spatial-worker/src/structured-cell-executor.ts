@@ -4,7 +4,7 @@ import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 import {
   compileStructuredCellEquationGraph,
-  structuredCellInputSchema,
+  structuredCellRunAdmissionSchema,
   STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE,
   structuredCellTopology,
   STRUCTURED_CELL_LIMITS,
@@ -51,7 +51,15 @@ const artifactSchema = z
 const envelopeSchema = z
   .object({
     version: z.literal('structured-cell-fv-v1'),
-    protocol_version: z.literal('structured-cell-process-v6'),
+    protocol_version: z.enum([
+      'structured-cell-process-v1',
+      'structured-cell-process-v2',
+      'structured-cell-process-v3',
+      'structured-cell-process-v4',
+      'structured-cell-process-v5',
+      'structured-cell-process-v6',
+      'structured-cell-process-v7',
+    ]),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
     request_id: z.string().uuid(),
@@ -173,7 +181,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v6';
+  readonly runtimeVersion = 'structured-cell-process-v7';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -186,7 +194,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
       throw new RangeError('Invalid structured cell process configuration');
   }
   supports(candidate: SpatialRuntimeInput): boolean {
-    return structuredCellInputSchema.safeParse(candidate).success;
+    return structuredCellRunAdmissionSchema.safeParse(candidate).success;
   }
   async execute(
     context: SpatialSimulationExecutionContext,
@@ -200,7 +208,7 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
   private async executeCell(
     context: SpatialSimulationExecutionContext,
   ): Promise<SpatialSimulationResult> {
-    const input = structuredCellInputSchema.parse(context.input);
+    const input = structuredCellRunAdmissionSchema.parse(context.input);
     const equationGraph = compileStructuredCellEquationGraph(input);
     const inputHash = spatialRuntimeInputSha256(input);
     const geometryHash = structuredCellGeometrySha256(input);
@@ -354,7 +362,10 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
         'faradaic_current_density',
         ...('hydraulics' in input && input.hydraulics
           ? [
-              'darcy_pressure',
+              ...(input.hydraulics.version ===
+              'structured-cell-darcy-pressure-solve-v1'
+                ? ['darcy_pressure']
+                : []),
               ...['x', 'y', ...(input.dimension === 3 ? ['z'] : [])].map(
                 (axis) => 'darcy_velocity_' + axis,
               ),

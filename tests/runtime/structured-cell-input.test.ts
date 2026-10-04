@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { structuredCellInputSchema } from '../../packages/domain-contracts/src/structured-cell-schema';
+import {
+  structuredCellInputSchema,
+  structuredCellRunAdmissionSchema,
+} from '../../packages/domain-contracts/src/structured-cell-schema';
 import { spatialRuntimeInputSha256 } from '../../packages/domain-contracts/src/spatial-runtime-input';
 import { structuredCellFixture } from '../fixtures/structured-cell';
 import {
@@ -105,6 +108,22 @@ describe('restricted structured spatial cell admission', () => {
     expect(input.dimension).toBe(dim);
     expect(spatialRuntimeInputSha256(input)).toHaveLength(64);
   });
+  it('keeps prescribed Darcy inputs readable but blocks them from new run admission', () => {
+    const legacy = darcyFixture();
+    expect(structuredCellInputSchema.safeParse(legacy).success).toBe(true);
+    const legacyAdmission = structuredCellRunAdmissionSchema.safeParse(legacy);
+    expect(legacyAdmission.success).toBe(false);
+    if (!legacyAdmission.success)
+      expect(legacyAdmission.error.issues[0]?.message).toContain(
+        'boundary-driven Darcy pressure solve',
+      );
+
+    const solved = solvedDarcyFixture();
+    expect(structuredCellRunAdmissionSchema.safeParse(solved).success).toBe(
+      true,
+    );
+  });
+
   it('rejects mismatched electron charge and atoms', () => {
     const input = structuredCellFixture();
     input.electrodes[0].electron_count.value = 2;

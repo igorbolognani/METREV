@@ -1,5 +1,5 @@
 schema_version: 1
-observed_on: '2026-10-03'
+observed_on: '2026-10-04'
 authority: chronological_reconciliation_not_a_replacement_roadmap
 current_requirements: governance/MASTER_EXECUTION_TASK.md
 current_operating_rules: AGENTS.md
@@ -291,6 +291,59 @@ stages:
       Executable source-field composition, conservative prescribed convection, volume-weighted reductions, residual comparison, bounded downloads,
       scientific slices/profiles, ideal layered scale transfer and linear stack networks. All remain explicit development scopes; Darcy cell coupling, production
       storage and general profiles are pending.
+  - id: sourced_composition_and_spatial_reductions_pr123
+    period: '2026-10-03'
+    state: integrated_main
+    branch: codex/spatial-runtime-foundations
+    pull_request: 123
+    base_main: a84c6b7f50a2d58667d9a5f61e58cc8d5fd649a9
+    head_sha: 621dd3d31518a25120f2e80248e9c3cbcc43a272
+    merge_commit: 18f577d4a41a8c89f81b809a5bcb9ab9b449980a
+    merged_at: '2026-10-03T19:54:24Z'
+    sources:
+      - packages/electrochem-models/src/model-composition-runtime.ts
+      - packages/domain-contracts/src/spatial-observation-comparison.ts
+      - governance/MASTER_EXECUTION_TASK.md
+    meaning: Integrates sourced runtime composition, conservative spatial fields and scale reductions. Development status only; no maturity promotion.
+  - id: spatial_runtime_foundations_pr124
+    period: '2026-10-04'
+    state: integrated_main
+    branch: codex/spatial-runtime-foundations
+    pull_request: 124
+    base_main: 18f577d4a41a8c89f81b809a5bcb9ab9b449980a
+    head_sha: 8ca77c860e5fd7c277048cbc36f4f12350e98963
+    merge_commit: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
+    merged_at: '2026-10-04T10:55:59Z'
+    ci_run: 37195960957
+    codeql_run: 37195960964
+    sources:
+      - packages/domain-contracts/src/structured-cell-refinement-evidence.ts
+      - packages/electrochem-models/src/charged-interface-reaction.ts
+      - packages/spatial-artifact-store/src/object-provider.ts
+      - apps/spatial-sidecar/metrev_spatial/structured_cell.py
+      - governance/MASTER_EXECUTION_TASK.md
+    meaning: Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
+  - id: runtime_review_remediation_pr125
+    period: '2026-10-04'
+    state: development_pr_not_merged
+    branch: codex/runtime-review-remediation-2026-10-04
+    pull_request: 125
+    base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
+    head_sha: 3e1b7ed95ee77e6f878bff2b3c0fb2b056bc1602
+    review_state: ready_for_review
+    ci_state: failed_governance_snapshot_alignment
+    codeql_state: success
+    ci_run: 37225915813
+    codeql_run: 37225915815
+    sources:
+      - packages/spatial-worker/src/structured-cell-executor.ts
+      - governance/MASTER_EXECUTION_TASK.md
+    review_findings:
+      - process-v7 envelope validation still required process-v6
+      - process-v5 prescribed-Darcy pressure fields were omitted from legacy result validation
+    review_findings_state: addressed_in_follow_up_commit
+    meaning: Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors, zero-state reaction derivatives and legacy protocol compatibility. Initial CI exposed an unused import; automated review identified envelope and v5 compatibility gaps. Fixes and regressions are included in this review batch. No maturity promotion.
+
 sequence:
   - development_batch
   - numerical_verification_and_correction
@@ -300,6 +353,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work:
-  Review and run exact-head CI for the new runtime batch; continue source-backed coupled interfaces/hydraulics, production persistence and scientific
-  benchmark dependencies. No general phase or predictive maturity promotion.
+next_work: Complete exact-head CI and CodeQL for PR #125, then continue dependency-ready functional work on the partial and pending master-plan points; keep product integration, independent validation, and maturity promotion behind their declared gates.
