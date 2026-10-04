@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v6"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v7"
 DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10
 
 
@@ -675,7 +675,8 @@ class Cell:
             fields.append({'id':'solid_potential_'+e['role'],'unit':'V','values':solid[cells].tolist(),'cells':cells.tolist()})
         fields.append({'id':'faradaic_current_density','unit':'A/m3','values':(jr/self.mesh['volumes']).tolist(),'cells':list(range(n))})
         if self.darcy is not None:
-            fields.append({'id':'darcy_pressure','unit':'Pa','values':self.darcy['pressure'].tolist(),'cells':list(range(n))})
+            if self.darcy['pressure_mode'] == 'structured-cell-darcy-pressure-solve-v1':
+                fields.append({'id':'darcy_pressure','unit':'Pa','values':self.darcy['pressure'].tolist(),'cells':list(range(n))})
             velocity=np.zeros((n,self.input['dimension'])); samples=[[[] for _ in range(self.input['dimension'])] for _ in range(n)]
             for value,(i,j,axis,*_) in zip(self.face_velocity,self.mesh['faces']):
                 samples[i][axis].append(value); samples[j][axis].append(value)

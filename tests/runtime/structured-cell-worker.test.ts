@@ -120,7 +120,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v6',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v7',
       ),
     });
   });
@@ -132,12 +132,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v6',
+      runtimeVersion: 'structured-cell-process-v7',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -145,7 +145,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v6, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(

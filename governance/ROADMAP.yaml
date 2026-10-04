@@ -148,7 +148,7 @@ work_items:
       - apps/
     blockers:
       - An isolated scalar finite-volume kernel has bounded steady, transient, heterogeneous-interface and prescribed constant/cellwise divergence-checked velocity verification on 1D/2D/3D orthogonal grids; it remains disconnected from Gmsh and simulation cases. The shared DOLFINx neutral scalar kernel transfers solved Stokes/Darcy velocity on one tagged domain; the mesh benchmark is not a product solver or cell physics; P03 and P05 remain partial
-      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; the separate structured-cell development runtime implements steady species/reaction/charge/interface/circuit assembly and sparse Newton in 2D/3D. Full-cell hydraulic coupling, full electroneutral species closure, charged membrane interfaces, broader coupled verification and product integration remain pending
+      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; the separate structured-cell development runtime implements steady species/reaction/charge/interface/circuit assembly and sparse Newton in 2D/3D. Boundary-driven Darcy pressure and velocity now couple to structured-cell species transport; the shared DOLFINx scalar kernel remains separate. Full electroneutral closure, charged membrane interfaces, broader coupled verification and product integration remain pending
     gate_evidence:
       GATE-SCALAR-SOURCE-LOSS: The shared native same-domain Stokes/Darcy scalar kernel supports sourced constant production and first-order loss; analytic production/loss/equilibrium fixtures refine on three meshes and native worker/API cases persist an input-bound measured species budget. This does not close charge, network, interface or nonlinear cell gates
       GATE-MASS-CONSERVATION: A scalar finite-volume fixture checks integrated source and first-order disappearance against prescribed diffusive and upwind advective boundary flux and verifies affine isotropic/diagonal-anisotropic, manufactured and two-material interface solutions in 1D/2D/3D; this is not coupled species/charge conservation
@@ -235,7 +235,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Structured-cell interfaces use continuous concentration/potential and supporting electrolyte; selective charged membrane and Donnan laws remain pending
+      - Structured-cell interfaces still use continuous concentration/potential and supporting electrolyte. Standalone ideal-Donnan and charged-interface flux/reaction kernels now have local residual, Jacobian and conservation checks, but coupling them into the multidimensional cell solver and validating selective membrane laws remain pending
   - id: P10
     title: Implement a resolved cathode model
     phase: P2
@@ -399,7 +399,7 @@ work_items:
       - apps/
     blockers:
       - Run metadata includes hash-bound input snapshots and durable leases; PostgreSQL roundtrip, claim, retry-lineage and API tests pass in CI, while an operational production database and large durable artifact provider remain unverified
-      - The pluggable worker runtime, authenticated owner-scoped API and opt-in Darcy, Stokes and structured-cell development executors are implemented; Merged CI exercises the Stokes/Darcy adapters through the pinned DOLFINx/PETSc/Gmsh worker and verified field API; the structured cell uses native SciPy with memory-repository/API/report checks and required cell-specific PostgreSQL/browser CI gates, while an explicit bounded Docker sidecar transport is implemented; product solver admission, durable production storage and deployed worker limits remain pending
+      - The pluggable worker runtime, authenticated owner-scoped API and opt-in Darcy, Stokes and structured-cell development executors are implemented; merged CI exercises the Stokes/Darcy adapters through the pinned DOLFINx/PETSc/Gmsh worker and verified field API. The structured cell uses native SciPy with memory-repository/API/report checks and required cell-specific PostgreSQL/browser CI gates; bounded Docker transport and a local immutable artifact provider are implemented. New runtime admission rejects cellwise prescribed-pressure arrays, while versioned staged input-artifact references, product solver admission, durable production storage and deployed worker limits remain pending
     gate_evidence:
       GATE-PERSISTENCE: result metadata is capped at 2 MiB of UTF-8 JSON before persistence; schema-valid large diagnostic-history fixtures are rejected without advancing the run, with memory and PostgreSQL regression coverage
       GATE-SPATIAL-ARTIFACT: a development local provider stores immutable, content-addressed field bytes under owner/run/field/dataset identity, verifies digest and size on write/read, and serves them through the authenticated API; CI checks this route with output from the pinned native worker sidecar, while durable production storage remains unverified
@@ -460,7 +460,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-    development_evidence: Explicit saved-evaluation spatial branch resolves the restricted planar profile, sourced input and stack mapping, persists owner-scoped async child jobs and reloads reports. Legacy snapshots require a fresh evaluation; general catalog fidelity remains gated.
+    development_evidence: Explicit saved-evaluation spatial branch resolves the restricted planar profile, sourced input and stack mapping, persists owner-scoped async child jobs and reloads reports. PR #124 also carries explicitly supplied Darcy inputs through planning, queueing, execution and persisted output. Legacy snapshots require a fresh evaluation; general catalog fidelity remains gated.
   - id: P18
     title: Turn the modeling workbench into a real solver configurator
     phase: P2
@@ -509,7 +509,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Restricted actual-mesh XY cell field view and real z-slice selection exist; run/digest-bound scalar probes and development reports exist; the real Chromium gate passed at runtime head 6f9217d, while vector/comparison views and general case integration remain pending
+      - Restricted actual-mesh XY cell fields, real z-slice selection, run/digest-bound scalar and vector probes, CSV export, and development reports exist; the real Chromium gate passed at runtime head 6f9217d. Run comparison views and general case integration remain pending
   - id: P20
     title: Define when Phase 2 is actually complete
     phase: P2
@@ -710,6 +710,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - PR #124 adds a separate linear hydraulic stack-network development solver with pressure, flow, power and residual diagnostics; nonlinear stack behavior, shared cell coupling and product integration remain pending
   - id: P28
     title: Prepare real 3D performance architecture
     phase: P3

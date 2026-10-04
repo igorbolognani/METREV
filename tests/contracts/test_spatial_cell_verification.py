@@ -32,7 +32,7 @@ class CoupledCellVerificationTests(unittest.TestCase):
         self.assertEqual(record['source_input_fixture_sha256'], hashlib.sha256(FIXTURE.read_bytes()).hexdigest())
         self.assertEqual(record['runtime_source_sha256'], hashlib.sha256(runtime.read_bytes()).hexdigest())
         self.assertEqual(record['solver_version'], 'structured-cell-fv-v1')
-        self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v6')
+        self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v7')
         self.assertEqual(
             record['numerical_comparison']['baseline_runtime_source_sha256'],
             '28af340cd29cde038ecfaad5cdae835209382988c82c4cb096abb2820f197b9c',

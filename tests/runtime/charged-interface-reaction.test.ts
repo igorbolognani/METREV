@@ -203,6 +203,25 @@ describe('conservative charged reaction development kernel', () => {
     });
   });
 
+  it('accepts depleted species and evaluates finite zero-state derivatives', () => {
+    const input = reactionFixture();
+    const zeroAcid = assembleHomogeneousReactions({
+      ...input,
+      concentrationMolM3: { ...input.concentrationMolM3, HA: 0 },
+    });
+    expect(zeroAcid.netRateMolM3S.acid_dissociation).toBeCloseTo(-0.8, 12);
+    expect(zeroAcid.reactionRateJacobianS1[0][0]).toBeCloseTo(0.5, 12);
+
+    const zeroProton = assembleHomogeneousReactions({
+      ...input,
+      concentrationMolM3: { ...input.concentrationMolM3, 'H+': 0 },
+    });
+    expect(zeroProton.netRateMolM3S.acid_dissociation).toBeCloseTo(5, 12);
+    expect(zeroProton.reactionRateJacobianS1[0][1]).toBeCloseTo(-0.4, 12);
+    expect(zeroProton.residual.every(Number.isFinite)).toBe(true);
+    expect(zeroProton.jacobian.flat().every(Number.isFinite)).toBe(true);
+  });
+
   it('rejects unbalanced stoichiometry and unsupported reaction physics', () => {
     const input = reactionFixture();
     expect(() =>
