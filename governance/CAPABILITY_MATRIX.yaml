@@ -290,6 +290,9 @@ development_profiles:
     numerical_test: tests/contracts/test_spatial_structured_cell.py
     refinement_test: tests/contracts/test_spatial_cell_verification.py
     refinement_record: tests/fixtures/structured-cell-refinement-verification.json
+    neutral_partition_verification_source: scripts/run-spatial-verification.py
+    neutral_partition_verification_test: tests/contracts/test_spatial_cell_verification.py
+    neutral_partition_verification_scope: synthetic_2d_3d_mfc_mec_two_interfaces_all_axis_refinement_and_unit_partition_limit_no_exact_order_or_flux_convergence_claim
     postgres_test: tests/postgres/structured-cell-roundtrip.test.ts
     browser_test: tests/e2e/structured-cell-workbench.spec.ts
     browser_config: playwright.spatial-cell.config.ts

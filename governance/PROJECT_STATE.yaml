@@ -43,29 +43,21 @@ reconciliation_checkpoint: docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.
 current_direction: one_stack_configured_physics_runtime_with_composable_modules_no_silent_fidelity_downgrade
 spatial_development_reports: deterministic_v1_json_markdown_source_traced_failed_diagnostics_owner_scoped_no_decision_eligibility
 snapshot:
-  observed_on: '2026-10-04'
-  integrated_main_head: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
-  integrated_main_pr: 124
-  integration_state: prs_115_through_124_merged_spatial_runtime_foundations_integrated
-  verified_runtime_head: 8ca77c860e5fd7c277048cbc36f4f12350e98963
-  runtime_ci: github_actions_run_37195960957_passed
-  runtime_codeql: github_codeql_run_37195960964_passed
-  open_development_prs:
-    - pull_request: 125
-      branch: codex/runtime-review-remediation-2026-10-04
-      head_sha: 3e1b7ed95ee77e6f878bff2b3c0fb2b056bc1602
-      review_state: ready_for_review
-      ci_state: failed_governance_snapshot_alignment
-      codeql_state: success
-      ci_run: 37225915813
-      codeql_run: 37225915815
+  observed_on: '2026-10-07'
+  integrated_main_head: 08af849dfa07d73dcd18d31b3d9a05d29e2a7303
+  integrated_main_pr: 138
+  integration_state: neutral_partition_v8_merged_main_and_dev_aligned
+  verified_runtime_head: 7319300fd9288fdbae6b57bc2715e7f8225cc5be
+  runtime_ci: github_actions_run_37658944593_passed
+  runtime_codeql: github_codeql_run_37658944504_passed
+  main_ci: github_actions_run_37660123862_passed
+  open_development_prs: []
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
 development_batch:
-  branch: codex/runtime-review-remediation-2026-10-04
-  base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
-  pull_request: 125
-  state: open_review
+  branch: feat/p06-partition-verification
+  base_main: 08af849dfa07d73dcd18d31b3d9a05d29e2a7303
+  state: local_development_not_merged
   scientific_maturity_promoted: false
   decision_eligible: false
-  source: PR_125_runtime_review_remediation
+  source: scripts/run-spatial-verification.py

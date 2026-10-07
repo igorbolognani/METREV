@@ -27,6 +27,24 @@ def transverse_fixture(factor=1):
     return value
 
 class CoupledCellVerificationTests(unittest.TestCase):
+    def test_neutral_partition_refinement_both_dimensions_and_circuits(self):
+        script = FIXTURE.parents[1].parent / 'scripts/run-spatial-verification.py'
+        spec = importlib.util.spec_from_file_location('metrev_partition_verification', script)
+        verification = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verification)
+        for dimension in (2, 3):
+            for system in ('MFC', 'MEC'):
+                with self.subTest(dimension=dimension, system=system):
+                    result = verification.neutral_partition_refinement(dimension, system)
+                    self.assertEqual([r['cell_count'] for r in result['related_runs']],
+                                     [18, 72, 162] if dimension == 2 else [36, 288, 972])
+                    self.assertEqual(len({r['input_sha256'] for r in result['related_runs']}), 3)
+                    self.assertEqual(len({r['mesh_sha256'] for r in result['related_runs']}), 3)
+                    self.assertEqual(result['related_runs'][0]['input_sha256'], verification.digest(result['input']))
+                    for check in result['checks']:
+                        self.assertTrue(np.isfinite(check['actual']), check['name'])
+                        self.assertLessEqual(abs(check['actual'] - check['expected']), check['tolerance'], check['name'])
+
     def test_three_axis_refinement_with_z_dependent_fields(self):
         script = FIXTURE.parents[1].parent / 'scripts/run-spatial-verification.py'
         spec = importlib.util.spec_from_file_location('metrev_verification', script)
@@ -47,9 +65,12 @@ class CoupledCellVerificationTests(unittest.TestCase):
 
     def test_three_meshes_nonuniform_fields_and_conservative_observables(self):
         record = json.loads(FIXTURE.with_name('structured-cell-refinement-verification.json').read_text())
-        runtime = FIXTURE.parents[1].parent / 'apps/spatial-sidecar/metrev_spatial/structured_cell.py'
         self.assertEqual(record['source_input_fixture_sha256'], hashlib.sha256(FIXTURE.read_bytes()).hexdigest())
-        self.assertEqual(record['runtime_source_sha256'], hashlib.sha256(runtime.read_bytes()).hexdigest())
+        # Immutable v7 evidence identifies its historical runtime. Current v8
+        # compatibility is checked by replaying the solves below; current-run
+        # evidence binds the actual source bytes in run-spatial-verification.py.
+        self.assertEqual(record['runtime_source_sha256'],
+                         '61bff13222fdc3a7b7cb7b6d889f3ba18688c25d905dbb52186177d8874f1d10')
         self.assertEqual(record['solver_version'], 'structured-cell-fv-v1')
         self.assertEqual(record['process_protocol_version'], 'structured-cell-process-v7')
         self.assertEqual(

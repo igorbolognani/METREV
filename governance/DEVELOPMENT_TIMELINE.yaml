@@ -1,5 +1,5 @@
 schema_version: 1
-observed_on: '2026-10-04'
+observed_on: '2026-10-07'
 authority: chronological_reconciliation_not_a_replacement_roadmap
 current_requirements: governance/MASTER_EXECUTION_TASK.md
 current_operating_rules: AGENTS.md
@@ -325,16 +325,17 @@ stages:
     meaning: Adds explicit boundary-driven Darcy cell transport, local charged-interface/reaction kernels, bounded local artifact storage, mesh-refinement evidence and vector-field tools. All remain development foundations; broader roadmap points remain open.
   - id: runtime_review_remediation_pr125
     period: '2026-10-04'
-    state: development_pr_not_merged
+    state: integrated_main
     branch: codex/runtime-review-remediation-2026-10-04
     pull_request: 125
     base_main: 8383ba4fc992e8417aa3a4328d4a59d70cbc18ef
-    head_sha: 3e1b7ed95ee77e6f878bff2b3c0fb2b056bc1602
-    review_state: ready_for_review
-    ci_state: failed_governance_snapshot_alignment
+    head_sha: 89533ea76b872741ca89cb8243835a85a0e55375
+    merge_commit: 95e6f0d51733e02db61da1e83055a11162d1acf0
+    merged_at: '2026-10-04T22:40:21Z'
+    ci_state: success
     codeql_state: success
-    ci_run: 37225915813
-    codeql_run: 37225915815
+    ci_run: 37227028631
+    codeql_run: 37227028656
     sources:
       - packages/spatial-worker/src/structured-cell-executor.ts
       - governance/MASTER_EXECUTION_TASK.md
@@ -343,6 +344,22 @@ stages:
       - process-v5 prescribed-Darcy pressure fields were omitted from legacy result validation
     review_findings_state: addressed_in_follow_up_commit
     meaning: Remediates structured-cell runtime review findings across field provenance, admission boundaries, report/persistence errors, zero-state reaction derivatives and legacy protocol compatibility. Initial CI exposed an unused import; automated review identified envelope and v5 compatibility gaps. Fixes and regressions are included in this review batch. No maturity promotion.
+  - id: neutral_membrane_partition_pr138
+    period: '2026-10-07'
+    state: integrated_main
+    branch: feat/p06-neutral-membrane-partition
+    pull_request: 138
+    base_main: 63b3b5ac9a02e4bc8d34e60b91197540c568cc6b
+    head_sha: 7319300fd9288fdbae6b57bc2715e7f8225cc5be
+    merge_commit: 08af849dfa07d73dcd18d31b3d9a05d29e2a7303
+    merged_at: '2026-10-07T17:34:28Z'
+    ci_run: 37658944593
+    codeql_run: 37658944504
+    main_ci_run: 37660123862
+    sources:
+      - apps/spatial-sidecar/metrev_spatial/structured_cell.py
+      - packages/domain-contracts/src/structured-cell-schema.ts
+    meaning: Source-traced ideal neutral membrane partition reaches the structured-cell v8 contract, flux, analytic Jacobian and worker. Main CI passed, dev was fast-forwarded and temporary branches were archived. Charged partition, Donnan closure and independent validation remain pending.
 
 sequence:
   - development_batch
@@ -353,4 +370,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: Complete exact-head CI and CodeQL for PR #125, then continue dependency-ready functional work on the partial and pending master-plan points; keep product integration, independent validation, and maturity promotion behind their declared gates.
+next_work: Verify the coupled neutral partition interface on three all-axis meshes in 2D/3D MFC/MEC, preserve historical v7 evidence and continue P06 prerequisites for charged-interface coupling. Keep product integration, independent validation and maturity promotion behind their declared gates.
