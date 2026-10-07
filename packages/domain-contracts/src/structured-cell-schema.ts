@@ -58,6 +58,25 @@ const darcyHydraulicsSchema = z.discriminatedUnion('version', [
     })
     .strict(),
 ]);
+const neutralMembranePartitionSchema = z
+  .object({
+    version: z.literal('structured-cell-neutral-membrane-partition-v1'),
+    interfaces: z
+      .array(
+        z
+          .object({
+            left_domain: id,
+            right_domain: id,
+            species: z
+              .record(id, positive('1'))
+              .refine((values) => Object.keys(values).length > 0),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(15),
+  })
+  .strict();
 
 /** A separately versioned, restricted steady cell. It never replaces a requested research fidelity. */
 export const structuredCellInputSchema = z
@@ -82,6 +101,7 @@ export const structuredCellInputSchema = z
       .strict()
       .optional(),
     hydraulics: darcyHydraulicsSchema.optional(),
+    interface_partition: neutralMembranePartitionSchema.optional(),
     geometry: z
       .object({
         geometry_version: z.literal('structured-layers-v1'),
@@ -223,8 +243,8 @@ export const structuredCellInputSchema = z
   })
   .strict()
   .superRefine((input, ctx) => {
-    const issue = (message: string) =>
-      ctx.addIssue({ code: 'custom', message });
+    const issue = (message: string, path: (string | number)[] = []) =>
+      ctx.addIssue({ code: 'custom', message, path });
     const layers = input.geometry.layers;
     const species = new Map(input.species.map((s) => [s.id, s]));
     if (input.case_context) {
@@ -243,6 +263,51 @@ export const structuredCellInputSchema = z
       new Set(layers.map((l) => l.tag)).size !== layers.length
     )
       issue('Species and region IDs must be unique');
+    const partitionInterfaces = new Set<string>();
+    input.interface_partition?.interfaces.forEach((entry, index) => {
+      const left = layers.findIndex((layer) => layer.tag === entry.left_domain);
+      const right = layers.findIndex(
+        (layer) => layer.tag === entry.right_domain,
+      );
+      const path: (string | number)[] = [
+        'interface_partition',
+        'interfaces',
+        index,
+      ];
+      if (left < 0 || right !== left + 1) {
+        issue(
+          'Partition interfaces must name adjacent layers in positive-x order',
+          path,
+        );
+        return;
+      }
+      if (
+        !['membrane', 'separator'].includes(layers[left].kind) &&
+        !['membrane', 'separator'].includes(layers[right].kind)
+      )
+        issue(
+          'Neutral partition is limited to interfaces adjacent to a membrane or separator',
+          path,
+        );
+      const pair = `${left}:${right}`;
+      if (partitionInterfaces.has(pair))
+        issue('Only one partition declaration is allowed per interface', path);
+      partitionInterfaces.add(pair);
+      for (const speciesId of Object.keys(entry.species)) {
+        const state = species.get(speciesId);
+        if (!state)
+          issue(`Unknown partition species ${speciesId}`, [
+            ...path,
+            'species',
+            speciesId,
+          ]);
+        else if (state.valence.value !== 0)
+          issue(
+            `Membrane partition currently supports neutral species only: ${speciesId}`,
+            [...path, 'species', speciesId],
+          );
+      }
+    });
     if (
       input.geometry.lengths_m.length !== input.dimension ||
       input.geometry.transverse_cells.length !== input.dimension - 1
