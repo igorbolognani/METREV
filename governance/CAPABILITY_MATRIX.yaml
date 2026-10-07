@@ -299,7 +299,7 @@ development_profiles:
     browser_gate: verified_real_next_fastify_postgresql_worker_chromium_ci_run_36993158159
     verified_runtime_head: 10fec666770b844c86f9f65668a511af805fde3b
     worker_api_test: tests/runtime/structured-cell-worker.test.ts
-    scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_mfc_mec_circuit
+    scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_neutral_ideal_membrane_partition_mfc_mec_circuit
     remaining_gates:
       - larger_mesh_nonlinear_robustness_and_broader_verification
       - general_stack_geometry_and_equation_composition
