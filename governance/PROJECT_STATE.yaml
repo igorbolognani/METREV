@@ -57,7 +57,9 @@ spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_ma
 development_batch:
   branch: feat/spatial-charged-donnan-interfaces
   base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
-  state: locally_verified_pr_pending
+  state: pr_open_locally_verified
+  pull_request: 141
+  ci: pending_for_published_head
   scope: local_ideal_donnan_interface_coupling_with_conservation_provenance_and_partial_development_coverage
   scientific_maturity_promoted: false
   decision_eligible: false

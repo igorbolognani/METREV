@@ -38,3 +38,7 @@ Numerical agreement demonstrates the declared local ideal interface formulation 
 The 1D coupled cell has not gained Donnan by this spatial implementation. Membrane-volume electroneutral Nernst–Planck/current closure, nonideal activities, water transport, proton/product reaction networks, matched experimental comparison and independent held-out validation remain open. General 2D/3D catalog admission and production eligibility remain closed. Historical remote PostgreSQL contents and complete deleted conversation histories were not accessed.
 
 Next executable dependency: implement a separately declared membrane-volume charge/ionic-current formulation with source-backed species and boundary data, analytical charge/current limits and conservative interface coupling; then reproduce a compatible study case before promoting scientific eligibility.
+
+## Integration checkpoint
+
+[PR #141](https://github.com/igorbolognani/METREV/pull/141) is open against main; no merge was performed. The published implementation commit is `78a9e6e133f138189a665a39c7cb49cea6993f4c`; its tree `566765f67a1f6b90cbd8d9e6dcd38ad8de57ef10` matches the tested local implementation tree exactly. A following governance-only commit records the PR identity. Main/dev remain at the verified PR140 merge. CI status must be read from the latest PR head rather than inferred from local tests.

@@ -399,7 +399,8 @@ stages:
 
   - id: spatial_charged_donnan_interface_coupling
     period: '2026-10-08'
-    state: locally_verified_pr_pending
+    state: pr_open_locally_verified
+    pull_request: 141
     branch: feat/spatial-charged-donnan-interfaces
     base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
     sources:
