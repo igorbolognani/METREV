@@ -65,6 +65,117 @@ class StructuredCellTests(unittest.TestCase):
             self.assertTrue(all(r['passed'] for r in output['residuals']))
             self.assertTrue(output['interface_species_flux_mol_s'])
 
+    def test_neutral_membrane_partition_is_conservative_and_has_exact_jacobian(self):
+        for dimension in (2, 3):
+            value = self.fixture(dimension)
+            neutral = copy.deepcopy(value['species'][0])
+            neutral['id'] = 'neutral'
+            value['species'].append(neutral)
+            for layer in value['geometry']['layers']:
+                layer['diffusivity']['neutral'] = copy.deepcopy(layer['diffusivity']['reduced'])
+            coefficient = copy.deepcopy(neutral['valence'])
+            coefficient.update(value=2.0, source_ref='synthetic:neutral-membrane-partition')
+            value['interface_partition'] = {
+                'version': 'structured-cell-neutral-membrane-partition-v1',
+                'interfaces': [{
+                    'left_domain': 'anode',
+                    'right_domain': 'membrane',
+                    'species': {'neutral': coefficient},
+                }],
+            }
+            cell = Cell(value)
+            species_index = cell.species_index['neutral']
+            regions = cell.mesh['regions']
+            concentrations = np.array([
+                np.full(cell.n, species['initial_concentration']['value'])
+                for species in value['species']
+            ])
+            concentrations[species_index, regions == 0] = 3.0
+            concentrations[species_index, regions == 1] = 2.0
+            state = np.concatenate([
+                concentrations.ravel() / cell.cs,
+                np.zeros(cell.n),
+                np.zeros(len(cell.active)),
+                [0.0],
+            ])
+            mass, _, _, _, _, _, _, interfaces = cell.balances(state)
+
+            expected = 0.0
+            for left, right, _, area, h_left, h_right in cell.mesh['faces']:
+                if regions[left] == 0 and regions[right] == 1:
+                    d_left = cell.D[species_index, left]
+                    d_right = cell.D[species_index, right]
+                    conductance = area / (h_left / d_left + h_right / (2.0 * d_right))
+                    expected += conductance * (
+                        concentrations[species_index, left]
+                        - concentrations[species_index, right] / 2.0
+                    )
+            self.assertAlmostEqual(
+                interfaces['interface:anode:membrane'][species_index],
+                expected,
+                places=15,
+            )
+
+            continuous_input = copy.deepcopy(value)
+            del continuous_input['interface_partition']
+            continuous_mass = Cell(continuous_input).balances(state)[0]
+            self.assertAlmostEqual(
+                float((mass[species_index] - continuous_mass[species_index]).sum()),
+                0.0,
+                places=15,
+            )
+
+            direction = np.random.default_rng(17).normal(size=cell.size)
+            step = 1e-7
+            numeric = (cell.residual(state + step * direction) - cell.residual(state - step * direction)) / (2 * step)
+            np.testing.assert_allclose(cell.jacobian(state) @ direction, numeric, rtol=2e-6, atol=1e-4)
+
+            concentrations[species_index, regions == 0] = 1.0
+            concentrations[species_index, regions == 1] = 2.0
+            equilibrium_state = np.concatenate([
+                concentrations.ravel() / cell.cs,
+                np.zeros(cell.n),
+                np.zeros(len(cell.active)),
+                [0.0],
+            ])
+            equilibrium_interfaces = cell.balances(equilibrium_state)[-1]
+            self.assertAlmostEqual(
+                equilibrium_interfaces['interface:anode:membrane'][species_index],
+                0.0,
+                places=15,
+            )
+
+    def test_neutral_membrane_partition_rejects_charged_or_unsourced_inputs(self):
+        value = self.fixture()
+        neutral = copy.deepcopy(value['species'][0])
+        neutral['id'] = 'neutral'
+        value['species'].append(neutral)
+        for layer in value['geometry']['layers']:
+            layer['diffusivity']['neutral'] = copy.deepcopy(layer['diffusivity']['reduced'])
+        coefficient = copy.deepcopy(neutral['valence'])
+        coefficient.update(value=2.0, source_ref='synthetic:neutral-membrane-partition')
+        value['interface_partition'] = {
+            'version': 'structured-cell-neutral-membrane-partition-v1',
+            'interfaces': [{
+                'left_domain': 'anode',
+                'right_domain': 'membrane',
+                'species': {'neutral': coefficient},
+            }],
+        }
+        validate(value)
+        charged = copy.deepcopy(value)
+        charged['interface_partition']['interfaces'][0]['species']['oxidized'] = copy.deepcopy(coefficient)
+        with self.assertRaises(ValueError):
+            validate(charged)
+        unsourced = copy.deepcopy(value)
+        unsourced['interface_partition']['interfaces'][0]['species']['neutral']['source_ref'] = ''
+        with self.assertRaises(ValueError):
+            validate(unsourced)
+        nonadjacent = copy.deepcopy(value)
+        nonadjacent['interface_partition']['interfaces'][0]['right_domain'] = 'cathode'
+        with self.assertRaises(ValueError):
+            validate(nonadjacent)
+
     def test_budget_exhaustion_retains_diagnostics_and_fields(self):
         value=self.fixture(); value['numerics']['max_evaluations']=1
         output=Cell(value).solve()
