@@ -2,7 +2,11 @@
   "schema_version": 1,
   "repository": "igorbolognani/METREV",
   "default_branch": "main",
-  "archive_prefix": "archive/2026-09-30",
+  "archive_prefix": "archive/2026-10-07",
+  "protected_branches": [
+    "main",
+    "dev"
+  ],
   "maintenance_branch": "codex/mainline-audit-and-branch-maintenance",
   "branches": [
     {
@@ -354,6 +358,38 @@
       "name": "test/spatial-pinned-toolchain-smoke",
       "sha": "be2f87a0e79bed8cf2adea98b01271bd24b82f3e",
       "merged_prs": [71]
+    },
+    {
+      "name": "codex/benchmark-validation-strata",
+      "sha": "27725ebb0bdb7a77bd1e7f948745c0272e56d94c"
+    },
+    {
+      "name": "codex/p01-composition-fail-closed",
+      "sha": "c34137e622fc00d29e04a265382d3b81a040b5ec"
+    },
+    {
+      "name": "codex/p03-parameter-authority-coverage",
+      "sha": "6dec1a414f079a3f6d4199d190411e062d20f41b"
+    },
+    {
+      "name": "codex/solver-evidence-coverage",
+      "sha": "fe1d5dd036985341a3f59462db0f880166f9e549"
+    },
+    {
+      "name": "codex/spatial-derived-observables",
+      "sha": "f5ab09d73d86d4a6b63b3f7a2852e461f659da38"
+    },
+    {
+      "name": "codex/spatial-run-comparison",
+      "sha": "5d90ebdb219e37b184c20d832f94b6d05d43b64b"
+    },
+    {
+      "name": "fix/domain-contracts-zod-build",
+      "sha": "0817b2df0dbd0e5695ae58562af9f609e9d79363"
+    },
+    {
+      "name": "test/spatial-three-axis-refinement",
+      "sha": "311c15565c010d927d773194c0edea96973d433b"
     }
   ]
 }

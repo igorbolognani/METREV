@@ -16,6 +16,7 @@ const plan = {
   schema_version: 1,
   repository: 'local/test',
   default_branch: 'main',
+  protected_branches: ['main', 'dev'],
   archive_prefix: 'archive/2026-09-30',
   maintenance_branch: 'maintenance',
   branches: [{ name: 'old/work', sha }],
@@ -53,6 +54,9 @@ describe('audited repository branch archiving', () => {
     { branches: [{ name: 'old/work', sha: 'short' }] },
     { branches: [plan.branches[0], plan.branches[0]] },
     { default_branch: 'temporary' },
+    { protected_branches: ['main', 'dev', 'dev'] },
+    { protected_branches: ['main', '../outside'] },
+    { protected_branches: ['dev'] },
   ])('rejects unsafe inventories %j', (variant) => {
     expect(() => validateArchivePlan({ ...plan, ...variant })).toThrow();
   });
@@ -75,6 +79,19 @@ describe('audited repository branch archiving', () => {
     expect(planBranchArchives(plan, branches, prs, 'main')[0]).toMatchObject({
       action: 'preserve',
       reason,
+    });
+  });
+
+  it('always preserves named long-lived branches even when GitHub has not protected them', () => {
+    const result = planBranchArchives(
+      { ...plan, branches: [{ name: 'dev', sha }] },
+      [{ name: 'dev', sha, protected: false }],
+      [],
+      'main',
+    );
+    expect(result[0]).toMatchObject({
+      action: 'preserve',
+      reason: 'protected',
     });
   });
 
