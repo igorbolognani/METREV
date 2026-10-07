@@ -3,10 +3,7 @@
   "repository": "igorbolognani/METREV",
   "default_branch": "main",
   "archive_prefix": "archive/2026-10-07",
-  "protected_branches": [
-    "main",
-    "dev"
-  ],
+  "protected_branches": ["main", "dev"],
   "maintenance_branch": "codex/mainline-audit-and-branch-maintenance",
   "branches": [
     {
