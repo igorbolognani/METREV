@@ -49,6 +49,7 @@ export function resolvePhysicsComposition(
       'reactor',
       'anode',
       'biofilm',
+      'reaction',
       'cathode',
       'circuit',
       ...(selection.separator && selection.separator !== 'membrane-free'

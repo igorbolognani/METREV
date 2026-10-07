@@ -283,7 +283,7 @@ coupled-0d-dae-v1
 coupled-cell-1d-restricted-v1
 ```
 
-The restricted 1D coupled cell currently remains development/API oriented rather than fully integrated into the persisted case runner.
+The restricted steady planar 1D coupled cell is integrated into persisted case evaluation as a development-only profile when a complete source-backed `cell_1d` input matches the requested model, system and version. Its outputs remain informational and are not decision evidence. General research 1D profiles remain blocked.
 
 Research/fidelity catalogs already reference higher-dimensional directions including approximately:
 
@@ -1581,8 +1581,8 @@ Do not summarize them into a shorter roadmap and then discard their detail.
 - Adapt the existing 0D model to this architecture without unnecessary rewriting.
 - Adapt Gatti, porous-anode-1D, membrane-ion-1D and coupled-cell-1D into reusable modules/implementations where scientifically appropriate.
 - Stop treating components as end-user-selectable disconnected solvers.
-- Integrate the coupled 1D model into the same persisted case/evaluation pathway before 2D.
-- Remove the architectural limitation where 1D is available only through `/api/modeling/coupled-cell-1d`.
+- The restricted coupled 1D model is integrated into the same persisted case/evaluation pathway; keep complete source-backed input, exact model/system matching and development-only output requirements.
+- The restricted coupled 1D model is available both through persisted case evaluation and `/api/modeling/coupled-cell-1d`; broader research 1D profiles remain blocked.
 - Create an explicit compatibility matrix among architecture, physics and fidelity.
 - Unsupported combinations return `not_implemented` with explicit missing physics/module information.
 - Never silently fall back to 0D.
@@ -2843,6 +2843,8 @@ The key requirement is preventing software execution from being confused with pr
 ---
 
 ## 39. Follow a practical implementation sequence
+
+The original PR sequence below records the spatial program's earlier planned order. PR C is complete for the restricted 1D case path. Current work first closes reaction binding, conservation and limiting-case evidence across 0D and restricted 1D before broader spatial reaction coupling.
 
 A good starting sequence is:
 

@@ -45,6 +45,26 @@ export const PHYSICS_MODULES: Readonly<Record<string, PhysicsModule>> = {
     equationRefs: ['coupled-cell-1d', 'coupled-0d-dae'],
     outputs: ['uptake'],
   },
+  reaction: {
+    id: 'reaction',
+    requires: ['biofilm'],
+    supportedDimensions: [0, 1],
+    requiredDomains: ['anode', 'biofilm'],
+    requiredParameters: [
+      'source_traced_kinetics',
+      'electron_equivalent_mapping',
+    ],
+    stateVariables: ['substrate_consumption_rate', 'faradaic_current'],
+    boundaryRequirements: ['substrate_balance', 'electron_current_closure'],
+    equationRefs: [
+      'EQ-BIO-001',
+      'EQ-BIO-002',
+      'EQ-RX-002',
+      'coupled-0d-dae',
+      'coupled-cell-1d',
+    ],
+    outputs: ['substrate_consumption', 'faradaic_current'],
+  },
   cathode: {
     id: 'cathode',
     requires: ['reactor'],
@@ -58,7 +78,7 @@ export const PHYSICS_MODULES: Readonly<Record<string, PhysicsModule>> = {
   },
   circuit: {
     id: 'circuit',
-    requires: ['anode', 'cathode'],
+    requires: ['reaction', 'cathode'],
     supportedDimensions: [0, 1],
     requiredDomains: [],
     requiredParameters: ['external_load_or_applied_voltage'],

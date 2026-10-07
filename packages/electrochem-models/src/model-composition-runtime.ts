@@ -25,10 +25,30 @@ export interface PhysicsImplementationBinding {
   module_id: string;
   implementation_id: string;
   equation_id: string;
+  equation_ids?: string[];
+  reaction_law?: ReactionLawRuntimeBinding;
   coupled_by: 'compartment_state_and_circuit' | 'single_current_cell_closure';
 }
+
+/** Runtime mapping metadata. It does not imply molecular stoichiometry. */
+export interface ReactionLawRuntimeBinding {
+  id: string;
+  equation_ids: string[];
+  rate_observation_key: string;
+  rate_series_id: string;
+  substrate_basis: 'kgCOD' | 'mol_substrate';
+  substrate_rate_unit: 'kgCOD/(m3 s)' | 'mol/(m3 s)';
+  electron_equivalent_mapping:
+    | 'coulombic_efficiency_times_biofilm_fraction_times_COD_equivalents'
+    | 'source_traced_electrons_per_substrate_molecule';
+  stoichiometry_status:
+    | 'lumped_COD_equivalent_without_molecular_products'
+    | 'substrate_electron_equivalent_without_molecular_products';
+  source_refs: string[];
+  limitations: string[];
+}
 export interface ExecutablePhysicsPlan {
-  contract_version: 'physics-runtime-plan-v1';
+  contract_version: 'physics-runtime-plan-v2';
   model_id: ExecutableCellModelId;
   dimension: 0 | 1;
   system: 'MFC' | 'MEC' | null;
@@ -52,9 +72,14 @@ export class UnsupportedPhysicsCompositionError extends RangeError {
  * independent solver outputs. Gatti remains a separate study formulation: its
  * transient fractional-substrate slices are not the steady cell's physical x.
  */
+type ImplementationDefinition = Omit<
+  PhysicsImplementationBinding,
+  'module_id' | 'coupled_by'
+>;
+
 const IMPLEMENTATIONS: Record<
   ExecutableCellModelId,
-  Record<string, { implementation_id: string; equation_id: string }>
+  Record<string, ImplementationDefinition>
 > = {
   'coupled-0d-dae-v1': {
     reactor: {
@@ -68,6 +93,31 @@ const IMPLEMENTATIONS: Record<
     biofilm: {
       implementation_id: 'mechanistic.lumped-biology',
       equation_id: 'coupled-0d-dae',
+    },
+    reaction: {
+      implementation_id: 'mechanistic.monod-cod-electron-equivalent',
+      equation_id: 'EQ-BIO-001',
+      equation_ids: ['EQ-BIO-001', 'EQ-RX-002'],
+      reaction_law: {
+        id: 'lumped-cod-monod-v1',
+        equation_ids: ['EQ-BIO-001', 'EQ-RX-002'],
+        rate_observation_key: 'cod_uptake_rate_kgcod_m3_s',
+        rate_series_id: 'mechanistic:cod_uptake_rate_kgcod_m3_s',
+        substrate_basis: 'kgCOD',
+        substrate_rate_unit: 'kgCOD/(m3 s)',
+        electron_equivalent_mapping:
+          'coulombic_efficiency_times_biofilm_fraction_times_COD_equivalents',
+        stoichiometry_status:
+          'lumped_COD_equivalent_without_molecular_products',
+        source_refs: [
+          '10.1016/j.biortech.2010.06.156',
+          '10.1016/j.jpowsour.2009.06.101',
+        ],
+        limitations: [
+          'COD is a lumped oxygen-equivalent state, not a molecular substrate species.',
+          'Products, proton stoichiometry, and competing metabolic pathways are not resolved.',
+        ],
+      },
     },
     cathode: {
       implementation_id: 'mechanistic.cathode-butler-volmer',
@@ -102,6 +152,31 @@ const IMPLEMENTATIONS: Record<
     biofilm: {
       implementation_id: 'porous-anode-1d.accessible-surface-kinetics',
       equation_id: 'coupled-cell-1d',
+    },
+    reaction: {
+      implementation_id: 'porous-anode-1d.nernst-monod-electron-equivalent',
+      equation_id: 'EQ-BIO-002',
+      equation_ids: ['EQ-BIO-002', 'EQ-RX-002'],
+      reaction_law: {
+        id: 'porous-anode-nernst-monod-v1',
+        equation_ids: ['EQ-BIO-002', 'EQ-RX-002'],
+        rate_observation_key: 'anode_substrate_reaction_rate_mol_m3_s',
+        rate_series_id: 'development-1d:anode-reaction-rate',
+        substrate_basis: 'mol_substrate',
+        substrate_rate_unit: 'mol/(m3 s)',
+        electron_equivalent_mapping:
+          'source_traced_electrons_per_substrate_molecule',
+        stoichiometry_status:
+          'substrate_electron_equivalent_without_molecular_products',
+        source_refs: [
+          '10.1051/e3sconf/202233408005',
+          '10.1038/s41598-020-65375-5',
+        ],
+        limitations: [
+          'Substrate identity, molecular products, proton stoichiometry, and growth reactions are not resolved.',
+          'The material potential is imposed and the reaction remains a steady porous-anode reduction.',
+        ],
+      },
     },
     membrane_or_separator: {
       implementation_id: 'membrane-ion-1d.binary-electroneutral',
@@ -206,9 +281,14 @@ export function compileElectrochemicalModel(
   const implementations = IMPLEMENTATIONS[model];
   const bindings = composition.modulePlan.flatMap((module) => {
     const implementation = implementations[module.id];
+    const mappedEquations =
+      implementation?.equation_ids ??
+      (implementation ? [implementation.equation_id] : []);
     if (
       !implementation ||
-      !module.equationRefs.includes(implementation.equation_id)
+      mappedEquations.some(
+        (equationId) => !module.equationRefs.includes(equationId),
+      )
     ) {
       composition.missingModules.push(`implementation_adapter:${module.id}`);
       return [];
@@ -225,7 +305,7 @@ export function compileElectrochemicalModel(
   });
   if (composition.missingModules.length) composition.status = 'not_implemented';
   return {
-    contract_version: 'physics-runtime-plan-v1',
+    contract_version: 'physics-runtime-plan-v2',
     model_id: model,
     dimension: oneD ? 1 : 0,
     system,

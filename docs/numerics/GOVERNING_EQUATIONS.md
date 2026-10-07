@@ -12,6 +12,26 @@ These stable IDs describe candidate spatial formulations. They do not mean the 2
 - Implementation/tests: restricted 1D electrochemical diffusion/reaction in `porous-anode-1d.ts` and diffusion/migration in `membrane-ion-1d.ts`. The isolated `metrev_spatial/diffusion.py` kernel solves scalar transport with prescribed constant or cell-centred incompressible velocity, first-order upwind flux, cellwise isotropic or constant axis-aligned diagonal diffusivity, cellwise source, implicit-Euler storage, nonnegative linear disappearance `k c`, and mixed Dirichlet/prescribed outward diffusive-flux faces on orthogonal 1D/2D/3D verification grids. Internal face velocity is the average of two cell values and the opposite outward normals use one shared flux; exterior faces use the adjacent cell value. `tests/contracts/test_spatial_diffusion.py` checks a manufactured shear field `u=(0.2 y,0[,0]) m/s`, `c=1+x mol/m³`, source `0.2 y mol/(m³ s)` on three 2D/3D resolutions, integrated mass balance, transient constant-state invariance and invalid velocity fields. The discrete divergence check rejects inconsistent prescribed incompressible flow. A separate pinned DOLFINx development operation feeds the homogeneous Darcy P1 velocity into neutral steady scalar advection-diffusion on that exact porous mesh; a planar fixture compares the concentration with the analytic 1D profile at `Pe=1`, checks integrated inlet/outlet/wall species flux and emits hash-bound pressure, velocity and concentration datasets. It supports only the explicitly declared constant-source/first-order-loss extension below; it has no reaction network, electromigration, heterogeneous transport, porous/bulk interface or case integration, and is not an admitted MFC/MEC cell solver.
 - Limitations: porosity and tortuosity do not determine accessible area or a universal diffusivity; electroneutrality and gas phases need separate constraints.
 
+## EQ-BIO-001 — Lumped 0D Monod uptake on COD basis
+
+- Formula: `r_COD = q_max X [S/(K_S+S)] exp[−0.5((pH−pH_opt)/σ_pH)^2] exp(clip(−E_a/R (1/T−1/T_ref), −20, 20))`.
+- Variables/units: `r_COD` kgCOD/(m³ s), `q_max` kgCOD/(kgVSS s), active biomass `X` kgVSS/m³, COD `S` kgCOD/m³, `K_S` kgCOD/m³, `pH` and `pH_opt` dimensionless, `σ_pH` pH units, `E_a` J/mol, `R` J/(mol K), `T,T_ref` K. Both exponent arguments are dimensionless.
+- Sign/domain/dimensions: `r_COD ≥ 0` is COD-equivalent substrate consumption per anode liquid volume in a well-mixed 0D anode; it is not a molecular species production rate.
+- Assumptions and boundaries: one lumped COD pool, one biomass state, Monod substrate saturation, Gaussian pH inhibition and a fixed-temperature Arrhenius factor. The compartment balance separately applies continuous-flow dilution or the configured batch boundary.
+- Scientific support: 10.1016/j.biortech.2010.06.156 motivates Monod-coupled bioanode kinetics; 10.1016/j.jpowsour.2009.06.101 supports coupled compartment balances. These are formulation references, not calibration or validation of METREV.
+- Implementation/tests: `packages/electrochem-models/src/mechanistic.ts` (`biologicalUptake`) emits a final-time rate observation and time-series profile; mass closure, RK4 time-step refinement, zero-reaction continuous-flow washout and stiff-step positivity subdivision are checked in `tests/runtime/mechanistic-electrochem-model.test.ts`.
+- Limitations: no substrate identity, molecular products, proton stoichiometry, competing guilds, or resolved growth/decay reaction network is represented by this rate law.
+
+## EQ-BIO-002 — Restricted steady 1D porous-anode Nernst–Monod uptake
+
+- Formula: `r_i = a_v,i θ_i k_max [C_i/(K_C+C_i)] [1/(1+exp(−F(E_i−E_1/2)/(R T)))]`, with `D_eff,i = ε_i D_free/τ_i` and steady species balance `0 = d/dx(D_eff dC/dx) − r`.
+- Variables/units: `r_i` mol/(m³ s), internal area density `a_v,i` m²/m³, accessible fraction `θ_i` 1, `k_max` mol/(m² s), `C_i,K_C` mol/m³, `E_i,E_1/2` V, `F` C/mol, `R` J/(mol K), `T` K, porosity `ε_i` 1, free diffusivity `D_free` m²/s, tortuosity `τ_i` 1.
+- Sign/domain/dimensions: positive `r_i` consumes substrate in each through-thickness porous-anode control volume; 1D planar steady reduction with projected area and local material potential.
+- Assumptions and boundaries: source-backed cellwise properties; no-flux substrate boundary at backing `x=0`, fixed bulk concentration at liquid-facing `x=L`; no advection, biomass growth, local potential solution or time-dependent inventory.
+- Scientific support: 10.1051/e3sconf/202233408005, cited at its porous-anode model equations, is the formulation source; 10.1038/s41598-020-65375-5 motivates accessible active-area limitation. Source review is pending and neither source validates METREV outputs.
+- Implementation/tests: `packages/electrochem-models/src/porous-anode-1d.ts`; tests check the zero-reaction diffusion limit, an analytical planar first-order limit under refinement, integrated substrate balance and electron-current closure in `tests/runtime/porous-anode-1d.test.ts` and `tests/runtime/coupled-cell-1d.test.ts`.
+- Limitations: `C_i` is a single declared substrate basis. Products, proton/electron molecular stoichiometry, biofilm growth, charge fields and full-cell experimental validation are absent.
+
 ## EQ-FL-001 — Incompressible continuity
 
 - Formula: `∇·u = 0` for constant-density single-phase flow.
@@ -57,6 +77,16 @@ These stable IDs describe candidate spatial formulations. They do not mean the 2
 - Scientific support: 10.1016/j.biortech.2010.06.156 is a formulation lead, not a universal kinetic calibration.
 - Implementation/tests: existing 0D and restricted 1D electrode kinetics; generalized spatial interface law absent. Test zero-overpotential sign, monotonic branch, area and circuit closure.
 - Limitations: current 1D anode has imposed solid potential; there is no universal kinetic parameter for all wastewater, biomass and electrode conditions.
+
+## EQ-RX-002 — Reduced substrate-to-electron accounting
+
+- Formula: for 0D, the COD-derived electron-supply ceiling is `I_COD,max = CE f_biofilm (4F/0.032 kgCOD mol⁻¹) V_a r_COD`; the algebraically solved cell current is constrained by this supply and any cathodic limit. For restricted 1D, `I_F = n_e F A_proj Σ_i(r_i Δx_i)` and `R_sub = A_proj Σ_i(r_i Δx_i)`.
+- Variables/units: `I_COD,max,I_F` A, `CE,f_biofilm` 1, COD equivalent `0.032 kgCOD/mol`, `V_a` m³, `r_COD` kgCOD/(m³ s), `n_e` electrons per declared substrate molecule, `F` C/mol, `A_proj` m², `r_i` mol/(m³ s), `Δx_i` m, and `R_sub` mol/s. In 0D, `4F/0.032` has units C/kgCOD.
+- Sign/domain/dimensions: positive uptake yields a nonnegative electron-supply/current magnitude. The 0D relation is a cap inside the lumped MFC/MEC circuit solve; the 1D relation integrates one local substrate reaction over the porous electrode and closes the shared current.
+- Assumptions and boundaries: 0D COD electron equivalents use four electron equivalents per mole of oxygen-equivalent COD and explicit coulombic efficiency and electroactive biomass fraction. 1D uses an explicit source-backed `n_e`; its imposed-potential Nernst–Monod law and cell circuit share one current.
+- Scientific support: the 0D formulation is motivated by 10.1016/j.jpowsour.2009.06.101 and 10.1016/j.biortech.2010.06.156; 1D electron mapping is an explicit input and a reduced accounting assumption. Neither constitutes molecular reaction balancing or independent validation.
+- Implementation/tests: `mechanistic.ts` applies COD/electroactive-fraction current supply before the circuit root; `porous-anode-1d.ts` integrates local molar uptake and Faradaic current. MFC/MEC limits, substrate and electron residuals, and shared 1D circuit current are exercised in the runtime tests named above.
+- Limitations: this is electron-equivalent bookkeeping, not a balanced molecular reaction network. Products, proton stoichiometry, side reactions, biomass synthesis electron demand and gas crossover are not inferred.
 
 ## EQ-MEM-001 — Membrane transport and interface
 

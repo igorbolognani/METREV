@@ -615,6 +615,14 @@ describe('coupled electrochemical mechanistic model', () => {
     const mfcValue = (key: string) => valueFor(mfc, key) as number;
 
     expect(mfc.status).toBe('completed');
+    expect(mfcValue('cod_uptake_rate_kgcod_m3_s')).toBeGreaterThan(0);
+    expect(
+      mfc.series
+        .find(
+          (item) => item.series_id === 'mechanistic:cod_uptake_rate_kgcod_m3_s',
+        )
+        ?.points.some((point) => point.y > 0),
+    ).toBe(true);
     expect(mfcValue('cod_mass_balance_residual_kg')).toBeCloseTo(0, 12);
     expect(mfcValue('biomass_mass_balance_residual_kg')).toBeCloseTo(0, 12);
     expect(mfcValue('electrochemical_reversible_potential_work_j')).toBeCloseTo(
@@ -655,6 +663,7 @@ describe('coupled electrochemical mechanistic model', () => {
     const mecValue = (key: string) => valueFor(mec, key) as number;
 
     expect(mec.status).toBe('completed');
+    expect(mecValue('cod_uptake_rate_kgcod_m3_s')).toBeGreaterThan(0);
     expect(mecValue('cod_mass_balance_residual_kg')).toBeCloseTo(0, 12);
     expect(mecValue('biomass_mass_balance_residual_kg')).toBeCloseTo(0, 12);
     expect(mecValue('mec_cell_electrical_input_energy_j')).toBeCloseTo(
@@ -887,35 +896,104 @@ describe('coupled electrochemical mechanistic model', () => {
     expect(valueFor(result, 'biosensor_net_power_w')).toBeCloseTo(0.01, 6);
   });
 
-  it('conserves the influent COD state when no electroactive biomass is present', () => {
+  it('recovers the analytical continuous-flow washout limit when reaction is zero', () => {
+    const runWithStep = (timeStepSeconds: number) => {
+      const raw = structuredClone(fixture) as RawCaseInput;
+      delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
+      const model = raw.mechanistic_model!;
+      const initialCod = 0.2;
+      const duration = 7200;
+      const anodeVolume = model.geometry.anode_chamber_volume_m3.value;
+      model.operation.initial_biomass_kg_m3.value = 0;
+      model.operation.initial_cod_kg_m3.value = initialCod;
+      model.operation.flow_m3_s.value = anodeVolume / 3600;
+      model.operation.duration_s.value = duration;
+      model.operation.time_step_s.value = timeStepSeconds;
+      return { result: evaluate(raw), initialCod, duration, anodeVolume };
+    };
+    const coarse = runWithStep(1800);
+    const medium = runWithStep(900);
+    const fine = runWithStep(450);
+    const finalCod = (run: typeof fine) =>
+      run.result.series
+        .find((entry) => entry.y_axis.key === 'cod_kg_m3')!
+        .points.at(-1)!.y;
+    const expected = (run: typeof fine) => {
+      const influentCod =
+        fixture.mechanistic_model!.operation.influent_cod_kg_m3.value;
+      const dilution = 1 / 3600;
+      return (
+        influentCod +
+        (run.initialCod - influentCod) * Math.exp(-dilution * run.duration)
+      );
+    };
+
+    expect(coarse.result.status).toBe('completed');
+    expect(medium.result.status).toBe('completed');
+    expect(fine.result.status).toBe('completed');
+    expect(Math.abs(finalCod(medium) - expected(medium))).toBeLessThan(
+      Math.abs(finalCod(coarse) - expected(coarse)),
+    );
+    expect(Math.abs(finalCod(fine) - expected(fine))).toBeLessThan(
+      Math.abs(finalCod(medium) - expected(medium)),
+    );
+    expect(Math.abs(finalCod(fine) - expected(fine))).toBeLessThan(1e-6);
+    for (const run of [coarse, medium, fine]) {
+      expect(valueFor(run.result, 'current_density_a_m2')).toBe(0);
+      expect(valueFor(run.result, 'cod_uptake_rate_kgcod_m3_s')).toBe(0);
+      expect(
+        run.result.series
+          .find(
+            (entry) =>
+              entry.series_id === 'mechanistic:cod_uptake_rate_kgcod_m3_s',
+          )
+          ?.points.every((point) => point.y === 0),
+      ).toBe(true);
+      expect(
+        valueFor(run.result, 'cod_mass_balance_residual_kg') as number,
+      ).toBeCloseTo(0, 12);
+    }
+  });
+
+  it('bisects a stiff uptake step instead of clipping a negative COD trial', () => {
     const raw = structuredClone(fixture) as RawCaseInput;
     delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
     const model = raw.mechanistic_model!;
-    model.operation.initial_biomass_kg_m3.value = 0;
-    model.operation.initial_cod_kg_m3.value =
-      model.operation.influent_cod_kg_m3.value;
+    model.operation.duration_s.value = 3600;
+    model.operation.time_step_s.value = 3600;
+    model.operation.initial_cod_kg_m3.value = 0.2;
+    model.biology.max_specific_cod_uptake_kg_cod_kg_biomass_s.value = 0.1;
+    model.biology.biomass_yield_kg_biomass_kg_cod.value = 1e-12;
+    model.biology.decay_rate_s_inv.value = 0;
 
-    const result = simulateMechanisticCase(
-      normalizeCaseInput(rawCaseInputSchema.parse(raw)),
-    );
-    const codSeries = result.series.find(
-      (entry) => entry.y_axis.key === 'cod_kg_m3',
-    );
+    const result = evaluate(raw);
+    const finalState = result.input_snapshot.final_state as
+      | { cod: number; biomass: number }
+      | undefined;
 
     expect(result.status).toBe('completed');
+    expect(finalState?.cod).toBeGreaterThanOrEqual(0);
+    expect(finalState?.biomass).toBeGreaterThanOrEqual(0);
     expect(
-      codSeries?.points.every(
-        (point) => point.y === model.operation.influent_cod_kg_m3.value,
-      ),
-    ).toBe(true);
+      valueFor(result, 'rk4_positivity_rejected_trials') as number,
+    ).toBeGreaterThan(0);
     expect(
-      result.observations.find((entry) => entry.key === 'cod_removal_pct')
-        ?.value,
-    ).toBe(0);
-    expect(
-      result.observations.find((entry) => entry.key === 'current_density_a_m2')
-        ?.value,
-    ).toBe(0);
+      valueFor(result, 'cod_mass_balance_residual_kg') as number,
+    ).toBeCloseTo(0, 10);
+  });
+
+  it('fails visibly when pH cannot remain in its declared domain at any supported step', () => {
+    const raw = structuredClone(fixture) as RawCaseInput;
+    delete raw.stack_blocks!.sensors_and_analytics!.biosensor;
+    raw.mechanistic_model!.operation.initial_ph_cathode.value = 13.999;
+    raw.mechanistic_model!.biology.buffer_capacity_cathode_mol_m3_ph.value = 1e-12;
+
+    const result = evaluate(raw);
+
+    expect(result.status).toBe('failed');
+    expect(result.failure_detail?.error).toContain(
+      'RK4 positivity subdivision exhausted',
+    );
   });
 
   it('blocks standalone sensor output when the stated external supply is inadequate', () => {

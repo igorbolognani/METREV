@@ -46,6 +46,12 @@ describe('restricted coupled planar cell', () => {
         'coupled-cell-1d-restricted-v1',
       );
       expect(saved?.simulation_enrichment?.series[0].points).toHaveLength(12);
+      expect(saved?.simulation_enrichment?.series).toHaveLength(2);
+      expect(
+        saved?.simulation_enrichment?.derived_observations.some(
+          (entry) => entry.key === 'anode_substrate_consumption_mol_s',
+        ),
+      ).toBe(true);
       expect(
         saved?.simulation_enrichment?.derived_observations.every(
           (entry) => entry.decision_relevance === 'informational',
@@ -82,6 +88,13 @@ describe('restricted coupled planar cell', () => {
       )?.value,
     ).toBeGreaterThan(0);
     expect(result.series[0].points).toHaveLength(12);
+    expect(result.series[1].points).toHaveLength(12);
+    expect(result.series[1].y_axis.unit).toBe('mol/(m3 s)');
+    expect(
+      result.derived_observations.find(
+        (entry) => entry.key === 'anode_substrate_consumption_mol_s',
+      )?.value,
+    ).toBeGreaterThan(0);
     expect(result.provenance.source_refs).toContain(
       'test-fixture://coupled-cell-1d',
     );
@@ -109,6 +122,23 @@ describe('restricted coupled planar cell', () => {
     if (oneD.model !== 'coupled-cell-1d-restricted-v1')
       throw new Error('Wrong model');
     expect(oneD.result.modelStatus).toBe('development_only');
+    expect(oneD.composition.contract_version).toBe('physics-runtime-plan-v2');
+    expect(oneD.composition.bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          module_id: 'reaction',
+          implementation_id: 'porous-anode-1d.nernst-monod-electron-equivalent',
+          equation_ids: ['EQ-BIO-002', 'EQ-RX-002'],
+          reaction_law: expect.objectContaining({
+            substrate_basis: 'mol_substrate',
+            rate_observation_key: 'anode_substrate_reaction_rate_mol_m3_s',
+            rate_series_id: 'development-1d:anode-reaction-rate',
+            stoichiometry_status:
+              'substrate_electron_equivalent_without_molecular_products',
+          }),
+        }),
+      ]),
+    );
     const zeroD = runConfiguredElectrochemicalModel({
       model: 'coupled-0d-dae-v1',
       normalizedCase: normalizeCaseInput(
@@ -117,6 +147,23 @@ describe('restricted coupled planar cell', () => {
     });
     if (zeroD.model !== 'coupled-0d-dae-v1') throw new Error('Wrong model');
     expect(zeroD.result.status).toBe('completed');
+    expect(zeroD.composition.contract_version).toBe('physics-runtime-plan-v2');
+    expect(zeroD.composition.bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          module_id: 'reaction',
+          implementation_id: 'mechanistic.monod-cod-electron-equivalent',
+          equation_ids: ['EQ-BIO-001', 'EQ-RX-002'],
+          reaction_law: expect.objectContaining({
+            substrate_basis: 'kgCOD',
+            rate_observation_key: 'cod_uptake_rate_kgcod_m3_s',
+            rate_series_id: 'mechanistic:cod_uptake_rate_kgcod_m3_s',
+            stoichiometry_status:
+              'lumped_COD_equivalent_without_molecular_products',
+          }),
+        }),
+      ]),
+    );
     expect(() =>
       runConfiguredElectrochemicalModel({
         model: 'coupled-0d-dae-v1',
@@ -134,6 +181,66 @@ describe('restricted coupled planar cell', () => {
       }),
     ).toThrow(/cannot execute selected fidelity/);
   });
+
+  it.each(['MFC', 'MEC'] as const)(
+    'persists a zero-reaction %s case with zero cell current and local rates',
+    (system) => {
+      const cell = fixture();
+      cell.system = system;
+      cell.anode.maximumSurfaceReactionFlux = q(0, 'mol/(m2 s)');
+      if (system === 'MEC') {
+        const hydrogen = {
+          faradayEfficiency: q(0.8, '1'),
+          captureFraction: q(0.75, '1'),
+        };
+        cell.circuit = {
+          kind: 'applied_voltage',
+          voltage: q(0.9, 'V'),
+        };
+        cell.cathode = {
+          ...cell.cathode,
+          oxygen: undefined,
+          hydrogen,
+        };
+      }
+      const raw = rawCaseInputSchema.parse({
+        ...rawCaseFixture,
+        technology_family:
+          system === 'MFC'
+            ? 'microbial_fuel_cell'
+            : 'microbial_electrolysis_cell',
+        mechanistic_model: {
+          model_version: 'coupled-cell-1d-restricted-v1',
+          model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+          system_type: system,
+          cell_1d: cell,
+        },
+      });
+      const result = evaluateSimulationEnrichment({
+        normalizedCase: normalizeCaseInput(raw),
+      });
+      const value = (key: string) =>
+        result.derived_observations.find((entry) => entry.key === key)?.value;
+      const reactionSeries = result.series.find(
+        (entry) => entry.series_id === 'development-1d:anode-reaction-rate',
+      );
+
+      expect(result.status).toBe('completed');
+      expect(value('cell_current_a')).toBe(0);
+      expect(value('anode_substrate_consumption_mol_s')).toBe(0);
+      expect(value('anode_substrate_reaction_rate_mol_m3_s')).toBe(0);
+      expect(value('anode_faradaic_current_a')).toBe(0);
+      expect(reactionSeries?.points.every((point) => point.y === 0)).toBe(true);
+      if (system === 'MEC') expect(value('hydrogen_gross_mol_s')).toBe(0);
+      expect(result.input_snapshot).toMatchObject({
+        physics_composition: {
+          bindings: expect.arrayContaining([
+            expect.objectContaining({ module_id: 'reaction' }),
+          ]),
+        },
+      });
+    },
+  );
 
   it('closes one current through anode, ions, cathode and MFC load', () => {
     const result = solveCoupledCell1d(fixture());

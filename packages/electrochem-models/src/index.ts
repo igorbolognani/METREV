@@ -50,6 +50,7 @@ export type {
   ConfiguredElectrochemicalModel,
   ExecutablePhysicsPlan,
   PhysicsImplementationBinding,
+  ReactionLawRuntimeBinding,
 } from './model-composition-runtime';
 export type {
   PhysicsComposition,
