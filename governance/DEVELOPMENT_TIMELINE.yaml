@@ -378,9 +378,16 @@ stages:
     meaning: Adds three-level all-axis 2D/3D MFC/MEC neutral partition verification, preserves historical v7 evidence, and corrects reports and governance. CI and CodeQL passed on the final PR head; P06 and scientific maturity remain partial.
   - id: lower_dimensional_reaction_runtime
     period: '2026-10-07'
-    state: local_development_not_merged
+    state: development_pr_not_merged
     branch: feat/0d-1d-reaction-runtime
+    pull_request: 140
     base_main: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
+    head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
+    review_state: ready_for_review
+    ci_state: in_progress
+    codeql_state: in_progress
+    ci_run: 37677514640
+    codeql_run: 37677514571
     sources:
       - packages/electrochem-models/src/model-composition-runtime.ts
       - packages/electrochem-models/src/mechanistic.ts

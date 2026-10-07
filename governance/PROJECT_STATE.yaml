@@ -53,13 +53,28 @@ snapshot:
   runtime_codeql: github_codeql_run_37667796772_passed
   main_ci: github_actions_run_37670301138_passed_on_c75e284
   main_codeql: github_codeql_run_37670300867_passed_on_c75e284
-  open_development_prs: []
+  open_development_prs:
+    - pull_request: 140
+      branch: feat/0d-1d-reaction-runtime
+      head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
+      review_state: ready_for_review
+      ci_state: in_progress
+      codeql_state: in_progress
+      ci_run: 37677514640
+      codeql_run: 37677514571
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
 development_batch:
   branch: feat/0d-1d-reaction-runtime
   base_main: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
-  state: local_development_not_merged
+  state: development_pr_not_merged
+  pull_request: 140
+  head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
+  review_state: ready_for_review
+  ci_state: in_progress
+  codeql_state: in_progress
+  ci_run: 37677514640
+  codeql_run: 37677514571
   scientific_maturity_promoted: false
   decision_eligible: false
   source:
