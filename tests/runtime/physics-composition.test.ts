@@ -21,6 +21,33 @@ describe('physics composition mapping gates', () => {
     ).toBe(false);
   });
 
+  it('composes the reaction law explicitly in both executable lower dimensions', () => {
+    const zeroD = resolvePhysicsComposition({
+      modelId: 'coupled-0d-dae-v1',
+      system: 'MFC',
+    });
+    const oneD = resolvePhysicsComposition({
+      modelId: 'coupled-cell-1d-restricted-v1',
+      system: 'MFC',
+      architecture: 'planar',
+      separator: 'binary-electroneutral',
+    });
+
+    expect(zeroD.status).toBe('executable');
+    expect(oneD.status).toBe('case_runner_development');
+    for (const composition of [zeroD, oneD]) {
+      expect(composition.activeModules).toContain('reaction');
+      expect(
+        composition.modulePlan.find((module) => module.id === 'reaction')
+          ?.executableAtFidelity,
+      ).toBe(true);
+      expect(
+        composition.modulePlan.find((module) => module.id === 'circuit')
+          ?.requires,
+      ).toContain('reaction');
+    }
+  });
+
   it('reports unsupported module mappings in the stack resolution', () => {
     const composition = resolvePhysicsComposition({
       modelId: 'coupled-0d-dae-v1',

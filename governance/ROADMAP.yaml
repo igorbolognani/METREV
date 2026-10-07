@@ -23,7 +23,9 @@ work_items:
     owned_paths:
       - packages/domain-contracts/
       - packages/electrochem-models/
-    blockers: []
+    blockers:
+      - Runtime bindings now map the 0D COD Monod law and restricted 1D molar Nernst-Monod law to explicit equation IDs; canonical cross-dimensional species/reaction contracts and product-level reaction graphs remain incomplete.
+      - The 0D and 1D reaction mappings are electron-equivalent reductions; balanced molecular products, proton stoichiometry and competing pathways remain unimplemented and are not implied by the bindings.
   - id: P02
     title: Create a real spatial input contract
     phase: foundation
@@ -72,6 +74,7 @@ work_items:
     blockers:
       - P02 product intake and full dimensional coverage pending
       - Constant isotropic permeability and pore-fluid viscosity are source-backed for the restricted Darcy development operation; tensor or variable hydraulic fields, Darcy/Brinkman interface laws, buffer, thermal and biological law parameters still need model-specific contracts
+      - 0D Monod COD uptake and restricted 1D Nernst-Monod substrate uptake now have separate source-traced runtime bindings; full molecular substrate/product stoichiometry, proton balances and pathway-specific reaction contracts remain open
   - id: P04
     title: Activate the future numerical sidecar architecture
     phase: foundation

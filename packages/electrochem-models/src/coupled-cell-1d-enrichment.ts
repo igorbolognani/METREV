@@ -51,19 +51,50 @@ export function coupledCell1dEnrichment(
   cell: CoupledCell1dInput,
   result: CoupledCell1dResult,
 ): SimulationEnrichment {
-  const points = result.anode.cells
-    .filter(
-      (_, index, cells) =>
-        index % Math.max(1, Math.ceil((cells.length - 1) / 199)) === 0 ||
-        index === cells.length - 1,
-    )
-    .map((entry) => ({
-      x: entry.xCenterM,
-      y: entry.substrateConcentrationMolM3,
-      meta: { domain: 'anode', component: 'porous_anode' },
-    }));
+  const sampledCells = result.anode.cells.filter(
+    (_, index, cells) =>
+      index % Math.max(1, Math.ceil((cells.length - 1) / 199)) === 0 ||
+      index === cells.length - 1,
+  );
+  const points = sampledCells.map((entry) => ({
+    x: entry.xCenterM,
+    y: entry.substrateConcentrationMolM3,
+    meta: { domain: 'anode', component: 'porous_anode' },
+  }));
+  const reactionRatePoints = sampledCells.map((entry) => ({
+    x: entry.xCenterM,
+    y: entry.reactionMolM3S,
+    meta: {
+      domain: 'anode',
+      component: 'porous_anode',
+      quantity: 'substrate_reaction_rate',
+    },
+  }));
   const observations: DerivedObservation[] = [
     modeled('cell_current_a', 'Cell current', result.currentA, 'A'),
+    modeled(
+      'anode_substrate_consumption_mol_s',
+      'Anode substrate consumption rate',
+      result.anode.substrateConsumptionMolS,
+      'mol/s',
+    ),
+    modeled(
+      'anode_substrate_reaction_rate_mol_m3_s',
+      'Mean volumetric anode substrate reaction rate',
+      result.anode.cells.length
+        ? result.anode.cells.reduce(
+            (sum, cell) => sum + cell.reactionMolM3S,
+            0,
+          ) / result.anode.cells.length
+        : 0,
+      'mol/(m3 s)',
+    ),
+    modeled(
+      'anode_faradaic_current_a',
+      'Anode Faradaic current from substrate reaction',
+      result.anode.faradaicCurrentA,
+      'A',
+    ),
     modeled('cell_voltage_v', 'Cell voltage', result.cellVoltageV, 'V'),
     modeled(
       result.system === 'MFC'
@@ -132,6 +163,21 @@ export function coupledCell1dEnrichment(
         source_kind: 'modeled',
         provenance_note:
           'Sampled from the solver cell centers, at most 200 profile points.',
+      },
+      {
+        series_id: 'development-1d:anode-reaction-rate',
+        title: 'Anode substrate reaction rate (steady 1D)',
+        series_type: 'trend_line',
+        x_axis: { key: 'x_m', label: 'Anode depth', unit: 'm' },
+        y_axis: {
+          key: 'reaction_rate_mol_m3_s',
+          label: 'Substrate reaction rate',
+          unit: 'mol/(m3 s)',
+        },
+        points: reactionRatePoints,
+        source_kind: 'modeled',
+        provenance_note:
+          'Local porous-anode reaction rates sampled from the steady 1D solver cells.',
       },
     ],
     assumptions: [

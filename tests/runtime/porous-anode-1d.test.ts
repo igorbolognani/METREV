@@ -69,6 +69,25 @@ describe('steady 1D porous bioanode reaction–transport', () => {
     );
   });
 
+  it('recovers the zero-reaction diffusion limit without residual current', () => {
+    const input = fixture(24);
+    const result = solvePorousAnode1d({
+      ...input,
+      maximumSurfaceReactionFlux: q(0, 'mol/(m2 s)'),
+    });
+
+    expect(
+      result.cells.every(
+        (cell) =>
+          cell.substrateConcentrationMolM3 === 1 && cell.reactionMolM3S === 0,
+      ),
+    ).toBe(true);
+    expect(result.substrateInflowMolS).toBe(0);
+    expect(result.substrateConsumptionMolS).toBe(0);
+    expect(result.faradaicCurrentA).toBe(0);
+    expect(result.balanceResidualMolS).toBe(0);
+  });
+
   it('approaches the analytical planar first-order reaction profile on refinement', () => {
     const coarse = solvePorousAnode1d(fixture(10));
     const fine = solvePorousAnode1d(fixture(80));

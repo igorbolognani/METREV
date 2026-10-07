@@ -151,7 +151,7 @@ input_parameters:
     required_when: a non-default dimensional or scale formulation is explicitly requested
     research_only_status: not_implemented
     invalid_or_missing_parameter_status: insufficient_data
-    rule: Only coupled-0d-dae-v1 is executable in the integrated case runner. The restricted steady planar 1D cell runs through the analyst development API with its separate complete input contract; requesting it in a persisted case returns not_implemented. A known research-only 1D, 2D, 3D, stack-network, pore-scale, or nano-informed selection also returns not_implemented, with explicit model blockers, and is never silently run through the 0D solver. Missing or invalid parameters for an executable model return insufficient_data. Standalone development solvers are not integrated case-runner profiles.
+    rule: coupled-0d-dae-v1 is the executable 0D case-runner model. The restricted steady planar coupled-cell-1d-restricted-v1 is admitted by the development case runner only when a complete source-backed cell_1d input matches the requested model, system, and version; outputs remain informational and ineligible for decisions. The analyst development API accepts that same restricted cell input. Known research-only 1D, 2D, 3D, stack-network, pore-scale, or nano-informed selections return not_implemented with explicit blockers and never silently run through the 0D solver. Missing or invalid required parameters return insufficient_data.
   component_model_parameters:
     required_when: a component-specific scale-resolved property is supplied or requested by a research profile
     parameter_contract:
@@ -280,7 +280,9 @@ not_yet_modeled:
 development_cell_coupling:
   model_id: coupled-cell-1d-restricted-v1
   entrypoint: packages/electrochem-models/src/index.ts#runConfiguredElectrochemicalModel
-  scope: steady_planar_MFC_or_MEC_development_API_only
+  scope: steady_planar_MFC_or_MEC_development_API_and_persisted_case_evaluation
+  persisted_case_requirements: complete_source_backed_cell_1d_matching_model_system_and_version
+  persisted_case_output_status: informational_development_only_not_decision_eligible
   source_roles:
     porous_anode: 10.1051/e3sconf/202233408005
     bioanode_polarization_motivation: 10.1016/j.biortech.2010.06.156
@@ -288,16 +290,16 @@ development_cell_coupling:
     circuit_and_charge_balance: 10.1016/j.jpowsour.2009.06.101
   required_boundaries:
     - source_backed_cellwise_anode_porosity_tortuosity_accessible_area_and_material_potential
-    - source_backed_substrate_diffusion_reaction_stoichiometry_and_bulk_concentration
+    - source_backed_substrate_diffusion_kinetics_electron_equivalent_mapping_and_bulk_concentration
     - equal_concentration_equal_diffusivity_monovalent_binary_membrane_species_and_local_pore_properties
     - cathode_area_exchange_current_transfer_coefficient_and_oxygen_or_hydrogen_boundary
     - MFC_external_load_or_MEC_applied_voltage_with_separate_electrolyte_contact_resistances
   coupling: one_current_closes_anode_Faradaic_reaction_membrane_ionic_flux_cathode_polarization_and_circuit
+  reaction_scope: single_substrate_reduced_kinetics_with_source_traced_electron_equivalents_no_molecular_products_or_proton_balance
   activity_factor: 1_minus_exp_of_negative_alpha_F_eta_over_RT_is_an_explicit_unfitted_reduction
   evidence_posture: numerical_development_only_no_independent_experimental_validation
   not_implemented:
     [
-      case_runner_integration,
       temporal_inventories,
       Donnan_partition,
       fixed_charge,
@@ -315,6 +317,7 @@ fidelity_selection_policy:
     resolution_scales: [macro, micro, nano]
     temporal_resolution_is_separate_from_spatial_dimension: true
   executable: [coupled-0d-dae-v1]
+  case_runner_development: [coupled-cell-1d-restricted-v1]
   research_only:
     - biofilm-1d-direct-transfer-research-v1
     - biofilm-2d-electrode-research-v1

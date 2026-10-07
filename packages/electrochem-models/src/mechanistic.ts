@@ -26,6 +26,8 @@ const OXYGEN_MOLAR_MASS_KG_MOL = 0.031998;
 const COD_ELECTRON_EQUIVALENTS_C_KG = (4 * FARADAY) / 0.032;
 const MODEL_VERSION = 'coupled-0d-dae-v1';
 const MAX_INTEGRATION_STEPS = 2000;
+const MAX_POSITIVITY_SPLIT_DEPTH = 12;
+const MAX_POSITIVITY_REJECTED_TRIALS = 4096;
 const MAX_SERIES_POINTS = 200;
 
 export interface MechanisticRun {
@@ -84,6 +86,7 @@ interface Point {
 
 interface ReactorRun {
   points: Point[];
+  positivityRejectedTrials: number;
   cellElectricalEnergyJ: number;
   reversiblePotentialEnergyJ: number;
   anodeActivationWorkJ: number;
@@ -103,6 +106,7 @@ interface ReactorRun {
 
 interface ReactorStep {
   state: State;
+  positivityRejectedTrials: number;
   cellElectricalEnergyJ: number;
   reversiblePotentialEnergyJ: number;
   anodeActivationWorkJ: number;
@@ -396,8 +400,8 @@ function inverseButlerVolmer(
 }
 
 function biologicalUptake(input: MechanisticModelInput, state: State): number {
-  const concentration = Math.max(0, state.cod);
-  const biomass = Math.max(0, state.biomass);
+  const concentration = state.cod;
+  const biomass = state.biomass;
   const ks = p(input, 'biology.half_saturation_cod_kg_m3');
   const qMax = p(input, 'biology.max_specific_cod_uptake_kg_cod_kg_biomass_s');
   const saturation = concentration / (ks + concentration);
@@ -437,7 +441,7 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
       ? COD_ELECTRON_EQUIVALENTS_C_KG *
         massTransfer *
         cathodeArea *
-        Math.max(0, state.oxygen)
+        state.oxygen
       : Number.POSITIVE_INFINITY;
   const currentCeiling = Math.max(
     0,
@@ -562,14 +566,27 @@ function ratesFor(input: MechanisticModelInput, state: State): Rates {
   };
 }
 
+class PositivityStepRejected extends Error {
+  constructor() {
+    super('RK4 trial state violated nonnegative concentration or pH bounds');
+    this.name = 'PositivityStepRejected';
+  }
+}
+
+/** Reject a trial step outside the declared state domain; never clip it. */
 function safeState(state: State): State {
-  return {
-    cod: Math.max(0, state.cod),
-    biomass: Math.max(0, state.biomass),
-    oxygen: Math.max(0, state.oxygen),
-    phAnode: Math.max(0, Math.min(14, state.phAnode)),
-    phCathode: Math.max(0, Math.min(14, state.phCathode)),
-  };
+  if (
+    !Object.values(state).every(Number.isFinite) ||
+    state.cod < 0 ||
+    state.biomass < 0 ||
+    state.oxygen < 0 ||
+    state.phAnode < 0 ||
+    state.phAnode > 14 ||
+    state.phCathode < 0 ||
+    state.phCathode > 14
+  )
+    throw new PositivityStepRejected();
+  return state;
 }
 
 function derivativesWithRates(
@@ -717,6 +734,7 @@ function rk4Step(
 
   return {
     state: safeState(result),
+    positivityRejectedTrials: 0,
     cellElectricalEnergyJ: integrateRate(
       electricalPowerW(input, r1),
       electricalPowerW(input, r2),
@@ -810,6 +828,87 @@ function rk4Step(
   };
 }
 
+type IntegratedReactorQuantity = Exclude<
+  keyof ReactorStep,
+  'state' | 'positivityRejectedTrials'
+>;
+
+const INTEGRATED_REACTOR_QUANTITIES: IntegratedReactorQuantity[] = [
+  'cellElectricalEnergyJ',
+  'reversiblePotentialEnergyJ',
+  'anodeActivationWorkJ',
+  'cathodeActivationWorkJ',
+  'ohmicPolarizationWorkJ',
+  'boundaryResidualEnergyJ',
+  'codInfluentMassKg',
+  'codEffluentMassKg',
+  'codBiodegradedMassKg',
+  'biomassGrowthKg',
+  'biomassDecayKg',
+  'biomassWashoutKg',
+  'hydrogenGrossMol',
+  'hydrogenCapturedMol',
+  'hydrogenUncapturedMol',
+];
+
+function combineReactorSteps(
+  first: ReactorStep,
+  second: ReactorStep,
+  rejectedTrials = 0,
+): ReactorStep {
+  const totals = {} as Record<IntegratedReactorQuantity, number>;
+  for (const quantity of INTEGRATED_REACTOR_QUANTITIES)
+    totals[quantity] = first[quantity] + second[quantity];
+  return {
+    state: second.state,
+    ...totals,
+    positivityRejectedTrials:
+      first.positivityRejectedTrials +
+      second.positivityRejectedTrials +
+      rejectedTrials,
+  };
+}
+
+/** Bisect an RK4 trial only when an intermediate or accepted state is inadmissible. */
+function integratePositiveRk4Step(
+  input: MechanisticModelInput,
+  state: State,
+  step: number,
+  budget: { rejectedTrials: number },
+  splitDepth = 0,
+): ReactorStep {
+  try {
+    return rk4Step(input, state, step);
+  } catch (error) {
+    if (!(error instanceof PositivityStepRejected)) throw error;
+    budget.rejectedTrials += 1;
+    if (budget.rejectedTrials > MAX_POSITIVITY_REJECTED_TRIALS)
+      throw new Error(
+        `RK4 positivity subdivision exhausted after ${MAX_POSITIVITY_REJECTED_TRIALS} rejected trials; no clipped state was accepted`,
+      );
+    if (splitDepth >= MAX_POSITIVITY_SPLIT_DEPTH)
+      throw new Error(
+        `RK4 positivity subdivision exhausted after ${MAX_POSITIVITY_SPLIT_DEPTH} bisections; no clipped state was accepted`,
+      );
+    const halfStep = step / 2;
+    const first = integratePositiveRk4Step(
+      input,
+      state,
+      halfStep,
+      budget,
+      splitDepth + 1,
+    );
+    const second = integratePositiveRk4Step(
+      input,
+      first.state,
+      halfStep,
+      budget,
+      splitDepth + 1,
+    );
+    return combineReactorSteps(first, second, 1);
+  }
+}
+
 function runReactor(input: MechanisticModelInput): ReactorRun {
   const duration = p(input, 'operation.duration_s');
   const requestedStep = p(input, 'operation.time_step_s');
@@ -842,6 +941,8 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
   let hydrogenGrossMol = 0;
   let hydrogenCapturedMol = 0;
   let hydrogenUncapturedMol = 0;
+  let positivityRejectedTrials = 0;
+  const positivityBudget = { rejectedTrials: 0 };
   const stride = Math.max(1, Math.ceil(count / MAX_SERIES_POINTS));
 
   for (let index = 0; index <= count; index += 1) {
@@ -868,7 +969,12 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
       });
     }
     if (index < count) {
-      const interval = rk4Step(input, state, step);
+      const interval = integratePositiveRk4Step(
+        input,
+        state,
+        step,
+        positivityBudget,
+      );
       cellElectricalEnergyJ += interval.cellElectricalEnergyJ;
       reversiblePotentialEnergyJ += interval.reversiblePotentialEnergyJ;
       anodeActivationWorkJ += interval.anodeActivationWorkJ;
@@ -884,11 +990,13 @@ function runReactor(input: MechanisticModelInput): ReactorRun {
       hydrogenGrossMol += interval.hydrogenGrossMol;
       hydrogenCapturedMol += interval.hydrogenCapturedMol;
       hydrogenUncapturedMol += interval.hydrogenUncapturedMol;
+      positivityRejectedTrials += interval.positivityRejectedTrials;
       state = interval.state;
     }
   }
   return {
     points,
+    positivityRejectedTrials,
     cellElectricalEnergyJ,
     reversiblePotentialEnergyJ,
     anodeActivationWorkJ,
@@ -1405,6 +1513,12 @@ function seriesFor(
       label: 'Dissolved COD',
       unit: 'kgCOD/m3',
       read: (point: Point) => point.state.cod,
+    },
+    {
+      key: 'cod_uptake_rate_kgcod_m3_s',
+      label: 'Modeled Monod COD uptake rate',
+      unit: 'kgCOD/(m3 s)',
+      read: (point: Point) => point.rates.uptake,
     },
     {
       key: 'biomass_kg_m3',
@@ -2138,6 +2252,14 @@ function simulateMechanisticCaseCore(
   const confidenceScore = hasAssumedValues ? 20 : 55;
   const observations: DerivedObservation[] = [
     observation({
+      key: 'cod_uptake_rate_kgcod_m3_s',
+      label: 'Modeled Monod COD uptake rate',
+      value: final.rates.uptake,
+      unit: 'kgCOD/(m3 s)',
+      confidence: confidenceLevel,
+      note: 'Final-time rate from the lumped COD Monod law with pH inhibition and the bounded Arrhenius factor.',
+    }),
+    observation({
       key: 'current_density_a_m2',
       label: 'Current density',
       value: final.rates.current / anodeArea,
@@ -2224,6 +2346,14 @@ function simulateMechanisticCaseCore(
       unit: 'kgCOD',
       confidence: confidenceLevel,
       note: 'Influent minus effluent minus modeled uptake minus COD accumulation; this numerical closure residual is not an experimental error estimate.',
+    }),
+    observation({
+      key: 'rk4_positivity_rejected_trials',
+      label: 'Rejected RK4 trials for state bounds',
+      value: reactorRun.positivityRejectedTrials,
+      unit: '1',
+      confidence: confidenceLevel,
+      note: 'Count of trial steps bisected because an intermediate or accepted concentration/pH state left its declared range; no state was clipped.',
     }),
     observation({
       key: 'biomass_growth_mass_kg',
@@ -2603,6 +2733,8 @@ function simulateMechanisticCaseCore(
       initial_state: initial.state,
       final_state: final.state,
       integration_points: points.length,
+      integration_method: 'fixed_step_RK4_with_state_bound_bisection',
+      positivity_rejected_trials: reactorRun.positivityRejectedTrials,
     },
     observations,
     series: seriesFor(model, points),

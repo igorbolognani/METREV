@@ -360,6 +360,41 @@ stages:
       - apps/spatial-sidecar/metrev_spatial/structured_cell.py
       - packages/domain-contracts/src/structured-cell-schema.ts
     meaning: Source-traced ideal neutral membrane partition reaches the structured-cell v8 contract, flux, analytic Jacobian and worker. Main CI passed, dev was fast-forwarded and temporary branches were archived. Charged partition, Donnan closure and independent validation remain pending.
+  - id: neutral_membrane_partition_verification_pr139
+    period: '2026-10-07'
+    state: integrated_main
+    branch: feat/p06-partition-verification
+    pull_request: 139
+    base_main: 08af849dfa07d73dcd18d31b3d9a05d29e2a7303
+    head_sha: fa2a30e49bf30fb6b7497aa8b0a5a90f7e6141a1
+    merge_commit: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
+    merged_at: '2026-10-07T18:53:35Z'
+    ci_run: 37667796628
+    codeql_run: 37667796772
+    sources:
+      - scripts/run-spatial-verification.py
+      - docs/numerics/VERIFICATION_MATRIX.md
+      - docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.md
+    meaning: Adds three-level all-axis 2D/3D MFC/MEC neutral partition verification, preserves historical v7 evidence, and corrects reports and governance. CI and CodeQL passed on the final PR head; P06 and scientific maturity remain partial.
+  - id: lower_dimensional_reaction_runtime
+    period: '2026-10-07'
+    state: development_pr_not_merged
+    branch: feat/0d-1d-reaction-runtime
+    pull_request: 140
+    base_main: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
+    head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
+    review_state: ready_for_review
+    ci_state: in_progress
+    codeql_state: in_progress
+    ci_run: 37677514640
+    codeql_run: 37677514571
+    sources:
+      - packages/electrochem-models/src/model-composition-runtime.ts
+      - packages/electrochem-models/src/mechanistic.ts
+      - packages/electrochem-models/src/porous-anode-1d.ts
+      - tests/runtime/mechanistic-electrochem-model.test.ts
+      - tests/runtime/porous-anode-1d.test.ts
+    meaning: Adds explicit reduced reaction-law bindings and extends 0D/1D conservation and limiting-case verification. Molecular stoichiometry, independent validation and maturity promotion remain pending.
 
 sequence:
   - development_batch
@@ -370,4 +405,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: Verify the coupled neutral partition interface on three all-axis meshes in 2D/3D MFC/MEC, preserve historical v7 evidence and continue P06 prerequisites for charged-interface coupling. Keep product integration, independent validation and maturity promotion behind their declared gates.
+next_work: Close source-traced reaction bindings, conservation and limiting cases across the lumped 0D and restricted 1D MFC/MEC models; then couple charged/Donnan interfaces to the spatial solver. Keep molecular stoichiometry, independent validation and maturity promotion behind their declared evidence gates.
