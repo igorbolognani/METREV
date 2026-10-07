@@ -21,6 +21,9 @@ gates:
   - id: GATE-LIMITING-CASE
     evidence: Analytical or simplified reference case checked.
     state: defined
+  - id: GATE-DONNAN-INTERFACE
+    evidence: Source-backed ideal Donnan interface closure passes analytic root, both orientations, zero-flux equilibrium, local membrane electroneutrality, conservative species flux and Jacobian directional checks; membrane-normal convection remains rejected.
+    state: defined
   - id: GATE-MESH-REFINEMENT
     evidence: At least coarse/medium/fine refinement with declared observable and tolerance.
     state: defined

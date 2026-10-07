@@ -68,7 +68,9 @@ def three_axis_refinement(system):
         inp['geometry']['lengths_m'][2].update(
             value=.0003, source_ref='synthetic:three-axis-refinement')
         inp['geometry']['transverse_cells'][1] = 2 * factor
+        print(json.dumps(dict(stage='three_axis_refinement',system=system,refinement_factor=factor,status='running')),file=sys.stderr,flush=True)
         output = Cell(inp).solve()
+        print(json.dumps(dict(stage='three_axis_refinement',system=system,refinement_factor=factor,status=output['status'])),file=sys.stderr,flush=True)
         inputs.append(inp)
         outputs.append(output)
         runs.append(dict(input_sha256=digest(inp), mesh_sha256=digest(output['mesh']),
@@ -121,7 +123,9 @@ def neutral_partition_refinement(dimension, system):
                              species={'reduced': coefficient}),
                         dict(left_domain='membrane', right_domain='cathode',
                              species={'reduced': dict(coefficient, value=.5)})])
+        print(json.dumps(dict(stage='neutral_partition_refinement',dimension=dimension,system=system,refinement_factor=factor,status='running')),file=sys.stderr,flush=True)
         output = Cell(inp).solve()
+        print(json.dumps(dict(stage='neutral_partition_refinement',dimension=dimension,system=system,refinement_factor=factor,status=output['status'])),file=sys.stderr,flush=True)
         inputs.append(inp)
         outputs.append(output)
         runs.append(dict(input_sha256=digest(inp), mesh_sha256=digest(output['mesh']),
@@ -166,6 +170,48 @@ def neutral_partition_refinement(dimension, system):
                 ])
 
 
+def donnan_verification(dimension, system, mode):
+    """Source-traced synthetic interface checks, never empirical case data."""
+    inputs, outputs, runs = [], [], []
+    for factor in ((1, 2, 3) if mode == 'full' else (1,)):
+        # Refinement uses the existing one-sided heterogeneous transport
+        # fixture, rather than the small two-sided equilibrium/worker fixture.
+        # The latter is not in an asymptotic current regime at 2/4/6 cells/layer.
+        source=json.loads((ROOT / 'tests/fixtures/structured-cell-donnan.json').read_text())
+        inp=fixture(dimension,system,factor)
+        inp['species']=copy.deepcopy(source['species'])
+        inp['interface_partition']=copy.deepcopy(source['interface_partition'])
+        for layer in inp['geometry']['layers']:
+            layer['diffusivity']['chloride']=copy.deepcopy(layer['diffusivity']['oxidized'])
+        if dimension==3:
+            inp['reservoir_faces']=['y_min','z_min']
+            inp['geometry']['lengths_m'][2].update(value=.0003,source_ref='synthetic:donnan-three-axis-refinement')
+            inp['geometry']['transverse_cells'][1]=2*factor
+        print(json.dumps(dict(stage='donnan_verification',dimension=dimension,system=system,refinement_factor=factor,status='running')),file=sys.stderr,flush=True)
+        output=Cell(inp).solve()
+        print(json.dumps(dict(stage='donnan_verification',dimension=dimension,system=system,refinement_factor=factor,status=output['status'],evaluations=output['evaluations'])),file=sys.stderr,flush=True)
+        inputs.append(inp); outputs.append(output)
+        runs.append(dict(input_sha256=digest(inp),mesh_sha256=digest(output['mesh']),refinement_factor=factor,
+                         cell_count=len(output['mesh']['volumes_m3']),status=output['status']))
+    checks=[assertion('all_levels_converged',int(all(out['status']=='converged' for out in outputs)),expected=1,tolerance=0),
+            assertion('all_native_balances_passed',int(all(r['passed'] for out in outputs for r in out['residuals'])),expected=1,tolerance=0),
+            assertion('both_interface_orientations',int(all([e['orientation'] for e in out['donnan_interfaces']]==['membrane_right','membrane_left'] for out in outputs)),expected=1,tolerance=0)]
+    for index,output in enumerate(outputs):
+        for interface in output['donnan_interfaces']:
+            checks.append(assertion(f"level_{index}_{interface['interface_id']}_equilibrium_charge",
+                interface['fixed_charge_density_mol_m3']+sum(row['valence']*row['mean_equilibrium_membrane_concentration_mol_m3'] for row in interface['species']),tolerance=1e-9,unit='mol/m3'))
+            checks.append(assertion(f"level_{index}_{interface['interface_id']}_flux_binding",
+                max(abs(row['positive_x_flux_mol_s']-output['interface_species_flux_mol_s']['interface:'+interface['interface_id']][k]) for k,row in enumerate(interface['species'])),tolerance=0,unit='mol/s'))
+    currents=[out['circuit']['anodic_current_A'] for out in outputs]
+    if mode=='full':
+        changes=np.abs(np.diff(currents))
+        checks.append(assertion('current_refinement_differences_decrease',int(changes[1]<changes[0]),expected=1,tolerance=0))
+        checks.append(assertion('medium_fine_relative_current_change',changes[1]/max(abs(currents[-1]),1e-30),tolerance=.005))
+    return dict(input=inputs[0],related_runs=runs,checks=checks,
+                measured_observables=dict(currents_A=currents,interfaces_by_level=[out['donnan_interfaces'] for out in outputs],
+                                         data_role='test_fixture',concentration_role='local_equilibrium_prediction_not_measurement'))
+
+
 def run(mode):
     evidence = []
     scopes = []
@@ -175,6 +221,7 @@ def run(mode):
     run_id = 'synthetic-verification-' + executed_at
     for dimension in (2, 3):
         for system in ('MFC', 'MEC'):
+            print(json.dumps(dict(stage='structured_cell_verification',dimension=dimension,system=system,status='running')),file=sys.stderr,flush=True)
             inp = fixture(dimension, system)
             start = time.perf_counter()
             output = Cell(inp).solve()
@@ -233,7 +280,7 @@ def run(mode):
             record('zero_reaction', [assertion('equilibrium_uniform_concentration_error', equilibrium_concentration_error, tolerance=1e-12, unit='mol/m3'),
                                      assertion('equilibrium_current', zero['circuit']['anodic_current_A'], tolerance=1e-18, unit='A')],
                    'No homogeneous reaction is selected; execute zero net Faradaic drive and verify the uniform, source-free concentration solution.')
-            if PROCESS_PROTOCOL_VERSION in ['structured-cell-process-v4', 'structured-cell-process-v5', 'structured-cell-process-v6', 'structured-cell-process-v7', 'structured-cell-process-v8']:
+            if PROCESS_PROTOCOL_VERSION in ['structured-cell-process-v4', 'structured-cell-process-v5', 'structured-cell-process-v6', 'structured-cell-process-v7', 'structured-cell-process-v8', 'structured-cell-process-v9']:
                 no_flow = copy.deepcopy(inp)
                 mesh = topology(no_flow)
                 velocity = dict(value=0, unit='m/s', source_kind='test_fixture', source_ref='synthetic:zero-prescribed-flow-limit')
@@ -262,6 +309,16 @@ def run(mode):
             record('dimension_reduction', [assertion('extruded_relative_current_difference',
                                                      (circuit['anodic_current_A'] - reduced['circuit']['anodic_current_A']) / max(abs(reduced['circuit']['anodic_current_A']), 1e-30), tolerance=1e-5)],
                    'Compare physical current for equivalent planar and extruded geometry; not a general 2D-versus-1D validation.')
+            original_scope = scope
+            donnan = donnan_verification(dimension, system, mode)
+            scope = dict(scope, input_sha256=digest(donnan['input']), mesh_sha256=donnan['related_runs'][0]['mesh_sha256'],
+                         verification_variant='ideal_donnan_two_oriented_interfaces_one_sided_feeding')
+            scopes.append(scope)
+            record('limiting_case', donnan['checks'],
+                   'Execute the charged two-interface synthetic fixture, verify species/current conservation and equilibrium concentration charge closure. Full mode uses one-sided transverse reservoir feeding and heterogeneous conductivity/diffusivity, refining all axes on three meshes; this is not empirical validation.',
+                   [dict(scope, **level) for level in donnan['related_runs']])
+            evidence[-1]['measured_observables'] = donnan['measured_observables']
+            scope = original_scope
             if mode == 'full':
                 levels = [output] + [Cell(fixture(dimension, system, factor)).solve() for factor in (2, 4)]
                 means = [np.average(level['fields'][0]['values'], weights=level['mesh']['volumes_m3']) for level in levels]

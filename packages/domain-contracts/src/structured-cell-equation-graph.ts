@@ -14,6 +14,7 @@ const node = z
       'cell-butler-volmer-v1',
       'cell-homogeneous-reactions-v1',
       'cell-circuit-v1',
+      'cell-ideal-donnan-interface-v1',
     ]),
     domain_tags: z.array(z.string()).min(1),
     states: z.array(
@@ -54,6 +55,7 @@ export const structuredCellEquationGraphSchema = z
               'potential_migration',
               'faradaic_charge',
               'circuit_boundary',
+              'donnan_interface',
             ]),
           })
           .strict(),
@@ -69,6 +71,7 @@ export const structuredCellEquationGraphSchema = z
             law: z.enum([
               'continuous_concentration_potential_shared_face_flux',
               'cell-neutral-membrane-partition-v1',
+              'structured-cell-ideal-donnan-partition-v1',
             ]),
           })
           .strict(),
@@ -159,6 +162,53 @@ export function compileStructuredCellEquationGraph(
       kind: 'potential_migration',
     });
   }
+  if (
+    input.interface_partition?.version ===
+    'structured-cell-ideal-donnan-partition-v1'
+  )
+    for (const [i, entry] of input.interface_partition.interfaces.entries()) {
+      const id = `donnan_${entry.left_domain}_${entry.right_domain}`;
+      const interfaceTags = [entry.left_domain, entry.right_domain];
+      add({
+        id,
+        equation_id: 'cell-ideal-donnan-interface-v1',
+        domain_tags: interfaceTags,
+        states: [
+          {
+            id: id + '_donnan_potential_jump',
+            // The local root is dimensionless internally; the reported state
+            // is its physical membrane-minus-solution voltage equivalent.
+            unit: 'V',
+            role: 'derived',
+          },
+        ],
+        parameter_paths: [
+          'temperature',
+          `interface_partition.interfaces.${i}.fixed_charge_density`,
+          ...Object.keys(entry.species).flatMap((speciesId) => {
+            const speciesIndex = input.species.findIndex(
+              (species) => species.id === speciesId,
+            );
+            return [
+              `interface_partition.interfaces.${i}.species.${speciesId}`,
+              `species.${speciesIndex}.valence`,
+            ];
+          }),
+        ],
+        boundary:
+          'ideal local membrane electroneutrality determines a membrane-minus-solution Donnan jump for trace-species flux; supporting-electrolyte Ohmic current uses the continuous bulk potential; no bulk membrane electroneutrality is imposed',
+      });
+      for (const speciesId of Object.keys(entry.species)) {
+        couplings.push(
+          {
+            from: 'species_' + speciesId,
+            to: id,
+            kind: 'donnan_interface',
+          },
+          { from: id, to: 'species_' + speciesId, kind: 'donnan_interface' },
+        );
+      }
+    }
   add({
     id: 'liquid_charge',
     equation_id: 'cell-liquid-charge-v1',
@@ -298,7 +348,10 @@ export function compileStructuredCellEquationGraph(
       law: input.interface_partition?.interfaces.some(
         (entry) => entry.left_domain === tags[i] && entry.right_domain === tag,
       )
-        ? 'cell-neutral-membrane-partition-v1'
+        ? input.interface_partition.version ===
+          'structured-cell-ideal-donnan-partition-v1'
+          ? 'structured-cell-ideal-donnan-partition-v1'
+          : 'cell-neutral-membrane-partition-v1'
         : 'continuous_concentration_potential_shared_face_flux',
     })),
     decision_eligible: false,

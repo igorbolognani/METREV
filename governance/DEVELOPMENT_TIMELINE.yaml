@@ -378,14 +378,15 @@ stages:
     meaning: Adds three-level all-axis 2D/3D MFC/MEC neutral partition verification, preserves historical v7 evidence, and corrects reports and governance. CI and CodeQL passed on the final PR head; P06 and scientific maturity remain partial.
   - id: lower_dimensional_reaction_runtime
     period: '2026-10-07'
-    state: development_pr_not_merged
+    state: integrated_main
     branch: feat/0d-1d-reaction-runtime
     pull_request: 140
     base_main: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
     head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
-    review_state: ready_for_review
-    ci_state: in_progress
-    codeql_state: in_progress
+    merge_commit: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
+    merged_at: '2026-10-07T20:40:15Z'
+    ci_state: success
+    codeql_state: success
     ci_run: 37677514640
     codeql_run: 37677514571
     sources:
@@ -394,7 +395,22 @@ stages:
       - packages/electrochem-models/src/porous-anode-1d.ts
       - tests/runtime/mechanistic-electrochem-model.test.ts
       - tests/runtime/porous-anode-1d.test.ts
-    meaning: Adds explicit reduced reaction-law bindings and extends 0D/1D conservation and limiting-case verification. Molecular stoichiometry, independent validation and maturity promotion remain pending.
+    meaning: Merged source-traced reduced reaction-law bindings, COD and molar uptake outputs, and conservation/limiting-case verification across 0D and restricted 1D MFC/MEC. Molecular products, proton stoichiometry, independent validation and maturity promotion remain pending.
+
+  - id: spatial_charged_donnan_interface_coupling
+    period: '2026-10-08'
+    state: pr_open_locally_verified
+    pull_request: 141
+    branch: feat/spatial-charged-donnan-interfaces
+    base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
+    sources:
+      - apps/spatial-sidecar/metrev_spatial/structured_cell.py
+      - packages/domain-contracts/src/structured-cell-donnan-evidence.ts
+      - tests/contracts/test_spatial_structured_cell.py
+      - tests/runtime/structured-cell-worker.test.ts
+      - tests/fixtures/structured-cell-donnan-verification.json
+      - docs/audits/DONNAN_INTERFACE_CONTINUATION_2026-10-08.md
+    meaning: Couples source-backed ideal Donnan partition and local fixed-charge closure to spatial trace-species membrane-interface fluxes, adds input-hash-bound report evidence, and keeps broad membrane closure, experimental validation and catalog admission open.
 
 sequence:
   - development_batch
@@ -405,4 +421,4 @@ sequence:
 phase_2_functional: false
 phase_3_functional: false
 conversation_recovery: partial_context_only_deleted_complete_chats_unavailable
-next_work: Close source-traced reaction bindings, conservation and limiting cases across the lumped 0D and restricted 1D MFC/MEC models; then couple charged/Donnan interfaces to the spatial solver. Keep molecular stoichiometry, independent validation and maturity promotion behind their declared evidence gates.
+next_work: Extend charged-interface flux/reference refinement and broader 2D/3D coupled verification, then implement membrane-volume electroneutral Nernst–Planck/current closure with source-traced selective laws. Keep molecular reaction stoichiometry, matched experimental comparison, independent validation and maturity promotion behind their declared evidence gates.

@@ -214,7 +214,7 @@ feature_coverage:
     nano_interface: absent
   numerical_verification:
     0D: partial
-    1D: restricted
+    1D: partial
     2D: absent
     3D: absent
     macro_stack: absent
@@ -236,6 +236,59 @@ feature_coverage:
     macro_stack: absent
     micro_porous_electrode: absent
     nano_interface: absent
+lower_dimensional_reaction_coverage:
+  0D:
+    law: EQ-BIO-001_lumped_Monod_on_COD_basis
+    runtime_binding: implemented_with_EQ-RX-002_electron_equivalent_mapping
+    numerical_verification: partial
+    numerical_verification_remaining_gates:
+      [GATE-POSITIVITY, GATE-NONLINEAR-CONVERGENCE]
+    remaining_limits:
+      [
+        no_molecular_products,
+        no_proton_or_side_reaction_stoichiometry,
+        no_independent_validation,
+      ]
+  1D:
+    law: EQ-BIO-002_restricted_steady_porous_anode_Nernst_Monod
+    runtime_binding: restricted_with_source_traced_electron_equivalents
+    numerical_verification: partial
+    numerical_verification_remaining_gates:
+      [GATE-POSITIVITY, GATE-MESH-REFINEMENT, GATE-NONLINEAR-CONVERGENCE]
+    case_output_relevance: informational_development_only
+    case_output_relevance_exit_gates:
+      [GATE-EXPERIMENTAL-COMPARISON, GATE-INDEPENDENT-VALIDATION]
+    restriction_exit_requires:
+      [
+        molecular_species_and_product_stoichiometry,
+        proton_balance_and_pathway_accounting,
+        resolved_or_explicitly_validated_anode_potential,
+        membrane_law_beyond_binary_equal_concentration_reduction,
+      ]
+    remaining_limits:
+      [
+        steady_planar_only,
+        imposed_material_potential,
+        binary_electroneutral_membrane,
+        no_molecular_products_or_proton_balance,
+        no_independent_validation,
+      ]
+# This separate matrix records the opt-in spatial development profile without
+# activating the absent 2D/3D catalog fidelities above.
+development_feature_coverage:
+  model_id: structured-cell-supporting-electrolyte-v1
+  catalog_admission: false
+  experimental_maturity: none
+  decision_eligible: false
+  features:
+    membrane_transport: { 2D: partial, 3D: partial }
+    donnan_fixed_charge_interface: { 2D: partial, 3D: partial }
+    numerical_verification: { 2D: partial, 3D: partial }
+  limitations:
+    - local_ideal_interface_closure_only
+    - no_membrane_volume_electroneutral_nernst_planck_current_closure
+    - no_membrane_normal_convection_or_water_transport
+    - no_charged_all_axis_refinement_or_experimental_validation
 # These isolated development operations do not change model/catalog eligibility.
 development_operations:
   - operation: planar_stokes
@@ -293,6 +346,12 @@ development_profiles:
     neutral_partition_verification_source: scripts/run-spatial-verification.py
     neutral_partition_verification_test: tests/contracts/test_spatial_cell_verification.py
     neutral_partition_verification_scope: synthetic_2d_3d_mfc_mec_two_interfaces_all_axis_refinement_and_unit_partition_limit_no_exact_order_or_flux_convergence_claim
+    donnan_interface_verification_source: tests/contracts/test_spatial_structured_cell.py
+    donnan_interface_worker_api_test: tests/runtime/structured-cell-worker.test.ts
+    donnan_interface_verification_scope: 2d_3d_analytic_monovalent_and_multivalent_root_both_orientations_zero_flux_equilibrium_local_charge_closure_conservative_shared_faces_exact_jacobian_directional_check_and_source_bound_species_outputs
+    donnan_interface_refinement_source: scripts/run-spatial-verification.py
+    donnan_interface_refinement_record: tests/fixtures/structured-cell-donnan-verification.json
+    donnan_interface_refinement_scope: synthetic_mfc_mec_three_all_axis_meshes_one_sided_heterogeneous_feeding_current_difference_checks_not_flux_order_or_empirical_validation
     postgres_test: tests/postgres/structured-cell-roundtrip.test.ts
     browser_test: tests/e2e/structured-cell-workbench.spec.ts
     browser_config: playwright.spatial-cell.config.ts
@@ -302,9 +361,12 @@ development_profiles:
     browser_gate: verified_real_next_fastify_postgresql_worker_chromium_ci_run_36993158159
     verified_runtime_head: 10fec666770b844c86f9f65668a511af805fde3b
     worker_api_test: tests/runtime/structured-cell-worker.test.ts
-    scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_neutral_ideal_membrane_partition_mfc_mec_circuit
+    scope: steady_orthogonal_layers_supporting_electrolyte_trace_species_reactions_liquid_solid_charge_neutral_and_ideal_donnan_membrane_interfaces_mfc_mec_circuit
     remaining_gates:
       - larger_mesh_nonlinear_robustness_and_broader_verification
+      - charged_interface_flux_refinement_and_independent_reference
+      - full_membrane_volume_electroneutral_nernst_planck_current_closure
+      - membrane_water_transport_and_selective_law_verification
       - general_stack_geometry_and_equation_composition
       - production_artifact_provider_and_deployment
       - matched_experimental_comparison

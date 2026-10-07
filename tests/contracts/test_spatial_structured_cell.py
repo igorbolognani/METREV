@@ -1,4 +1,5 @@
 """Mathematical verification only, never an experimental MFC benchmark."""
+import hashlib
 import copy
 import json
 from pathlib import Path
@@ -6,7 +7,7 @@ import sys
 import unittest
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'apps/spatial-sidecar'))
-from metrev_spatial.structured_cell import Cell, derive_field_extrema, validate
+from metrev_spatial.structured_cell import Cell, derive_field_extrema, solve_ideal_donnan_interface, validate
 
 FIXTURE = Path(__file__).resolve().parents[1] / 'fixtures/structured-cell.json'
 
@@ -18,6 +19,203 @@ class StructuredCellTests(unittest.TestCase):
             value['geometry']['lengths_m'].append(value['geometry'].pop('out_of_plane_depth'))
             value['geometry']['transverse_cells'].append(2)
         return value
+
+    def donnan_fixture(self, dimension=2):
+        value = json.loads(FIXTURE.with_name('structured-cell-donnan.json').read_text())
+        if dimension == 3:
+            value['dimension'] = 3
+            value['geometry']['lengths_m'].append(value['geometry'].pop('out_of_plane_depth'))
+            value['geometry']['transverse_cells'].append(2)
+        return value
+
+    def test_recorded_donnan_refinement_preserves_input_identity_and_data_role(self):
+        record=json.loads(FIXTURE.with_name('structured-cell-donnan-verification.json').read_text())
+        self.assertEqual(record['source_base_fixture_sha256'],hashlib.sha256(FIXTURE.read_bytes()).hexdigest())
+        self.assertEqual(record['source_donnan_fixture_sha256'],hashlib.sha256(FIXTURE.with_name('structured-cell-donnan.json').read_bytes()).hexdigest())
+        self.assertFalse(record['decision_eligible'])
+        self.assertFalse(record['independent_validation'])
+        self.assertEqual(record['data_role'],'test_fixture')
+        self.assertEqual({(r['input']['dimension'],r['input']['system']) for r in record['series']},{(2,'MFC'),(2,'MEC'),(3,'MFC'),(3,'MEC')})
+        for series in record['series']:
+            digest=hashlib.sha256(json.dumps(series['input'],allow_nan=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            self.assertEqual(series['related_runs'][0]['input_sha256'],digest)
+            self.assertEqual(len({r['input_sha256'] for r in series['related_runs']}),3)
+            self.assertTrue(all(r['status']=='converged' for r in series['related_runs']))
+            for check in series['checks']:
+                self.assertLessEqual(abs(check['actual']-check['expected']),check['tolerance'])
+
+    def test_ideal_donnan_root_matches_analytic_monovalent_fixed_charge_limit(self):
+        psi, derivative, residual, _ = solve_ideal_donnan_interface(
+            np.array([100.0, 100.0]),
+            np.array([1.0, -1.0]),
+            np.array([1.0, 1.0]),
+            -50.0,
+        )
+        self.assertAlmostEqual(psi, -np.arcsinh(0.25), places=12)
+        self.assertLess(abs(residual), 1e-11)
+        step = 1e-4
+        plus = solve_ideal_donnan_interface(
+            np.array([100.0 + step, 100.0]), np.array([1.0, -1.0]),
+            np.array([1.0, 1.0]), -50.0,
+        )[0]
+        minus = solve_ideal_donnan_interface(
+            np.array([100.0 - step, 100.0]), np.array([1.0, -1.0]),
+            np.array([1.0, 1.0]), -50.0,
+        )[0]
+        self.assertAlmostEqual(derivative[0], (plus - minus) / (2 * step), places=9)
+
+    def test_donnan_partition_couples_charge_species_and_jacobian_in_2d_3d(self):
+        for dimension in (2, 3):
+            value = self.donnan_fixture(dimension)
+            cell = Cell(value)
+            output = cell.solve()
+            self.assertEqual(output['status'], 'converged')
+            self.assertEqual(len(output['donnan_interfaces']), 2)
+            self.assertEqual(
+                [entry['orientation'] for entry in output['donnan_interfaces']],
+                ['membrane_right', 'membrane_left'],
+            )
+            for entry in output['donnan_interfaces']:
+                self.assertEqual(entry['face_count'], int(np.prod(value['geometry']['transverse_cells'])))
+                summaries = entry['species']
+                self.assertEqual([row['species_id'] for row in summaries], [item['id'] for item in value['species']])
+                flux = output['interface_species_flux_mol_s']['interface:'+entry['interface_id']]
+                np.testing.assert_allclose([row['positive_x_flux_mol_s'] for row in summaries], flux, rtol=0, atol=0)
+                equilibrium_charge = entry['fixed_charge_density_mol_m3'] + sum(row['valence']*row['mean_equilibrium_membrane_concentration_mol_m3'] for row in summaries)
+                self.assertLess(abs(equilibrium_charge), 1e-9)
+                for row in summaries:
+                    self.assertGreater(row['mean_effective_partition_factor'], 0)
+                    self.assertLessEqual(row['minimum_equilibrium_membrane_concentration_mol_m3'], row['mean_equilibrium_membrane_concentration_mol_m3'])
+                    self.assertLessEqual(row['mean_equilibrium_membrane_concentration_mol_m3'], row['maximum_equilibrium_membrane_concentration_mol_m3'])
+                self.assertLess(entry['maximum_absolute_charge_residual_mol_m3'], 1e-9)
+                self.assertLess(entry['relative_charge_residual'], value['numerics']['conservation_tolerance'])
+            charge_gates = [
+                row for row in output['residuals']
+                if row['kind'] == 'interface_charge'
+            ]
+            self.assertEqual(len(charge_gates), 2)
+            self.assertTrue(all(row['passed'] for row in charge_gates))
+            self.assertTrue(all(row['unit'] == 'mol/m3' for row in charge_gates))
+            self.assertTrue(all(row['passed'] for row in output['residuals']))
+
+            concentrations = np.concatenate([
+                np.array(field['values']) for field in output['fields']
+                if field['id'].startswith('concentration_')
+            ]) / cell.cs
+            liquid = np.array(next(field['values'] for field in output['fields'] if field['id'] == 'liquid_potential')) / cell.ps
+            solid = np.concatenate([
+                np.array(field['values']) for field in output['fields']
+                if field['id'].startswith('solid_potential_')
+            ]) / cell.ps
+            state = np.concatenate([
+                concentrations, liquid, solid,
+                [output['circuit']['collector_voltage_V'] / cell.ps],
+            ])
+            direction = np.random.default_rng(37 + dimension).normal(size=len(state))
+            step = 1e-7
+            numeric = (cell.residual(state + step * direction) - cell.residual(state - step * direction)) / (2 * step)
+            np.testing.assert_allclose(cell.jacobian(state) @ direction, numeric, rtol=2e-6, atol=1e-4)
+
+            # A zero fixed-charge, unit-partition interface recovers the continuous
+            # concentration/potential law for an electroneutral 1:1 electrolyte.
+            limit = solve_ideal_donnan_interface(
+                np.array([100.0, 100.0]), np.array([1.0, -1.0]),
+                np.array([1.0, 1.0]), 0.0,
+            )
+            self.assertAlmostEqual(limit[0], 0.0, places=12)
+            self.assertLess(abs(limit[2]), 1e-12)
+
+    def test_donnan_equilibrium_does_not_drive_supporting_electrolyte_current(self):
+        value = self.donnan_fixture()
+        first = value['interface_partition']['interfaces'][0]
+        value['interface_partition']['interfaces'][1]['species'] = copy.deepcopy(first['species'])
+        value['electrodes'][1]['equilibrium_potential']['value'] = 0.0
+        for species in value['species']:
+            species['reference_concentration']['value'] = 100.0
+        cell = Cell(value)
+        c = np.full((cell.ns, cell.n), 100.0)
+        partition = np.array([
+            first['species'].get(species['id'], {'value': 1.0})['value']
+            for species in value['species']
+        ])
+        donnan, _, _, _ = solve_ideal_donnan_interface(
+            np.full(cell.ns, 100.0), cell.valence, partition,
+            first['fixed_charge_density']['value'],
+        )
+        membrane = cell.mesh['regions'] == 1
+        c[:, membrane] = (
+            partition * 100.0 * np.exp(-cell.valence * donnan)
+        )[:, None]
+        state = np.concatenate([
+            c.ravel() / cell.cs,
+            np.zeros(cell.n),
+            np.zeros(len(cell.active)),
+            [0.0],
+        ])
+
+        _, ionic, electronic, _, _, _, faradaic, interfaces = cell.balances(state)
+
+        self.assertLess(np.max(np.abs(interfaces['interface:anode:membrane'])), 1e-10)
+        self.assertLess(np.max(np.abs(interfaces['interface:membrane:cathode'])), 1e-10)
+        self.assertLess(np.max(np.abs(ionic)), 1e-12)
+        self.assertLess(np.max(np.abs(electronic)), 1e-12)
+        self.assertLess(np.max(np.abs(faradaic)), 1e-12)
+
+    def test_donnan_multivalent_mixture_matches_independent_brent_root(self):
+        from scipy.optimize import brentq
+        for charge in (-500.0, 0.0, 500.0):
+            c=np.array([20.0, 40.0, 80.0, 3.0]); z=np.array([2., 1., -1., 0.]); k=np.array([.7, 1.2, .9, 1.5])
+            oracle=brentq(lambda psi: charge+np.sum(z*k*c*np.exp(-z*psi)), -10, 10, xtol=1e-14)
+            psi, derivative, residual, _=solve_ideal_donnan_interface(c,z,k,charge)
+            self.assertAlmostEqual(psi,oracle,places=12)
+            self.assertLess(abs(residual),1e-9)
+            self.assertEqual(derivative[-1],0)
+        with self.assertRaises(ValueError):
+            solve_ideal_donnan_interface(c,np.array([np.nan,1,-1,0]),k,0)
+
+    def test_donnan_analytic_equilibrium_species_outputs_both_dimensions(self):
+        for dimension in (2,3):
+            value=self.donnan_fixture(dimension)
+            for entry in value['interface_partition']['interfaces']:
+                for parameter in entry['species'].values(): parameter['value']=1.0
+            value['electrodes'][1]['equilibrium_potential']['value']=0.0
+            cell=Cell(value)
+            c=np.full((cell.ns,cell.n),100.0)
+            psi=-np.arcsinh(.25)
+            c[:,cell.mesh['regions']==1]=(100*np.exp(-cell.valence*psi))[:,None]
+            state=np.concatenate([c.ravel()/cell.cs,np.zeros(cell.n),np.zeros(len(cell.active)),[0.]])
+            for entry in cell.donnan_diagnostics(state):
+                by_id={row['species_id']:row for row in entry['species']}
+                self.assertAlmostEqual(by_id['oxidized']['mean_equilibrium_membrane_concentration_mol_m3'],(np.sqrt(42500)+50)/2,places=10)
+                self.assertAlmostEqual(by_id['chloride']['mean_equilibrium_membrane_concentration_mol_m3'],(np.sqrt(42500)-50)/2,places=10)
+                self.assertAlmostEqual(by_id['oxidized']['mean_effective_partition_factor']*by_id['chloride']['mean_effective_partition_factor'],1.,places=12)
+                self.assertTrue(all(abs(row['positive_x_flux_mol_s'])<1e-18 for row in entry['species']))
+
+    def test_donnan_interfaces_reject_normal_convection_through_membrane(self):
+        value = self.donnan_fixture()
+        cell = Cell(value)
+        velocity = [0.0] * len(cell.mesh['faces'])
+        interface_face = next(
+            index for index, (left, right, *_rest) in enumerate(cell.mesh['faces'])
+            if {cell.mesh['regions'][left], cell.mesh['regions'][right]} == {0, 1}
+        )
+        velocity[interface_face] = 1e-6
+        value['advection'] = {
+            'version': 'structured-cell-prescribed-flow-v1',
+            'face_normal_velocity': [
+                {'value': item, 'unit': 'm/s', 'source_kind': 'test_fixture',
+                 'source_ref': 'synthetic:membrane-flow-rejection'}
+                for item in velocity
+            ],
+            'boundary_normal_velocity': [
+                {'value': 0.0, 'unit': 'm/s', 'source_kind': 'test_fixture',
+                 'source_ref': 'synthetic:membrane-flow-rejection'}
+                for _ in cell.mesh['boundary']
+            ],
+            'inlet_concentrations': {},
+        }
+        with self.assertRaisesRegex(ValueError, 'Membrane convection/water transport'):
+            validate(value)
 
     def test_equilibrium_and_charge_closure_both_dimensions(self):
         for dimension in (2, 3):

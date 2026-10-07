@@ -137,6 +137,7 @@ work_items:
       - GATE-CONTRACT
       - GATE-MASS-CONSERVATION
       - GATE-NONLINEAR-CONVERGENCE
+      - GATE-DONNAN-INTERFACE
     source_section: '28.6'
     completion_requires:
       All requirements in source_section; status promotion requires gate evidence and product
@@ -151,9 +152,10 @@ work_items:
       - apps/
     blockers:
       - An isolated scalar finite-volume kernel has bounded steady, transient, heterogeneous-interface and prescribed constant/cellwise divergence-checked velocity verification on 1D/2D/3D orthogonal grids; it remains disconnected from Gmsh and simulation cases. The shared DOLFINx neutral scalar kernel transfers solved Stokes/Darcy velocity on one tagged domain; the mesh benchmark is not a product solver or cell physics; P03 and P05 remain partial
-      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; the separate structured-cell development runtime implements steady species/reaction/charge/interface/circuit assembly and sparse Newton in 2D/3D. Boundary-driven Darcy pressure and velocity now couple to structured-cell species transport; the shared DOLFINx scalar kernel remains separate. Full electroneutral closure, charged membrane interfaces, broader coupled verification and product integration remain pending
+      - Linear first-order disappearance, constant grid-aligned diagonal diffusivity and mixed Dirichlet/prescribed diffusive-flux and heterogeneous porous-storage fixtures are verified on orthogonal grids; the separate structured-cell development runtime implements steady species/reaction/charge/interface/circuit assembly and sparse Newton in 2D/3D. Boundary-driven Darcy pressure and velocity couple to structured-cell species transport; source-backed local ideal Donnan partition now couples charged trace-species fluxes at ion-exchange-membrane interfaces. Full membrane-volume electroneutral Nernst–Planck/current closure, charged-interface all-axis refinement, broader coupled verification and product integration remain pending
     gate_evidence:
-      GATE-NEUTRAL-PARTITION: A versioned, source-traced interface contract supports an explicitly oriented ideal partition coefficient for declared neutral species across adjacent membrane/separator domains. Local 2D/3D tests check analytic flux, zero-flux equilibrium, conservative shared-face balance and Jacobian directional derivatives. The full numerical runner now also executes MFC/MEC with two partition interfaces on three all-axis meshes, native conservation, positivity, coupled current and concentration changes, transverse variation and the K=1 continuous-interface limit. Interface fluxes remain diagnostics; no exact convergence order, charged partition, Donnan equilibrium, full electroneutral closure, empirical validation or product solver admission is claimed
+      GATE-DONNAN-INTERFACE: Protocol v9 admits source-backed local ideal Donnan roots at ion-exchange-membrane interfaces in 2D/3D. Mathematical tests check the analytic monovalent root, zero-flux interface equilibrium, both membrane-side orientations, equal-and-opposite face species flux, local membrane charge residual, zero supporting-electrolyte current at Donnan equilibrium, and directional derivatives of the sparse Jacobian. The worker/API path persists per-interface fixed-charge closure evidence bound to the immutable input hash. Membrane-normal convection is rejected. This is local interface verification only; charged all-axis mesh refinement, full membrane-volume electroneutral Nernst–Planck/current closure, experimental comparison and independent validation remain open
+      GATE-NEUTRAL-PARTITION: A versioned, source-traced interface contract supports an explicitly oriented ideal partition coefficient for declared neutral species across adjacent membrane/separator domains. Local 2D/3D tests check analytic flux, zero-flux equilibrium, conservative shared-face balance and Jacobian directional derivatives. The full numerical runner also executes MFC/MEC with two partition interfaces on three all-axis meshes, native conservation, positivity, coupled current and concentration changes, transverse variation and the K=1 continuous-interface limit. Interface fluxes remain diagnostics; no exact convergence order, full electroneutral closure, empirical validation or product solver admission is claimed
       GATE-SCALAR-SOURCE-LOSS: The shared native same-domain Stokes/Darcy scalar kernel supports sourced constant production and first-order loss; analytic production/loss/equilibrium fixtures refine on three meshes and native worker/API cases persist an input-bound measured species budget. This does not close charge, network, interface or nonlinear cell gates
       GATE-MASS-CONSERVATION: A scalar finite-volume fixture checks integrated source and first-order disappearance against prescribed diffusive and upwind advective boundary flux and verifies affine isotropic/diagonal-anisotropic, manufactured and two-material interface solutions in 1D/2D/3D; this is not coupled species/charge conservation
       GATE-TIME-REFINEMENT: Implicit-Euler scalar diffusion fixtures in 2D and 3D compare three step sizes with a finer numerical reference and check storage plus flux balance; no transient cell model is verified
@@ -225,6 +227,7 @@ work_items:
       - GATE-CONTRACT
       - GATE-MASS-CONSERVATION
       - GATE-NONLINEAR-CONVERGENCE
+      - GATE-DONNAN-INTERFACE
     source_section: '28.9'
     completion_requires:
       All requirements in source_section; status promotion requires gate evidence and product
@@ -239,7 +242,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
-      - Structured-cell interfaces use supporting electrolyte and continuous potential, with optional ideal neutral concentration partition. Standalone ideal-Donnan and charged-interface flux/reaction kernels have local residual, Jacobian and conservation checks, but coupling charged partition into the multidimensional cell solver and validating selective membrane laws remain pending
+      - The restricted 2D/3D cell now couples local ideal Donnan equilibrium and source-backed fixed charge into charged trace-species interface fluxes, with both orientations, local closure, equilibrium, conservative balance and Jacobian checks. P09 remains pending full membrane-volume electroneutral Nernst–Planck/current closure, membrane water transport, nonideal/selective membrane laws, crossover verification and matched experimental evidence
   - id: P10
     title: Implement a resolved cathode model
     phase: P2

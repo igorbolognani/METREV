@@ -37,47 +37,34 @@ spatial_diffusion_verification: isolated_orthogonal_1d_2d_3d_steady_transient_la
 spatial_stokes_species_transport: development_same_mesh_p2_velocity_to_neutral_p1_scalar_worker_and_field_api_native_ci_required
 spatial_execution_isolation: optional_bounded_no_network_read_only_container_profile_native_ci_required
 spatial_native_scalar_source_loss: development_only_explicit_constant_production_first_order_loss_measured_input_bound_species_budget_native_refinement_and_worker_api_gates_no_cell_reaction_network
-spatial_structured_cell: restricted_steady_2d_3d_supporting_electrolyte_species_reactions_liquid_solid_charge_circuit_sparse_newton_boundary_driven_darcy_neutral_ideal_membrane_partition_protocol_v8_development_only
-spatial_structured_cell_verification: synthetic_nonuniform_18_72_288_cell_refinement_tolerance_sensitivity_failure_matrix_and_native_worker_api_report_checks_not_independent_validation
+spatial_structured_cell: restricted_steady_2d_3d_supporting_electrolyte_species_reactions_liquid_solid_charge_circuit_sparse_newton_boundary_driven_darcy_neutral_and_ideal_donnan_membrane_interfaces_protocol_v9_development_only
+spatial_structured_cell_verification: synthetic_neutral_partition_refinement_plus_2d_3d_local_donnan_root_equilibrium_orientation_conservation_jacobian_and_hash_bound_worker_evidence_not_independent_validation
 development_timeline: DEVELOPMENT_TIMELINE.yaml
 reconciliation_checkpoint: docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.md
 current_direction: one_stack_configured_physics_runtime_with_composable_modules_no_silent_fidelity_downgrade
 spatial_development_reports: deterministic_v1_json_markdown_source_traced_failed_diagnostics_owner_scoped_no_decision_eligibility
 snapshot:
   observed_on: '2026-10-07'
-  integrated_main_head: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
-  integrated_main_pr: 139
-  integration_state: neutral_partition_v8_and_verification_v9_merged_main_and_dev_aligned
-  verified_runtime_head: fa2a30e49bf30fb6b7497aa8b0a5a90f7e6141a1
-  runtime_ci: github_actions_run_37667796628_passed_all_8_jobs
-  runtime_codeql: github_codeql_run_37667796772_passed
-  main_ci: github_actions_run_37670301138_passed_on_c75e284
-  main_codeql: github_codeql_run_37670300867_passed_on_c75e284
-  open_development_prs:
-    - pull_request: 140
-      branch: feat/0d-1d-reaction-runtime
-      head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
-      review_state: ready_for_review
-      ci_state: in_progress
-      codeql_state: in_progress
-      ci_run: 37677514640
-      codeql_run: 37677514571
+  integrated_main_head: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
+  integrated_main_pr: 140
+  integration_state: neutral_partition_pr139_and_0d_1d_reaction_pr140_merged_main_dev_aligned
+  verified_runtime_head: 2303e65527259568653c7e16b36b6b8657d750dd
+  runtime_ci: github_actions_run_37677514640_passed
+  runtime_codeql: github_actions_run_37677514571_passed
+  open_development_prs: []
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
 development_batch:
-  branch: feat/0d-1d-reaction-runtime
-  base_main: c75e284b030462f0d86f6c45ad04b5f5b0eefab5
-  state: development_pr_not_merged
-  pull_request: 140
-  head_sha: 2303e65527259568653c7e16b36b6b8657d750dd
-  review_state: ready_for_review
-  ci_state: in_progress
-  codeql_state: in_progress
-  ci_run: 37677514640
-  codeql_run: 37677514571
+  branch: feat/spatial-charged-donnan-interfaces
+  base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
+  state: pr_open_locally_verified
+  pull_request: 141
+  ci: pending_for_published_head
+  scope: local_ideal_donnan_interface_coupling_with_conservation_provenance_and_partial_development_coverage
   scientific_maturity_promoted: false
   decision_eligible: false
   source:
-    - packages/electrochem-models/src/model-composition-runtime.ts
-    - packages/electrochem-models/src/porous-anode-1d.ts
-    - packages/electrochem-models/src/mechanistic.ts
+    - apps/spatial-sidecar/metrev_spatial/structured_cell.py
+    - packages/domain-contracts/src/structured-cell-donnan-evidence.ts
+    - tests/contracts/test_spatial_structured_cell.py
+    - tests/runtime/structured-cell-worker.test.ts

@@ -11,12 +11,14 @@ import {
   spatialRuntimeInputSha256,
   structuredCellGeometrySha256,
   buildStructuredCellDevelopmentReport,
+  renderStructuredCellDevelopmentReport,
   spatialSimulationResultForInputSchema,
   structuredCellRunViewSchema,
   structuredCellTransportFaces,
   structuredCellTopology,
   compileStructuredCellEquationGraph,
   structuredCellFieldReductionSchema,
+  structuredCellDonnanInterfaceEvidenceSchema,
 } from '@metrev/domain-contracts';
 import { LocalSpatialFieldArtifactStore } from '@metrev/spatial-artifact-store';
 import {
@@ -123,7 +125,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v8',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v9',
       ),
     });
   });
@@ -135,12 +137,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v8',
+      runtimeVersion: 'structured-cell-process-v9',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v8, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v9, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -148,7 +150,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v8, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v9, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -164,11 +166,11 @@ describe('structured cell native worker and authenticated artifacts', () => {
     );
   });
 
-  it('accepts a complete active process-v8 sidecar envelope', () => {
+  it('accepts a complete active process-v9 sidecar envelope', () => {
     const digest = 'a'.repeat(64);
     const envelope = {
       version: 'structured-cell-fv-v1',
-      protocol_version: 'structured-cell-process-v8',
+      protocol_version: 'structured-cell-process-v9',
       status: 'prepared',
       dimension: 2,
       request_id: '00000000-0000-4000-8000-000000000001',
@@ -179,23 +181,32 @@ describe('structured cell native worker and authenticated artifacts', () => {
     expect(
       parseStructuredCellProcessEnvelope(envelope, {
         solverVersion: 'structured-cell-fv-v1',
-        runtimeVersion: 'structured-cell-process-v8',
+        runtimeVersion: 'structured-cell-process-v9',
       }),
-    ).toMatchObject({ protocol_version: 'structured-cell-process-v8' });
+    ).toMatchObject({ protocol_version: 'structured-cell-process-v9' });
   });
 
   it.each([
-    [2, false, false, false, false],
-    [3, false, false, false, false],
-    [2, true, false, false, false],
-    [2, false, true, false, false],
-    [2, false, false, true, false],
-    [3, false, false, true, false],
-    [2, false, false, false, true],
-    [3, false, false, false, true],
+    [2, false, false, false, false, false],
+    [3, false, false, false, false, false],
+    [2, true, false, false, false, false],
+    [2, false, true, false, false, false],
+    [2, false, false, true, false, false],
+    [3, false, false, true, false, false],
+    [2, false, false, false, true, false],
+    [3, false, false, false, true, false],
+    [2, false, false, false, false, true],
+    [3, false, false, false, false, true],
   ] as const)(
-    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s, solved Darcy=%s, neutral partition=%s',
-    async (dimension, nonconverged, advection, solveDarcy, partition) => {
+    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s, solved Darcy=%s, neutral partition=%s, ideal Donnan=%s',
+    async (
+      dimension,
+      nonconverged,
+      advection,
+      solveDarcy,
+      partition,
+      donnan,
+    ) => {
       const root = await mkdtemp(join(tmpdir(), 'structured-cell-test-'));
       const store = new LocalSpatialFieldArtifactStore({
         rootDirectory: join(root, 'fields'),
@@ -208,6 +219,65 @@ describe('structured cell native worker and authenticated artifacts', () => {
         artifactStore: store,
       });
       const input = structuredCellFixture(dimension);
+      if (donnan) {
+        const chloride = {
+          ...input.species[1],
+          id: 'chloride',
+          valence: {
+            ...input.species[1].valence,
+            value: -1,
+            source_ref: 'synthetic:worker-donnan-fixture',
+          },
+          elements: { Cl: { ...input.species[1].elements.C } },
+        };
+        for (const species of [input.species[1], chloride]) {
+          species.initial_concentration.value = 100;
+          species.reservoir_concentration.value = 100;
+          species.reference_concentration.value = 100;
+        }
+        input.species.push(chloride);
+        for (const layer of input.geometry.layers)
+          layer.diffusivity.chloride = { ...layer.diffusivity.reduced };
+        const sourced = (value: number, unit: string, source_ref: string) => ({
+          value,
+          unit,
+          source_kind: 'test_fixture' as const,
+          source_ref,
+        });
+        input.interface_partition = {
+          version: 'structured-cell-ideal-donnan-partition-v1',
+          interfaces: [
+            {
+              left_domain: 'anode',
+              right_domain: 'membrane',
+              fixed_charge_density: sourced(
+                -50,
+                'mol/m3',
+                'synthetic:fixed-charge',
+              ),
+              species: {
+                reduced: sourced(1.5, '1', 'synthetic:donnan-partition'),
+                oxidized: sourced(1.1, '1', 'synthetic:donnan-partition'),
+                chloride: sourced(0.8, '1', 'synthetic:donnan-partition'),
+              },
+            },
+            {
+              left_domain: 'membrane',
+              right_domain: 'cathode',
+              fixed_charge_density: sourced(
+                -50,
+                'mol/m3',
+                'synthetic:fixed-charge',
+              ),
+              species: {
+                reduced: sourced(1.5, '1', 'synthetic:donnan-partition'),
+                oxidized: sourced(0.9, '1', 'synthetic:donnan-partition'),
+                chloride: sourced(1.2, '1', 'synthetic:donnan-partition'),
+              },
+            },
+          ],
+        };
+      }
       if (partition) {
         input.interface_partition = {
           version: 'structured-cell-neutral-membrane-partition-v1',
@@ -320,7 +390,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         });
         expect(snapshot?.status).toBe(nonconverged ? 'failed' : 'completed');
         expect(snapshot?.result?.fields).toHaveLength(
-          solveDarcy ? (dimension === 2 ? 9 : 10) : 6,
+          donnan ? 7 : solveDarcy ? (dimension === 2 ? 9 : 10) : 6,
         );
         expect(snapshot?.result?.contract_version).toBe(
           'spatial-simulation-result-v3',
@@ -392,6 +462,11 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expect(
           report.enabled_physics.includes('ideal_neutral_membrane_partition'),
         ).toBe(partition);
+        expect(
+          report.enabled_physics.includes(
+            'ideal_donnan_charged_membrane_interface',
+          ),
+        ).toBe(donnan);
         if (partition) {
           expect(report.parameter_provenance).toEqual(
             expect.arrayContaining([
@@ -406,10 +481,109 @@ describe('structured cell native worker and authenticated artifacts', () => {
           expect(report.equation_graph?.interfaces[0].law).toBe(
             'cell-neutral-membrane-partition-v1',
           );
-          expect(report.disabled_physics).toContain('donnan_equilibrium');
-          expect(report.limitations).toContain(
-            'Continuous potential and default continuous concentration interfaces; optional sourced ideal neutral membrane partition. No charged partition, Donnan equilibrium or fixed membrane charge.',
+          expect(report.disabled_physics).toContain(
+            'donnan_interface_equilibrium',
           );
+          expect(report.limitations).toContain(
+            'Continuous supporting-electrolyte bulk potential with default continuous concentration interfaces. Optional sourced neutral partition or ideal Donnan partition at ion-exchange-membrane interfaces; Donnan closure is local to each interface, membrane faces remain impermeable to convection, and full membrane electroneutral Nernst–Planck closure is not imposed.',
+          );
+        }
+        if (donnan && !nonconverged) {
+          expect(
+            snapshot?.result?.structured_cell_donnan_interface_evidence,
+          ).toMatchObject({
+            evidence_role: 'mathematical_software_verification',
+            decision_eligible: false,
+            independent_validation: false,
+            interfaces: [
+              {
+                interface_id: 'anode:membrane',
+                orientation: 'membrane_right',
+                passed: true,
+              },
+              {
+                interface_id: 'membrane:cathode',
+                orientation: 'membrane_left',
+                passed: true,
+              },
+            ],
+          });
+          expect(report.disabled_physics).toContain(
+            'full_electroneutral_nernst_planck_current_closure',
+          );
+          expect(report.donnan_interface_evidence?.interfaces).toHaveLength(2);
+          const alteredBinding = structuredClone(snapshot!.result!);
+          alteredBinding.structured_cell_donnan_interface_evidence!.interfaces[0].species![0].partition_coefficient += 0.5;
+          expect(
+            spatialSimulationResultForInputSchema(input).safeParse(
+              alteredBinding,
+            ).success,
+          ).toBe(false);
+          const alteredTemperature = structuredClone(snapshot!.result!);
+          alteredTemperature.structured_cell_donnan_interface_evidence!.interfaces[0].mean_donnan_potential_jump_V += 0.01;
+          expect(
+            spatialSimulationResultForInputSchema(input).safeParse(
+              alteredTemperature,
+            ).success,
+          ).toBe(false);
+          const invalidSummary = structuredClone(
+            report.donnan_interface_evidence!,
+          );
+          invalidSummary.interfaces[0].species![0].mean_equilibrium_membrane_concentration_mol_m3 =
+            -1;
+          expect(
+            structuredCellDonnanInterfaceEvidenceSchema.safeParse(
+              invalidSummary,
+            ).success,
+          ).toBe(false);
+          const duplicateSpecies = structuredClone(
+            report.donnan_interface_evidence!,
+          );
+          duplicateSpecies.interfaces[0].species![1].species_id =
+            duplicateSpecies.interfaces[0].species![0].species_id;
+          expect(
+            structuredCellDonnanInterfaceEvidenceSchema.safeParse(
+              duplicateSpecies,
+            ).success,
+          ).toBe(false);
+          const legacyEvidence = structuredClone(
+            report.donnan_interface_evidence!,
+          );
+          for (const entry of legacyEvidence.interfaces) delete entry.species;
+          expect(
+            structuredCellDonnanInterfaceEvidenceSchema.safeParse(
+              legacyEvidence,
+            ).success,
+          ).toBe(true);
+
+          for (const entry of report.donnan_interface_evidence!.interfaces) {
+            expect(entry.species?.map((row) => row.species_id)).toEqual(
+              input.species.map((row) => row.id),
+            );
+            const charge =
+              entry.fixed_charge_density_mol_m3 +
+              entry.species!.reduce(
+                (sum, row) =>
+                  sum +
+                  row.valence *
+                    row.mean_equilibrium_membrane_concentration_mol_m3,
+                0,
+              );
+            expect(Math.abs(charge)).toBeLessThan(1e-9);
+            for (const row of entry.species!) {
+              expect(row.mean_effective_partition_factor).toBeGreaterThan(0);
+              expect(Number.isFinite(row.positive_x_flux_mol_s)).toBe(true);
+            }
+          }
+          expect(renderStructuredCellDevelopmentReport(report)).toContain(
+            'Mean equilibrium membrane (mol/m³)',
+          );
+
+          expect(
+            report.conservation_residuals.filter(
+              (entry) => entry.kind === 'interface_charge',
+            ),
+          ).toHaveLength(2);
         }
         expect(
           report.enabled_physics.includes(
@@ -557,6 +731,10 @@ describe('structured cell native worker and authenticated artifacts', () => {
           expect(markdown.body).toContain('Independent validation: false');
           if (partition)
             expect(markdown.body).toContain('ideal_neutral_membrane_partition');
+          if (donnan)
+            expect(markdown.body).toContain(
+              '## Ideal Donnan interface closure',
+            );
           expect(markdown.body).toContain(
             '## Deterministic modeled field extrema',
           );

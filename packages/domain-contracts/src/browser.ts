@@ -6,6 +6,7 @@ export * from './stack-hydraulic-network-schema';
 export * from './scale-transfer-schema';
 export * from './schemas';
 export * from './structured-cell-schema';
+export * from './structured-cell-donnan-evidence';
 export * from './structured-cell-topology';
 export * from './structured-cell-development-report';
 export * from './structured-cell-observables';

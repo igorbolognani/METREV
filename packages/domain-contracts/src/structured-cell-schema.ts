@@ -77,6 +77,30 @@ const neutralMembranePartitionSchema = z
       .max(15),
   })
   .strict();
+const idealDonnanMembranePartitionSchema = z
+  .object({
+    version: z.literal('structured-cell-ideal-donnan-partition-v1'),
+    interfaces: z
+      .array(
+        z
+          .object({
+            left_domain: id,
+            right_domain: id,
+            fixed_charge_density: signed('mol/m3'),
+            species: z
+              .record(id, positive('1'))
+              .refine((values) => Object.keys(values).length > 0),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(15),
+  })
+  .strict();
+const membranePartitionSchema = z.discriminatedUnion('version', [
+  neutralMembranePartitionSchema,
+  idealDonnanMembranePartitionSchema,
+]);
 
 /** A separately versioned, restricted steady cell. It never replaces a requested research fidelity. */
 export const structuredCellInputSchema = z
@@ -101,7 +125,7 @@ export const structuredCellInputSchema = z
       .strict()
       .optional(),
     hydraulics: darcyHydraulicsSchema.optional(),
-    interface_partition: neutralMembranePartitionSchema.optional(),
+    interface_partition: membranePartitionSchema.optional(),
     geometry: z
       .object({
         geometry_version: z.literal('structured-layers-v1'),
@@ -281,7 +305,19 @@ export const structuredCellInputSchema = z
         );
         return;
       }
-      if (
+      const donnan =
+        input.interface_partition?.version ===
+        'structured-cell-ideal-donnan-partition-v1';
+      if (donnan) {
+        const membraneSides = [layers[left], layers[right]].filter(
+          (layer) => layer.kind === 'membrane',
+        ).length;
+        if (membraneSides !== 1)
+          issue(
+            'Ideal Donnan partition requires exactly one ion-exchange membrane side; porous separators use a different interface law',
+            path,
+          );
+      } else if (
         !['membrane', 'separator'].includes(layers[left].kind) &&
         !['membrane', 'separator'].includes(layers[right].kind)
       )
@@ -301,11 +337,36 @@ export const structuredCellInputSchema = z
             'species',
             speciesId,
           ]);
-        else if (state.valence.value !== 0)
+        else if (!donnan && state.valence.value !== 0)
           issue(
             `Membrane partition currently supports neutral species only: ${speciesId}`,
             [...path, 'species', speciesId],
           );
+        else if (
+          donnan &&
+          state.valence.value !== 0 &&
+          Math.abs(state.valence.value) > 4
+        )
+          issue(
+            `Ideal Donnan partition supports absolute valence up to four: ${speciesId}`,
+            [...path, 'species', speciesId],
+          );
+      }
+      if (donnan) {
+        const charged = input.species.filter(
+          (state) => state.valence.value !== 0,
+        );
+        if (
+          !charged.some((state) => state.valence.value > 0) ||
+          !charged.some((state) => state.valence.value < 0)
+        )
+          issue('Donnan closure requires declared cations and anions', path);
+        for (const state of charged)
+          if (!(state.id in entry.species))
+            issue(
+              `Donnan closure requires a partition coefficient for charged species ${state.id}`,
+              [...path, 'species', state.id],
+            );
       }
     });
     if (
@@ -611,6 +672,6 @@ export type StructuredCellInput = z.infer<typeof structuredCellInputSchema>;
 export const STRUCTURED_CELL_LIMITS = [
   'Steady Cartesian orthogonal layers with isothermal coefficients; optional sourced face advection, prescribed-cell-pressure Darcy flow, or a boundary-driven finite-volume Darcy pressure solve. No bulk/porous interface, variable or tensor permeability, membrane water law, or independent experimental validation.',
   'Trace-species Nernst–Planck transport; fixed conductivity represents an unmodeled supporting electrolyte.',
-  'Continuous potential and default continuous concentration interfaces; optional sourced ideal neutral membrane partition. No charged partition, Donnan equilibrium or fixed membrane charge.',
+  'Continuous supporting-electrolyte bulk potential with default continuous concentration interfaces. Optional sourced neutral partition or ideal Donnan partition at ion-exchange-membrane interfaces; Donnan closure is local to each interface, membrane faces remain impermeable to convection, and full membrane electroneutral Nernst–Planck closure is not imposed.',
   'No double layer, biofilm growth, gas phases, thermal field or independently validated prediction.',
 ] as const;

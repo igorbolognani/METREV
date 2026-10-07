@@ -22,6 +22,7 @@ export * from './spatial-stokes-schema';
 export * from './spatial-model-v2-schema';
 export * from './spatial-simulation-schema';
 export * from './structured-cell-schema';
+export * from './structured-cell-donnan-evidence';
 export * from './spatial-runtime-input';
 export * from './structured-cell-topology';
 export type * from './spatial-physics-types';

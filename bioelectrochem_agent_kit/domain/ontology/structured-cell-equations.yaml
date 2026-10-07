@@ -34,6 +34,12 @@ equations:
   - id: cell-homogeneous-reactions-v1
     expression: Source-traced mass-action rates in normalized concentrations, or Monod rate with declared substrate and half-saturation.
     domain: One explicitly tagged region per reaction.
+  - id: cell-ideal-donnan-interface-v1
+    expression: X + sum_i(z_i K_i c_i,solution exp(-z_i psi_D)) = 0; Delta_phi_D = (R T/F) psi_D = phi_membrane - phi_solution; c_i,membrane(eq) = K_i c_i,solution exp(-z_i psi_D).
+    domain: A positively oriented shared face with exactly one ion-exchange membrane side; porous separators use the separate neutral/continuous interface law.
+    flux: Species Scharfetter-Gummel flux uses the local Donnan jump, sourced per-species K_i and harmonic half-cell resistance; the same face flux is added to one cell and subtracted from the other. The separate supporting-electrolyte Ohmic current uses only the continuous bulk potential and fixed conductivity; Donnan equilibrium is not modeled as an ohmic resistance.
+    assumptions: Ideal activities, instantaneous local interface equilibrium, prescribed uniform fixed charge per declared interface, no interfacial storage or membrane-normal water transport; the bulk liquid potential remains a fixed-conductivity supporting-electrolyte approximation.
+    unsupported: Full membrane-volume electroneutral Nernst-Planck closure, activity coefficients, Donnan partition at porous separators, membrane-normal convection, swelling, fouling, independent experimental validation.
   - id: cell-circuit-v1
     expression: MFC V = I * R_load; MEC V = -V_applied; I = minus outward anode collector current.
     power: Signed electrical power I*V; MEC electrical input -I*V, never generated energy.
@@ -41,14 +47,13 @@ assumptions:
   - Steady, isothermal, orthogonal structured layers; zero convection unless a complete sourced locally divergence-free superficial face velocity is supplied.
   - Prescribed velocity is not a hydraulic solution; no membrane convection/water transport or flow across outer collectors.
   - Fixed source-traced conductivity of an unmodeled supporting electrolyte; trace species do not determine total conductivity.
-  - Continuous interface concentrations by default, with source-backed neutral partition permitted at explicitly selected membrane/separator interfaces; potential remains continuous and each shared face flux enters neighbors with opposite signs.
+  - Continuous interface concentrations by default, with source-backed neutral partition at membrane/separator interfaces or ideal Donnan partition at ion-exchange-membrane interfaces. Donnan potential jumps enter the trace-species electrochemical flux; the continuous bulk potential state and supporting-electrolyte Ohmic current remain separate. Each shared species face flux enters neighbors with opposite signs.
   - Volumetric electrode kinetics, not resolved electrode surface or pore/nanoscale transfer.
 unsupported_physics:
   [
     full_electroneutral_species_closure,
     stokes_darcy_cell_flow_coupling,
-    donnan_partition,
-    fixed_membrane_charge,
+    full_electroneutral_nernst_planck_closure,
     double_layer,
     biofilm_growth,
     gas_transport,
