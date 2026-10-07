@@ -151,32 +151,8 @@ def solve_layered_diffusion(mesh_data, layers: list[dict], height: float) -> dic
         )
         return domain.comm.allreduce(float(local_flux), op=MPI.SUM)
 
-    # P1 element gradients are not a conservative boundary-flux trace for a
-    # nonzero source. Recover Dirichlet reactions from the unmodified weak
-    # residual instead; this includes the boundary load and interior coupling.
-    # The residual is outward D*grad(c).n, opposite to outward species flux.
-    def boundary_reaction(dofs) -> float:
-        lifting = fem.Function(solution_space)
-        lifting.x.array[:] = 0.0
-        lifting.x.array[dofs] = 1.0
-        lifting.x.scatter_forward()
-        local_reaction = fem.assemble_scalar(
-            fem.form(
-                (
-                    diffusivity * ufl.inner(ufl.grad(solved), ufl.grad(lifting))
-                    - source * lifting
-                ) * dx
-            )
-        )
-        return domain.comm.allreduce(float(local_reaction), op=MPI.SUM)
-
-    left_flux = -boundary_reaction(left_dofs)
-    right_flux = boundary_reaction(right_dofs)
-    assert np.isclose(left_flux, flux_at_origin * height, rtol=1e-8, atol=1e-12)
-    assert np.isclose(
-        right_flux, (flux_at_origin + source_rate * x_end) * height,
-        rtol=1e-8, atol=1e-12,
-    )
+    left_flux = integrated_x_flux("boundary:anode_contact")
+    right_flux = integrated_x_flux("boundary:outer_wall")
     relative_error = max(
         abs(left_flux - expected_flux * height),
         abs(right_flux - expected_flux * height),
@@ -337,8 +313,32 @@ def solve_layered_diffusion_manufactured_source(
         )
         return domain.comm.allreduce(float(local_flux), op=MPI.SUM)
 
-    left_flux = integrated_x_flux("boundary:anode_contact")
-    right_flux = integrated_x_flux("boundary:outer_wall")
+    # P1 element gradients are not a conservative boundary-flux trace for a
+    # nonzero source. Recover Dirichlet reactions from the unmodified weak
+    # residual instead; this includes the boundary load and interior coupling.
+    # The residual is outward D*grad(c).n, opposite to outward species flux.
+    def boundary_reaction(dofs) -> float:
+        lifting = fem.Function(solution_space)
+        lifting.x.array[:] = 0.0
+        lifting.x.array[dofs] = 1.0
+        lifting.x.scatter_forward()
+        local_reaction = fem.assemble_scalar(
+            fem.form(
+                (
+                    diffusivity * ufl.inner(ufl.grad(solved), ufl.grad(lifting))
+                    - source * lifting
+                ) * dx
+            )
+        )
+        return domain.comm.allreduce(float(local_reaction), op=MPI.SUM)
+
+    left_flux = -boundary_reaction(left_dofs)
+    right_flux = boundary_reaction(right_dofs)
+    assert np.isclose(left_flux, flux_at_origin * height, rtol=1e-8, atol=1e-12)
+    assert np.isclose(
+        right_flux, (flux_at_origin + source_rate * x_end) * height,
+        rtol=1e-8, atol=1e-12,
+    )
     total_source = -source_rate * x_end * height
     relative_balance_error = abs(total_source + right_flux - left_flux) / max(
         abs(total_source), abs(right_flux), abs(left_flux), 1e-30
