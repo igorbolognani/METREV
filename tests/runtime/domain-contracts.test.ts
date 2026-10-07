@@ -9,6 +9,7 @@ import {
   activeTechnologyFamilyValues,
   canonicalOutputSections,
   createRawInputFromDomainTemplate,
+  crossCuttingLayersSchema,
   domainRootPath,
   loadYamlFile,
   loadContractInputDefinition,
@@ -27,6 +28,7 @@ import {
   runtimeLoadedCanonicalFiles,
   runtimeReferenceOnlyFiles,
   runtimeValidationReferenceFiles,
+  stackBlocksSchema,
 } from '@metrev/domain-contracts';
 
 type EvidenceAuditPolicyProjection = {
@@ -60,6 +62,21 @@ describe('domain-contract runtime alignment', () => {
     expect(normalizedCaseInputSchema.parse(normalized)).toEqual(normalized);
     expect(normalized.case_id).toBe('CASE-001');
     expect(normalized.technology_family).toBe('microbial_fuel_cell');
+  });
+
+  it('parses nested defaults when stack and cross-cutting blocks are omitted', () => {
+    const stackBlocks = stackBlocksSchema.parse({});
+    const crossCuttingLayers = crossCuttingLayersSchema.parse({});
+
+    expect(stackBlocks.reactor_architecture).toMatchObject({
+      architecture_type: 'needs_classification',
+      membrane_presence: 'unknown',
+    });
+    expect(stackBlocks.anode_biofilm_support.material_family).toBe('unknown');
+    expect(crossCuttingLayers.evidence_and_provenance.evidence_refs).toEqual(
+      [],
+    );
+    expect(crossCuttingLayers.risk_and_maturity.trl).toBe(3);
   });
 
   it('maps legacy aliases and typed evidence into canonical normalized fields', () => {

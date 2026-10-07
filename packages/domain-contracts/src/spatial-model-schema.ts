@@ -20,7 +20,7 @@ export const spatialValueSchema = z
     source_kind: scientificSourceKindSchema,
     source_ref: z.string().trim().min(1),
     source_locator: z.string().trim().min(1).optional(),
-    conditions: z.record(z.string()).optional(),
+    conditions: z.record(z.string(), z.string()).optional(),
     uncertainty: z.number().finite().nonnegative().optional(),
     uncertainty_unit: z.string().trim().min(1).optional(),
   })

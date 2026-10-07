@@ -31,14 +31,14 @@ export const STRUCTURED_CELL_DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10;
 const darcyHydraulicParameters = {
   dynamic_viscosity: positive('Pa*s'),
   permeability_by_region: z.record(id, positive('m2')),
-  boundary_pressure: z.record(
+  boundary_pressure: z.partialRecord(
     z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
     signed('Pa'),
   ),
   impermeable_faces: z
     .array(z.enum(['y_min', 'y_max', 'z_min', 'z_max']))
     .max(4),
-  inlet_concentrations: z.record(
+  inlet_concentrations: z.partialRecord(
     z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
     z.record(id, value('mol/m3', 0)),
   ),
@@ -74,7 +74,7 @@ export const structuredCellInputSchema = z
         version: z.literal('structured-cell-prescribed-flow-v1'),
         face_normal_velocity: z.array(signed('m/s')).max(60000),
         boundary_normal_velocity: z.array(signed('m/s')).max(40000),
-        inlet_concentrations: z.record(
+        inlet_concentrations: z.partialRecord(
           z.enum(['y_min', 'y_max', 'z_min', 'z_max']),
           z.record(id, value('mol/m3', 0)),
         ),

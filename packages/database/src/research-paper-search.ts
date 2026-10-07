@@ -16,6 +16,43 @@ const defaultSearchProviders: ResearchSearchProvider[] = [
   'europe_pmc',
 ];
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue | null {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      entry === undefined ? null : toPrismaJsonValue(entry),
+    ) as Prisma.InputJsonArray;
+  }
+
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, entry]) =>
+        entry === undefined ? [] : [[key, toPrismaJsonValue(entry)]],
+      ),
+    ) as Prisma.InputJsonObject;
+  }
+
+  return String(value);
+}
+
+function toPrismaJsonObject(
+  value: Record<string, unknown>,
+): Prisma.InputJsonObject {
+  return toPrismaJsonValue(value) as Prisma.InputJsonObject;
+}
+
+function toPrismaJsonArray(value: unknown[]): Prisma.InputJsonArray {
+  return toPrismaJsonValue(value) as Prisma.InputJsonArray;
+}
+
 function normalizeWhitespace(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -985,7 +1022,7 @@ export async function stageResearchPapers(
         doi: normalizeDoi(item.doi),
         publisher: item.publisher,
         journal: item.journal,
-        authors: item.authors,
+        authors: toPrismaJsonArray(item.authors),
         accessStatus: mapAccessStatusToDatabase(item.access_status),
         pdfUrl: item.pdf_url,
         xmlUrl: item.xml_url,
@@ -1076,7 +1113,7 @@ export async function stageResearchPapers(
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
-            metadata: item.metadata,
+            metadata: toPrismaJsonObject(item.metadata),
           },
           acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
           acceptancePolicy:
@@ -1121,7 +1158,7 @@ export async function stageResearchPapers(
             citation_count: item.citation_count,
             query: input.query ?? null,
             source_type: item.source_type,
-            metadata: item.metadata,
+            metadata: toPrismaJsonObject(item.metadata),
           },
           acceptedBy: nextReviewStatus === 'ACCEPTED' ? 'system' : null,
           acceptancePolicy:

@@ -146,7 +146,10 @@ const solveSchema = envelopeSchema
     residuals: z.array(residualSchema).min(1).max(64),
     field_extrema: z.array(fieldExtremaSchema).min(1).max(32),
     circuit: circuitSchema,
-    interface_species_flux_mol_s: z.record(z.array(z.number().finite())),
+    interface_species_flux_mol_s: z.record(
+      z.string(),
+      z.array(z.number().finite()),
+    ),
   })
   .strict();
 

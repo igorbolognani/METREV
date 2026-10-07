@@ -14,7 +14,7 @@
     "@metrev/spatial-artifact-store": "workspace:*",
     "@metrev/spatial-sidecar-client": "workspace:*",
     "@metrev/telemetry": "workspace:*",
-    "zod": "^3.24.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "tsx": "^4.19.3",

@@ -81,9 +81,30 @@ describe('research paper staging', () => {
       transaction.externalEvidenceCatalogItem.findMany,
     ).toHaveBeenCalledTimes(1);
     expect(transaction.externalSourceRecord.create).toHaveBeenCalledTimes(2);
+    expect(transaction.externalSourceRecord.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          authors: [{ name: 'Batch Test Author' }],
+        }),
+      }),
+    );
     expect(
       transaction.externalEvidenceCatalogItem.upsert,
     ).toHaveBeenCalledTimes(2);
+    expect(
+      transaction.externalEvidenceCatalogItem.upsert,
+    ).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        create: expect.objectContaining({
+          payload: expect.objectContaining({ metadata: { fixture: true } }),
+        }),
+        update: expect.objectContaining({
+          payload: expect.objectContaining({ metadata: { fixture: true } }),
+        }),
+      }),
+    );
     expect(result.sourceDocumentIds).toEqual(['source-001', 'source-002']);
     expect(result.papers).toHaveLength(2);
   });

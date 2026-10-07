@@ -43,14 +43,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function getValueAtPath(root: unknown, path: Array<number | string>): unknown {
+function getValueAtPath(root: unknown, path: PropertyKey[]): unknown {
   return path.reduce<unknown>((current, segment) => {
     if (Array.isArray(current) && typeof segment === 'number') {
       return current[segment];
     }
 
     if (current && typeof current === 'object') {
-      return (current as Record<string, unknown>)[String(segment)];
+      return (current as Record<PropertyKey, unknown>)[segment];
     }
 
     return undefined;

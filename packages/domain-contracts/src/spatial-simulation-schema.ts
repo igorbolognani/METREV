@@ -79,7 +79,7 @@ const meshArtifactSchema = z
     generated_with: z
       .object({ name: identifier, version: identifier })
       .strict(),
-    physical_groups: z.record(positiveInteger),
+    physical_groups: z.record(z.string(), positiveInteger),
     mesh_quality: z
       .object({
         node_count: positiveInteger,

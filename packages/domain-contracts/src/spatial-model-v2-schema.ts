@@ -34,8 +34,8 @@ export const spatialMeshReferenceSchema = z
     ),
     sidecar_version: sourceRef,
     gmsh_version: sourceRef,
-    physical_groups: z.record(z.number().int().positive()),
-    component_map: z.record(sourceRef),
+    physical_groups: z.record(z.string(), z.number().int().positive()),
+    component_map: z.record(z.string(), sourceRef),
     interfaces: z.array(
       z
         .object({

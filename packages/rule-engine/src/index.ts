@@ -203,14 +203,14 @@ function toConfidenceLevel(input: {
   }
 
   if (score >= 0.7) {
-    return confidenceLevelSchema.Enum.high;
+    return confidenceLevelSchema.enum.high;
   }
 
   if (score >= 0.45) {
-    return confidenceLevelSchema.Enum.medium;
+    return confidenceLevelSchema.enum.medium;
   }
 
-  return confidenceLevelSchema.Enum.low;
+  return confidenceLevelSchema.enum.low;
 }
 
 function toResolvedMetricContext(input: {
