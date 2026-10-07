@@ -407,6 +407,9 @@ describe('structured cell native worker and authenticated artifacts', () => {
             'cell-neutral-membrane-partition-v1',
           );
           expect(report.disabled_physics).toContain('donnan_equilibrium');
+          expect(report.limitations).toContain(
+            'Continuous potential and default continuous concentration interfaces; optional sourced ideal neutral membrane partition. No charged partition, Donnan equilibrium or fixed membrane charge.',
+          );
         }
         expect(
           report.enabled_physics.includes(

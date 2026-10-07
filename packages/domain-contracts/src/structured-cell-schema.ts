@@ -611,6 +611,6 @@ export type StructuredCellInput = z.infer<typeof structuredCellInputSchema>;
 export const STRUCTURED_CELL_LIMITS = [
   'Steady Cartesian orthogonal layers with isothermal coefficients; optional sourced face advection, prescribed-cell-pressure Darcy flow, or a boundary-driven finite-volume Darcy pressure solve. No bulk/porous interface, variable or tensor permeability, membrane water law, or independent experimental validation.',
   'Trace-species Nernst–Planck transport; fixed conductivity represents an unmodeled supporting electrolyte.',
-  'Continuous concentration/potential interfaces; no partition, Donnan or fixed membrane charge.',
+  'Continuous potential and default continuous concentration interfaces; optional sourced ideal neutral membrane partition. No charged partition, Donnan equilibrium or fixed membrane charge.',
   'No double layer, biofilm growth, gas phases, thermal field or independently validated prediction.',
 ] as const;
