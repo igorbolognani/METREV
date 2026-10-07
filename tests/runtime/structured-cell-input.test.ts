@@ -102,6 +102,31 @@ function solvedDarcyFixture(dimension: 2 | 3 = 2) {
   return input;
 }
 
+function neutralMembranePartitionFixture(dimension: 2 | 3 = 2) {
+  const input = structuredCellFixture(dimension);
+  const neutral = { ...input.species[0], id: 'neutral' };
+  input.species.push(neutral);
+  for (const layer of input.geometry.layers)
+    layer.diffusivity.neutral = { ...layer.diffusivity.reduced };
+  input.interface_partition = {
+    version: 'structured-cell-neutral-membrane-partition-v1',
+    interfaces: [
+      {
+        left_domain: 'anode',
+        right_domain: 'membrane',
+        species: {
+          neutral: {
+            ...input.species[0].valence,
+            value: 2,
+            source_ref: 'synthetic:neutral-membrane-partition',
+          },
+        },
+      },
+    ],
+  };
+  return input;
+}
+
 describe('restricted structured spatial cell admission', () => {
   it.each([2, 3] as const)('retains dimension %i and provenance', (dim) => {
     const input = structuredCellInputSchema.parse(structuredCellFixture(dim));
@@ -284,5 +309,59 @@ describe('restricted structured spatial cell admission', () => {
     flow.impermeable_faces = ['y_min', 'y_max'];
     flow.inlet_concentrations = {};
     expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
+  });
+  it.each([2, 3] as const)(
+    'admits source-backed neutral membrane partition in %iD and records its equation',
+    (dimension) => {
+      const input = neutralMembranePartitionFixture(dimension);
+      const parsed = structuredCellInputSchema.parse(input);
+      expect(
+        parsed.interface_partition?.interfaces[0].species.neutral,
+      ).toMatchObject({
+        value: 2,
+        unit: '1',
+      });
+      const graph = compileStructuredCellEquationGraph(parsed);
+      expect(graph.interfaces[0].law).toBe(
+        'cell-neutral-membrane-partition-v1',
+      );
+      expect(
+        graph.nodes.find((node) => node.id === 'species_neutral')
+          ?.parameter_paths,
+      ).toContain(
+        'interface_partition.interfaces.0.species.neutral.partition_coefficient',
+      );
+    },
+  );
+  it('rejects charged, unbound, nonadjacent, unsourced and dimensionally invalid partition input', () => {
+    const mutations: ((
+      input: ReturnType<typeof neutralMembranePartitionFixture>,
+    ) => void)[] = [
+      (input) => {
+        input.interface_partition!.interfaces[0].species.neutral = {
+          ...input.interface_partition!.interfaces[0].species.neutral,
+          source_ref: '',
+        };
+      },
+      (input) => {
+        input.interface_partition!.interfaces[0].species.neutral.unit = 'm/s';
+      },
+      (input) => {
+        input.interface_partition!.interfaces[0].species.oxidized = {
+          ...input.interface_partition!.interfaces[0].species.neutral,
+        };
+      },
+      (input) => {
+        input.interface_partition!.interfaces[0].right_domain = 'cathode';
+      },
+      (input) => {
+        input.interface_partition!.interfaces[0].species.neutral.value = 0;
+      },
+    ];
+    for (const mutate of mutations) {
+      const input = neutralMembranePartitionFixture();
+      mutate(input);
+      expect(structuredCellInputSchema.safeParse(input).success).toBe(false);
+    }
   });
 });
