@@ -151,8 +151,32 @@ def solve_layered_diffusion(mesh_data, layers: list[dict], height: float) -> dic
         )
         return domain.comm.allreduce(float(local_flux), op=MPI.SUM)
 
-    left_flux = integrated_x_flux("boundary:anode_contact")
-    right_flux = integrated_x_flux("boundary:outer_wall")
+    # P1 element gradients are not a conservative boundary-flux trace for a
+    # nonzero source. Recover Dirichlet reactions from the unmodified weak
+    # residual instead; this includes the boundary load and interior coupling.
+    # The residual is outward D*grad(c).n, opposite to outward species flux.
+    def boundary_reaction(dofs) -> float:
+        lifting = fem.Function(solution_space)
+        lifting.x.array[:] = 0.0
+        lifting.x.array[dofs] = 1.0
+        lifting.x.scatter_forward()
+        local_reaction = fem.assemble_scalar(
+            fem.form(
+                (
+                    diffusivity * ufl.inner(ufl.grad(solved), ufl.grad(lifting))
+                    - source * lifting
+                ) * dx
+            )
+        )
+        return domain.comm.allreduce(float(local_reaction), op=MPI.SUM)
+
+    left_flux = -boundary_reaction(left_dofs)
+    right_flux = boundary_reaction(right_dofs)
+    assert np.isclose(left_flux, flux_at_origin * height, rtol=1e-8, atol=1e-12)
+    assert np.isclose(
+        right_flux, (flux_at_origin + source_rate * x_end) * height,
+        rtol=1e-8, atol=1e-12,
+    )
     relative_error = max(
         abs(left_flux - expected_flux * height),
         abs(right_flux - expected_flux * height),
@@ -325,6 +349,11 @@ def solve_layered_diffusion_manufactured_source(
         "cell_count": len(mesh_data.cell_tags.values),
         "relative_l2_error": relative_l2_error,
         "relative_source_boundary_balance": relative_balance_error,
+        "boundary_flux_method": "unmodified_weak_residual_dirichlet_reaction",
+        "left_integrated_x_flux": left_flux,
+        "right_integrated_x_flux": right_flux,
+        "raw_gradient_left_integrated_x_flux": integrated_x_flux("boundary:anode_contact"),
+        "raw_gradient_right_integrated_x_flux": integrated_x_flux("boundary:outer_wall"),
     }
 
 
