@@ -54,6 +54,51 @@ def assertion(name, actual, expected=0., tolerance=1e-6, unit='1'):
                 tolerance=float(tolerance), unit=unit)
 
 
+def three_axis_refinement(system):
+    """Restricted synthetic cell with y/z feeding; refine every spatial axis.
+
+    Uses the unchanged steady supporting-electrolyte equations and sourced
+    test inputs. This compares observables, not an exact solution or empirical
+    accuracy. Factors 1/2/3 keep the largest mesh within a bounded 972 cells.
+    """
+    inputs, outputs, runs = [], [], []
+    for factor in (1, 2, 3):
+        inp = fixture(3, system, factor)
+        inp['reservoir_faces'] = ['y_min', 'z_min']
+        inp['geometry']['lengths_m'][2].update(
+            value=.0003, source_ref='synthetic:three-axis-refinement')
+        inp['geometry']['transverse_cells'][1] = 2 * factor
+        output = Cell(inp).solve()
+        inputs.append(inp)
+        outputs.append(output)
+        runs.append(dict(input_sha256=digest(inp), mesh_sha256=digest(output['mesh']),
+                         refinement_factor=factor, mesh_shape=output['mesh']['shape'],
+                         cell_count=len(output['mesh']['volumes_m3']), status=output['status']))
+    currents = [v['circuit']['anodic_current_A'] for v in outputs]
+    means = [np.average(v['fields'][0]['values'], weights=v['mesh']['volumes_m3']) for v in outputs]
+    changes = np.abs(np.diff(currents))
+    # Same-x/y averages on each z plane must vary: an extruded 2D case cannot
+    # satisfy this check merely by adding cells in an invariant direction.
+    coarse_concentration = np.array(outputs[0]['fields'][0]['values']).reshape(outputs[0]['mesh']['shape'])
+    z_variation = np.ptp(coarse_concentration.mean(axis=(0, 1)))
+    all_residuals = [r for v in outputs for r in v['residuals']]
+    nonnegative = all(min(field['values']) >= 0 for v in outputs for field in v['fields'] if field['unit'] == 'mol/m3')
+    finite = all(np.isfinite(field['values']).all() for v in outputs for field in v['fields'])
+    checks = [
+        assertion('three_levels_converged', sum(v['status'] == 'converged' for v in outputs), expected=3, tolerance=0),
+        assertion('all_balance_checks_passed', int(bool(all_residuals) and all(r['passed'] for r in all_residuals)), expected=1, tolerance=0),
+        assertion('all_fields_finite', int(finite), expected=1, tolerance=0),
+        assertion('concentrations_nonnegative', int(nonnegative), expected=1, tolerance=0),
+        assertion('nonuniform_z_field', int(z_variation > 1e-4), expected=1, tolerance=0),
+        assertion('current_successive_difference_ratio', changes[1] / max(changes[0], 1e-30), tolerance=.5),
+        assertion('medium_fine_current_relative_change', changes[1] / max(abs(currents[2]), 1e-30), tolerance=1e-3),
+        assertion('medium_fine_concentration_mean_change', abs(means[2] - means[1]), tolerance=1e-3, unit='mol/m3'),
+    ]
+    return dict(input=inputs[0], checks=checks, related_runs=runs,
+                measured_observables=dict(currents_A=currents, reduced_means_mol_m3=means,
+                                          coarse_z_plane_mean_range_mol_m3=float(z_variation)))
+
+
 def run(mode):
     evidence = []
     scopes = []
@@ -170,6 +215,17 @@ def run(mode):
                 record('nonlinear_tolerance_sensitivity', [assertion('tight_converged', int(tight_output['status'] == 'converged'), expected=1, tolerance=0),
                                                            assertion('relative_current_change', (tight_output['circuit']['anodic_current_A'] - circuit['anodic_current_A']) / max(abs(circuit['anodic_current_A']), 1e-30), tolerance=2e-6)],
                        'Execute tighter nonlinear tolerance and compare circuit current.')
+                if dimension == 3:
+                    refinement = three_axis_refinement(system)
+                    inp3 = refinement['input']
+                    scope = dict(scope, input_sha256=digest(inp3),
+                                 mesh_sha256=refinement['related_runs'][0]['mesh_sha256'],
+                                 verification_variant='three_axis_y_z_reservoir_feeding')
+                    scopes.append(scope)
+                    record('mesh_refinement', refinement['checks'],
+                           'Refine x/y/z together at factors 1/2/3 with y/z reservoir feeding; measure current, volume-weighted concentration, z variation and all native conservation residuals. Synthetic restricted steady cell only.',
+                           [dict(scope, **level) for level in refinement['related_runs']])
+                    evidence[-1]['measured_observables'] = refinement['measured_observables']
     return dict(version='model-verification-evidence-v1', mode=mode,
                 generated_at=executed_at, scopes=scopes, evidence=evidence,
                 environment=dict(python=platform.python_version(), numpy=np.__version__, scipy=scipy.__version__),

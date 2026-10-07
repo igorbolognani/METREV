@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Preserve all native contract tests; defer one expensive mesh series in fast CI."""
+"""Preserve all native contract tests; defer expensive mesh series in fast CI."""
 import argparse
 from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPENSIVE = {'test_three_meshes_nonuniform_fields_and_conservative_observables'}
+EXPENSIVE = {'test_three_meshes_nonuniform_fields_and_conservative_observables',
+             'test_three_axis_refinement_with_z_dependent_fields'}
 
 
 def selected(suite, fast):
