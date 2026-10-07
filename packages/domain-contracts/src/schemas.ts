@@ -756,14 +756,16 @@ const operationalBiologySchema = flexibleObjectSchema.extend({
 });
 
 export const stackBlocksSchema = z.object({
-  reactor_architecture: reactorArchitectureSchema.default({}),
-  anode_biofilm_support: anodeBiofilmSupportSchema.default({}),
-  cathode_catalyst_support: cathodeCatalystSupportSchema.default({}),
-  membrane_or_separator: membraneOrSeparatorSchema.default({}),
-  electrical_interconnect_and_sealing: electricalInterconnectSchema.default({}),
-  balance_of_plant: balanceOfPlantSchema.default({}),
-  sensors_and_analytics: sensorsAndAnalyticsSchema.default({}),
-  operational_biology: operationalBiologySchema.default({}),
+  reactor_architecture: reactorArchitectureSchema.prefault({}),
+  anode_biofilm_support: anodeBiofilmSupportSchema.prefault({}),
+  cathode_catalyst_support: cathodeCatalystSupportSchema.prefault({}),
+  membrane_or_separator: membraneOrSeparatorSchema.prefault({}),
+  electrical_interconnect_and_sealing: electricalInterconnectSchema.prefault(
+    {},
+  ),
+  balance_of_plant: balanceOfPlantSchema.prefault({}),
+  sensors_and_analytics: sensorsAndAnalyticsSchema.prefault({}),
+  operational_biology: operationalBiologySchema.prefault({}),
   component_model_parameters: componentModelParametersSchema.optional(),
 });
 
@@ -795,9 +797,9 @@ const riskAndMaturityLayerSchema = flexibleObjectSchema.extend({
 });
 
 export const crossCuttingLayersSchema = z.object({
-  technoeconomics: technoeconomicsLayerSchema.default({}),
-  evidence_and_provenance: evidenceAndProvenanceLayerSchema.default({}),
-  risk_and_maturity: riskAndMaturityLayerSchema.default({}),
+  technoeconomics: technoeconomicsLayerSchema.prefault({}),
+  evidence_and_provenance: evidenceAndProvenanceLayerSchema.prefault({}),
+  risk_and_maturity: riskAndMaturityLayerSchema.prefault({}),
 });
 
 const rawStackBlocksSchema = z

@@ -637,7 +637,7 @@ export const spatialSidecarResponseSchema = z.union([
         stokesFieldDataset,
         stokesFieldDataset,
       ]),
-      physical_groups: z.record(z.number().int().positive()),
+      physical_groups: z.record(z.string(), z.number().int().positive()),
       diagnostics: z
         .object({
           inlet_flow_m2_s_per_depth: z.number().finite(),
@@ -730,7 +730,7 @@ export const spatialSidecarResponseSchema = z.union([
         stokesFieldDataset,
         transportFieldDataset,
       ]),
-      physical_groups: z.record(z.number().int().positive()),
+      physical_groups: z.record(z.string(), z.number().int().positive()),
       diagnostics: z
         .object({
           inlet_flow_m2_s_per_depth: z.number().finite(),
@@ -914,7 +914,7 @@ export const spatialSidecarResponseSchema = z.union([
         .array(z.union([stokesFieldDataset, transportFieldDataset]))
         .min(3)
         .max(4),
-      physical_groups: z.record(z.number().int().positive()),
+      physical_groups: z.record(z.string(), z.number().int().positive()),
       diagnostics: z
         .object({
           inlet_flow_m2_s_per_depth: z.number().finite(),
@@ -1179,8 +1179,8 @@ export const spatialSidecarResponseSchema = z.union([
       metadata: runtimeMetadata,
       geometry_version: z.literal('planar-layers-v1'),
       input_sha256: z.string().regex(/^[a-f0-9]{64}$/),
-      physical_groups: z.record(z.number().int().positive()),
-      component_map: z.record(z.string()),
+      physical_groups: z.record(z.string(), z.number().int().positive()),
+      component_map: z.record(z.string(), z.string()),
       interfaces: z.array(
         z
           .object({

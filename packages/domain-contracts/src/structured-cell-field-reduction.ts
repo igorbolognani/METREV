@@ -768,7 +768,9 @@ export function deriveStructuredCellFieldReduction(options: {
   const hydraulic =
     'hydraulics' in input && input.hydraulics
       ? z
-          .object({ boundary_pressure: z.record(spatialValueSchema) })
+          .object({
+            boundary_pressure: z.record(z.string(), spatialValueSchema),
+          })
           .passthrough()
           .parse(input.hydraulics)
       : null;

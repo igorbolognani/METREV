@@ -316,7 +316,7 @@ export const researchSystemPerformanceExtractionSchema = z.object({
       electrode_spacing_cm: z.number().nullable().default(null),
       geometry: z.string().nullable().default(null),
     })
-    .default({}),
+    .prefault({}),
   anode: z
     .object({
       material: z.string().nullable().default(null),
@@ -325,7 +325,7 @@ export const researchSystemPerformanceExtractionSchema = z.object({
       modification: z.string().nullable().default(null),
       properties: z.array(z.string()).default([]),
     })
-    .default({}),
+    .prefault({}),
   cathode: z
     .object({
       material: z.string().nullable().default(null),
@@ -333,13 +333,13 @@ export const researchSystemPerformanceExtractionSchema = z.object({
       loading_mg_cm2: z.number().nullable().default(null),
       properties: z.array(z.string()).default([]),
     })
-    .default({}),
+    .prefault({}),
   membrane_or_separator: z
     .object({
       type: z.string().nullable().default(null),
       properties: z.array(z.string()).default([]),
     })
-    .default({}),
+    .prefault({}),
   substrate_feedstock: z.array(z.string()).default([]),
   operating_conditions: flexibleObjectSchema.default({}),
   electrochemical_metrics: z.array(researchMetricMeasurementSchema).default([]),
@@ -390,7 +390,7 @@ export const researchDataMetadataReadinessExtractionSchema = z.object({
       access_and_licensing: z.array(z.string()).default([]),
       review_state: z.array(z.string()).default([]),
     })
-    .default({}),
+    .prefault({}),
   training_and_extraction_applicability: z.array(z.string()).default([]),
   decision_use_readiness: z.enum([
     'ready_with_review',

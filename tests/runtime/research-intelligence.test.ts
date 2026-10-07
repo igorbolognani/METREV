@@ -303,6 +303,23 @@ describe('research intelligence runtime contracts', () => {
     );
   });
 
+  it('applies nested defaults to omitted research extraction sections', () => {
+    const answer = researchSystemPerformanceExtractionSchema.parse({
+      confidence: 'medium',
+    });
+
+    expect(answer.reactor_architecture).toEqual({
+      type: null,
+      useful_volume_ml: null,
+      electrode_area_cm2: null,
+      electrode_spacing_cm: null,
+      geometry: null,
+    });
+    expect(answer.anode.properties).toEqual([]);
+    expect(answer.cathode.properties).toEqual([]);
+    expect(answer.membrane_or_separator.properties).toEqual([]);
+  });
+
   it('requires evidence traces before valid substantive extraction output is usable', () => {
     expect(() =>
       researchExtractionResultSchema.parse({

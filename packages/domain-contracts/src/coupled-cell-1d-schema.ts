@@ -19,7 +19,7 @@ const sourced = <U extends string>(unit: U) =>
       ]),
       source_ref: z.string().trim().min(1),
       source_locator: z.string().trim().min(1).optional(),
-      conditions: z.record(z.string()).optional(),
+      conditions: z.record(z.string(), z.string()).optional(),
       original_value: z.number().finite().optional(),
       original_unit: z.string().trim().min(1).optional(),
       normalization_rule_id: z.string().trim().min(1).optional(),
