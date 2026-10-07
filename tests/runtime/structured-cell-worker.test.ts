@@ -123,7 +123,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
     ).rejects.toMatchObject({
       code: 'spatial_runtime_version_mismatch',
       message: expect.stringContaining(
-        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v7',
+        'Queued run requires runtime structured-cell-process-v2; active executor provides structured-cell-process-v8',
       ),
     });
   });
@@ -135,12 +135,12 @@ describe('structured cell native worker and authenticated artifacts', () => {
     };
     const expected = {
       solverVersion: 'structured-cell-fv-v1',
-      runtimeVersion: 'structured-cell-process-v7',
+      runtimeVersion: 'structured-cell-process-v8',
     };
     expect(() =>
       parseStructuredCellProcessEnvelope(envelope, expected),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received structured-cell-process-v2',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v8, received structured-cell-process-v2',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -148,7 +148,7 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expected,
       ),
     ).toThrow(
-      'Cell sidecar protocol mismatch: expected structured-cell-process-v7, received missing',
+      'Cell sidecar protocol mismatch: expected structured-cell-process-v8, received missing',
     );
     expect(() =>
       parseStructuredCellProcessEnvelope(
@@ -164,11 +164,11 @@ describe('structured cell native worker and authenticated artifacts', () => {
     );
   });
 
-  it('accepts a complete active process-v7 sidecar envelope', () => {
+  it('accepts a complete active process-v8 sidecar envelope', () => {
     const digest = 'a'.repeat(64);
     const envelope = {
       version: 'structured-cell-fv-v1',
-      protocol_version: 'structured-cell-process-v7',
+      protocol_version: 'structured-cell-process-v8',
       status: 'prepared',
       dimension: 2,
       request_id: '00000000-0000-4000-8000-000000000001',
@@ -179,9 +179,9 @@ describe('structured cell native worker and authenticated artifacts', () => {
     expect(
       parseStructuredCellProcessEnvelope(envelope, {
         solverVersion: 'structured-cell-fv-v1',
-        runtimeVersion: 'structured-cell-process-v7',
+        runtimeVersion: 'structured-cell-process-v8',
       }),
-    ).toMatchObject({ protocol_version: 'structured-cell-process-v7' });
+    ).toMatchObject({ protocol_version: 'structured-cell-process-v8' });
   });
 
   it.each([
