@@ -11,6 +11,14 @@ export function validateArchivePlan(plan) {
     throw new Error('Invalid archive plan identity');
   if (plan.default_branch !== 'main' || !namePattern.test(plan.archive_prefix))
     throw new Error('Invalid archive namespace or main branch');
+  if (
+    !Array.isArray(plan.protected_branches) ||
+    plan.protected_branches.length > 20 ||
+    new Set(plan.protected_branches).size !== plan.protected_branches.length ||
+    plan.protected_branches.some((name) => !namePattern.test(name)) ||
+    !plan.protected_branches.includes(plan.default_branch)
+  )
+    throw new Error('Invalid protected branch inventory');
   if (!Array.isArray(plan.branches) || plan.branches.length > 100)
     throw new Error('Invalid bounded branch inventory');
   const seen = new Set();
@@ -44,6 +52,7 @@ export function planBranchArchives(
   if (defaultBranch !== plan.default_branch)
     throw new Error('Default branch changed');
   const live = new Map(liveBranches.map((branch) => [branch.name, branch]));
+  const protectedBranches = new Set(plan.protected_branches);
   return plan.branches.map((expected) => {
     const branch = live.get(expected.name);
     const active = openPullRequests.some(
@@ -51,7 +60,7 @@ export function planBranchArchives(
     );
     const reason = !branch
       ? 'already_absent'
-      : branch.protected
+      : branch.protected || protectedBranches.has(expected.name)
         ? 'protected'
         : active
           ? 'open_pull_request'
@@ -91,6 +100,7 @@ export function archiveAndDeleteBranch(
     schema_version: 1,
     repository: 'local/test',
     default_branch: 'main',
+    protected_branches: ['main', 'dev'],
     archive_prefix: entry.archive.slice(0, -(entry.name.length + 1)),
     maintenance_branch: 'maintenance',
     branches: [{ name: entry.name, sha: entry.sha }],
@@ -168,6 +178,7 @@ async function main() {
           mode: 'offline_plan',
           repository: plan.repository,
           archive_prefix: plan.archive_prefix,
+          protected_branches: plan.protected_branches,
           branches: plan.branches,
         },
         null,

@@ -1,6 +1,6 @@
 # METREV working rules
 
-Read `README.md` for bootstrap and the authority map. Read `governance/PROJECT_STATE.yaml`, `ROADMAP.yaml`, `DEPENDENCY_GRAPH.yaml`, `CAPABILITY_MATRIX.yaml`, and `ACCEPTANCE_GATES.yaml` before choosing work. Confirm the live remote `main` HEAD and a clean tree before editing. Use one short-lived branch for a coherent PR; `main` is the only long-lived branch.
+Read `README.md` for bootstrap and the authority map. Read `governance/PROJECT_STATE.yaml`, `ROADMAP.yaml`, `DEPENDENCY_GRAPH.yaml`, `CAPABILITY_MATRIX.yaml`, and `ACCEPTANCE_GATES.yaml` before choosing work. Confirm the live remote `main` HEAD and a clean tree before editing. `main` is the release source of truth and `dev` is the persistent development baseline; keep `dev` fast-forwarded to the latest verified `main`. Use one short-lived branch for a coherent PR and target it directly at `main`.
 
 The full, unabridged 40-point brief is `governance/MASTER_EXECUTION_TASK.md`. A roadmap item is complete only after every requirement in its referenced section and every required gate is evidenced. Run `pnpm run governance:check` after changing the catalog, roadmap, maturity or gates. Never promote a capability just because code compiles or a test passes. Move through dependencies; expose blockers and execute prerequisites first. Keep high-cost architectural decisions in focused ADRs only.
 
