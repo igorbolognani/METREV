@@ -66,9 +66,10 @@ export const structuredCellEquationGraphSchema = z
             from: z.string(),
             to: z.string(),
             orientation: z.literal('positive_x'),
-            law: z.literal(
+            law: z.enum([
               'continuous_concentration_potential_shared_face_flux',
-            ),
+              'cell-neutral-membrane-partition-v1',
+            ]),
           })
           .strict(),
       )
@@ -133,6 +134,13 @@ export function compileStructuredCellEquationGraph(
                 : []),
             ]
           : []),
+        ...(input.interface_partition?.interfaces.flatMap((entry, index) =>
+          entry.species[species.id]
+            ? [
+                `interface_partition.interfaces.${index}.species.${species.id}.partition_coefficient`,
+              ]
+            : [],
+        ) ?? []),
       ],
       boundary:
         'x insulating; declared transverse reservoir faces: ' +
@@ -287,7 +295,11 @@ export function compileStructuredCellEquationGraph(
       from: tags[i],
       to: tag,
       orientation: 'positive_x',
-      law: 'continuous_concentration_potential_shared_face_flux',
+      law: input.interface_partition?.interfaces.some(
+        (entry) => entry.left_domain === tags[i] && entry.right_domain === tag,
+      )
+        ? 'cell-neutral-membrane-partition-v1'
+        : 'continuous_concentration_potential_shared_face_flux',
     })),
     decision_eligible: false,
   });

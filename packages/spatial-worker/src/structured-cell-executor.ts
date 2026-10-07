@@ -59,6 +59,7 @@ const envelopeSchema = z
       'structured-cell-process-v5',
       'structured-cell-process-v6',
       'structured-cell-process-v7',
+      'structured-cell-process-v8',
     ]),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
@@ -184,7 +185,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v7';
+  readonly runtimeVersion = 'structured-cell-process-v8';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||

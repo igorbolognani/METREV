@@ -13,6 +13,14 @@ equations:
     flux: N_i = u * c_i - D_i * (grad(c_i) + z_i * F * c_i * grad(phi_l) / (R * T))
     method: Finite volumes with Scharfetter-Gummel diffusion/migration, harmonic diffusivity, and conservative first-order upwind convection when explicitly declared.
     boundary: x insulating; explicitly selected transverse reservoir faces impose diffusive species concentration. Source-backed prescribed inflow concentrations and solved upwind outflow states independently define convective boundary flux.
+  - id: cell-neutral-membrane-partition-v1
+    expression: J_n = A / (h_L / D_L + h_R / (K_RL * D_R)) * (c_L - c_R / K_RL)
+    orientation: Positive from left_domain to right_domain along positive x; K_RL is the source-backed equilibrium right/left concentration ratio.
+    domain: One explicitly declared interface adjacent to a membrane or separator; neutral species only.
+    states: left and right neutral species concentrations in mol/m3; interface flux in mol/s.
+    parameters: h_L and h_R in m; diffusivities in m2/s; partition ratio K_RL is dimensionless.
+    assumptions: Zero-resistance ideal partition interface with bulk half-cell diffusion resistance; no charged Donnan closure or membrane water transport.
+    boundary: This law replaces continuous-concentration diffusion only for listed neutral species; all shared-face contributions remain equal and opposite.
   - id: cell-liquid-charge-v1
     expression: div(-kappa * grad(phi_l)) = j_F
     boundary: No total ionic current across exterior faces; supporting electrolyte compensates trace species reservoir current.
@@ -33,7 +41,7 @@ assumptions:
   - Steady, isothermal, orthogonal structured layers; zero convection unless a complete sourced locally divergence-free superficial face velocity is supplied.
   - Prescribed velocity is not a hydraulic solution; no membrane convection/water transport or flow across outer collectors.
   - Fixed source-traced conductivity of an unmodeled supporting electrolyte; trace species do not determine total conductivity.
-  - Continuous interface concentrations and potential; each shared face flux enters neighbors with opposite signs.
+  - Continuous interface concentrations by default, with source-backed neutral partition permitted at explicitly selected membrane/separator interfaces; potential remains continuous and each shared face flux enters neighbors with opposite signs.
   - Volumetric electrode kinetics, not resolved electrode surface or pore/nanoscale transfer.
 unsupported_physics:
   [

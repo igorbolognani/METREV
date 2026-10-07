@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v7"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v8"
 DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10
 
 
@@ -47,7 +47,7 @@ def number(v, unit, lower=None, strict=False):
 
 def validate(inp):
     required = {'contract_version','model_id','system','dimension','coordinate_system','charge_model','geometry','temperature','reservoir_faces','species','reactions','electrodes','circuit','numerics'}
-    if not isinstance(inp,dict) or set(inp) - {'case_context', 'advection', 'hydraulics'} != required:
+    if not isinstance(inp,dict) or set(inp) - {'case_context', 'advection', 'hydraulics', 'interface_partition'} != required:
         raise ValueError('Invalid cell input properties')
     if (inp['contract_version']!='spatial-cell-input-v1' or inp['model_id']!='structured-cell-supporting-electrolyte-v1' or inp['dimension'] not in [2,3] or inp['coordinate_system']!='cartesian' or inp['charge_model']!='fixed-conductivity-supporting-electrolyte'):
         raise ValueError('Unsupported cell profile or fidelity')
@@ -99,6 +99,24 @@ def validate(inp):
     faces=inp['reservoir_faces']
     if not faces or len(set(faces))!=len(faces) or any(f not in (['y_min','y_max']+(['z_min','z_max'] if d==3 else [])) for f in faces): raise ValueError('Invalid reservoir faces')
     by_id={s['id']:s for s in species}
+    partition=inp.get('interface_partition')
+    if partition is not None:
+        if not isinstance(partition,dict) or set(partition)!={'version','interfaces'} or partition['version']!='structured-cell-neutral-membrane-partition-v1': raise ValueError('Unsupported neutral membrane partition contract')
+        entries=partition['interfaces']
+        if not isinstance(entries,list) or not 1<=len(entries)<=15: raise ValueError('Neutral membrane partition needs 1..15 interfaces')
+        tag_index={tag:index for index,tag in enumerate(tags)}; seen=set()
+        for entry in entries:
+            if not isinstance(entry,dict) or set(entry)!={'left_domain','right_domain','species'}: raise ValueError('Invalid neutral membrane partition interface')
+            left=tag_index.get(entry['left_domain']); right=tag_index.get(entry['right_domain'])
+            if left is None or right!=left+1: raise ValueError('Partition interfaces must name adjacent layers in positive-x order')
+            if layers[left]['kind'] not in ['membrane','separator'] and layers[right]['kind'] not in ['membrane','separator']: raise ValueError('Neutral partition is limited to membrane or separator interfaces')
+            if (left,right) in seen: raise ValueError('Duplicate neutral membrane partition interface')
+            seen.add((left,right)); selected=entry['species']
+            if not isinstance(selected,dict) or not selected: raise ValueError('Neutral membrane partition needs at least one species')
+            for species_id,coefficient in selected.items():
+                if species_id not in by_id: raise ValueError('Unknown partition species')
+                if number(by_id[species_id]['valence'],'1')!=0: raise ValueError('Membrane partition currently supports neutral species only')
+                number(coefficient,'1',0,True)
     def stoichiometry(nu,electrons):
         if len(nu)<2 or not any(v['value']<0 for v in nu.values()) or not any(v['value']>0 for v in nu.values()): raise ValueError('Reaction needs reactants and products')
         atoms={}; charge=0
@@ -439,6 +457,12 @@ class Cell:
         self.active=np.flatnonzero(np.isin(m['regions'],[0,len(inp['geometry']['layers'])-1])); self.solid_index={int(i):j for j,i in enumerate(self.active)}
         self.size=(self.ns+1)*self.n+len(self.active)+1
         self.species_index={s['id']:i for i,s in enumerate(inp['species'])}
+        self.interface_partition={}
+        for entry in inp.get('interface_partition',{}).get('interfaces',[]):
+            left=next(i for i,layer in enumerate(inp['geometry']['layers']) if layer['tag']==entry['left_domain'])
+            right=next(i for i,layer in enumerate(inp['geometry']['layers']) if layer['tag']==entry['right_domain'])
+            for species_id,coefficient in entry['species'].items():
+                self.interface_partition[(left,right,self.species_index[species_id])]=coefficient['value']
         self.kappa=np.array([inp['geometry']['layers'][r]['electrolyte_conductivity']['value'] for r in m['regions']])
         self.sigma=np.array([inp['geometry']['layers'][r]['solid_conductivity']['value'] for r in m['regions']])
         self.D=np.array([[inp['geometry']['layers'][r]['diffusivity'][s['id']]['value'] for r in m['regions']] for s in inp['species']])
@@ -470,6 +494,12 @@ class Cell:
         for velocity,(i,j,axis,area,hi,hj) in zip(self.face_velocity,m['faces']):
             conductance=area/(hi/self.D[:,i]+hj/self.D[:,j]); psi=self.valence*F*(phi[j]-phi[i])/self.rt
             flux=conductance*(bernoulli(psi)*c[:,i]-bernoulli(-psi)*c[:,j])
+            left_region=int(m['regions'][i]); right_region=int(m['regions'][j])
+            for k in range(self.ns):
+                partition=self.interface_partition.get((left_region,right_region,k))
+                if partition is not None:
+                    conductance_k=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
+                    flux[k]=conductance_k*(c[k,i]-c[k,j]/partition)
             flux += area * velocity * (c[:,i] if velocity >= 0 else c[:,j])
             div[:,i]+=flux; div[:,j]-=flux
             il=area/(hi/self.kappa[i]+hj/self.kappa[j])*(phi[i]-phi[j]); ionic[i]+=il; ionic[j]-=il
@@ -548,9 +578,20 @@ class Cell:
         for velocity,(i,j,_,area,hi,hj) in zip(self.face_velocity,m['faces']):
             psi=self.valence*F*(phi[j]-phi[i])/self.rt; G=area/(hi/self.D[:,i]+hj/self.D[:,j])
             dphi=G*(bernoulli_derivative(psi)*c[:,i]+bernoulli_derivative(-psi)*c[:,j])*self.valence*F/self.rt
+            left_region=int(m['regions'][i]); right_region=int(m['regions'][j])
             for k in range(self.ns):
+                partition=self.interface_partition.get((left_region,right_region,k))
+                if partition is not None:
+                    Gk=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
+                    derivative_left=Gk
+                    derivative_right=-Gk/partition
+                    derivative_potential=0.
+                else:
+                    derivative_left=G[k]*bernoulli(psi)[k]
+                    derivative_right=-G[k]*bernoulli(-psi)[k]
+                    derivative_potential=dphi[k]
                 for row,sign in [(k*n+i,1),(k*n+j,-1)]:
-                    add(row,k*n+i,sign*G[k]*bernoulli(psi)[k]); add(row,k*n+j,-sign*G[k]*bernoulli(-psi)[k]); add(row,prow(i),-sign*dphi[k]); add(row,prow(j),sign*dphi[k])
+                    add(row,k*n+i,sign*derivative_left); add(row,k*n+j,sign*derivative_right); add(row,prow(i),-sign*derivative_potential); add(row,prow(j),sign*derivative_potential)
                     add(row,k*n+(i if velocity >= 0 else j),sign*area*velocity)
             G=area/(hi/self.kappa[i]+hj/self.kappa[j])
             for row,sign in [(prow(i),1),(prow(j),-1)]: add(row,prow(i),sign*G); add(row,prow(j),-sign*G)
