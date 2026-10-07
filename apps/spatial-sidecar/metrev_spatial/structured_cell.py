@@ -24,7 +24,7 @@ import warnings
 F = 96485.33212
 R = 8.31446261815324
 SOLVER_VERSION = "structured-cell-fv-v1"
-PROCESS_PROTOCOL_VERSION = "structured-cell-process-v8"
+PROCESS_PROTOCOL_VERSION = "structured-cell-process-v9"
 DARCY_PRESSURE_SOLVE_TOLERANCE = 1e-10
 
 
@@ -101,22 +101,38 @@ def validate(inp):
     by_id={s['id']:s for s in species}
     partition=inp.get('interface_partition')
     if partition is not None:
-        if not isinstance(partition,dict) or set(partition)!={'version','interfaces'} or partition['version']!='structured-cell-neutral-membrane-partition-v1': raise ValueError('Unsupported neutral membrane partition contract')
+        supported_versions={
+            'structured-cell-neutral-membrane-partition-v1',
+            'structured-cell-ideal-donnan-partition-v1',
+        }
+        if not isinstance(partition,dict) or set(partition)!={'version','interfaces'} or partition['version'] not in supported_versions: raise ValueError('Unsupported membrane partition contract')
+        donnan=partition['version']=='structured-cell-ideal-donnan-partition-v1'
         entries=partition['interfaces']
-        if not isinstance(entries,list) or not 1<=len(entries)<=15: raise ValueError('Neutral membrane partition needs 1..15 interfaces')
+        if not isinstance(entries,list) or not 1<=len(entries)<=15: raise ValueError('Membrane partition needs 1..15 interfaces')
         tag_index={tag:index for index,tag in enumerate(tags)}; seen=set()
         for entry in entries:
-            if not isinstance(entry,dict) or set(entry)!={'left_domain','right_domain','species'}: raise ValueError('Invalid neutral membrane partition interface')
+            expected={'left_domain','right_domain','fixed_charge_density','species'} if donnan else {'left_domain','right_domain','species'}
+            if not isinstance(entry,dict) or set(entry)!=expected: raise ValueError('Invalid membrane partition interface')
             left=tag_index.get(entry['left_domain']); right=tag_index.get(entry['right_domain'])
             if left is None or right!=left+1: raise ValueError('Partition interfaces must name adjacent layers in positive-x order')
-            if layers[left]['kind'] not in ['membrane','separator'] and layers[right]['kind'] not in ['membrane','separator']: raise ValueError('Neutral partition is limited to membrane or separator interfaces')
+            if donnan:
+                if sum(layers[index]['kind']=='membrane' for index in (left,right))!=1: raise ValueError('Ideal Donnan partition requires exactly one ion-exchange membrane side; porous separators use a different interface law')
+                number(entry['fixed_charge_density'],'mol/m3')
+            elif layers[left]['kind'] not in ['membrane','separator'] and layers[right]['kind'] not in ['membrane','separator']:
+                raise ValueError('Neutral partition is limited to membrane or separator interfaces')
             if (left,right) in seen: raise ValueError('Duplicate neutral membrane partition interface')
             seen.add((left,right)); selected=entry['species']
             if not isinstance(selected,dict) or not selected: raise ValueError('Neutral membrane partition needs at least one species')
             for species_id,coefficient in selected.items():
                 if species_id not in by_id: raise ValueError('Unknown partition species')
-                if number(by_id[species_id]['valence'],'1')!=0: raise ValueError('Membrane partition currently supports neutral species only')
+                valence=number(by_id[species_id]['valence'],'1')
+                if not donnan and valence!=0: raise ValueError('Neutral membrane partition currently supports neutral species only')
+                if donnan and valence!=0 and abs(valence)>4: raise ValueError('Ideal Donnan partition supports absolute valence up to four')
                 number(coefficient,'1',0,True)
+            if donnan:
+                charged=[number(item['valence'],'1') for item in species if number(item['valence'],'1')!=0]
+                if not any(z>0 for z in charged) or not any(z<0 for z in charged): raise ValueError('Donnan closure requires declared cations and anions')
+                if any(item['id'] not in selected for item in species if number(item['valence'],'1')!=0): raise ValueError('Donnan closure requires a partition coefficient for every charged species')
     def stoichiometry(nu,electrons):
         if len(nu)<2 or not any(v['value']<0 for v in nu.values()) or not any(v['value']>0 for v in nu.values()): raise ValueError('Reaction needs reactants and products')
         atoms={}; charge=0
@@ -451,18 +467,93 @@ def bernoulli_derivative(x):
     return result
 
 
+def solve_ideal_donnan_interface(solution_concentration, valence, partition, fixed_charge):
+    """Return membrane-minus-solution dimensionless Donnan jump and sensitivities.
+
+    The root is the ideal membrane electroneutrality condition
+    ``X + sum(z_i K_i c_i exp(-z_i psi)) = 0``. Log-scaled bracketing avoids
+    overflow while searching; the final concentrations and derivatives must
+    still be representable as finite floating-point values.
+    """
+    c=np.asarray(solution_concentration,dtype=float); z=np.asarray(valence,dtype=float); k=np.asarray(partition,dtype=float)
+    if c.shape!=z.shape or c.shape!=k.shape or not np.isfinite(c).all() or not np.isfinite(k).all() or not np.isfinite(z).all() or not math.isfinite(fixed_charge):
+        raise ValueError('Invalid Donnan interface state')
+    charged=z!=0
+    if not np.any(z>0) or not np.any(z<0) or np.any(c[charged]<=0) or np.any(k<=0):
+        raise ValueError('Donnan interface requires positive cation and anion states and positive partition coefficients')
+
+    base=k*c
+    def scaled_charge(psi):
+        terms=[]
+        for zi,bi in zip(z,base):
+            if zi!=0:
+                terms.append((1. if zi>0 else -1., math.log(abs(zi)*bi)-zi*psi))
+        if fixed_charge!=0:
+            terms.append((1. if fixed_charge>0 else -1., math.log(abs(fixed_charge))))
+        scale=max(log_value for _,log_value in terms)
+        return sum(sign*math.exp(log_value-scale) for sign,log_value in terms)
+
+    at_zero=scaled_charge(0.)
+    if at_zero==0:
+        low=high=0.
+    elif at_zero>0:
+        low=0.; high=1.
+        while scaled_charge(high)>0 and high<1024.: high*=2.
+        if scaled_charge(high)>0: raise ValueError('No finite ideal Donnan root for declared species and fixed charge')
+    else:
+        high=0.; low=-1.
+        while scaled_charge(low)<0 and low>-1024.: low*=2.
+        if scaled_charge(low)<0: raise ValueError('No finite ideal Donnan root for declared species and fixed charge')
+    if high!=low:
+        for _ in range(160):
+            middle=(low+high)/2.
+            value=scaled_charge(middle)
+            if value>0: low=middle
+            else: high=middle
+            if high-low<=1e-13*max(1.,abs(middle)): break
+    psi=(low+high)/2
+    exponent=-z*psi
+    if np.any(exponent>700): raise ValueError('Donnan membrane concentration exceeds finite solver range')
+    membrane=base*np.exp(exponent)
+    denominator=float(np.sum(z*z*membrane))
+    if not math.isfinite(denominator) or denominator<=0: raise ValueError('Donnan charge derivative is singular')
+    derivative=z*np.exp(exponent)*k/denominator
+    residual=float(fixed_charge+np.sum(z*membrane))
+    normalizer=max(abs(fixed_charge),float(np.sum(np.abs(z*membrane))),1e-30)
+    if not np.isfinite(membrane).all() or not np.isfinite(derivative).all() or not math.isfinite(residual):
+        raise ValueError('Nonfinite Donnan interface closure')
+    return psi,derivative,residual,normalizer
+
+
 class Cell:
     def __init__(self, inp):
         self.input=validate(inp); self.mesh=topology(inp); m=self.mesh; self.n=m['count']; self.ns=len(inp['species'])
         self.active=np.flatnonzero(np.isin(m['regions'],[0,len(inp['geometry']['layers'])-1])); self.solid_index={int(i):j for j,i in enumerate(self.active)}
         self.size=(self.ns+1)*self.n+len(self.active)+1
         self.species_index={s['id']:i for i,s in enumerate(inp['species'])}
-        self.interface_partition={}
-        for entry in inp.get('interface_partition',{}).get('interfaces',[]):
+        self.interface_partition={}; self.donnan_interfaces={}
+        partition_contract=inp.get('interface_partition')
+        for entry in (partition_contract or {}).get('interfaces',[]):
             left=next(i for i,layer in enumerate(inp['geometry']['layers']) if layer['tag']==entry['left_domain'])
             right=next(i for i,layer in enumerate(inp['geometry']['layers']) if layer['tag']==entry['right_domain'])
-            for species_id,coefficient in entry['species'].items():
-                self.interface_partition[(left,right,self.species_index[species_id])]=coefficient['value']
+            if partition_contract['version']=='structured-cell-neutral-membrane-partition-v1':
+                for species_id,coefficient in entry['species'].items():
+                    self.interface_partition[(left,right,self.species_index[species_id])]=coefficient['value']
+            else:
+                membrane=left if inp['geometry']['layers'][left]['kind']=='membrane' else right
+                partition=np.ones(self.ns)
+                for species_id,coefficient in entry['species'].items():
+                    partition[self.species_index[species_id]]=coefficient['value']
+                self.donnan_interfaces[(left,right)]={
+                    'left_domain':entry['left_domain'],
+                    'right_domain':entry['right_domain'],
+                    'membrane_domain':inp['geometry']['layers'][membrane]['tag'],
+                    'solution_domain':inp['geometry']['layers'][right if membrane==left else left]['tag'],
+                    'membrane_region':membrane,
+                    'orientation':1. if membrane==right else -1.,
+                    'fixed_charge_density':entry['fixed_charge_density']['value'],
+                    'partition':partition,
+                }
         self.kappa=np.array([inp['geometry']['layers'][r]['electrolyte_conductivity']['value'] for r in m['regions']])
         self.sigma=np.array([inp['geometry']['layers'][r]['solid_conductivity']['value'] for r in m['regions']])
         self.D=np.array([[inp['geometry']['layers'][r]['diffusivity'][s['id']]['value'] for r in m['regions']] for s in inp['species']])
@@ -488,21 +579,45 @@ class Cell:
             k=self.species_index[key]; a*=np.power(c[k]/self.refs[k],v['value'])
         return a
 
+    def donnan_state(self,solution_cell,c,interface):
+        return solve_ideal_donnan_interface(
+            c[:,solution_cell],self.valence,interface['partition'],
+            interface['fixed_charge_density'],
+        )
+
     def balances(self,x):
         c,phi,solid,V=self.unpack(x); m=self.mesh; div=np.zeros_like(c); ionic=np.zeros(self.n); electronic=np.zeros(self.n)
         source=np.zeros_like(c); jr=np.zeros(self.n); boundary_species=np.zeros_like(c); collector=np.zeros(2); interface_flux={}
         for velocity,(i,j,axis,area,hi,hj) in zip(self.face_velocity,m['faces']):
-            conductance=area/(hi/self.D[:,i]+hj/self.D[:,j]); psi=self.valence*F*(phi[j]-phi[i])/self.rt
-            flux=conductance*(bernoulli(psi)*c[:,i]-bernoulli(-psi)*c[:,j])
             left_region=int(m['regions'][i]); right_region=int(m['regions'][j])
-            for k in range(self.ns):
-                partition=self.interface_partition.get((left_region,right_region,k))
-                if partition is not None:
-                    conductance_k=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
-                    flux[k]=conductance_k*(c[k,i]-c[k,j]/partition)
+            interface=self.donnan_interfaces.get((left_region,right_region))
+            if interface is not None:
+                membrane_right=interface['membrane_region']==right_region
+                solution_cell=i if membrane_right else j
+                donnan,_,_,_=self.donnan_state(solution_cell,c,interface)
+                orientation=interface['orientation']
+                p_left=interface['partition'] if interface['membrane_region']==left_region else np.ones(self.ns)
+                p_right=interface['partition'] if interface['membrane_region']==right_region else np.ones(self.ns)
+                conductance=area/(hi/(p_left*self.D[:,i])+hj/(p_right*self.D[:,j]))
+                psi=self.valence*(F*(phi[j]-phi[i])/self.rt+orientation*donnan)
+                flux=conductance*(bernoulli(psi)*c[:,i]/p_left-bernoulli(-psi)*c[:,j]/p_right)
+            else:
+                conductance=area/(hi/self.D[:,i]+hj/self.D[:,j]); psi=self.valence*F*(phi[j]-phi[i])/self.rt
+                flux=conductance*(bernoulli(psi)*c[:,i]-bernoulli(-psi)*c[:,j])
+                for k in range(self.ns):
+                    partition=self.interface_partition.get((left_region,right_region,k))
+                    if partition is not None:
+                        conductance_k=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
+                        flux[k]=conductance_k*(c[k,i]-c[k,j]/partition)
             flux += area * velocity * (c[:,i] if velocity >= 0 else c[:,j])
             div[:,i]+=flux; div[:,j]-=flux
-            il=area/(hi/self.kappa[i]+hj/self.kappa[j])*(phi[i]-phi[j]); ionic[i]+=il; ionic[j]-=il
+            # phi is the continuous supporting-electrolyte bulk potential. The
+            # Donnan equilibrium jump belongs in the trace-ion electrochemical
+            # flux; it is not an ohmic resistor or a source in this separate
+            # fixed-conductivity current field.
+            ionic_conductance=area/(hi/self.kappa[i]+hj/self.kappa[j])
+            il=ionic_conductance*(phi[i]-phi[j])
+            ionic[i]+=il; ionic[j]-=il
             if self.sigma[i]>0 and self.sigma[j]>0:
                 iss=area/(hi/self.sigma[i]+hj/self.sigma[j])*(solid[i]-solid[j]); electronic[i]+=iss; electronic[j]-=iss
             if m['regions'][i]!=m['regions'][j]:
@@ -541,6 +656,58 @@ class Cell:
         # div(i_l)=j_F, div(i_s)=-j_F; anodic j_F is positive.
         return div-source,ionic-jr,electronic+jr,boundary_species,source,collector,jr,interface_flux
 
+    def donnan_diagnostics(self,x):
+        if not self.donnan_interfaces: return []
+        c,_,_,_=self.unpack(x); regions=self.mesh['regions']; diagnostics=[]
+        interface_flux=self.balances(x)[-1]
+        for (left_region,right_region),interface in self.donnan_interfaces.items():
+            potential=[]; absolute=[]; normalizers=[]; solution_states=[]; equilibrium_states=[]; factors=[]
+            for i,j,_,_,_,_ in self.mesh['faces']:
+                if regions[i]!=left_region or regions[j]!=right_region: continue
+                solution_cell=i if interface['membrane_region']==right_region else j
+                donnan,_,residual,normalizer=self.donnan_state(solution_cell,c,interface)
+                potential.append(donnan); absolute.append(abs(residual)); normalizers.append(normalizer)
+                factor=interface['partition']*np.exp(-self.valence*donnan)
+                solution_states.append(c[:,solution_cell]); equilibrium_states.append(c[:,solution_cell]*factor); factors.append(factor)
+            if not potential: raise ValueError('Donnan interface has no mesh faces')
+            # Conservative bound: never hide a low-concentration face behind the
+            # largest neighboring charge scale.
+            maximum=max(absolute); normalization=max(min(normalizers),1e-30)
+            solution_states=np.array(solution_states); equilibrium_states=np.array(equilibrium_states); factors=np.array(factors)
+            flux=interface_flux['interface:'+interface['left_domain']+':'+interface['right_domain']]
+            species=[{
+                'species_id':item['id'],
+                'valence':float(self.valence[k]),
+                'partition_coefficient':float(interface['partition'][k]),
+                'mean_solution_concentration_mol_m3':float(np.mean(solution_states[:,k])),
+                'minimum_equilibrium_membrane_concentration_mol_m3':float(np.min(equilibrium_states[:,k])),
+                'mean_equilibrium_membrane_concentration_mol_m3':float(np.mean(equilibrium_states[:,k])),
+                'maximum_equilibrium_membrane_concentration_mol_m3':float(np.max(equilibrium_states[:,k])),
+                'mean_effective_partition_factor':float(np.mean(factors[:,k])),
+                'positive_x_flux_mol_s':float(flux[k]),
+            } for k,item in enumerate(self.input['species'])]
+            diagnostics.append({
+                'interface_id':interface['left_domain']+':'+interface['right_domain'],
+                'left_domain':interface['left_domain'],
+                'right_domain':interface['right_domain'],
+                'membrane_domain':interface['membrane_domain'],
+                'solution_domain':interface['solution_domain'],
+                'orientation':'membrane_right' if interface['orientation']>0 else 'membrane_left',
+                'face_count':len(potential),
+                'species':species,
+                'fixed_charge_density_mol_m3':interface['fixed_charge_density'],
+                'minimum_dimensionless_potential_jump':float(min(potential)),
+                'mean_dimensionless_potential_jump':float(np.mean(potential)),
+                'maximum_dimensionless_potential_jump':float(max(potential)),
+                'minimum_donnan_potential_jump_V':float(min(potential)*self.rt/F),
+                'mean_donnan_potential_jump_V':float(np.mean(potential)*self.rt/F),
+                'maximum_donnan_potential_jump_V':float(max(potential)*self.rt/F),
+                'maximum_absolute_charge_residual_mol_m3':float(maximum),
+                'normalization_mol_m3':float(normalization),
+                'relative_charge_residual':float(maximum/normalization),
+            })
+        return diagnostics
+
     def residual(self,x):
         mass,ionic,solid,_,_,collector,_,_=self.balances(x); volume=self.mesh['volumes']; _,phi,_,V=self.unpack(x)
         # The anode collector at 0 V fixes the only global gauge. Imposing a
@@ -576,25 +743,42 @@ class Cell:
         def prow(i): return self.ns*n+i
         def srow(i): return (self.ns+1)*n+self.solid_index[i]
         for velocity,(i,j,_,area,hi,hj) in zip(self.face_velocity,m['faces']):
-            psi=self.valence*F*(phi[j]-phi[i])/self.rt; G=area/(hi/self.D[:,i]+hj/self.D[:,j])
-            dphi=G*(bernoulli_derivative(psi)*c[:,i]+bernoulli_derivative(-psi)*c[:,j])*self.valence*F/self.rt
             left_region=int(m['regions'][i]); right_region=int(m['regions'][j])
+            interface=self.donnan_interfaces.get((left_region,right_region))
+            if interface is not None:
+                solution_cell=i if interface['membrane_region']==right_region else j
+                donnan,d_donnan_dc,_,_=self.donnan_state(solution_cell,c,interface)
+                orientation=interface['orientation']
+                p_left=interface['partition'] if interface['membrane_region']==left_region else np.ones(self.ns)
+                p_right=interface['partition'] if interface['membrane_region']==right_region else np.ones(self.ns)
+                psi=self.valence*(F*(phi[j]-phi[i])/self.rt+orientation*donnan)
+                G=area/(hi/(p_left*self.D[:,i])+hj/(p_right*self.D[:,j]))
+                dflux_dpsi=G*(bernoulli_derivative(psi)*c[:,i]/p_left+bernoulli_derivative(-psi)*c[:,j]/p_right)
+                dflux_dleft=np.diag(G*bernoulli(psi)/p_left)
+                dflux_dright=np.diag(-G*bernoulli(-psi)/p_right)
+                dflux_dsolution=dflux_dpsi[:,None]*(self.valence[:,None]*orientation*d_donnan_dc[None,:])
+                if solution_cell==i: dflux_dleft+=dflux_dsolution
+                else: dflux_dright+=dflux_dsolution
+                dflux_dpotential=dflux_dpsi*self.valence*F/self.rt
+            else:
+                psi=self.valence*F*(phi[j]-phi[i])/self.rt; G=area/(hi/self.D[:,i]+hj/self.D[:,j])
+                dflux_dpsi=G*(bernoulli_derivative(psi)*c[:,i]+bernoulli_derivative(-psi)*c[:,j])
+                dflux_dleft=np.diag(G*bernoulli(psi)); dflux_dright=np.diag(-G*bernoulli(-psi))
+                dflux_dpotential=dflux_dpsi*self.valence*F/self.rt
+                for k in range(self.ns):
+                    partition=self.interface_partition.get((left_region,right_region,k))
+                    if partition is not None:
+                        Gk=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
+                        dflux_dleft[k,k]=Gk; dflux_dright[k,k]=-Gk/partition; dflux_dpotential[k]=0.
             for k in range(self.ns):
-                partition=self.interface_partition.get((left_region,right_region,k))
-                if partition is not None:
-                    Gk=area/(hi/self.D[k,i]+hj/(partition*self.D[k,j]))
-                    derivative_left=Gk
-                    derivative_right=-Gk/partition
-                    derivative_potential=0.
-                else:
-                    derivative_left=G[k]*bernoulli(psi)[k]
-                    derivative_right=-G[k]*bernoulli(-psi)[k]
-                    derivative_potential=dphi[k]
                 for row,sign in [(k*n+i,1),(k*n+j,-1)]:
-                    add(row,k*n+i,sign*derivative_left); add(row,k*n+j,sign*derivative_right); add(row,prow(i),-sign*derivative_potential); add(row,prow(j),sign*derivative_potential)
+                    for q in range(self.ns):
+                        add(row,q*n+i,sign*dflux_dleft[k,q]); add(row,q*n+j,sign*dflux_dright[k,q])
+                    add(row,prow(i),-sign*dflux_dpotential[k]); add(row,prow(j),sign*dflux_dpotential[k])
                     add(row,k*n+(i if velocity >= 0 else j),sign*area*velocity)
-            G=area/(hi/self.kappa[i]+hj/self.kappa[j])
-            for row,sign in [(prow(i),1),(prow(j),-1)]: add(row,prow(i),sign*G); add(row,prow(j),-sign*G)
+            ionic_conductance=area/(hi/self.kappa[i]+hj/self.kappa[j])
+            for row,sign in [(prow(i),1),(prow(j),-1)]:
+                add(row,prow(i),sign*ionic_conductance); add(row,prow(j),-sign*ionic_conductance)
             if self.sigma[i]>0 and self.sigma[j]>0:
                 G=area/(hi/self.sigma[i]+hj/self.sigma[j])
                 for row,sign in [(srow(i),1),(srow(j),-1)]: add(row,srow(i),sign*G); add(row,srow(j),-sign*G)
@@ -691,6 +875,15 @@ class Cell:
             normalization=max(np.max(np.abs(source[k])),np.max(np.abs(boundary[k])), self.rs*np.max(self.mesh['volumes']))
             diagnostic('species_local_'+s['id'],'species_mass',mass[k],normalization,'mol/s')
             diagnostic('species_global_'+s['id'],'species_mass',[np.sum(boundary[k])-np.sum(source[k])],max(np.sum(np.abs(source[k])),np.sum(np.abs(boundary[k])),normalization),'mol/s')
+        donnan_interfaces=self.donnan_diagnostics(result.x)
+        for entry in donnan_interfaces:
+            diagnostic(
+                'donnan_charge_'+entry['interface_id'].replace(':','_'),
+                'interface_charge',
+                [entry['maximum_absolute_charge_residual_mol_m3']],
+                entry['normalization_mol_m3'],
+                'mol/m3',
+            )
         charge_scale=max(np.max(np.abs(jr)),self.js*np.max(self.mesh['volumes']))
         diagnostic('liquid_charge','ionic_charge',ionic,charge_scale,'A'); diagnostic('solid_charge','solid_charge',electronic[self.active],charge_scale,'A')
         diagnostic('collector_current','circuit_closure',[collectors.sum()],max(np.max(np.abs(collectors)),charge_scale),'A')
@@ -738,7 +931,7 @@ class Cell:
             self.input['geometry']['layers'],
         )
         current=float(-collectors[0]); power=current*V
-        return {'version':SOLVER_VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'termination_reason':termination,'history':self.history.copy(),'residuals':residuals,'fields':fields,'field_extrema':field_extrema,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()}}
+        return {'version':SOLVER_VERSION,'status':'converged' if converged else 'not_converged','dimension':self.input['dimension'],'evaluations':int(result.nfev),'optimizer_termination':int(result.status),'termination_reason':termination,'history':self.history.copy(),'residuals':residuals,'fields':fields,'field_extrema':field_extrema,'mesh':{'shape':self.mesh['shape'],'centers_m':self.mesh['centers'].tolist(),'sizes_m':self.mesh['sizes'].tolist(),'region_index':self.mesh['regions'].tolist(),'volumes_m3':self.mesh['volumes'].tolist()},'circuit':{'collector_voltage_V':float(V),'anodic_current_A':current,'signed_electrical_power_W':float(power),'mfc_generated_power_W':float(power) if self.input['system']=='MFC' else None,'mec_electrical_input_W':float(-power) if self.input['system']=='MEC' else None},'interface_species_flux_mol_s':{tag:flux.tolist() for tag,flux in interfaces.items()},'donnan_interfaces':donnan_interfaces}
 
 
 def main():

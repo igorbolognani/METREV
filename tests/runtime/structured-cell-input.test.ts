@@ -127,6 +127,61 @@ function neutralMembranePartitionFixture(dimension: 2 | 3 = 2) {
   return input;
 }
 
+function donnanMembranePartitionFixture(dimension: 2 | 3 = 2) {
+  const input = structuredCellFixture(dimension);
+  const chloride = {
+    ...input.species[1],
+    id: 'chloride',
+    valence: {
+      ...input.species[1].valence,
+      value: -1,
+      source_ref: 'synthetic:ideal-donnan-fixture',
+    },
+    elements: { Cl: { ...input.species[1].elements.C } },
+  };
+  input.species[1].initial_concentration.value = 100;
+  input.species[1].reservoir_concentration.value = 100;
+  input.species[1].reference_concentration.value = 100;
+  chloride.initial_concentration.value = 100;
+  chloride.reservoir_concentration.value = 100;
+  chloride.reference_concentration.value = 100;
+  input.species.push(chloride);
+  for (const layer of input.geometry.layers)
+    layer.diffusivity.chloride = { ...layer.diffusivity.reduced };
+  const sourced = (value: number, unit: string, source_ref: string) => ({
+    value,
+    unit,
+    source_kind: 'test_fixture' as const,
+    source_ref,
+  });
+  input.interface_partition = {
+    version: 'structured-cell-ideal-donnan-partition-v1',
+    interfaces: [
+      {
+        left_domain: 'anode',
+        right_domain: 'membrane',
+        fixed_charge_density: sourced(-50, 'mol/m3', 'synthetic:fixed-charge'),
+        species: {
+          reduced: sourced(1.5, '1', 'synthetic:partition'),
+          oxidized: sourced(1.1, '1', 'synthetic:partition'),
+          chloride: sourced(0.8, '1', 'synthetic:partition'),
+        },
+      },
+      {
+        left_domain: 'membrane',
+        right_domain: 'cathode',
+        fixed_charge_density: sourced(-50, 'mol/m3', 'synthetic:fixed-charge'),
+        species: {
+          reduced: sourced(1.5, '1', 'synthetic:partition'),
+          oxidized: sourced(0.9, '1', 'synthetic:partition'),
+          chloride: sourced(1.2, '1', 'synthetic:partition'),
+        },
+      },
+    ],
+  };
+  return input;
+}
+
 describe('restricted structured spatial cell admission', () => {
   it.each([2, 3] as const)('retains dimension %i and provenance', (dim) => {
     const input = structuredCellInputSchema.parse(structuredCellFixture(dim));
@@ -156,6 +211,71 @@ describe('restricted structured spatial cell admission', () => {
     const atoms = structuredCellFixture();
     atoms.species[1].elements.C.value = 2;
     expect(structuredCellInputSchema.safeParse(atoms).success).toBe(false);
+  });
+  it('admits sourced ideal Donnan partition on both ion-exchange membrane interfaces', () => {
+    for (const dimension of [2, 3] as const) {
+      const input = donnanMembranePartitionFixture(dimension);
+      expect(structuredCellInputSchema.safeParse(input).success).toBe(true);
+      const graph = compileStructuredCellEquationGraph(input);
+      expect(graph.interfaces.map((entry) => entry.law)).toEqual([
+        'structured-cell-ideal-donnan-partition-v1',
+        'structured-cell-ideal-donnan-partition-v1',
+      ]);
+      expect(
+        graph.nodes.filter(
+          (node) => node.equation_id === 'cell-ideal-donnan-interface-v1',
+        ),
+      ).toHaveLength(2);
+      expect(
+        graph.couplings.filter(
+          (coupling) => coupling.kind === 'donnan_interface',
+        ),
+      ).toHaveLength(12);
+    }
+  });
+  it('rejects unsourced charge, missing charged partition, porous separator Donnan, and excessive valence', () => {
+    const unsourced = donnanMembranePartitionFixture();
+    unsourced.interface_partition!.interfaces[0].fixed_charge_density.source_ref =
+      '';
+    expect(structuredCellInputSchema.safeParse(unsourced).success).toBe(false);
+
+    const missingIon = donnanMembranePartitionFixture();
+    delete missingIon.interface_partition!.interfaces[0].species.chloride;
+    expect(structuredCellInputSchema.safeParse(missingIon).success).toBe(false);
+
+    const separator = donnanMembranePartitionFixture();
+    separator.geometry.layers[1].kind = 'separator';
+    expect(structuredCellInputSchema.safeParse(separator).success).toBe(false);
+
+    const excessive = donnanMembranePartitionFixture();
+    excessive.species[1].valence.value = 5;
+    expect(structuredCellInputSchema.safeParse(excessive).success).toBe(false);
+
+    const convective = donnanMembranePartitionFixture();
+    const faces = structuredCellTransportFaces(convective);
+    const membraneFace = faces.interior.findIndex(
+      (face) => face.left_region === 0 && face.right_region === 1,
+    );
+    const velocity = (value: number) => ({
+      value,
+      unit: 'm/s',
+      source_kind: 'test_fixture' as const,
+      source_ref: 'synthetic:donnan-interface-flow-limit',
+    });
+    convective.advection = {
+      version: 'structured-cell-prescribed-flow-v1',
+      face_normal_velocity: faces.interior.map((_, index) =>
+        velocity(index === membraneFace ? 1e-6 : 0),
+      ),
+      boundary_normal_velocity: faces.boundary.map(() => velocity(0)),
+      inlet_concentrations: {},
+    };
+    const rejectedFlow = structuredCellInputSchema.safeParse(convective);
+    expect(rejectedFlow.success).toBe(false);
+    if (!rejectedFlow.success)
+      expect(
+        rejectedFlow.error.issues.map((issue) => issue.message).join(' '),
+      ).toContain('Membrane convection/water transport is not implemented');
   });
   it('rejects missing provenance, wrong units, depth and geometry rank', () => {
     const input = structuredCellFixture();

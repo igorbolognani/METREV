@@ -16,6 +16,8 @@ import {
   structuredCellFieldObservablesSchema,
   deriveStructuredCellFieldReduction,
   structuredCellMeshRefinementEvidenceSchema,
+  structuredCellDonnanInterfaceEvidenceSchema,
+  structuredCellDonnanSpeciesSummarySchema,
   validateStructuredCellFieldSamples,
   type SpatialRuntimeInput,
   type SpatialSimulationResult,
@@ -60,6 +62,7 @@ const envelopeSchema = z
       'structured-cell-process-v6',
       'structured-cell-process-v7',
       'structured-cell-process-v8',
+      'structured-cell-process-v9',
     ]),
     status: z.enum(['prepared', 'converged', 'not_converged']),
     dimension: z.union([z.literal(2), z.literal(3)]),
@@ -120,10 +123,11 @@ const residualSchema = z
       'solid_charge',
       'circuit_closure',
       'fluid_volume',
+      'interface_charge',
     ]),
     scope: z.literal('global'),
     absolute_residual: z.number().finite().nonnegative(),
-    unit: z.enum(['mol/s', 'A', 'V', 'm3/s']),
+    unit: z.enum(['mol/s', 'A', 'V', 'm3/s', 'mol/m3']),
     relative_residual: z.number().finite().nonnegative(),
     tolerance: z.number().finite().positive(),
     passed: z.boolean(),
@@ -151,6 +155,38 @@ const solveSchema = envelopeSchema
       z.string(),
       z.array(z.number().finite()),
     ),
+    donnan_interfaces: z
+      .array(
+        z
+          .object({
+            interface_id: z.string().min(1).max(160),
+            left_domain: z.string().min(1).max(160),
+            right_domain: z.string().min(1).max(160),
+            membrane_domain: z.string().min(1).max(160),
+            solution_domain: z.string().min(1).max(160),
+            orientation: z.enum(['membrane_right', 'membrane_left']),
+            face_count: z.number().int().positive().max(4096),
+            species: z
+              .array(structuredCellDonnanSpeciesSummarySchema)
+              .min(1)
+              .max(12),
+            fixed_charge_density_mol_m3: z.number().finite(),
+            minimum_dimensionless_potential_jump: z.number().finite(),
+            mean_dimensionless_potential_jump: z.number().finite(),
+            maximum_dimensionless_potential_jump: z.number().finite(),
+            minimum_donnan_potential_jump_V: z.number().finite(),
+            mean_donnan_potential_jump_V: z.number().finite(),
+            maximum_donnan_potential_jump_V: z.number().finite(),
+            maximum_absolute_charge_residual_mol_m3: z
+              .number()
+              .finite()
+              .nonnegative(),
+            normalization_mol_m3: z.number().finite().positive(),
+            relative_charge_residual: z.number().finite().nonnegative(),
+          })
+          .strict(),
+      )
+      .max(15),
   })
   .strict();
 
@@ -185,7 +221,7 @@ export interface StructuredCellExecutorOptions extends Omit<
 /** Opt-in research executor. No product registration or fidelity substitution occurs here. */
 export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecutor {
   readonly solverVersion = 'structured-cell-fv-v1';
-  readonly runtimeVersion = 'structured-cell-process-v8';
+  readonly runtimeVersion = 'structured-cell-process-v9';
   constructor(private readonly options: StructuredCellExecutorOptions) {
     if (
       !options.pythonExecutable.trim() ||
@@ -410,6 +446,134 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
           response.residuals.some((r) => !r.passed))
       )
         throw new Error('Invalid cell conservation claim');
+      const donnanPartition =
+        input.interface_partition?.version ===
+        'structured-cell-ideal-donnan-partition-v1'
+          ? input.interface_partition
+          : undefined;
+      const donnanInput = donnanPartition !== undefined;
+      if (
+        response.donnan_interfaces === undefined ||
+        donnanInput !== response.donnan_interfaces.length > 0
+      )
+        throw new Error('Donnan interface evidence does not match its input');
+      const donnanEvidence = donnanInput
+        ? structuredCellDonnanInterfaceEvidenceSchema.parse({
+            contract_version: 'structured-cell-donnan-interface-evidence-v1',
+            record_kind: 'ideal_donnan_interface_closure',
+            evidence_role: 'mathematical_software_verification',
+            decision_eligible: false,
+            independent_validation: false,
+            input_sha256: inputHash,
+            interfaces: response.donnan_interfaces.map((entry) => ({
+              ...entry,
+              tolerance: input.numerics.conservation_tolerance,
+              passed:
+                entry.relative_charge_residual <=
+                input.numerics.conservation_tolerance,
+            })),
+          })
+        : undefined;
+      if (donnanPartition && donnanEvidence) {
+        const declarations = donnanPartition.interfaces;
+        if (declarations.length !== donnanEvidence.interfaces.length)
+          throw new Error('Donnan interface evidence count differs from input');
+        const facesPerInterface = input.geometry.transverse_cells.reduce(
+          (a, b) => a * b,
+          1,
+        );
+        for (const [index, declared] of declarations.entries()) {
+          const evidence = donnanEvidence.interfaces[index];
+          if (
+            !evidence.species ||
+            evidence.species.length !== input.species.length
+          )
+            throw new Error('Donnan species outputs are incomplete');
+          for (const [speciesIndex, species] of input.species.entries()) {
+            const summary = evidence.species[speciesIndex];
+            const flux =
+              response.interface_species_flux_mol_s[
+                `interface:${declared.left_domain}:${declared.right_domain}`
+              ]?.[speciesIndex];
+            if (
+              summary.species_id !== species.id ||
+              summary.valence !== species.valence.value ||
+              summary.partition_coefficient !==
+                (declared.species[species.id]?.value ?? 1) ||
+              summary.positive_x_flux_mol_s !== flux
+            )
+              throw new Error(
+                'Donnan species outputs differ from sourced input or conservative flux',
+              );
+          }
+          const thermalVoltage =
+            (8.31446261815324 * input.temperature.value) / 96485.33212;
+          for (const [dimensionless, volts] of [
+            [
+              evidence.minimum_dimensionless_potential_jump,
+              evidence.minimum_donnan_potential_jump_V,
+            ],
+            [
+              evidence.mean_dimensionless_potential_jump,
+              evidence.mean_donnan_potential_jump_V,
+            ],
+            [
+              evidence.maximum_dimensionless_potential_jump,
+              evidence.maximum_donnan_potential_jump_V,
+            ],
+          ]) {
+            const expected = dimensionless * thermalVoltage;
+            if (
+              Math.abs(volts - expected) >
+              1e-12 * Math.max(Math.abs(volts), Math.abs(expected), 1e-30)
+            )
+              throw new Error(
+                'Donnan voltage output differs from declared temperature',
+              );
+          }
+          const left = input.geometry.layers.find(
+            (layer) => layer.tag === declared.left_domain,
+          );
+          const right = input.geometry.layers.find(
+            (layer) => layer.tag === declared.right_domain,
+          );
+          const membrane = [left, right].find(
+            (layer) => layer?.kind === 'membrane',
+          );
+          const solution = membrane === left ? right : left;
+          const balance = response.residuals.find(
+            (row) =>
+              row.balance_id ===
+              `donnan_charge_${declared.left_domain}_${declared.right_domain}`,
+          );
+          if (
+            !evidence ||
+            evidence.interface_id !==
+              `${declared.left_domain}:${declared.right_domain}` ||
+            evidence.left_domain !== declared.left_domain ||
+            evidence.right_domain !== declared.right_domain ||
+            evidence.membrane_domain !== membrane?.tag ||
+            evidence.solution_domain !== solution?.tag ||
+            evidence.orientation !==
+              (membrane === right ? 'membrane_right' : 'membrane_left') ||
+            evidence.face_count !== facesPerInterface ||
+            evidence.fixed_charge_density_mol_m3 !==
+              declared.fixed_charge_density.value ||
+            evidence.tolerance !== input.numerics.conservation_tolerance ||
+            !balance ||
+            balance.kind !== 'interface_charge' ||
+            balance.unit !== 'mol/m3' ||
+            balance.absolute_residual !==
+              evidence.maximum_absolute_charge_residual_mol_m3 ||
+            balance.relative_residual !== evidence.relative_charge_residual ||
+            balance.tolerance !== evidence.tolerance ||
+            balance.passed !== evidence.passed
+          )
+            throw new Error(
+              'Donnan interface evidence differs from its sourced input and charge residual',
+            );
+        }
+      }
       await context.reportProgress({ status: 'postprocessing', progress: 85 });
       const fields: SpatialSimulationResult['fields'] = [];
       const loadedFields = new Map<
@@ -725,6 +889,9 @@ export class StructuredCellDevelopmentExecutor implements SpatialSimulationExecu
             refinement_ratio: null,
             observables: [],
           }),
+        ...(donnanEvidence
+          ? { structured_cell_donnan_interface_evidence: donnanEvidence }
+          : {}),
       });
       if (response.status === 'not_converged')
         throw new SpatialNumericalResultError(result);

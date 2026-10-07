@@ -1,0 +1,3951 @@
+{
+  "version": "structured-cell-donnan-refinement-verification-v1",
+  "evidence_role": "mathematical_software_verification",
+  "data_role": "test_fixture",
+  "decision_eligible": false,
+  "independent_validation": false,
+  "runtime_source_sha256": "0b2a13bec3d05e6464691ccd93730ee502d1bac81b88f21615f8866f3d4c4293",
+  "source_donnan_fixture_sha256": "fd2c8b41f27f307bd4ab6bacd1061457ed323d1c8f7c66073ed02b37ccede68f",
+  "source_base_fixture_sha256": "e01169d6183e02e29bb92e95fdc32b161c42534f87dfd39e651dd97b493525dc",
+  "method": "One-sided heterogeneous source-traced numerical fixture; three all-axis grids; decreasing current differences and medium/fine relative current change <= 0.005. No exact error order or experimental validation.",
+  "known_limit": "Small two-sided worker fixture at 2/4/6 cells/layer conserved all balances but failed decreasing-current-difference refinement; do not use that series as convergence evidence.",
+  "status": "passed",
+  "series": [
+    {
+      "input": {
+        "contract_version": "spatial-cell-input-v1",
+        "model_id": "structured-cell-supporting-electrolyte-v1",
+        "system": "MFC",
+        "dimension": 2,
+        "coordinate_system": "cartesian",
+        "charge_model": "fixed-conductivity-supporting-electrolyte",
+        "geometry": {
+          "geometry_version": "structured-layers-v1",
+          "lengths_m": [
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          ],
+          "out_of_plane_depth": {
+            "value": 0.001,
+            "unit": "m",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "transverse_cells": [3],
+          "layers": [
+            {
+              "tag": "anode",
+              "kind": "anode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.7,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "membrane",
+              "kind": "membrane",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.15,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 0,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 2.5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "cathode",
+              "kind": "cathode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 1.1,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1.7000000000000001e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            }
+          ]
+        },
+        "temperature": {
+          "value": 298.15,
+          "unit": "K",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "reservoir_faces": ["y_min"],
+        "species": [
+          {
+            "id": "reduced",
+            "valence": {
+              "value": 0,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "oxidized",
+            "valence": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "chloride",
+            "valence": {
+              "value": -1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:ideal-donnan-fixture"
+            },
+            "elements": {
+              "Cl": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          }
+        ],
+        "reactions": [],
+        "electrodes": [
+          {
+            "role": "anode",
+            "domain_tag": "anode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          },
+          {
+            "role": "cathode",
+            "domain_tag": "cathode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0.3,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          }
+        ],
+        "circuit": {
+          "kind": "external_load",
+          "resistance": {
+            "value": 10000000,
+            "unit": "ohm",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "numerics": {
+          "max_evaluations": 1000,
+          "nonlinear_tolerance": 1e-7,
+          "conservation_tolerance": 1e-6,
+          "concentration_scale": {
+            "value": 1,
+            "unit": "mol/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "potential_scale": {
+            "value": 1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "species_rate_scale": {
+            "value": 0.0001,
+            "unit": "mol/(m3*s)",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "charge_rate_scale": {
+            "value": 100,
+            "unit": "A/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "interface_partition": {
+          "version": "structured-cell-ideal-donnan-partition-v1",
+          "interfaces": [
+            {
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 1.1,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 0.8,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            },
+            {
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 0.9,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 1.2,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "related_runs": [
+        {
+          "input_sha256": "188bafa102fc3d42a6ab3cb340a4d530c441866e61def116d35817ae4f7b4284",
+          "mesh_sha256": "2562df3588dbc6cf670b68d24251458f4599fb59919fbf34b6e4086864304bc1",
+          "refinement_factor": 1,
+          "cell_count": 18,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "d936aa8bef64b539db7acd418ed0373f974fa598cdb449280e3033231dc3c2ee",
+          "mesh_sha256": "a474f5d5fcdfad4415c8fddf7774d4572f27628656f2148af0caca7ba1d4c2e2",
+          "refinement_factor": 2,
+          "cell_count": 72,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "48b6db4cfd6e477990ee8ca1b54b980d47b2777c407be78a52e618581c7f32c0",
+          "mesh_sha256": "f14d3e887e4761278ed32ca164b1723b60268c7f98d6dc9467828ae7cbfc60cf",
+          "refinement_factor": 3,
+          "cell_count": 162,
+          "status": "converged"
+        }
+      ],
+      "checks": [
+        {
+          "name": "all_levels_converged",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "all_native_balances_passed",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "both_interface_orientations",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "level_0_anode:membrane_equilibrium_charge",
+          "actual": -8.952838470577262e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_0_membrane:cathode_equilibrium_charge",
+          "actual": -2.8279600883251987e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_anode:membrane_equilibrium_charge",
+          "actual": 1.1937117960769683e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_membrane:cathode_equilibrium_charge",
+          "actual": -2.7853275241795927e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_anode:membrane_equilibrium_charge",
+          "actual": 1.0089706847793423e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_membrane:cathode_equilibrium_charge",
+          "actual": -3.979039320256561e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "current_refinement_differences_decrease",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "medium_fine_relative_current_change",
+          "actual": 7.822431855946844e-5,
+          "expected": 0.0,
+          "tolerance": 0.005,
+          "unit": "1"
+        }
+      ],
+      "measured_observables": {
+        "currents_A": [
+          5.063950523442878e-10, 5.064816701204088e-10, 5.06521292403343e-10
+        ],
+        "interfaces_by_level": [
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 3,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9539144487189873,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.429314943549346,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.430871673078481,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4324454390483141,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 7.217628296923263e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.77906293889733,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.59684089254333,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.78709051669419,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.70384050635369,
+                  "mean_effective_partition_factor": 1.2506412631196844,
+                  "positive_x_flux_mol_s": 3.9624626619589936e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.28525375464172,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.59684089253983,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.78709051669509,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.7038405063575,
+                  "mean_effective_partition_factor": 0.7036395025185777,
+                  "positive_x_flux_mol_s": -1.64995194707145e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.1291580465415052,
+              "mean_dimensionless_potential_jump": -0.1283459117530299,
+              "maximum_dimensionless_potential_jump": -0.12721762841968598,
+              "minimum_donnan_potential_jump_V": -0.0033184033300063505,
+              "mean_donnan_potential_jump_V": -0.0032975374926957463,
+              "maximum_donnan_potential_jump_V": -0.003268548983881811,
+              "maximum_absolute_charge_residual_mol_m3": 3.808509063674137e-12,
+              "normalization_mol_m3": 197.19368178508313,
+              "relative_charge_residual": 1.9313545085206855e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 3,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.964469289488881,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.443920789342949,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4467039342333212,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.451408977172645,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -9.987372119182531e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.2586104842393,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.11065122602346,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.7733421768978,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 130.65151704361037,
+                  "mean_effective_partition_factor": 1.3481920458910652,
+                  "positive_x_flux_mol_s": -1.6911658760940752e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.58156854578243,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.11065122602938,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.77334217690064,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 80.65151704361092,
+                  "mean_effective_partition_factor": 0.8010758716580547,
+                  "positive_x_flux_mol_s": 1.909575894719153e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40588610963649785,
+              "mean_dimensionless_potential_jump": -0.40412307941792847,
+              "maximum_dimensionless_potential_jump": -0.4014007274087419,
+              "minimum_donnan_potential_jump_V": -0.010428260986343195,
+              "mean_donnan_potential_jump_V": -0.01038296419295818,
+              "maximum_donnan_potential_jump_V": -0.010313019948564308,
+              "maximum_absolute_charge_residual_mol_m3": 5.9117155615240335e-12,
+              "normalization_mol_m3": 208.22130245205284,
+              "relative_charge_residual": 2.839150217536136e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9510056034279263,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.419998502714263,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4265084051418893,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4313989154746656,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 1.1604390630919477e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.68957934071743,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.06974576814098,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.81006612400653,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.83031175718175,
+                  "mean_effective_partition_factor": 1.2520354910103388,
+                  "positive_x_flux_mol_s": 8.796275655900745e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.43263802897816,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.06974576814319,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.81006612400533,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.83031175717747,
+                  "mean_effective_partition_factor": 0.7028640716752877,
+                  "positive_x_flux_mol_s": -2.2548355613627584e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13457054736531404,
+              "mean_dimensionless_potential_jump": -0.12945432187790593,
+              "maximum_dimensionless_potential_jump": -0.12560716091039126,
+              "minimum_donnan_potential_jump_V": -0.0034574644356697723,
+              "mean_donnan_potential_jump_V": -0.0033260154075287138,
+              "maximum_donnan_potential_jump_V": -0.003227171919975899,
+              "maximum_absolute_charge_residual_mol_m3": 5.115907697472721e-12,
+              "normalization_mol_m3": 196.13949153628414,
+              "relative_charge_residual": 2.6083006830505228e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9623215476902748,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4413923276267553,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.443482321535412,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4460151782877448,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -1.4868906063341324e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.0347077667433,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.02358628263616,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.73178097669154,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.01498765448906,
+                  "mean_effective_partition_factor": 1.3508930853445926,
+                  "positive_x_flux_mol_s": -2.3731810421710738e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.72980568652997,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.02358628263065,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.73178097669432,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.0149876544933,
+                  "mean_effective_partition_factor": 0.7994720904851685,
+                  "positive_x_flux_mol_s": 6.748291567262235e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40693047792191805,
+              "mean_dimensionless_potential_jump": -0.4061258238292946,
+              "maximum_dimensionless_potential_jump": -0.40369055857010494,
+              "minimum_donnan_potential_jump_V": -0.010455093501148826,
+              "mean_donnan_potential_jump_V": -0.010434419862208283,
+              "maximum_donnan_potential_jump_V": -0.010371851616853575,
+              "maximum_absolute_charge_residual_mol_m3": 5.8122395785176195e-12,
+              "normalization_mol_m3": 208.0471725652668,
+              "relative_charge_residual": 2.793712361889587e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 9,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9496845041504408,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4110256717725176,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.424526756225661,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.431602136950156,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 1.41281053792997e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.65103842549813,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.88599851270773,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.83205651546774,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.86919701722066,
+                  "mean_effective_partition_factor": 1.252770730768808,
+                  "positive_x_flux_mol_s": 1.1705976421815599e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.52435294243645,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.8859985127064,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.83205651546673,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.86919701721936,
+                  "mean_effective_partition_factor": 0.7024603553564901,
+                  "positive_x_flux_mol_s": -2.616950799709982e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13835687013661868,
+              "mean_dimensionless_potential_jump": -0.13003511989118188,
+              "maximum_dimensionless_potential_jump": -0.1250052776821633,
+              "minimum_donnan_potential_jump_V": -0.003554744833052823,
+              "mean_donnan_potential_jump_V": -0.003340937606438688,
+              "maximum_donnan_potential_jump_V": -0.0032117079875124666,
+              "maximum_absolute_charge_residual_mol_m3": 4.447997525858227e-12,
+              "normalization_mol_m3": 195.77199702541412,
+              "relative_charge_residual": 2.272029500358425e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 9,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9613440612279661,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.436976302135749,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4420160918419491,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4434549172387339,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -1.7686681505194868e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 95.92680611206377,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 128.99778078229437,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.70214626125502,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.13475550076248,
+                  "mean_effective_partition_factor": 1.352098119719923,
+                  "positive_x_flux_mol_s": -2.7769202682101886e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.78224661755252,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 78.99778078229095,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.70214626125542,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.1347555007619,
+                  "mean_effective_partition_factor": 0.7987591434858098,
+                  "positive_x_flux_mol_s": 9.523693709167337e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.408293695420781,
+              "mean_dimensionless_potential_jump": -0.4070177237638638,
+              "maximum_dimensionless_potential_jump": -0.40500454550769405,
+              "minimum_donnan_potential_jump_V": -0.010490118074598811,
+              "mean_donnan_potential_jump_V": -0.010457335071846081,
+              "maximum_donnan_potential_jump_V": -0.010405611330212814,
+              "maximum_absolute_charge_residual_mol_m3": 5.6417093219351955e-12,
+              "normalization_mol_m3": 207.9955615645853,
+              "relative_charge_residual": 2.712418130222155e-14
+            }
+          ]
+        ],
+        "data_role": "test_fixture",
+        "concentration_role": "local_equilibrium_prediction_not_measurement"
+      }
+    },
+    {
+      "input": {
+        "contract_version": "spatial-cell-input-v1",
+        "model_id": "structured-cell-supporting-electrolyte-v1",
+        "system": "MEC",
+        "dimension": 2,
+        "coordinate_system": "cartesian",
+        "charge_model": "fixed-conductivity-supporting-electrolyte",
+        "geometry": {
+          "geometry_version": "structured-layers-v1",
+          "lengths_m": [
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          ],
+          "out_of_plane_depth": {
+            "value": 0.001,
+            "unit": "m",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "transverse_cells": [3],
+          "layers": [
+            {
+              "tag": "anode",
+              "kind": "anode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.7,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "membrane",
+              "kind": "membrane",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.15,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 0,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 2.5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "cathode",
+              "kind": "cathode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 1.1,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1.7000000000000001e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            }
+          ]
+        },
+        "temperature": {
+          "value": 298.15,
+          "unit": "K",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "reservoir_faces": ["y_min"],
+        "species": [
+          {
+            "id": "reduced",
+            "valence": {
+              "value": 0,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "oxidized",
+            "valence": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "chloride",
+            "valence": {
+              "value": -1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:ideal-donnan-fixture"
+            },
+            "elements": {
+              "Cl": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          }
+        ],
+        "reactions": [],
+        "electrodes": [
+          {
+            "role": "anode",
+            "domain_tag": "anode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          },
+          {
+            "role": "cathode",
+            "domain_tag": "cathode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0.3,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          }
+        ],
+        "circuit": {
+          "kind": "applied_voltage",
+          "voltage": {
+            "value": 0.1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "numerics": {
+          "max_evaluations": 1000,
+          "nonlinear_tolerance": 1e-7,
+          "conservation_tolerance": 1e-6,
+          "concentration_scale": {
+            "value": 1,
+            "unit": "mol/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "potential_scale": {
+            "value": 1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "species_rate_scale": {
+            "value": 0.0001,
+            "unit": "mol/(m3*s)",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "charge_rate_scale": {
+            "value": 100,
+            "unit": "A/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "interface_partition": {
+          "version": "structured-cell-ideal-donnan-partition-v1",
+          "interfaces": [
+            {
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 1.1,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 0.8,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            },
+            {
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 0.9,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 1.2,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "related_runs": [
+        {
+          "input_sha256": "9be51294464ac196af5df81c85303759af860b25a07c5429151961444e0827f5",
+          "mesh_sha256": "2562df3588dbc6cf670b68d24251458f4599fb59919fbf34b6e4086864304bc1",
+          "refinement_factor": 1,
+          "cell_count": 18,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "2a06919d8067bbedc801298d8b7276d1d537b9eb5b8fe40c5b17801f4c169eda",
+          "mesh_sha256": "a474f5d5fcdfad4415c8fddf7774d4572f27628656f2148af0caca7ba1d4c2e2",
+          "refinement_factor": 2,
+          "cell_count": 72,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "84b8e84b22fb3b8fd992745d2d73147c09c3445623c7d4963c0e65ab58bbba34",
+          "mesh_sha256": "f14d3e887e4761278ed32ca164b1723b60268c7f98d6dc9467828ae7cbfc60cf",
+          "refinement_factor": 3,
+          "cell_count": 162,
+          "status": "converged"
+        }
+      ],
+      "checks": [
+        {
+          "name": "all_levels_converged",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "all_native_balances_passed",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "both_interface_orientations",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "level_0_anode:membrane_equilibrium_charge",
+          "actual": -1.0516032489249483e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_0_membrane:cathode_equilibrium_charge",
+          "actual": 1.5631940186722204e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_anode:membrane_equilibrium_charge",
+          "actual": 1.0658141036401503e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_membrane:cathode_equilibrium_charge",
+          "actual": -7.389644451905042e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_anode:membrane_equilibrium_charge",
+          "actual": 7.673861546209082e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_membrane:cathode_equilibrium_charge",
+          "actual": 8.100187187665142e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "current_refinement_differences_decrease",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "medium_fine_relative_current_change",
+          "actual": 0.00010096359113075168,
+          "expected": 0.0,
+          "tolerance": 0.005,
+          "unit": "1"
+        }
+      ],
+      "measured_observables": {
+        "currents_A": [
+          1.409034803066722e-9, 1.409416390212033e-9, 1.4095587043207308e-9
+        ],
+        "interfaces_by_level": [
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 3,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9506377645574404,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.423872245574254,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4259566468361609,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4296584434973403,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 6.677925655389087e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.77610417212509,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.59712510078786,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.78759145657621,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.70450728629353,
+                  "mean_effective_partition_factor": 1.2506832325441393,
+                  "positive_x_flux_mol_s": 3.977012342078104e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.28954863887476,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.59712510078896,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.78759145657726,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.70450728629696,
+                  "mean_effective_partition_factor": 0.7036158769906192,
+                  "positive_x_flux_mol_s": -1.6507980252017114e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.12917416080111366,
+              "mean_dimensionless_potential_jump": -0.12837947900511418,
+              "maximum_dimensionless_potential_jump": -0.12726509465690583,
+              "minimum_donnan_potential_jump_V": -0.003318817346896333,
+              "mean_donnan_potential_jump_V": -0.0032983999219758295,
+              "maximum_donnan_potential_jump_V": -0.003269768513937204,
+              "maximum_absolute_charge_residual_mol_m3": 3.424815986363683e-12,
+              "normalization_mol_m3": 197.19425020157684,
+              "relative_charge_residual": 1.736772742036216e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 3,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9665053163792366,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.447965414872608,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.449757974568855,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.453143002709675,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -1.0507474608475478e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.26032041086292,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.11014271887984,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.77295978280733,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 130.65129931656486,
+                  "mean_effective_partition_factor": 1.348164028389137,
+                  "positive_x_flux_mol_s": -1.689720706055171e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.57902813951046,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.11014271887616,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.77295978280718,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 80.65129931656385,
+                  "mean_effective_partition_factor": 0.8010924940590352,
+                  "positive_x_flux_mol_s": 1.9010087877874646e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40585644642297325,
+              "mean_dimensionless_potential_jump": -0.40410231359291515,
+              "maximum_dimensionless_potential_jump": -0.40139103266753295,
+              "minimum_donnan_potential_jump_V": -0.010427498861882701,
+              "mean_donnan_potential_jump_V": -0.010382430665355994,
+              "maximum_donnan_potential_jump_V": -0.010312770865658731,
+              "maximum_absolute_charge_residual_mol_m3": 4.234834705130197e-12,
+              "normalization_mol_m3": 208.220285437756,
+              "relative_charge_residual": 2.033824272321503e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.948053898397314,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.416756723325562,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4220808475959708,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4252529105209888,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 1.1078303915731591e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.68647724191072,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.06984634507893,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.81042125266077,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.83082173546879,
+                  "mean_effective_partition_factor": 1.252077757491742,
+                  "positive_x_flux_mol_s": 8.811094247577834e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.43675541818453,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.06984634507393,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.81042125265971,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.83082173546975,
+                  "mean_effective_partition_factor": 0.7028402759110959,
+                  "positive_x_flux_mol_s": -2.2556919522296847e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13457920616363594,
+              "mean_dimensionless_potential_jump": -0.12948812873589569,
+              "maximum_dimensionless_potential_jump": -0.12565675411869393,
+              "minimum_donnan_potential_jump_V": -0.0034576869025307586,
+              "mean_donnan_potential_jump_V": -0.003326883992902481,
+              "maximum_donnan_potential_jump_V": -0.0032284460974041276,
+              "maximum_absolute_charge_residual_mol_m3": 5.002220859751105e-12,
+              "normalization_mol_m3": 196.13969269015286,
+              "relative_charge_residual": 2.55033583011331e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9641678633281116,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4434271567533672,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4462517949921672,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4473683772499628,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -1.5375261835856202e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.03651075617485,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.02319359456985,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.73150444261765,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.01490430559014,
+                  "mean_effective_partition_factor": 1.3508647564246121,
+                  "positive_x_flux_mol_s": -2.3717035904775845e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.72737616653846,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.02319359457154,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.73150444261839,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.01490430559285,
+                  "mean_effective_partition_factor": 0.7994888425056358,
+                  "positive_x_flux_mol_s": 6.7396257466118856e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40689937805777276,
+              "mean_dimensionless_potential_jump": -0.4061048616396666,
+              "maximum_dimensionless_potential_jump": -0.4036854244993435,
+              "minimum_donnan_potential_jump_V": -0.010454294465428591,
+              "mean_donnan_potential_jump_V": -0.010433881289492694,
+              "maximum_donnan_potential_jump_V": -0.010371719709334318,
+              "maximum_absolute_charge_residual_mol_m3": 5.6701310313655995e-12,
+              "normalization_mol_m3": 208.0463871891414,
+              "relative_charge_residual": 2.7254167245935918e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 9,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9468261862659723,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4087408612114807,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4202392793989584,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4255927687759342,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 1.36049954981007e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 99.64786290860035,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.88605077937802,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 124.83236344568117,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.86965139261711,
+                  "mean_effective_partition_factor": 1.252813416084411,
+                  "positive_x_flux_mol_s": 1.1720901247564602e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 106.52843924514553,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.88605077937828,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 74.8323634456804,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.86965139262045,
+                  "mean_effective_partition_factor": 0.7024363211013038,
+                  "positive_x_flux_mol_s": -2.617810824131035e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13837306586381715,
+              "mean_dimensionless_potential_jump": -0.13006926355517598,
+              "maximum_dimensionless_potential_jump": -0.125055673320702,
+              "minimum_donnan_potential_jump_V": -0.003555160943055307,
+              "mean_donnan_potential_jump_V": -0.00334181484522737,
+              "maximum_donnan_potential_jump_V": -0.003213002781443025,
+              "maximum_absolute_charge_residual_mol_m3": 5.144329406903125e-12,
+              "normalization_mol_m3": 195.7721015587563,
+              "relative_charge_residual": 2.6277132267281598e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 9,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9631368360557452,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.438417705590688,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4447052540836178,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4471911892069504,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -1.8190228191627118e-13
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 95.92865567544209,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 128.997429287906,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 129.70190486804043,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.13470888877683,
+                  "mean_effective_partition_factor": 1.3520694608147863,
+                  "positive_x_flux_mol_s": -2.775429534793947e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 99.77983744505417,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 78.99742928790414,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 79.70190486803962,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.13470888877232,
+                  "mean_effective_partition_factor": 0.7987760703970987,
+                  "positive_x_flux_mol_s": 9.514998718139644e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.4082839566378027,
+              "mean_dimensionless_potential_jump": -0.4069965300660954,
+              "maximum_dimensionless_potential_jump": -0.40500102141285765,
+              "minimum_donnan_potential_jump_V": -0.010489867860146591,
+              "mean_donnan_potential_jump_V": -0.010456790551089277,
+              "maximum_donnan_potential_jump_V": -0.010405520787127398,
+              "maximum_absolute_charge_residual_mol_m3": 4.902744876744691e-12,
+              "normalization_mol_m3": 207.99485857581013,
+              "relative_charge_residual": 2.3571471479222815e-14
+            }
+          ]
+        ],
+        "data_role": "test_fixture",
+        "concentration_role": "local_equilibrium_prediction_not_measurement"
+      }
+    },
+    {
+      "input": {
+        "contract_version": "spatial-cell-input-v1",
+        "model_id": "structured-cell-supporting-electrolyte-v1",
+        "system": "MFC",
+        "dimension": 3,
+        "coordinate_system": "cartesian",
+        "charge_model": "fixed-conductivity-supporting-electrolyte",
+        "geometry": {
+          "geometry_version": "structured-layers-v1",
+          "lengths_m": [
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:donnan-three-axis-refinement"
+            }
+          ],
+          "transverse_cells": [3, 2],
+          "layers": [
+            {
+              "tag": "anode",
+              "kind": "anode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.7,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "membrane",
+              "kind": "membrane",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.15,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 0,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 2.5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "cathode",
+              "kind": "cathode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 1.1,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1.7000000000000001e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            }
+          ]
+        },
+        "temperature": {
+          "value": 298.15,
+          "unit": "K",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "reservoir_faces": ["y_min", "z_min"],
+        "species": [
+          {
+            "id": "reduced",
+            "valence": {
+              "value": 0,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "oxidized",
+            "valence": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "chloride",
+            "valence": {
+              "value": -1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:ideal-donnan-fixture"
+            },
+            "elements": {
+              "Cl": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          }
+        ],
+        "reactions": [],
+        "electrodes": [
+          {
+            "role": "anode",
+            "domain_tag": "anode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          },
+          {
+            "role": "cathode",
+            "domain_tag": "cathode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0.3,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          }
+        ],
+        "circuit": {
+          "kind": "external_load",
+          "resistance": {
+            "value": 10000000,
+            "unit": "ohm",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "numerics": {
+          "max_evaluations": 1000,
+          "nonlinear_tolerance": 1e-7,
+          "conservation_tolerance": 1e-6,
+          "concentration_scale": {
+            "value": 1,
+            "unit": "mol/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "potential_scale": {
+            "value": 1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "species_rate_scale": {
+            "value": 0.0001,
+            "unit": "mol/(m3*s)",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "charge_rate_scale": {
+            "value": 100,
+            "unit": "A/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "interface_partition": {
+          "version": "structured-cell-ideal-donnan-partition-v1",
+          "interfaces": [
+            {
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 1.1,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 0.8,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            },
+            {
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 0.9,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 1.2,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "related_runs": [
+        {
+          "input_sha256": "9d7155361fd8784da7bd97b9b8831fed2a9fbde912eaad11a01a95889d1a0ac1",
+          "mesh_sha256": "7aa93285042369923f471f7958c150c2a6de09a78988d2104dd5cf9b191a7b2d",
+          "refinement_factor": 1,
+          "cell_count": 36,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "2d655964ecc9ca450d23684cd934e33e9725e44dd8deae145de49ca3aa5b7474",
+          "mesh_sha256": "ef481b33008b43a7ca9539b5b4ea756001393d865d2cb454a0eaaf9a8876fbaa",
+          "refinement_factor": 2,
+          "cell_count": 288,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "4530245f162c54af35a26fb332b4c53537af83b718d5eb7c96274bfbbe7d6362",
+          "mesh_sha256": "6ef9018c2c8f370691d28366ae68284918af27c375bddb40b034115e251df18f",
+          "refinement_factor": 3,
+          "cell_count": 972,
+          "status": "converged"
+        }
+      ],
+      "checks": [
+        {
+          "name": "all_levels_converged",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "all_native_balances_passed",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "both_interface_orientations",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "level_0_anode:membrane_equilibrium_charge",
+          "actual": -2.4158453015843406e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_0_membrane:cathode_equilibrium_charge",
+          "actual": -8.668621376273222e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_anode:membrane_equilibrium_charge",
+          "actual": -4.121147867408581e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_membrane:cathode_equilibrium_charge",
+          "actual": -6.110667527536862e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_anode:membrane_equilibrium_charge",
+          "actual": -3.836930773104541e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_membrane:cathode_equilibrium_charge",
+          "actual": 2.1316282072803006e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "current_refinement_differences_decrease",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "medium_fine_relative_current_change",
+          "actual": 0.0004449096101419238,
+          "expected": 0.0,
+          "tolerance": 0.005,
+          "unit": "1"
+        }
+      ],
+      "measured_observables": {
+        "currents_A": [
+          1.5789011900779425e-10, 1.5803044223726477e-10, 1.5810078279490118e-10
+        ],
+        "interfaces_by_level": [
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9534327276789768,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4278966662388792,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4301490915184651,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.43390178590311,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 3.7017047878637705e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.88534036691895,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.00204984275184,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.854477947706,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 124.87488754733607,
+                  "mean_effective_partition_factor": 1.2525068568836903,
+                  "positive_x_flux_mol_s": 2.538500590681289e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.11724515184562,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.00204984275197,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.85447794770624,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 74.87488754734034,
+                  "mean_effective_partition_factor": 0.7025911769274478,
+                  "positive_x_flux_mol_s": -7.462382396158767e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13068609317733149,
+              "mean_dimensionless_potential_jump": -0.1298366971865524,
+              "maximum_dimensionless_potential_jump": -0.12907593326812616,
+              "minimum_donnan_potential_jump_V": -0.0033576627890993735,
+              "mean_donnan_potential_jump_V": -0.0033358396154004,
+              "maximum_donnan_potential_jump_V": -0.0033162936282330963,
+              "maximum_absolute_charge_residual_mol_m3": 5.4143356464919634e-12,
+              "normalization_mol_m3": 196.00409968550383,
+              "relative_charge_residual": 2.762358366574717e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9659614233108796,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4449197873278545,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4489421349663194,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.454218434791989,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -4.788643864671962e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.89815625042036,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.67451962060855,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.4327751961155,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.09449430206854,
+                  "mean_effective_partition_factor": 1.3460934672965639,
+                  "positive_x_flux_mol_s": -7.728186736858513e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.24901598360367,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.67451962060997,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.43277519611637,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.09449430207273,
+                  "mean_effective_partition_factor": 0.802324073243545,
+                  "positive_x_flux_mol_s": 1.6616106131379212e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.4048676280119423,
+              "mean_dimensionless_potential_jump": -0.40256570684697596,
+              "maximum_dimensionless_potential_jump": -0.39988339040186816,
+              "minimum_donnan_potential_jump_V": -0.010402093566620032,
+              "mean_donnan_potential_jump_V": -0.010342951274956602,
+              "maximum_donnan_potential_jump_V": -0.010274035647460517,
+              "maximum_absolute_charge_residual_mol_m3": 4.149569576838985e-12,
+              "normalization_mol_m3": 209.34903924121855,
+              "relative_charge_residual": 1.9821297446021332e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 24,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9482065855215933,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.41523814537655,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.42230987828239,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4296525953845354,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 6.100709859917964e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.55987710009283,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.64044496132317,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.83070625310313,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.08992306171525,
+                  "mean_effective_partition_factor": 1.2564346351991629,
+                  "positive_x_flux_mol_s": 5.246517245235933e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.40991230034574,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.64044496132375,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.83070625310354,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.08992306171676,
+                  "mean_effective_partition_factor": 0.7004011275002853,
+                  "positive_x_flux_mol_s": -1.0778045406175753e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13771747228881281,
+              "mean_dimensionless_potential_jump": -0.1329631980724623,
+              "maximum_dimensionless_potential_jump": -0.12758858388579597,
+              "minimum_donnan_potential_jump_V": -0.003538317053257655,
+              "mean_donnan_potential_jump_V": -0.0034161674867865402,
+              "maximum_donnan_potential_jump_V": -0.0032780797865455684,
+              "maximum_absolute_charge_residual_mol_m3": 5.4285465012071654e-12,
+              "normalization_mol_m3": 195.2808899226469,
+              "relative_charge_residual": 2.779865712081442e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 24,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9624317012181832,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4408720292206396,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4436475518272749,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4481402766012599,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -7.454086583600324e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.62070428586146,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.52210126588344,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.40677041409114,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.35202136612781,
+                  "mean_effective_partition_factor": 1.3496824383475408,
+                  "positive_x_flux_mol_s": -1.1427266816075651e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.48434341795188,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.52210126588646,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.40677041409175,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.35202136612908,
+                  "mean_effective_partition_factor": 0.8001889360084679,
+                  "positive_x_flux_mol_s": 4.276060765060726e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.4061477317845572,
+              "mean_dimensionless_potential_jump": -0.4052294080020502,
+              "maximum_dimensionless_potential_jump": -0.4024653769409099,
+              "minimum_donnan_potential_jump_V": -0.010434982734082268,
+              "mean_donnan_potential_jump_V": -0.010411388627640622,
+              "maximum_donnan_potential_jump_V": -0.0103403735409067,
+              "maximum_absolute_charge_residual_mol_m3": 5.9543481256696396e-12,
+              "normalization_mol_m3": 209.04420253176988,
+              "relative_charge_residual": 2.848367978425384e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 54,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9457178814392437,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.405016802847144,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.418576822158866,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4299680598995748,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 7.566400581774096e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.41877091014929,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.55679539740044,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.84408835027256,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.15194492465734,
+                  "mean_effective_partition_factor": 1.2584030243921878,
+                  "positive_x_flux_mol_s": 6.977620688347717e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.59219616084344,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.55679539740142,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.84408835027294,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.1519449246591,
+                  "mean_effective_partition_factor": 0.6993149341868353,
+                  "positive_x_flux_mol_s": -1.2878886024927164e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.14230454276915339,
+              "mean_dimensionless_potential_jump": -0.13452191857567922,
+              "maximum_dimensionless_potential_jump": -0.12698887696606675,
+              "minimum_donnan_potential_jump_V": -0.0036561707245118457,
+              "mean_donnan_potential_jump_V": -0.0034562150366444742,
+              "maximum_donnan_potential_jump_V": -0.0032626717690604342,
+              "maximum_absolute_charge_residual_mol_m3": 5.059064278611913e-12,
+              "normalization_mol_m3": 195.11359079480184,
+              "relative_charge_residual": 2.592881540441977e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 54,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9607200006410319,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4349755740243002,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.441080000961548,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4454188466337472,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -9.085458349211056e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.46855994083164,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.48081647171335,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.3724878099769,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.408028645023,
+                  "mean_effective_partition_factor": 1.3514511954949373,
+                  "positive_x_flux_mol_s": -1.3750122061283636e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.57367529731756,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.48081647171409,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.37248780997668,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.40802864502109,
+                  "mean_effective_partition_factor": 0.7991416765268883,
+                  "positive_x_flux_mol_s": 5.892478636104136e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40868867010644294,
+              "mean_dimensionless_potential_jump": -0.40653903944165026,
+              "maximum_dimensionless_potential_jump": -0.4036717793076434,
+              "minimum_donnan_potential_jump_V": -0.010500265992961355,
+              "mean_donnan_potential_jump_V": -0.010445036437023162,
+              "maximum_donnan_potential_jump_V": -0.010371369129166929,
+              "maximum_absolute_charge_residual_mol_m3": 5.4569682106375694e-12,
+              "normalization_mol_m3": 208.96163294342742,
+              "relative_charge_residual": 2.611468973404771e-14
+            }
+          ]
+        ],
+        "data_role": "test_fixture",
+        "concentration_role": "local_equilibrium_prediction_not_measurement"
+      }
+    },
+    {
+      "input": {
+        "contract_version": "spatial-cell-input-v1",
+        "model_id": "structured-cell-supporting-electrolyte-v1",
+        "system": "MEC",
+        "dimension": 3,
+        "coordinate_system": "cartesian",
+        "charge_model": "fixed-conductivity-supporting-electrolyte",
+        "geometry": {
+          "geometry_version": "structured-layers-v1",
+          "lengths_m": [
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            {
+              "value": 0.0003,
+              "unit": "m",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:donnan-three-axis-refinement"
+            }
+          ],
+          "transverse_cells": [3, 2],
+          "layers": [
+            {
+              "tag": "anode",
+              "kind": "anode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.7,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 2e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "membrane",
+              "kind": "membrane",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 0.15,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 0,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 2.5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 5e-10,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            },
+            {
+              "tag": "cathode",
+              "kind": "cathode",
+              "width_m": {
+                "value": 0.0001,
+                "unit": "m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "cells": 2,
+              "electrolyte_conductivity": {
+                "value": 1.1,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "solid_conductivity": {
+                "value": 10,
+                "unit": "S/m",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "diffusivity": {
+                "reduced": {
+                  "value": 1.7000000000000001e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "oxidized": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                },
+                "chloride": {
+                  "value": 3.4000000000000003e-9,
+                  "unit": "m2/s",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:closed-redox-couple"
+                }
+              }
+            }
+          ]
+        },
+        "temperature": {
+          "value": 298.15,
+          "unit": "K",
+          "source_kind": "test_fixture",
+          "source_ref": "synthetic:closed-redox-couple"
+        },
+        "reservoir_faces": ["y_min", "z_min"],
+        "species": [
+          {
+            "id": "reduced",
+            "valence": {
+              "value": 0,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 1,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "oxidized",
+            "valence": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "elements": {
+              "C": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          },
+          {
+            "id": "chloride",
+            "valence": {
+              "value": -1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:ideal-donnan-fixture"
+            },
+            "elements": {
+              "Cl": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "initial_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reservoir_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "reference_concentration": {
+              "value": 100.0,
+              "unit": "mol/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            }
+          }
+        ],
+        "reactions": [],
+        "electrodes": [
+          {
+            "role": "anode",
+            "domain_tag": "anode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          },
+          {
+            "role": "cathode",
+            "domain_tag": "cathode",
+            "electron_count": {
+              "value": 1,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "equilibrium_potential": {
+              "value": 0.3,
+              "unit": "V",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "exchange_current": {
+              "value": 1,
+              "unit": "A/m3",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "alpha": {
+              "value": 0.5,
+              "unit": "1",
+              "source_kind": "test_fixture",
+              "source_ref": "synthetic:closed-redox-couple"
+            },
+            "stoichiometry": {
+              "reduced": {
+                "value": -1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              },
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "forward_orders": {
+              "reduced": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            },
+            "reverse_orders": {
+              "oxidized": {
+                "value": 1,
+                "unit": "1",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:closed-redox-couple"
+              }
+            }
+          }
+        ],
+        "circuit": {
+          "kind": "applied_voltage",
+          "voltage": {
+            "value": 0.1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "numerics": {
+          "max_evaluations": 1000,
+          "nonlinear_tolerance": 1e-7,
+          "conservation_tolerance": 1e-6,
+          "concentration_scale": {
+            "value": 1,
+            "unit": "mol/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "potential_scale": {
+            "value": 1,
+            "unit": "V",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "species_rate_scale": {
+            "value": 0.0001,
+            "unit": "mol/(m3*s)",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          },
+          "charge_rate_scale": {
+            "value": 100,
+            "unit": "A/m3",
+            "source_kind": "test_fixture",
+            "source_ref": "synthetic:closed-redox-couple"
+          }
+        },
+        "interface_partition": {
+          "version": "structured-cell-ideal-donnan-partition-v1",
+          "interfaces": [
+            {
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 1.1,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 0.8,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            },
+            {
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "fixed_charge_density": {
+                "value": -50.0,
+                "unit": "mol/m3",
+                "source_kind": "test_fixture",
+                "source_ref": "synthetic:fixed-charge"
+              },
+              "species": {
+                "reduced": {
+                  "value": 1.5,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "oxidized": {
+                  "value": 0.9,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                },
+                "chloride": {
+                  "value": 1.2,
+                  "unit": "1",
+                  "source_kind": "test_fixture",
+                  "source_ref": "synthetic:partition"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "related_runs": [
+        {
+          "input_sha256": "a11f980afaecafb01fe15cff46a4762ba659a0eff82f75c27c1477e85198f999",
+          "mesh_sha256": "7aa93285042369923f471f7958c150c2a6de09a78988d2104dd5cf9b191a7b2d",
+          "refinement_factor": 1,
+          "cell_count": 36,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "094a278033169844f43c175bc43a031639a81b22489b081ff3a2d6241e93cf13",
+          "mesh_sha256": "ef481b33008b43a7ca9539b5b4ea756001393d865d2cb454a0eaaf9a8876fbaa",
+          "refinement_factor": 2,
+          "cell_count": 288,
+          "status": "converged"
+        },
+        {
+          "input_sha256": "af088d3bce8916397cf61d170a1eada01b2b6e8c39b41b81c1b01a9af2f6c995",
+          "mesh_sha256": "6ef9018c2c8f370691d28366ae68284918af27c375bddb40b034115e251df18f",
+          "refinement_factor": 3,
+          "cell_count": 972,
+          "status": "converged"
+        }
+      ],
+      "checks": [
+        {
+          "name": "all_levels_converged",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "all_native_balances_passed",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "both_interface_orientations",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "level_0_anode:membrane_equilibrium_charge",
+          "actual": 1.9895196601282805e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_0_membrane:cathode_equilibrium_charge",
+          "actual": -2.4726887204451486e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_0_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_anode:membrane_equilibrium_charge",
+          "actual": -1.2363443602225743e-12,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_1_membrane:cathode_equilibrium_charge",
+          "actual": 2.4158453015843406e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_1_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_anode:membrane_equilibrium_charge",
+          "actual": 1.7053025658242404e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_anode:membrane_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "level_2_membrane:cathode_equilibrium_charge",
+          "actual": 8.384404281969182e-13,
+          "expected": 0.0,
+          "tolerance": 1e-9,
+          "unit": "mol/m3"
+        },
+        {
+          "name": "level_2_membrane:cathode_flux_binding",
+          "actual": 0.0,
+          "expected": 0.0,
+          "tolerance": 0.0,
+          "unit": "mol/s"
+        },
+        {
+          "name": "current_refinement_differences_decrease",
+          "actual": 1.0,
+          "expected": 1.0,
+          "tolerance": 0.0,
+          "unit": "1"
+        },
+        {
+          "name": "medium_fine_relative_current_change",
+          "actual": 0.0004817899194664221,
+          "expected": 0.0,
+          "tolerance": 0.005,
+          "unit": "1"
+        }
+      ],
+      "measured_observables": {
+        "currents_A": [
+          4.2482598945323935e-10, 4.2526660705119073e-10, 4.254715949766698e-10
+        ],
+        "interfaces_by_level": [
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9512048001743704,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4234383344260078,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4268072002615553,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4321980004259471,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 3.587791766702895e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.88408158162089,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 123.00221418098148,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.85480169973157,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 124.87539754276551,
+                  "mean_effective_partition_factor": 1.2525260299279992,
+                  "positive_x_flux_mol_s": 2.5426505217435824e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.1193212056342,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 73.0022141809839,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.85480169973137,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 74.8753975427623,
+                  "mean_effective_partition_factor": 0.7025804210984546,
+                  "positive_x_flux_mol_s": -7.465027734188108e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.1306984856948077,
+              "mean_dimensionless_potential_jump": -0.12985200545526254,
+              "maximum_dimensionless_potential_jump": -0.1291024705079451,
+              "minimum_donnan_potential_jump_V": -0.003357981184835151,
+              "mean_donnan_potential_jump_V": -0.0033362329243054557,
+              "maximum_donnan_potential_jump_V": -0.0033169754383668227,
+              "maximum_absolute_charge_residual_mol_m3": 3.538502824085299e-12,
+              "normalization_mol_m3": 196.00442836196538,
+              "relative_charge_residual": 1.8053177949381192e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 6,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9673472663086916,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.448170111897083,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4510208994630371,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4552766005436497,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -4.8948548223847346e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.89887196192772,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.67413637239156,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.43252939255422,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.09436584515123,
+                  "mean_effective_partition_factor": 1.3460809494666537,
+                  "positive_x_flux_mol_s": -7.724077611682009e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.2477797323126,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.6741363723955,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.43252939255669,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.09436584515227,
+                  "mean_effective_partition_factor": 0.8023315230539477,
+                  "positive_x_flux_mol_s": 1.6589110266770304e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.4048512948997143,
+              "mean_dimensionless_potential_jump": -0.4025564145147011,
+              "maximum_dimensionless_potential_jump": -0.39987961840549247,
+              "minimum_donnan_potential_jump_V": -0.010401673926841805,
+              "mean_donnan_potential_jump_V": -0.010342712530974402,
+              "maximum_donnan_potential_jump_V": -0.010273938735145186,
+              "maximum_absolute_charge_residual_mol_m3": 5.9259264162392356e-12,
+              "normalization_mol_m3": 209.34827274478704,
+              "relative_charge_residual": 2.830654554032759e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 24,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9463294278466371,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.414046697514063,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4194941417699554,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4246103370827923,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 5.995141409188013e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.558591053444,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.64048020731904,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.83090834239539,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.09031115117496,
+                  "mean_effective_partition_factor": 1.2564529631714,
+                  "positive_x_flux_mol_s": 5.2507342233679575e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.41174669528768,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.6404802073217,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.83090834239663,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.09031115117588,
+                  "mean_effective_partition_factor": 0.7003908779776911,
+                  "positive_x_flux_mol_s": -1.0780720428796968e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.13772239455440172,
+              "mean_dimensionless_potential_jump": -0.1329778085973885,
+              "maximum_dimensionless_potential_jump": -0.127617191881626,
+              "minimum_donnan_potential_jump_V": -0.0035384435189557573,
+              "mean_donnan_potential_jump_V": -0.0034165428688542206,
+              "maximum_donnan_potential_jump_V": -0.0032788147997419525,
+              "maximum_absolute_charge_residual_mol_m3": 5.5990767577895895e-12,
+              "normalization_mol_m3": 195.28096041464073,
+              "relative_charge_residual": 2.8671903015537465e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 24,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9636105707289392,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4422293017253456,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.445415856093409,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.448505221182371,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -7.551886307863179e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.62144180792068,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.521806443447,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.40661197389292,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.3519875024207,
+                  "mean_effective_partition_factor": 1.3496704596202367,
+                  "positive_x_flux_mol_s": -1.1423066319390361e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.4832569941422,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.52180644344911,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.40661197389268,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.35198750241805,
+                  "mean_effective_partition_factor": 0.8001960328950398,
+                  "positive_x_flux_mol_s": 4.273331723063975e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.4061417030409018,
+              "mean_dimensionless_potential_jump": -0.40522053588367396,
+              "maximum_dimensionless_potential_jump": -0.4024640396990833,
+              "minimum_donnan_potential_jump_V": -0.010434827840108895,
+              "mean_donnan_potential_jump_V": -0.010411160680037262,
+              "maximum_donnan_potential_jump_V": -0.010340339183715264,
+              "maximum_absolute_charge_residual_mol_m3": 5.7269744502264075e-12,
+              "normalization_mol_m3": 209.04361288689609,
+              "relative_charge_residual": 2.7396074776630515e-14
+            }
+          ],
+          [
+            {
+              "interface_id": "anode:membrane",
+              "left_domain": "anode",
+              "right_domain": "membrane",
+              "membrane_domain": "membrane",
+              "solution_domain": "anode",
+              "orientation": "membrane_right",
+              "face_count": 54,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9439323393682986,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.403757283929982,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4158985090524479,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4250174154974964,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": 7.462861952958479e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 1.1,
+                  "mean_solution_concentration_mol_m3": 98.41745321527429,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 122.55680553522684,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 123.84425231702632,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 125.15228673974568,
+                  "mean_effective_partition_factor": 1.2584213805870397,
+                  "positive_x_flux_mol_s": 6.981864551124084e-12
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 0.8,
+                  "mean_solution_concentration_mol_m3": 105.59397962190593,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 72.55680553522616,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 73.84425231702615,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 75.15228673974192,
+                  "mean_effective_partition_factor": 0.6993046799581253,
+                  "positive_x_flux_mol_s": -1.2881572698971512e-11
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.14231048809764957,
+              "mean_dimensionless_potential_jump": -0.1345365436326473,
+              "maximum_dimensionless_potential_jump": -0.12701816419641432,
+              "minimum_donnan_potential_jump_V": -0.0036563234753346397,
+              "mean_donnan_potential_jump_V": -0.00345659079207779,
+              "maximum_donnan_potential_jump_V": -0.0032634242335434025,
+              "maximum_absolute_charge_residual_mol_m3": 4.945377440890297e-12,
+              "normalization_mol_m3": 195.11361107045298,
+              "relative_charge_residual": 2.5346142761432395e-14
+            },
+            {
+              "interface_id": "membrane:cathode",
+              "left_domain": "membrane",
+              "right_domain": "cathode",
+              "membrane_domain": "membrane",
+              "solution_domain": "cathode",
+              "orientation": "membrane_left",
+              "face_count": 54,
+              "species": [
+                {
+                  "species_id": "reduced",
+                  "valence": 0.0,
+                  "partition_coefficient": 1.5,
+                  "mean_solution_concentration_mol_m3": 0.9618459149939466,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 1.4357754373930018,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 1.4427688724909198,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 1.4473090416510033,
+                  "mean_effective_partition_factor": 1.5,
+                  "positive_x_flux_mol_s": -9.181357952379451e-14
+                },
+                {
+                  "species_id": "oxidized",
+                  "valence": 1.0,
+                  "partition_coefficient": 0.9,
+                  "mean_solution_concentration_mol_m3": 96.469318513664,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 129.4805551656206,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 130.37235693615258,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 131.4080147444399,
+                  "mean_effective_partition_factor": 1.351439184103785,
+                  "positive_x_flux_mol_s": -1.3745881472726233e-11
+                },
+                {
+                  "species_id": "chloride",
+                  "valence": -1.0,
+                  "partition_coefficient": 1.2,
+                  "mean_solution_concentration_mol_m3": 100.57262131384175,
+                  "minimum_equilibrium_membrane_concentration_mol_m3": 79.48055516561769,
+                  "mean_equilibrium_membrane_concentration_mol_m3": 80.37235693615175,
+                  "maximum_equilibrium_membrane_concentration_mol_m3": 81.40801474444352,
+                  "mean_effective_partition_factor": 0.7991487806765735,
+                  "positive_x_flux_mol_s": 5.889740362055415e-12
+                }
+              ],
+              "fixed_charge_density_mol_m3": -50.0,
+              "minimum_dimensionless_potential_jump": -0.40868517687371764,
+              "mean_dimensionless_potential_jump": -0.40653015069083753,
+              "maximum_dimensionless_potential_jump": -0.40367105160592587,
+              "minimum_donnan_potential_jump_V": -0.01050017624280317,
+              "mean_donnan_potential_jump_V": -0.010444808062089611,
+              "maximum_donnan_potential_jump_V": -0.010371350432632974,
+              "maximum_absolute_charge_residual_mol_m3": 5.3717030823463574e-12,
+              "normalization_mol_m3": 208.96111033123827,
+              "relative_charge_residual": 2.570671199933476e-14
+            }
+          ]
+        ],
+        "data_role": "test_fixture",
+        "concentration_role": "local_equilibrium_prediction_not_measurement"
+      }
+    }
+  ]
+}

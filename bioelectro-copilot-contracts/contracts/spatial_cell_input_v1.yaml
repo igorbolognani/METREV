@@ -50,16 +50,22 @@ optional_advection:
   discretization: Conservative first-order upwind; each interior molar flux enters adjacent cells with opposite signs, exterior species budgets include both diffusion and convection.
   compatibility: Absent advection retains the zero-convection input behavior. Queue/runtime protocol v4 prevents older workers from silently ignoring prescribed flow.
 optional_interface_partition:
-  version: structured-cell-neutral-membrane-partition-v1
+  versions:
+    - structured-cell-neutral-membrane-partition-v1
+    - structured-cell-ideal-donnan-partition-v1
   required: [version, interfaces]
   interface:
-    required: [left_domain, right_domain, species]
-    orientation: left_domain and right_domain must be adjacent in positive-x layer order; the ratio is concentration in right_domain divided by concentration in left_domain at equilibrium.
-    domains: At least one side must be a membrane or separator.
-    species: Explicitly selected neutral species only; every positive dimensionless partition_coefficient requires value, unit, source_kind, and source_ref.
-  discretization: For half-cell distances h_L/h_R, diffusivities D_L/D_R, face area A, and partition ratio K_RL, J=A*(c_L-c_R/K_RL)/(h_L/D_L+h_R/(K_RL*D_R)); the same flux is added and subtracted on the two cells.
-  limitations: Zero-resistance ideal partition only; no charged-ion Donnan closure, fixed membrane charge, membrane convection, or water transport.
-  compatibility: Absence retains continuous-concentration diffusion. Queue/runtime protocol v8 prevents older workers from silently ignoring this input.
+    required_neutral: [left_domain, right_domain, species]
+    required_donnan: [left_domain, right_domain, fixed_charge_density, species]
+    orientation: left_domain and right_domain must be adjacent in positive-x layer order. The neutral coefficient is right/left concentration at zero flux. Donnan interfaces identify a solution and exactly one ion-exchange membrane side.
+    neutral_domains: At least one side must be a membrane or porous separator.
+    donnan_domains: Exactly one side must be kind membrane; porous separators do not receive Donnan closure.
+    species: Every charged species requires a positive, source-backed dimensionless partition coefficient; valence magnitude is bounded by four. Neutral species may be selected optionally.
+    provenance: fixed_charge_density in mol/m3 and every partition coefficient retain value, unit, source_kind, and source_ref.
+  discretization_neutral: For half-cell distances h_L/h_R, diffusivities D_L/D_R, face area A, and partition ratio K_RL, J=A*(c_L-c_R/K_RL)/(h_L/D_L+h_R/(K_RL*D_R)); the same flux is added and subtracted on the two cells.
+  discretization_donnan: At each face, solve X+sum_i(z_i*K_i*c_i,solution*exp(-z_i*psi_D))=0 with psi_D=F*(phi_membrane-phi_solution)/(R*T). The ideal membrane equilibrium concentration is K_i*c_i,solution*exp(-z_i*psi_D). The oriented local jump enters Scharfetter-Gummel trace-species flux, with an exact Jacobian and opposite conservative cell contributions; the separate fixed-conductivity supporting-electrolyte current uses its continuous bulk potential only.
+  limitations: Interface-local ideal activities and prescribed fixed charge only; no full membrane-volume electroneutral Nernst-Planck closure, activity coefficients, porous-separator Donnan partition, membrane-normal convection/water transport, swelling, or fouling.
+  compatibility: Absence retains continuous-concentration diffusion. Queue/runtime protocol v9 identifies neutral and charged Donnan interface support and prevents older workers from silently ignoring this input.
 geometry:
   version: structured-layers-v1
   dimensions: [2, 3]
@@ -67,7 +73,7 @@ geometry:
   required: [geometry_version, lengths_m, transverse_cells, layers]
   planar_only_required: [out_of_plane_depth]
   layers: Ordered anode, internal regions, cathode; all widths sum to x length.
-  interfaces: Shared Cartesian faces with continuous concentrations and potential by default; explicitly declared neutral membrane/separator species may use the versioned partition law.
+  interfaces: Shared Cartesian faces with continuous concentrations and supporting-electrolyte bulk potential by default; explicitly declared neutral membrane/separator species or ion-exchange-membrane Donnan interfaces may use their versioned laws.
 species:
   required:
     [

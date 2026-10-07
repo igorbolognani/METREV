@@ -15,6 +15,7 @@ import {
   assertStructuredCellFieldReductionBinding,
 } from './structured-cell-field-reduction';
 import { structuredCellMeshRefinementEvidenceSchema } from './structured-cell-refinement-evidence-schema';
+import { structuredCellDonnanInterfaceEvidenceSchema } from './structured-cell-donnan-evidence';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const finite = z.number().finite();
@@ -139,6 +140,8 @@ export const structuredCellRunViewSchema = z
           structuredCellFieldReductionSchema.optional(),
         structured_cell_mesh_refinement_evidence:
           structuredCellMeshRefinementEvidenceSchema.optional(),
+        structured_cell_donnan_interface_evidence:
+          structuredCellDonnanInterfaceEvidenceSchema.optional(),
         conservation_residuals: z.array(balance).min(1).max(64),
         convergence: z.array(convergence).min(1).max(32),
         cell_circuit: circuit,
@@ -181,6 +184,12 @@ export const structuredCellRunViewSchema = z
       result.mesh.dimension !== run.dimension
     )
       invalid('Result identity mismatch');
+    if (
+      result.structured_cell_donnan_interface_evidence &&
+      result.structured_cell_donnan_interface_evidence.input_sha256 !==
+        run.input_sha256
+    )
+      invalid('Donnan interface evidence differs from the immutable run input');
     const observables = result.structured_cell_field_observables;
     if (result.structured_cell_field_reduction) {
       try {
@@ -362,11 +371,17 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
       time_refinement: 'not_applicable_steady',
       benchmark_reference: 'tests/contracts/test_spatial_cell_verification.py',
     },
+    donnan_interface_evidence:
+      run.result.structured_cell_donnan_interface_evidence ?? null,
     enabled_physics: [
       'steady_trace_species_diffusion_migration',
-      ...(run.input_snapshot.interface_partition
+      ...(run.input_snapshot.interface_partition?.version ===
+      'structured-cell-neutral-membrane-partition-v1'
         ? ['ideal_neutral_membrane_partition']
-        : []),
+        : run.input_snapshot.interface_partition?.version ===
+            'structured-cell-ideal-donnan-partition-v1'
+          ? ['ideal_donnan_charged_membrane_interface']
+          : []),
       ...('advection' in run.input_snapshot && run.input_snapshot.advection
         ? ['prescribed_incompressible_upwind_species_advection']
         : []),
@@ -402,7 +417,13 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
       'thermal_field',
       'coupled_proton_speciation',
       'biofilm_growth',
-      'donnan_equilibrium',
+      ...(run.input_snapshot.interface_partition?.version ===
+      'structured-cell-ideal-donnan-partition-v1'
+        ? [
+            'bulk_membrane_electroneutrality',
+            'full_electroneutral_nernst_planck_current_closure',
+          ]
+        : ['donnan_interface_equilibrium', 'fixed_charge_membrane']),
       'double_layer',
     ],
     spatial_image_slice_artifacts: [] as {
@@ -469,6 +490,64 @@ export function renderStructuredCellDevelopmentReport(
       `Input SHA-256: ${report.run.input_sha256}. Mesh SHA-256: ${report.geometry.mesh.sha256}. Geometry request SHA-256: ${report.geometry.request_sha256}.`,
       `Geometry: ${cell(report.geometry.geometry_version)}; ${report.geometry.cell_count} cells; lengths ${report.geometry.lengths_m.join(' × ')} m; out-of-plane depth ${report.geometry.out_of_plane_depth_m ?? 'not applicable'} m.`,
       `Mesh refinement: ${report.verification_status.mesh_refinement}${report.verification_status.mesh_refinement_unavailable_reason ? ` (${report.verification_status.mesh_refinement_unavailable_reason})` : ''}. Time refinement: ${report.verification_status.time_refinement}. Enabled physics: ${report.enabled_physics.join(', ')}.`,
+      ...(report.donnan_interface_evidence
+        ? [
+            '## Ideal Donnan interface closure',
+            'This is a local ideal-activity interface calculation with source-backed fixed charge and species partition. It checks interfacial electroneutrality and feeds the jump into species face fluxes; the separate Ohmic current uses only the continuous bulk potential. The continuous bulk potential remains an unmodeled-supporting-electrolyte approximation; this evidence does not establish full membrane electroneutral Nernst–Planck transport or experimental validation.',
+            rows([
+              [
+                'Interface',
+                'Membrane side',
+                'Fixed charge (mol/m³)',
+                'Mean Donnan jump (V)',
+                'Faces',
+                'Max charge residual (mol/m³)',
+                'Relative residual',
+                'Tolerance',
+                'Passed',
+              ],
+              ['---', '---', '---', '---', '---', '---', '---', '---', '---'],
+              ...report.donnan_interface_evidence.interfaces.map((entry) => [
+                entry.interface_id,
+                entry.orientation,
+                entry.fixed_charge_density_mol_m3,
+                entry.mean_donnan_potential_jump_V,
+                entry.face_count,
+                entry.maximum_absolute_charge_residual_mol_m3,
+                entry.relative_charge_residual,
+                entry.tolerance,
+                entry.passed,
+              ]),
+            ]),
+            'Species concentrations below are local ideal-equilibrium predictions reduced over interface faces, not measured concentrations or solved membrane-volume states. Flux is integrated in the positive-x direction (mol/s); equilibrium partition factors are not permeability or transport selectivity.',
+            rows([
+              [
+                'Interface',
+                'Species',
+                'Valence',
+                'Input K',
+                'Mean solution (mol/m³)',
+                'Mean equilibrium membrane (mol/m³)',
+                'Mean effective partition',
+                'Positive-x flux (mol/s)',
+              ],
+              ['---', '---', '---', '---', '---', '---', '---', '---'],
+              ...report.donnan_interface_evidence.interfaces.flatMap((entry) =>
+                (entry.species ?? []).map((species) => [
+                  entry.interface_id,
+                  species.species_id,
+                  species.valence,
+                  species.partition_coefficient,
+                  species.mean_solution_concentration_mol_m3,
+                  species.mean_equilibrium_membrane_concentration_mol_m3,
+                  species.mean_effective_partition_factor,
+                  species.positive_x_flux_mol_s,
+                ]),
+              ),
+            ]),
+            `Evidence input SHA-256: ${report.donnan_interface_evidence.input_sha256}. Decision eligible: false. Independent validation: false.`,
+          ]
+        : []),
       '## Mesh-refinement evidence',
       ...(report.mesh_refinement_evidence
         ? report.mesh_refinement_evidence.status === 'assessed'
