@@ -187,6 +187,147 @@ def solve_layered_diffusion(mesh_data, layers: list[dict], height: float) -> dic
     }
 
 
+def solve_layered_diffusion_manufactured_source(
+    mesh_data, layers: list[dict], height: float, refinement_factor: int
+) -> dict:
+    """Measure PDE error for a manufactured source on tagged planar meshes.
+
+    The coefficient and source are synthetic verification fixtures. The exact
+    solution is piecewise quadratic in x, has continuous interfacial flux, and
+    satisfies zero normal flux on the horizontal boundaries. This checks mesh
+    convergence for the tagged geometry; it is not a cell model or validation.
+    """
+    domain = mesh_data.mesh
+    assert domain.topology.dim == 2
+
+    diffusivity_by_tag = {"anode": 1.0, "biofilm": 0.25, "liquid": 2.0}
+    assert set(diffusivity_by_tag) == {layer["tag"] for layer in layers}
+    widths = [float(layer["width_m"]["value"]) for layer in layers]
+    coefficients = [diffusivity_by_tag[layer["tag"]] for layer in layers]
+    x_end = sum(widths)
+    flux_at_origin = 0.2
+    source_rate = 0.75
+
+    coefficient_space = fem.functionspace(domain, ("DG", 0))
+    diffusivity = fem.Function(coefficient_space)
+    diffusivity.x.array[:] = np.nan
+    for layer, value in zip(layers, coefficients):
+        physical_group = mesh_data.physical_groups[f"region:{layer['tag']}"]
+        cells = mesh_data.cell_tags.find(physical_group.tag)
+        assert len(cells) > 0, layer["tag"]
+        for cell in cells:
+            dofs = coefficient_space.dofmap.cell_dofs(int(cell))
+            diffusivity.x.array[dofs] = value
+    diffusivity.x.scatter_forward()
+    assert np.all(np.isfinite(diffusivity.x.array))
+
+    def exact_solution(points):
+        position = np.asarray(points[0])
+        exact = np.zeros_like(position, dtype=np.float64)
+        start = 0.0
+        for width, coefficient in zip(widths, coefficients):
+            distance = np.clip(position - start, 0.0, width)
+            exact += (
+                flux_at_origin * distance
+                + source_rate * (start * distance + 0.5 * distance**2)
+            ) / coefficient
+            start += width
+        return exact
+
+    coordinate = ufl.SpatialCoordinate(domain)[0]
+    exact_expression = ufl.as_ufl(0.0)
+    start = 0.0
+    for width, coefficient in zip(widths, coefficients):
+        distance = ufl.max_value(
+            ufl.min_value(coordinate - start, width), 0.0
+        )
+        exact_expression += (
+            flux_at_origin * distance
+            + source_rate * (start * distance + 0.5 * distance**2)
+        ) / coefficient
+        start += width
+
+    solution_space = fem.functionspace(domain, ("Lagrange", 1))
+    boundary_values = fem.Function(solution_space)
+    boundary_values.interpolate(exact_solution)
+    tolerance = max(1e-12, x_end * 1e-10)
+    left_facets = mesh.locate_entities_boundary(
+        domain,
+        domain.topology.dim - 1,
+        lambda points: np.isclose(points[0], 0.0, atol=tolerance, rtol=0.0),
+    )
+    right_facets = mesh.locate_entities_boundary(
+        domain,
+        domain.topology.dim - 1,
+        lambda points: np.isclose(points[0], x_end, atol=tolerance, rtol=0.0),
+    )
+    left_dofs = fem.locate_dofs_topological(
+        solution_space, domain.topology.dim - 1, left_facets
+    )
+    right_dofs = fem.locate_dofs_topological(
+        solution_space, domain.topology.dim - 1, right_facets
+    )
+    assert len(left_dofs) > 0 and len(right_dofs) > 0
+    boundary_conditions = [
+        fem.dirichletbc(boundary_values, left_dofs),
+        fem.dirichletbc(boundary_values, right_dofs),
+    ]
+
+    trial = ufl.TrialFunction(solution_space)
+    test = ufl.TestFunction(solution_space)
+    bilinear = diffusivity * ufl.inner(ufl.grad(trial), ufl.grad(test)) * ufl.dx
+    source = fem.Constant(domain, PETSc.ScalarType(-source_rate))
+    linear = source * test * ufl.dx
+    problem = LinearProblem(
+        bilinear,
+        linear,
+        bcs=boundary_conditions,
+        petsc_options_prefix=f"metrev_layered_manufactured_{refinement_factor}_",
+        petsc_options={
+            "ksp_type": "preonly",
+            "pc_type": "lu",
+            "ksp_error_if_not_converged": True,
+        },
+    )
+    solved = problem.solve()
+
+    dx = ufl.Measure("dx", domain=domain)
+    local_error_squared = fem.assemble_scalar(
+        fem.form((solved - exact_expression) ** 2 * dx)
+    )
+    local_exact_squared = fem.assemble_scalar(
+        fem.form(exact_expression**2 * dx)
+    )
+    error_squared = domain.comm.allreduce(float(local_error_squared), op=MPI.SUM)
+    exact_squared = domain.comm.allreduce(float(local_exact_squared), op=MPI.SUM)
+    relative_l2_error = math.sqrt(error_squared / exact_squared)
+
+    measure_ds = ufl.Measure("ds", domain=domain, subdomain_data=mesh_data.facet_tags)
+
+    def integrated_x_flux(boundary_name: str) -> float:
+        physical_group = mesh_data.physical_groups[boundary_name]
+        local_flux = fem.assemble_scalar(
+            fem.form(
+                diffusivity * ufl.grad(solved)[0] * measure_ds(physical_group.tag)
+            )
+        )
+        return domain.comm.allreduce(float(local_flux), op=MPI.SUM)
+
+    left_flux = integrated_x_flux("boundary:anode_contact")
+    right_flux = integrated_x_flux("boundary:outer_wall")
+    total_source = -source_rate * x_end * height
+    relative_balance_error = abs(total_source + right_flux - left_flux) / max(
+        abs(total_source), abs(right_flux), abs(left_flux), 1e-30
+    )
+    assert np.isfinite(relative_l2_error) and relative_l2_error > 0.0
+    assert relative_balance_error < 1e-8, relative_balance_error
+    return {
+        "cell_count": len(mesh_data.cell_tags.values),
+        "relative_l2_error": relative_l2_error,
+        "relative_source_boundary_balance": relative_balance_error,
+    }
+
+
 def create_stokes_channel_mesh(path: Path, characteristic_length: float) -> None:
     """Create a synthetic bulk-liquid channel with named no-slip/pressure boundaries."""
     import gmsh
@@ -945,6 +1086,7 @@ def main() -> None:
     height = float(fixture_data["mesh"]["height_m"]["value"])
     imported_meshes = []
     layered_results = []
+    layered_source_results = []
     with tempfile.TemporaryDirectory() as directory:
         response = run(fixture.read_bytes(), Path(directory))
         assert response["status"] == "ok", response
@@ -955,6 +1097,14 @@ def main() -> None:
             layered_result = solve_layered_diffusion(imported_mesh, layers, height)
             layered_result["refinement_factor"] = artifact["refinement_factor"]
             layered_results.append(layered_result)
+            source_result = solve_layered_diffusion_manufactured_source(
+                imported_mesh,
+                layers,
+                height,
+                artifact["refinement_factor"],
+            )
+            source_result["refinement_factor"] = artifact["refinement_factor"]
+            layered_source_results.append(source_result)
 
     imported = imported_meshes[0]
     assert len(layered_results) == len(response["artifacts"])
@@ -962,6 +1112,28 @@ def main() -> None:
         earlier["cell_count"] < later["cell_count"]
         for earlier, later in zip(layered_results, layered_results[1:])
     ), layered_results
+    assert len(layered_source_results) == 3, layered_source_results
+    assert all(
+        earlier["cell_count"] < later["cell_count"]
+        for earlier, later in zip(
+            layered_source_results, layered_source_results[1:]
+        )
+    ), layered_source_results
+    assert all(
+        earlier["relative_l2_error"] > later["relative_l2_error"]
+        for earlier, later in zip(
+            layered_source_results, layered_source_results[1:]
+        )
+    ), layered_source_results
+    for coarse, fine in zip(
+        layered_source_results, layered_source_results[1:]
+    ):
+        equivalent_h_ratio = math.sqrt(fine["cell_count"] / coarse["cell_count"])
+        observed_order = math.log(
+            coarse["relative_l2_error"] / fine["relative_l2_error"]
+        ) / math.log(equivalent_h_ratio)
+        fine["observed_l2_order_from_previous"] = observed_order
+        assert observed_order > 1.0, (coarse, fine)
 
     # A cell mesh with porous/solid layers cannot be solved as free liquid.
     try:
@@ -1060,6 +1232,7 @@ def main() -> None:
                 "affine_max_error_2d": error_2d,
                 "triangle_count": cells_2d,
                 "layered_diffusion_refinements": layered_results,
+                "layered_diffusion_manufactured_source_refinements": layered_source_results,
                 "stokes_poiseuille_refinements": stokes_results,
                 "stokes_sidecar_operation": sidecar_stokes,
                 "stokes_scalar_transfer": sidecar_stokes_transport,

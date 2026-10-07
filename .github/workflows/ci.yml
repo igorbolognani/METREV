@@ -288,7 +288,7 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
-      - name: Verify tagged meshes, scalar diffusion, affine Poisson and Stokes fixtures
+      - name: Verify tagged meshes, PDE convergence, affine Poisson and Stokes fixtures
         run: |
           docker run --rm --entrypoint python3 \
             --mount type=bind,source="${{ github.workspace }}/tests",target=/opt/metrev-spatial/tests,readonly \
