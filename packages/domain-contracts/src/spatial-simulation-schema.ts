@@ -1040,7 +1040,7 @@ export function spatialSimulationResultForInputSchema(
           'structured-cell-process-v4',
           'structured-cell-process-v5',
           'structured-cell-process-v6',
-          'structured-cell-process-v7',
+          'structured-cell-process-v8',
         ].includes(result.runtime_version)
           ? ['faradaic_current_density']
           : []),
@@ -1107,7 +1107,7 @@ export function spatialSimulationResultForInputSchema(
           'structured-cell-process-v4',
           'structured-cell-process-v5',
           'structured-cell-process-v6',
-          'structured-cell-process-v7',
+          'structured-cell-process-v8',
         ].includes(result.runtime_version) &&
         !result.structured_cell_field_reduction
       )
