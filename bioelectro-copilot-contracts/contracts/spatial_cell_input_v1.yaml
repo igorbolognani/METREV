@@ -49,6 +49,17 @@ optional_advection:
   diffusive_boundary: reservoir_faces retain explicitly selected concentration boundaries independently of advective inlet/outlet flux. Unselected exterior faces have zero diffusive flux.
   discretization: Conservative first-order upwind; each interior molar flux enters adjacent cells with opposite signs, exterior species budgets include both diffusion and convection.
   compatibility: Absent advection retains the zero-convection input behavior. Queue/runtime protocol v4 prevents older workers from silently ignoring prescribed flow.
+optional_interface_partition:
+  version: structured-cell-neutral-membrane-partition-v1
+  required: [version, interfaces]
+  interface:
+    required: [left_domain, right_domain, species]
+    orientation: left_domain and right_domain must be adjacent in positive-x layer order; the ratio is concentration in right_domain divided by concentration in left_domain at equilibrium.
+    domains: At least one side must be a membrane or separator.
+    species: Explicitly selected neutral species only; every positive dimensionless partition_coefficient requires value, unit, source_kind, and source_ref.
+  discretization: For half-cell distances h_L/h_R, diffusivities D_L/D_R, face area A, and partition ratio K_RL, J=A*(c_L-c_R/K_RL)/(h_L/D_L+h_R/(K_RL*D_R)); the same flux is added and subtracted on the two cells.
+  limitations: Zero-resistance ideal partition only; no charged-ion Donnan closure, fixed membrane charge, membrane convection, or water transport.
+  compatibility: Absence retains continuous-concentration diffusion. Queue/runtime protocol v8 prevents older workers from silently ignoring this input.
 geometry:
   version: structured-layers-v1
   dimensions: [2, 3]
@@ -56,7 +67,7 @@ geometry:
   required: [geometry_version, lengths_m, transverse_cells, layers]
   planar_only_required: [out_of_plane_depth]
   layers: Ordered anode, internal regions, cathode; all widths sum to x length.
-  interfaces: Shared Cartesian faces with continuous concentrations and potential; harmonic material transmissibilities.
+  interfaces: Shared Cartesian faces with continuous concentrations and potential by default; explicitly declared neutral membrane/separator species may use the versioned partition law.
 species:
   required:
     [
