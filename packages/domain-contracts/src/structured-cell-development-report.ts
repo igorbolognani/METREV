@@ -364,6 +364,9 @@ export function buildStructuredCellDevelopmentReport(value: unknown) {
     },
     enabled_physics: [
       'steady_trace_species_diffusion_migration',
+      ...(run.input_snapshot.interface_partition
+        ? ['ideal_neutral_membrane_partition']
+        : []),
       ...('advection' in run.input_snapshot && run.input_snapshot.advection
         ? ['prescribed_incompressible_upwind_species_advection']
         : []),

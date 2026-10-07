@@ -12,7 +12,7 @@ Convergence requires both the admitted scaled nonlinear tolerance and local/glob
 
 The numerical solver identifier remains `structured-cell-fv-v1`; the separately versioned process protocol is `structured-cell-process-v8`. Version 4 added volumetric `faradaic_current_density` and prescribed convective transport; version 5 added prescribed Darcy face flow; version 6 added the boundary-driven Darcy pressure solve; version 7 reports cell pressure only for that solved mode and rejects new admission of mesh-sized prescribed `cell_pressure` arrays; version 8 adds an optional source-backed neutral membrane/separator partition law. Older protocol results remain readable, while the active executor claims only runs queued for its exact runtime version.
 
-Queue claims match both the persisted solver and runtime versions exactly. Keep matching v4, v5, and v6 executor/sidecar pairs deployed until their queues drain, or explicitly cancel a legacy run and create a new run from its immutable input with a new idempotency key. Never rewrite persisted version fields. The v7 executor rejects older directly supplied runs before starting the sidecar.
+Queue claims match both the persisted solver and runtime versions exactly. Keep matching v4, v5, v6, and v7 executor/sidecar pairs deployed until their queues drain, or explicitly cancel a legacy run and create a new run from its immutable input with a new idempotency key. Never rewrite persisted version fields. The v8 executor rejects older directly supplied runs before starting the sidecar.
 
 ## Explicit prescribed-flow transport
 

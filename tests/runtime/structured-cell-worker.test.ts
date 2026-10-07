@@ -185,15 +185,17 @@ describe('structured cell native worker and authenticated artifacts', () => {
   });
 
   it.each([
-    [2, false, false, false],
-    [3, false, false, false],
-    [2, true, false, false],
-    [2, false, true, false],
-    [2, false, false, true],
-    [3, false, false, true],
+    [2, false, false, false, false],
+    [3, false, false, false, false],
+    [2, true, false, false, false],
+    [2, false, true, false, false],
+    [2, false, false, true, false],
+    [3, false, false, true, false],
+    [2, false, false, false, true],
+    [3, false, false, false, true],
   ] as const)(
-    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s, solved Darcy=%s',
-    async (dimension, nonconverged, advection, solveDarcy) => {
+    'persists %sD fields and diagnostics when nonconverged=%s, prescribed advection=%s, solved Darcy=%s, neutral partition=%s',
+    async (dimension, nonconverged, advection, solveDarcy, partition) => {
       const root = await mkdtemp(join(tmpdir(), 'structured-cell-test-'));
       const store = new LocalSpatialFieldArtifactStore({
         rootDirectory: join(root, 'fields'),
@@ -206,6 +208,25 @@ describe('structured cell native worker and authenticated artifacts', () => {
         artifactStore: store,
       });
       const input = structuredCellFixture(dimension);
+      if (partition) {
+        input.interface_partition = {
+          version: 'structured-cell-neutral-membrane-partition-v1',
+          interfaces: [
+            {
+              left_domain: 'anode',
+              right_domain: 'membrane',
+              species: {
+                reduced: {
+                  value: 2,
+                  unit: '1',
+                  source_kind: 'test_fixture',
+                  source_ref: 'synthetic:worker-neutral-partition',
+                },
+              },
+            },
+          ],
+        };
+      }
       if (advection) {
         input.geometry.layers[1].kind = 'separator';
         const faces = structuredCellTransportFaces(input);
@@ -369,6 +390,28 @@ describe('structured cell native worker and authenticated artifacts', () => {
         expect(report.enabled_physics).not.toContain('mass_action_reactions');
         expect(report.enabled_physics).toContain('mfc_external_load');
         expect(
+          report.enabled_physics.includes('ideal_neutral_membrane_partition'),
+        ).toBe(partition);
+        if (partition) {
+          expect(report.parameter_provenance).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                path: 'input.interface_partition.interfaces.0.species.reduced',
+                value: 2,
+                unit: '1',
+                source_ref: 'synthetic:worker-neutral-partition',
+              }),
+            ]),
+          );
+          expect(report.equation_graph?.interfaces[0].law).toBe(
+            'cell-neutral-membrane-partition-v1',
+          );
+          expect(report.disabled_physics).toContain('donnan_equilibrium');
+          expect(report.limitations).toContain(
+            'Continuous potential and default continuous concentration interfaces; optional sourced ideal neutral membrane partition. No charged partition, Donnan equilibrium or fixed membrane charge.',
+          );
+        }
+        expect(
           report.enabled_physics.includes(
             'prescribed_incompressible_upwind_species_advection',
           ),
@@ -512,6 +555,8 @@ describe('structured cell native worker and authenticated artifacts', () => {
           });
           expect(markdown.statusCode).toBe(200);
           expect(markdown.body).toContain('Independent validation: false');
+          if (partition)
+            expect(markdown.body).toContain('ideal_neutral_membrane_partition');
           expect(markdown.body).toContain(
             '## Deterministic modeled field extrema',
           );

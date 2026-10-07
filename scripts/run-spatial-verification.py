@@ -99,6 +99,73 @@ def three_axis_refinement(system):
                                           coarse_z_plane_mean_range_mol_m3=float(z_variation)))
 
 
+def neutral_partition_refinement(dimension, system):
+    """Solve the reacting cell with two oriented neutral partition interfaces.
+
+    K=2 at anode->membrane and K=1/2 at membrane->cathode. These
+    synthetic coefficients are not membrane measurements. All axes refine;
+    transverse reservoirs prevent an extruded one-dimensional check.
+    """
+    inputs, outputs, runs = [], [], []
+    for factor in (1, 2, 3):
+        inp = fixture(dimension, system, factor)
+        if dimension == 3:
+            inp['reservoir_faces'] = ['y_min', 'z_min']
+            inp['geometry']['lengths_m'][2]['value'] = .0003
+            inp['geometry']['transverse_cells'][1] = 2 * factor
+        coefficient = dict(value=2., unit='1', source_kind='test_fixture',
+                           source_ref='synthetic:neutral-partition-refinement')
+        inp['interface_partition'] = dict(
+            version='structured-cell-neutral-membrane-partition-v1',
+            interfaces=[dict(left_domain='anode', right_domain='membrane',
+                             species={'reduced': coefficient}),
+                        dict(left_domain='membrane', right_domain='cathode',
+                             species={'reduced': dict(coefficient, value=.5)})])
+        output = Cell(inp).solve()
+        inputs.append(inp)
+        outputs.append(output)
+        runs.append(dict(input_sha256=digest(inp), mesh_sha256=digest(output['mesh']),
+                         refinement_factor=factor, mesh_shape=output['mesh']['shape'],
+                         cell_count=len(output['mesh']['volumes_m3']), status=output['status']))
+    currents = [v['circuit']['anodic_current_A'] for v in outputs]
+    means = [np.average(v['fields'][0]['values'], weights=v['mesh']['volumes_m3']) for v in outputs]
+    fluxes = {key: [v['interface_species_flux_mol_s'][key][0] for v in outputs]
+              for key in outputs[0]['interface_species_flux_mol_s']}
+    changes = np.abs(np.diff(currents))
+    continuous = copy.deepcopy(inputs[0])
+    del continuous['interface_partition']
+    baseline = Cell(continuous).solve()
+    unit_partition = copy.deepcopy(inputs[0])
+    for interface in unit_partition['interface_partition']['interfaces']:
+        interface['species']['reduced']['value'] = 1.
+    unit_output = Cell(unit_partition).solve()
+    unit_error = max(np.max(np.abs(np.array(a['values']) - np.array(b['values'])))
+                     for a, b in zip(unit_output['fields'], baseline['fields']))
+    partition_effect = np.max(np.abs(np.array(outputs[0]['fields'][0]['values'])
+                                    - np.array(baseline['fields'][0]['values'])))
+    coarse = np.array(outputs[0]['fields'][0]['values']).reshape(outputs[0]['mesh']['shape'])
+    transverse_variation = max(np.ptp(coarse.mean(axis=tuple(j for j in range(dimension) if j != axis)))
+                               for axis in range(1, dimension))
+    return dict(input=inputs[0], related_runs=runs,
+                measured_observables=dict(currents_A=currents, reduced_means_mol_m3=means,
+                                          interface_reduced_fluxes_mol_s=fluxes,
+                                          unit_partition_maximum_field_difference=float(unit_error),
+                                          partition_concentration_effect_mol_m3=float(partition_effect)),
+                checks=[
+                    assertion('three_levels_converged', sum(v['status'] == 'converged' for v in outputs), expected=3, tolerance=0),
+                    assertion('all_balance_checks_passed', int(all(r['passed'] for v in outputs for r in v['residuals'])), expected=1, tolerance=0),
+                    assertion('all_fields_finite', int(all(np.isfinite(f['values']).all() for v in outputs for f in v['fields'])), expected=1, tolerance=0),
+                    assertion('concentrations_nonnegative', int(all(min(f['values']) >= 0 for v in outputs for f in v['fields'] if f['unit'] == 'mol/m3')), expected=1, tolerance=0),
+                    assertion('current_successive_differences_decrease', int(changes[1] < changes[0]), expected=1, tolerance=0),
+                    assertion('medium_fine_current_relative_change', changes[1] / max(abs(currents[2]), 1e-30), tolerance=.001),
+                    assertion('medium_fine_concentration_mean_change', abs(means[2] - means[1]), tolerance=.005, unit='mol/m3'),
+                    assertion('unit_partition_and_baseline_converged', int(unit_output['status'] == baseline['status'] == 'converged'), expected=1, tolerance=0),
+                    assertion('unit_partition_maximum_field_difference', unit_error, tolerance=1e-12),
+                    assertion('partition_changes_concentration_field', int(partition_effect > .1), expected=1, tolerance=0),
+                    assertion('transverse_field_is_nonuniform', int(transverse_variation > 1e-4), expected=1, tolerance=0),
+                ])
+
+
 def run(mode):
     evidence = []
     scopes = []
@@ -226,6 +293,15 @@ def run(mode):
                            'Refine x/y/z together at factors 1/2/3 with y/z reservoir feeding; measure current, volume-weighted concentration, z variation and all native conservation residuals. Synthetic restricted steady cell only.',
                            [dict(scope, **level) for level in refinement['related_runs']])
                     evidence[-1]['measured_observables'] = refinement['measured_observables']
+                refinement = neutral_partition_refinement(dimension, system)
+                scope = dict(scope, input_sha256=digest(refinement['input']),
+                             mesh_sha256=refinement['related_runs'][0]['mesh_sha256'],
+                             verification_variant='neutral_partition_two_interfaces_all_axes')
+                scopes.append(scope)
+                record('mesh_refinement', refinement['checks'],
+                       'Refine all axes at factors 1/2/3 with K=2 and K=1/2 on adjacent membrane faces; check coupled current and concentration changes, native balances, positivity, transverse variation and the K=1 continuous-interface limit. Interface fluxes are diagnostics, not a flux-convergence claim; uniform transverse reservoirs meet concentration jumps at interface corners. No exact-solution order or experimental accuracy is claimed.',
+                       [dict(scope, **level) for level in refinement['related_runs']])
+                evidence[-1]['measured_observables'] = refinement['measured_observables']
     return dict(version='model-verification-evidence-v1', mode=mode,
                 generated_at=executed_at, scopes=scopes, evidence=evidence,
                 environment=dict(python=platform.python_version(), numpy=np.__version__, scipy=scipy.__version__),
