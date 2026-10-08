@@ -72,14 +72,14 @@ export const MODEL_FIDELITY_PROFILES: ModelFidelityProfile[] = [
     systems: ['MFC', 'MEC'],
     phenomena: [
       'Porous-anode substrate diffusion and local Faradaic reaction',
-      'Binary electroneutral membrane migration',
+      'Binary electroneutral membrane migration with optional uniform ideal Donnan fixed charge',
       'Cathode Butler–Volmer polarization and optional oxygen transport loss',
       'One MFC load or MEC applied-voltage circuit current',
     ],
     requiredComponentParameters: [],
     requiredSpatialInputs: [
       'source-traced cellwise anode porosity, tortuosity, accessible surface area and imposed material potential',
-      'source-traced binary monovalent membrane composition, equal interface concentrations and equal ion diffusivities',
+      'source-traced binary monovalent membrane composition: legacy equal membrane-side concentrations/diffusivities or explicit uniform Donnan fixed charge and partitions with equal solution reservoirs',
       'source-traced cathode kinetics and oxygen or hydrogen boundary, plus load or applied voltage',
     ],
     requiredGroups: ['porous_anode', 'binary_membrane', 'cathode', 'circuit'],
@@ -91,7 +91,7 @@ export const MODEL_FIDELITY_PROFILES: ModelFidelityProfile[] = [
     boundaryNote:
       'An analyst development API and the persisted case runner couple a steady planar anode, restricted binary membrane, cathode and electrical boundary with one current. Case execution requires the complete cell_1d input.',
     limitation:
-      'Case-runner development only, not a fitted predictive cell. The material potential is imposed; 2D/3D, transient chemistry, fixed-charge membrane and solid/electrolyte charge fields remain unresolved.',
+      'Case-runner development only, not a fitted predictive cell. The material potential is imposed; uniform binary Donnan is an exact restricted family, not general concentration polarization. 2D/3D, transient chemistry and resolved anode solid/liquid charge fields remain unresolved.',
   },
   {
     id: 'biofilm-1d-direct-transfer-research-v1',

@@ -70,7 +70,7 @@ fidelities:
     required_component_parameters: []
     required_spatial_inputs:
       - source-traced cellwise anode porosity, tortuosity, accessible surface area and imposed material potential
-      - source-traced binary monovalent membrane composition, equal interface concentrations and equal ion diffusivities
+      - 'source-traced binary monovalent membrane composition: legacy equal membrane-side concentrations/diffusivities or explicit uniform Donnan fixed charge and partitions with equal solution reservoirs'
       - source-traced cathode kinetics and oxygen or hydrogen boundary, plus load or applied voltage
     references:
       [

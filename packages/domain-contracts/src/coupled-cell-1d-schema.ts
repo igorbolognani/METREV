@@ -108,6 +108,19 @@ export const coupledCell1dInputSchema = z
         temperature: sourced('K'),
         segments: z.array(membraneSegment).min(2).max(512).optional(),
         species: z.array(membraneSpecies).length(2),
+        /** When present, species concentrations refer to identical solution
+         * reservoirs; the runtime computes the membrane-side Donnan states. */
+        donnan: z
+          .object({
+            version: z.literal('uniform-binary-ideal-donnan-v1'),
+            fixedChargeDensity: sourced('mol/m3'),
+            partitionCoefficients: z.record(
+              z.string().trim().min(1),
+              sourced('1'),
+            ),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     electrolyteResistance: sourced('ohm'),
@@ -164,6 +177,45 @@ export const coupledCell1dInputSchema = z
   .superRefine((input, context) => {
     const issue = (path: (string | number)[], message: string) =>
       context.addIssue({ code: 'custom', path, message });
+    const donnan = input.membrane.donnan;
+    if (donnan) {
+      const ions = input.membrane.species;
+      const salt = ions[0].leftConcentration.value;
+      if (
+        salt <= 0 ||
+        ions.some(
+          (ion) =>
+            ion.leftConcentration.value !== salt ||
+            ion.rightConcentration.value !== salt,
+        )
+      )
+        issue(
+          ['membrane', 'species'],
+          'Uniform Donnan requires equal positive electroneutral solution reservoirs on both sides',
+        );
+      if (
+        ions[0].valence.value * ions[1].valence.value !== -1 ||
+        ions.some((ion) => Math.abs(ion.valence.value) !== 1) ||
+        ions[0].name === ions[1].name
+      )
+        issue(
+          ['membrane', 'species'],
+          'Uniform Donnan requires one distinct monovalent cation/anion pair',
+        );
+      const partitionNames = new Set(Object.keys(donnan.partitionCoefficients));
+      if (
+        partitionNames.size !== 2 ||
+        ions.some(
+          (ion) =>
+            !partitionNames.has(ion.name) ||
+            donnan.partitionCoefficients[ion.name].value <= 0,
+        )
+      )
+        issue(
+          ['membrane', 'donnan', 'partitionCoefficients'],
+          'Positive source-backed partition coefficients for exactly both named ions are required',
+        );
+    }
     if (!input.anode.cells && !input.field_profiles?.anode)
       issue(
         ['anode', 'cells'],

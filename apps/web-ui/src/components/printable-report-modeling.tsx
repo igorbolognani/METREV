@@ -78,10 +78,14 @@ export function PrintableReportModelingSection({
 
         <p>
           These values are modeled solver outputs, not measurements or
-          independent observations. The model is an uncalibrated, lumped,
-          isothermal 0D baseline. Its confidence score is a fixed heuristic. Any
-          sensitivity scenarios change one input at a time and are not combined
-          prediction intervals.
+          independent observations.{' '}
+          {modeling.model_version === 'coupled-cell-1d-restricted-v1'
+            ? 'This is an uncalibrated steady planar 1D development model. Its selected membrane law and limits are recorded below; results remain informational.'
+            : modeling.model_version === 'coupled-0d-dae-v1'
+              ? 'The model is an uncalibrated, lumped, isothermal 0D baseline.'
+              : 'The selected model and its limits are recorded below.'}{' '}
+          Its confidence score is a fixed heuristic. Any sensitivity scenarios
+          change one input at a time and are not combined prediction intervals.
         </p>
 
         {modeling.status === 'completed' ? (

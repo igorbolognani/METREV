@@ -4,11 +4,11 @@
  * electrical boundary. This is a development model, not a calibrated plant
  * prediction or a 2D/3D multiphysics solver.
  *
- * The membrane reduction is deliberately limited to an uncharged, binary,
- * monovalent electrolyte with equal ion diffusivities and equal, constant
- * concentrations at both interfaces. This admits an electroneutral solution
- * with concentration-independent conductivity. Different ion mixtures need
- * an electroneutral potential/Donnan/partition solver and cannot enter here.
+ * The legacy membrane is an uncharged equal-diffusivity binary reduction.
+ * The optional uniform Donnan formulation admits fixed charge and unequal
+ * ion diffusivities with identical electroneutral 1:1 solution reservoirs.
+ * Both are exact steady uniform-concentration families; general membrane
+ * concentration polarization and multicomponent mixtures remain unsupported.
  */
 import { coupledCell1dInputSchema } from '@metrev/domain-contracts';
 import {
@@ -24,6 +24,10 @@ import {
   type MembraneIonInput,
   type MembraneIonResult,
 } from './membrane-ion-1d';
+import {
+  prepareUniformDonnanMembrane1d,
+  type UniformDonnanBoundary,
+} from './uniform-donnan-membrane-1d';
 
 const F = POROUS_ANODE_1D_SOURCES.faradayConstant.value;
 const R = POROUS_ANODE_1D_SOURCES.gasConstant.value;
@@ -38,7 +42,10 @@ export const COUPLED_CELL_1D_SOURCES = {
 export interface CoupledCell1dInput {
   system: 'MFC' | 'MEC';
   anode: PorousAnodeInput;
-  membrane: Omit<MembraneIonInput, 'interfacePotential'>;
+  membrane: Omit<MembraneIonInput, 'interfacePotential'> & {
+    /** Explicitly switches concentrations to solution-side boundary values. */
+    donnan?: UniformDonnanBoundary;
+  };
   /** These are separate from the resolved membrane loss, which is counted once. */
   electrolyteResistance: SourcedSpatialValue<'ohm'>;
   contactResistance: SourcedSpatialValue<'ohm'>;
@@ -278,84 +285,121 @@ export function solveCoupledCell1d(
       )
     : 0;
 
-  // The restricted membrane case has an exact electroneutral solution with
-  // uniform concentration. A harmonic sum captures heterogeneous pore paths.
-  const ions = input.membrane.species;
-  if (
-    ions?.length !== 2 ||
-    ions[0].name === ions[1].name ||
-    !ions[0].name?.trim() ||
-    !ions[1].name?.trim()
-  )
-    throw new RangeError(
-      'membrane: one named monovalent cation/anion pair required',
-    );
-  const z = ions.map((ion, i) =>
-    value(ion.valence, '1', `membrane.species[${i}].valence`, -1, 1),
-  );
-  if (z[0] * z[1] !== -1)
-    throw new RangeError('membrane: valences must be +1 and -1');
-  const freeD = ions.map((ion, i) =>
-    positive(
-      ion.freeDiffusivity,
-      'm2/s',
-      `membrane.species[${i}].freeDiffusivity`,
-    ),
-  );
-  const concentrations = ions.flatMap((ion, i) => [
-    value(
-      ion.leftConcentration,
-      'mol/m3',
-      `membrane.species[${i}].leftConcentration`,
-      0,
-    ),
-    value(
-      ion.rightConcentration,
-      'mol/m3',
-      `membrane.species[${i}].rightConcentration`,
-      0,
-    ),
-  ]);
-  const c = concentrations[0];
-  if (
-    c === 0 ||
-    freeD[0] !== freeD[1] ||
-    concentrations.some((v) => Math.abs(v - c) > 1e-12 * c)
-  )
-    throw new RangeError(
-      'membrane: equal positive concentrations on both sides and equal ion diffusivities required',
-    );
-  const n = input.membrane.segments?.length ?? 0;
-  if (n < 2 || n > 512)
-    throw new RangeError('membrane.segments: 2..512 required');
-  const length = positive(input.membrane.thickness, 'm', 'membrane.thickness');
-  const area = positive(input.membrane.area, 'm2', 'membrane.area');
-  const h = length / n;
-  const poreResistance = input.membrane.segments.map((segment, i) => {
-    const eps = positive(
-      segment.porosity,
-      '1',
-      `membrane.segments[${i}].porosity`,
-    );
-    if (eps >= 1)
+  const membranePreparation = (() => {
+    if (input.membrane.donnan)
+      return prepareUniformDonnanMembrane1d({
+        ...input.membrane,
+        donnan: input.membrane.donnan,
+      });
+    // The legacy membrane case has an exact electroneutral solution with
+    // uniform concentration. A harmonic sum captures heterogeneous pore paths.
+    const ions = input.membrane.species;
+    if (
+      ions?.length !== 2 ||
+      ions[0].name === ions[1].name ||
+      !ions[0].name?.trim() ||
+      !ions[1].name?.trim()
+    )
       throw new RangeError(
-        `membrane.segments[${i}].porosity: below one required`,
+        'membrane: one named monovalent cation/anion pair required',
       );
-    const tau = value(
-      segment.tortuosity,
-      '1',
-      `membrane.segments[${i}].tortuosity`,
-      1,
+    const z = ions.map((ion, i) =>
+      value(ion.valence, '1', `membrane.species[${i}].valence`, -1, 1),
     );
-    return (h * tau) / (freeD[0] * eps);
-  });
-  const totalPoreResistance = poreResistance.reduce((sum, v) => sum + v, 0);
-  const membraneResistance =
-    (R * temperature * totalPoreResistance) / (2 * F * F * area * c);
-  if (!Number.isFinite(membraneResistance) || membraneResistance <= 0)
-    throw new RangeError(
-      'membrane: effective ionic resistance outside supported domain',
+    if (z[0] * z[1] !== -1)
+      throw new RangeError('membrane: valences must be +1 and -1');
+    const freeD = ions.map((ion, i) =>
+      positive(
+        ion.freeDiffusivity,
+        'm2/s',
+        `membrane.species[${i}].freeDiffusivity`,
+      ),
     );
+    const concentrations = ions.flatMap((ion, i) => [
+      value(
+        ion.leftConcentration,
+        'mol/m3',
+        `membrane.species[${i}].leftConcentration`,
+        0,
+      ),
+      value(
+        ion.rightConcentration,
+        'mol/m3',
+        `membrane.species[${i}].rightConcentration`,
+        0,
+      ),
+    ]);
+    const c = concentrations[0];
+    if (
+      c === 0 ||
+      freeD[0] !== freeD[1] ||
+      concentrations.some((v) => Math.abs(v - c) > 1e-12 * c)
+    )
+      throw new RangeError(
+        'membrane: equal positive concentrations on both sides and equal ion diffusivities required',
+      );
+    const n = input.membrane.segments?.length ?? 0;
+    if (n < 2 || n > 512)
+      throw new RangeError('membrane.segments: 2..512 required');
+    const length = positive(
+      input.membrane.thickness,
+      'm',
+      'membrane.thickness',
+    );
+    const area = positive(input.membrane.area, 'm2', 'membrane.area');
+    const h = length / n;
+    const poreResistance = input.membrane.segments.map((segment, i) => {
+      const eps = positive(
+        segment.porosity,
+        '1',
+        `membrane.segments[${i}].porosity`,
+      );
+      if (eps >= 1)
+        throw new RangeError(
+          `membrane.segments[${i}].porosity: below one required`,
+        );
+      const tau = value(
+        segment.tortuosity,
+        '1',
+        `membrane.segments[${i}].tortuosity`,
+        1,
+      );
+      return (h * tau) / (freeD[0] * eps);
+    });
+    const totalPoreResistance = poreResistance.reduce((sum, v) => sum + v, 0);
+    const membraneResistance =
+      (R * temperature * totalPoreResistance) / (2 * F * F * area * c);
+    if (!Number.isFinite(membraneResistance) || membraneResistance <= 0)
+      throw new RangeError(
+        'membrane: effective ionic resistance outside supported domain',
+      );
+    return {
+      resistanceOhm: membraneResistance,
+      solve(current: number): MembraneIonResult {
+        const drop = current * membraneResistance;
+        let cumulative = 0;
+        const potential = [
+          0,
+          ...poreResistance.map((segment) => {
+            cumulative += segment;
+            return (-drop * cumulative) / totalPoreResistance;
+          }),
+        ].map(
+          (v): SourcedSpatialValue<'V'> => ({
+            value: v,
+            unit: 'V',
+            source_kind: 'assumption',
+            source_ref: 'model://coupled-cell-1d/ionic-charge-closure',
+          }),
+        );
+        return solveMembraneIon1d({
+          ...input.membrane,
+          interfacePotential: potential,
+        });
+      },
+    };
+  })();
+  const membraneResistance = membranePreparation.resistanceOhm;
 
   const anodeAt = (eta: number) => {
     const activity = -Math.expm1((-alphaA * eta) / thermalV);
@@ -430,25 +474,7 @@ export function solveCoupledCell1d(
   }
   const current = final.current;
   const drop = current * membraneResistance;
-  let cumulative = 0;
-  const potential = [
-    0,
-    ...poreResistance.map((segment) => {
-      cumulative += segment;
-      return (-drop * cumulative) / totalPoreResistance;
-    }),
-  ].map(
-    (v): SourcedSpatialValue<'V'> => ({
-      value: v,
-      unit: 'V',
-      source_kind: 'assumption',
-      source_ref: 'model://coupled-cell-1d/ionic-charge-closure',
-    }),
-  );
-  const membrane = solveMembraneIon1d({
-    ...input.membrane,
-    interfacePotential: potential,
-  });
+  const membrane = membranePreparation.solve(current);
   const ionicChargeResidual = membrane.totalIonicCurrentA - current;
   if (
     Math.abs(ionicChargeResidual) > Math.max(1e-10, current * 1e-6) ||

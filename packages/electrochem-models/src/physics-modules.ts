@@ -95,7 +95,7 @@ export const PHYSICS_MODULES: Readonly<Record<string, PhysicsModule>> = {
     requiredParameters: ['membrane_properties'],
     stateVariables: ['ionic_flux'],
     boundaryRequirements: ['two_interfaces'],
-    equationRefs: ['membrane-ion-1d', 'coupled-0d-dae'],
+    equationRefs: ['membrane-ion-1d', 'EQ-MEM-1D-002', 'coupled-0d-dae'],
     outputs: ['ionic_flux'],
   },
   hydraulics: {

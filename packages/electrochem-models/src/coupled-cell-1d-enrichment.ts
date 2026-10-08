@@ -147,6 +147,140 @@ export function coupledCell1dEnrichment(
       ),
     );
 
+  const donnan = result.membrane.uniformDonnan;
+  const membraneSeries: SimulationEnrichment['series'] = [];
+  if (donnan) {
+    observations.push(
+      modeled(
+        'membrane_resistance_ohm',
+        'Resolved membrane ionic resistance',
+        donnan.membraneResistanceOhm,
+        'ohm',
+      ),
+      modeled(
+        'membrane_voltage_drop_v',
+        'Membrane transport voltage drop',
+        result.membraneVoltageDropV,
+        'V',
+      ),
+      modeled(
+        'membrane_fixed_charge_mol_m3',
+        'Declared fixed charge per pore-liquid volume',
+        donnan.fixedChargeDensityMolM3,
+        'mol/m3',
+      ),
+      modeled(
+        'membrane_left_donnan_jump_v',
+        'Left membrane minus solution Donnan potential',
+        donnan.leftMembraneMinusSolutionPotentialV,
+        'V',
+      ),
+      modeled(
+        'membrane_right_donnan_jump_v',
+        'Right membrane minus solution Donnan potential',
+        donnan.rightMembraneMinusSolutionPotentialV,
+        'V',
+      ),
+      modeled(
+        'membrane_volume_charge_residual_mol_m3',
+        'Maximum membrane-volume electroneutrality residual',
+        donnan.maximumVolumeChargeResidualMolM3,
+        'mol/m3',
+      ),
+    );
+    // Index-based keys avoid using scientific species names as unsafe identifiers.
+    for (const [index, ion] of result.membrane.species.entries()) {
+      const equilibrium = donnan.species[index];
+      const prefix = `membrane_ion_${index}`;
+      observations.push(
+        modeled(
+          `${prefix}_flux_mol_m2_s`,
+          `${ion.name}: signed left-to-right ionic flux`,
+          ion.fluxMolM2S,
+          'mol/(m2 s)',
+        ),
+        modeled(
+          `${prefix}_current_a`,
+          `${ion.name}: ionic current contribution`,
+          ion.currentA,
+          'A',
+        ),
+        modeled(
+          `${prefix}_current_fraction`,
+          `${ion.name}: modeled current fraction`,
+          equilibrium.currentFraction,
+          '1',
+        ),
+        modeled(
+          `${prefix}_equilibrium_concentration_mol_m3`,
+          `${ion.name}: predicted membrane equilibrium concentration`,
+          equilibrium.equilibriumMembraneConcentrationMolM3,
+          'mol/m3',
+        ),
+      );
+      membraneSeries.push({
+        series_id: `development-1d:${prefix}-concentration`,
+        title: `${ion.name}: membrane concentration (uniform Donnan 1D)`,
+        series_type: 'trend_line',
+        x_axis: { key: 'x_m', label: 'Membrane depth', unit: 'm' },
+        y_axis: {
+          key: 'ion_concentration_mol_m3',
+          label: 'Modeled membrane concentration',
+          unit: 'mol/m3',
+        },
+        points: result.membrane.xNodesM.flatMap((x, node, nodes) =>
+          node % Math.max(1, Math.ceil((nodes.length - 1) / 199)) === 0 ||
+          node === nodes.length - 1
+            ? [
+                {
+                  x,
+                  y: ion.concentrationMolM3[node],
+                  meta: {
+                    domain: 'membrane',
+                    species: ion.name,
+                    quantity: 'modeled_concentration',
+                  },
+                },
+              ]
+            : [],
+        ),
+        source_kind: 'modeled',
+        provenance_note:
+          'Uniform ideal binary Donnan solution, no experimental observations; fixed charge and partitions retained in cell_1d input.',
+      });
+    }
+    membraneSeries.push({
+      series_id: 'development-1d:membrane-potential',
+      title: 'Membrane potential (uniform Donnan 1D)',
+      series_type: 'trend_line',
+      x_axis: { key: 'x_m', label: 'Membrane depth', unit: 'm' },
+      y_axis: {
+        key: 'potential_v',
+        label: 'Membrane-side potential',
+        unit: 'V',
+      },
+      points: result.membrane.xNodesM.flatMap((x, node, nodes) =>
+        node % Math.max(1, Math.ceil((nodes.length - 1) / 199)) === 0 ||
+        node === nodes.length - 1
+          ? [
+              {
+                x,
+                y: donnan.interfacePotentialV[node],
+                meta: { domain: 'membrane', gauge: 'left_solution_zero' },
+              },
+            ]
+          : [],
+      ),
+      source_kind: 'modeled',
+      provenance_note:
+        'Left solution potential is zero; both equal Donnan jumps cancel across the complete solution-to-solution boundary.',
+    });
+    for (const entry of observations)
+      entry.assumptions = [
+        'Imposed anode material potential; identical electroneutral binary solution reservoirs; uniform fixed charge and partitions; no membrane convection or concentration polarization.',
+      ];
+  }
+
   return {
     status: 'completed',
     model_version: CASE_RUNNER_1D_MODEL,
@@ -179,10 +313,13 @@ export function coupledCell1dEnrichment(
         provenance_note:
           'Local porous-anode reaction rates sampled from the steady 1D solver cells.',
       },
+      ...membraneSeries,
     ],
     assumptions: [
       'Steady planar 1D cell with imposed anode material potential.',
-      'Binary electroneutral membrane with equal interface concentrations and diffusivities.',
+      donnan
+        ? 'Uniform fixed-charge ideal binary Donnan membrane with identical electroneutral solution reservoirs and common pore-factor diffusivity fields; no concentration polarization or water transport.'
+        : 'Binary electroneutral membrane with equal interface concentrations and diffusivities.',
       'Development calculation only; results are excluded from decision rule inputs.',
     ],
     confidence: {

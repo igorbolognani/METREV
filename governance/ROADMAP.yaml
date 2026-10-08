@@ -74,6 +74,7 @@ work_items:
     blockers:
       - P02 product intake and full dimensional coverage pending
       - Constant isotropic permeability and pore-fluid viscosity are source-backed for the restricted Darcy development operation; tensor or variable hydraulic fields, Darcy/Brinkman interface laws, buffer, thermal and biological law parameters still need model-specific contracts
+      - Optional uniform-binary-ideal-donnan-v1 now has explicit source-backed fixed-charge and partition contracts with solution-side concentration semantics; asymmetric reservoirs and broader membrane formulations remain unsupported
       - 0D Monod COD uptake and restricted 1D Nernst-Monod substrate uptake now have separate source-traced runtime bindings; full molecular substrate/product stoichiometry, proton balances and pathway-specific reaction contracts remain open
   - id: P04
     title: Activate the future numerical sidecar architecture
@@ -242,6 +243,7 @@ work_items:
       - apps/
     blockers:
       - dependency gate pending; inspect depends_on and full source section
+      - The persisted 1D cell now closes uniform binary membrane-volume electroneutrality and NP current from source-backed fixed charge and partitions with unequal ion diffusivities and identical solution reservoirs; analytic signed-charge/current limits and three-grid exact-family checks are covered. This does not close general concentration polarization or transfer the formulation to 2D/3D
       - The restricted 2D/3D cell now couples local ideal Donnan equilibrium and source-backed fixed charge into charged trace-species interface fluxes, with both orientations, local closure, equilibrium, conservative balance and Jacobian checks. P09 remains pending full membrane-volume electroneutral Nernst–Planck/current closure, membrane water transport, nonideal/selective membrane laws, crossover verification and matched experimental evidence
   - id: P10
     title: Implement a resolved cathode model

@@ -107,6 +107,12 @@ field_groups:
       rule: Required modules must have a matching executable implementation at the selected fidelity; unavailable requirements return not_implemented.
     cell_1d:
       runtime_contract: packages/domain-contracts/src/coupled-cell-1d-schema.ts
+      optional_membrane_donnan:
+        version: uniform-binary-ideal-donnan-v1
+        fixedChargeDensity: source_backed_signed_mol_m3_per_pore_liquid_volume
+        partitionCoefficients: exactly_two_named_source_backed_positive_dimensionless_coefficients
+        concentration_semantics: species_left_and_right_concentrations_are_identical_electroneutral_solution_reservoirs_when_donnan_is_present
+        unsupported: asymmetric_reservoirs_variable_charge_multicomponent_water_convection
       rule: Restricted planar 1D cell quantities may be supplied cellwise or compiled from explicit source-backed field_profiles; generated cells and original fields remain in the persisted input snapshot.
     parameter_contract:
       { value: number, unit: string, source_kind: string, source_ref: string }

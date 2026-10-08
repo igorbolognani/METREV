@@ -134,7 +134,7 @@ feature_coverage:
     nano_interface: absent
   donnan_fixed_charge:
     0D: absent
-    1D: absent
+    1D: restricted
     2D: absent
     3D: absent
     macro_stack: absent
@@ -263,7 +263,7 @@ lower_dimensional_reaction_coverage:
         molecular_species_and_product_stoichiometry,
         proton_balance_and_pathway_accounting,
         resolved_or_explicitly_validated_anode_potential,
-        membrane_law_beyond_binary_equal_concentration_reduction,
+        membrane_concentration_polarization_and_multicomponent_transport_beyond_uniform_binary_family,
       ]
     remaining_limits:
       [
@@ -273,6 +273,27 @@ lower_dimensional_reaction_coverage:
         no_molecular_products_or_proton_balance,
         no_independent_validation,
       ]
+uniform_binary_donnan_1d:
+  model_id: coupled-cell-1d-restricted-v1
+  formulation: uniform-binary-ideal-donnan-v1
+  equation_id: EQ-MEM-1D-002
+  runtime_source: packages/electrochem-models/src/uniform-donnan-membrane-1d.ts
+  contract_source: packages/domain-contracts/src/coupled-cell-1d-schema.ts
+  numerical_test: tests/runtime/uniform-donnan-membrane-1d.test.ts
+  postgres_test: tests/postgres/persistence.test.ts
+  ui_test: tests/web-ui/evaluation-workbench.test.tsx
+  report_test: tests/web-ui/printable-report-view.test.tsx
+  verification_scope: exact_uniform_binary_ideal_fixed_charge_equal_solution_reservoirs_unequal_free_diffusivities_common_pore_factor_three_grid_mass_charge_current_limits_no_experimental_accuracy_claim
+  case_runner: true
+  output_relevance: informational
+  experimental_maturity: no_matched_independent_validation
+  decision_eligible: false
+  remaining_limits:
+    - no_asymmetric_reservoirs_or_concentration_polarization
+    - no_spatially_variable_charge_or_partition
+    - no_multivalent_or_multicomponent_mixture
+    - no_membrane_water_or_convection
+    - no_general_2d_3d_membrane_charge_closure
 # This separate matrix records the opt-in spatial development profile without
 # activating the absent 2D/3D catalog fidelities above.
 development_feature_coverage:
