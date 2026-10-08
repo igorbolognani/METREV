@@ -1,4 +1,5 @@
 import rawFixture from '../fixtures/raw-case-input.json';
+import { uniformDonnanFixture } from '../fixtures/coupled-cell-1d';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -44,6 +45,44 @@ const logger = {
 };
 
 describe('workspace presenters', () => {
+  it('displays persisted fixed-charge membrane species/current outputs and separates profile axes', async () => {
+    const repository = new MemoryEvaluationRepository();
+    try {
+      const evaluation = await createPersistedCaseEvaluation({
+        rawInput: rawCaseInputSchema.parse({
+          ...rawFixture,
+          mechanistic_model: {
+            model_version: 'coupled-cell-1d-restricted-v1',
+            model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+            system_type: 'MFC',
+            cell_1d: uniformDonnanFixture(),
+          },
+        }),
+        actor,
+        evaluationRepository: repository,
+        logger,
+        environment: 'test',
+      });
+      expect(evaluation.simulation_enrichment?.series).toHaveLength(5);
+      const html = renderToStaticMarkup(
+        React.createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          React.createElement(EvaluationModelingTab, { evaluation }),
+        ),
+      );
+      expect(html).toContain(
+        'Maximum membrane-volume electroneutrality residual',
+      );
+      expect(html).toContain('Left membrane minus solution Donnan potential');
+      expect(html).toContain('cation: signed left-to-right ionic flux');
+      expect(html).toContain('anion: modeled current fraction');
+      expect(html).toContain('Y unit mol/m3');
+      expect(html).toContain('Y unit V');
+    } finally {
+      await repository.disconnect();
+    }
+  });
   it('builds a dedicated comparison payload instead of relying on frontend heuristics', async () => {
     const repository = new MemoryEvaluationRepository();
 

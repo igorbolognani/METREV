@@ -66,6 +66,11 @@ export type {
   PorousAnodeResult,
 } from './porous-anode-1d';
 export { MEMBRANE_ION_1D_SOURCE, solveMembraneIon1d } from './membrane-ion-1d';
+export { prepareUniformDonnanMembrane1d } from './uniform-donnan-membrane-1d';
+export type {
+  UniformDonnanBoundary,
+  UniformDonnanMembraneInput,
+} from './uniform-donnan-membrane-1d';
 export type {
   MembraneIonSpecies,
   MembraneIonSegment,

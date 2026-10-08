@@ -252,7 +252,16 @@ def validate() -> None:
         matches = list((ROOT / "docs/adr").glob(f"ADR-{number:03d}-*.md"))
         assert len(matches) == 1, f"ADR-{number:03d} missing or duplicated"
         assert "Status:" in matches[0].read_text()
+    uniform = matrix["uniform_binary_donnan_1d"]
+    assert uniform["model_id"] == "coupled-cell-1d-restricted-v1"
+    assert uniform["decision_eligible"] is False
+    assert uniform["output_relevance"] == "informational"
+    for key in ("runtime_source", "contract_source", "numerical_test", "postgres_test", "ui_test", "report_test"):
+        assert (ROOT / uniform[key]).is_file(), key
+    assert uniform["formulation"] in (ROOT / uniform["contract_source"]).read_text()
     equations = (ROOT / "docs/numerics/GOVERNING_EQUATIONS.md").read_text()
+    assert equations.count(uniform["equation_id"]) == 1
+    assert uniform["equation_id"] in (ROOT / uniform["runtime_source"]).read_text()
     for identifier in ("EQ-SP-001", "EQ-FL-001", "EQ-CH-001", "EQ-RX-001", "EQ-MEM-001"):
         assert equations.count(identifier) == 1, identifier
     assert (ROOT / "docs/numerics/VERIFICATION_MATRIX.md").is_file()

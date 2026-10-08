@@ -291,18 +291,27 @@ development_cell_coupling:
   required_boundaries:
     - source_backed_cellwise_anode_porosity_tortuosity_accessible_area_and_material_potential
     - source_backed_substrate_diffusion_kinetics_electron_equivalent_mapping_and_bulk_concentration
-    - equal_concentration_equal_diffusivity_monovalent_binary_membrane_species_and_local_pore_properties
+    - legacy_equal_membrane_concentrations_and_diffusivities_or_explicit_uniform_ideal_donnan_equal_solution_reservoirs_with_fixed_charge_and_partitions
     - cathode_area_exchange_current_transfer_coefficient_and_oxygen_or_hydrogen_boundary
     - MFC_external_load_or_MEC_applied_voltage_with_separate_electrolyte_contact_resistances
   coupling: one_current_closes_anode_Faradaic_reaction_membrane_ionic_flux_cathode_polarization_and_circuit
   reaction_scope: single_substrate_reduced_kinetics_with_source_traced_electron_equivalents_no_molecular_products_or_proton_balance
+  membrane_uniform_donnan:
+    formulation: uniform-binary-ideal-donnan-v1
+    equation_id: EQ-MEM-1D-002
+    fixed_charge_basis: signed_molar_charge_equivalents_per_membrane_pore_liquid_volume
+    boundary_concentrations: identical_positive_electroneutral_monovalent_solution_reservoirs
+    closure: uniform_ideal_partition_and_fixed_charge_with_common_epsilon_over_tau_path_factor_and_source_backed_ion_specific_diffusivities
+    potential_gauge: left_solution_zero_equal_interface_jumps_cancel_solution_to_solution
+    output_role: modeled_development_only_not_measurement_or_independent_validation
   activity_factor: 1_minus_exp_of_negative_alpha_F_eta_over_RT_is_an_explicit_unfitted_reduction
   evidence_posture: numerical_development_only_no_independent_experimental_validation
   not_implemented:
     [
       temporal_inventories,
-      Donnan_partition,
-      fixed_charge,
+      nonuniform_or_multicomponent_Donnan_partition,
+      spatially_variable_fixed_charge,
+      membrane_concentration_polarization,
       convection,
       local_solid_potential,
       local_electrolyte_potential,

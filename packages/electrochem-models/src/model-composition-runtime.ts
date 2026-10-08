@@ -280,7 +280,15 @@ export function compileElectrochemicalModel(
     );
   const implementations = IMPLEMENTATIONS[model];
   const bindings = composition.modulePlan.flatMap((module) => {
-    const implementation = implementations[module.id];
+    const implementation =
+      oneD && cell?.membrane.donnan && module.id === 'membrane_or_separator'
+        ? {
+            implementation_id:
+              'uniform-donnan-membrane-1d.electroneutral-current',
+            equation_id: 'EQ-MEM-1D-002',
+            equation_ids: ['membrane-ion-1d', 'EQ-MEM-1D-002'],
+          }
+        : implementations[module.id];
     const mappedEquations =
       implementation?.equation_ids ??
       (implementation ? [implementation.equation_id] : []);
@@ -323,7 +331,14 @@ export function compileElectrochemicalModel(
           'steady planar through-thickness cell',
           'imposed anode material potential',
           'binary electroneutral membrane',
-          'no growth, Donnan, thermal or gas-transport field',
+          ...(cell?.membrane.donnan
+            ? [
+                'uniform fixed-charge ideal Donnan with identical monovalent solution reservoirs; no concentration polarization',
+              ]
+            : [
+                'uncharged binary membrane with equal concentrations and diffusivities',
+              ]),
+          'no growth, thermal or gas-transport field',
         ]
       : [
           'well-mixed isothermal compartments',

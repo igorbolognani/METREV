@@ -44,27 +44,35 @@ reconciliation_checkpoint: docs/audits/MASTER_RUNTIME_IMPLEMENTATION_2026-10-03.
 current_direction: one_stack_configured_physics_runtime_with_composable_modules_no_silent_fidelity_downgrade
 spatial_development_reports: deterministic_v1_json_markdown_source_traced_failed_diagnostics_owner_scoped_no_decision_eligibility
 snapshot:
-  observed_on: '2026-10-07'
-  integrated_main_head: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
-  integrated_main_pr: 140
-  integration_state: neutral_partition_pr139_and_0d_1d_reaction_pr140_merged_main_dev_aligned
-  verified_runtime_head: 2303e65527259568653c7e16b36b6b8657d750dd
-  runtime_ci: github_actions_run_37677514640_passed
-  runtime_codeql: github_actions_run_37677514571_passed
-  open_development_prs: []
+  observed_on: '2026-10-08'
+  integrated_main_head: 696f32d7353ab6cd0ab123cd5f8b55c530e30c8c
+  integrated_main_pr: 141
+  integration_state: charged_donnan_pr141_merged_main_dev_aligned
+  verified_runtime_head: 6cd20df86664473cf2106c8c02584f2c54f91d85
+  runtime_ci: github_actions_run_37700305326_passed
+  runtime_codeql: github_actions_run_37700305255_passed
+  open_development_prs:
+    - pull_request: 142
+      branch: feat/1d-fixed-charge-membrane
+      head_sha: 539b42d785b70ce23fe12c0c409d3a1ebd2e6392
+      review_state: ready_for_review
+      ci_state: in_progress
+      codeql_state: in_progress
+      ci_run: 37749591042
+      codeql_run: 37749591032
   release_gate: general_product_dependencies_and_independent_validation_pending
 spatial_case_development: immutable_evaluation_snapshot_explicit_planar_layer_mapping_exact_profile_async_child_runs_and_fixed_profile_equation_graph
+uniform_donnan_1d: exact_binary_fixed_charge_and_current_family_with_identical_solution_reservoirs_source_traced_unequal_diffusivities_development_only
 development_batch:
-  branch: feat/spatial-charged-donnan-interfaces
-  base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
-  state: pr_open_locally_verified
-  pull_request: 141
-  ci: pending_for_published_head
-  scope: local_ideal_donnan_interface_coupling_with_conservation_provenance_and_partial_development_coverage
+  branch: feat/1d-fixed-charge-membrane
+  base_main: 696f32d7353ab6cd0ab123cd5f8b55c530e30c8c
+  state: pr_open_locally_verified_pending_ci
+  pull_request: 142
+  implementation_head: 539b42d785b70ce23fe12c0c409d3a1ebd2e6392
+  scope: uniform_binary_fixed_charge_donnan_1d_membrane_current_closure_and_persisted_profiles
   scientific_maturity_promoted: false
   decision_eligible: false
   source:
-    - apps/spatial-sidecar/metrev_spatial/structured_cell.py
-    - packages/domain-contracts/src/structured-cell-donnan-evidence.ts
-    - tests/contracts/test_spatial_structured_cell.py
-    - tests/runtime/structured-cell-worker.test.ts
+    - packages/electrochem-models/src/uniform-donnan-membrane-1d.ts
+    - packages/electrochem-models/src/coupled-cell-1d.ts
+    - tests/runtime/uniform-donnan-membrane-1d.test.ts

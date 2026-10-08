@@ -71,3 +71,15 @@ export function fixture(n = 12): CoupledCell1dInput {
     circuit: { kind: 'external_load', resistance: q(1000, 'ohm') },
   };
 }
+
+/** Synthetic fixed-charge input: values are not measured membrane properties. */
+export function uniformDonnanFixture(n = 12): CoupledCell1dInput {
+  const cell = fixture(n);
+  cell.membrane.donnan = {
+    version: 'uniform-binary-ideal-donnan-v1',
+    fixedChargeDensity: q(-50, 'mol/m3'),
+    partitionCoefficients: { cation: q(1.2, '1'), anion: q(0.8, '1') },
+  };
+  cell.membrane.species[1].freeDiffusivity = q(2e-9, 'm2/s');
+  return cell;
+}

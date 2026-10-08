@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import fixture from '../fixtures/raw-case-input.json';
-import { fixture as coupledCellFixture } from '../fixtures/coupled-cell-1d';
+import {
+  fixture as coupledCellFixture,
+  uniformDonnanFixture,
+} from '../fixtures/coupled-cell-1d';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -414,53 +417,72 @@ describe('postgres-backed persistence flow', () => {
     }
   }, 20000);
 
-  it('roundtrips a restricted 1D result through PostgreSQL evaluation storage', async () => {
-    const app = await buildApp({ sessionResolver });
-    try {
-      const createdResponse = await app.inject({
-        method: 'POST',
-        url: '/api/cases/evaluate',
-        headers: {
-          'content-type': 'application/json',
-          cookie: `${defaultSessionCookieName}=postgres-suite`,
-        },
-        payload: {
-          ...fixture,
-          case_id: caseId1d,
-          mechanistic_model: {
-            model_version: 'coupled-cell-1d-restricted-v1',
-            model_fidelity_id: 'coupled-cell-1d-restricted-v1',
-            system_type: 'MFC',
-            cell_1d: coupledCellFixture(),
+  it.each([false, true])(
+    'roundtrips a restricted 1D result through PostgreSQL evaluation storage (Donnan=%s)',
+    async (donnan) => {
+      const app = await buildApp({ sessionResolver });
+      try {
+        const createdResponse = await app.inject({
+          method: 'POST',
+          url: '/api/cases/evaluate',
+          headers: {
+            'content-type': 'application/json',
+            cookie: `${defaultSessionCookieName}=postgres-suite`,
           },
-        },
-      });
-      expect(createdResponse.statusCode).toBe(201);
-      const created = createdResponse.json();
-      expect(created.simulation_enrichment?.status).toBe('completed');
-      const fetchedResponse = await app.inject({
-        method: 'GET',
-        url: `/api/evaluations/${created.evaluation_id}`,
-        headers: { cookie: `${defaultSessionCookieName}=postgres-suite` },
-      });
-      expect(fetchedResponse.statusCode).toBe(200);
-      const fetched = fetchedResponse.json();
-      expect(fetched.simulation_enrichment?.model_version).toBe(
-        'coupled-cell-1d-restricted-v1',
-      );
-      expect(fetched.simulation_enrichment?.series).toEqual(
-        created.simulation_enrichment?.series,
-      );
-      expect(
-        fetched.simulation_enrichment?.derived_observations.every(
-          (entry: { decision_relevance: string }) =>
-            entry.decision_relevance === 'informational',
-        ),
-      ).toBe(true);
-    } finally {
-      await app.close();
-    }
-  }, 20000);
+          payload: {
+            ...fixture,
+            case_id: caseId1d,
+            mechanistic_model: {
+              model_version: 'coupled-cell-1d-restricted-v1',
+              model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+              system_type: 'MFC',
+              cell_1d: donnan ? uniformDonnanFixture() : coupledCellFixture(),
+            },
+          },
+        });
+        expect(createdResponse.statusCode).toBe(201);
+        const created = createdResponse.json();
+        expect(created.simulation_enrichment?.status).toBe('completed');
+        expect(created.simulation_enrichment?.series).toHaveLength(
+          donnan ? 5 : 2,
+        );
+        const fetchedResponse = await app.inject({
+          method: 'GET',
+          url: `/api/evaluations/${created.evaluation_id}`,
+          headers: { cookie: `${defaultSessionCookieName}=postgres-suite` },
+        });
+        expect(fetchedResponse.statusCode).toBe(200);
+        const fetched = fetchedResponse.json();
+        expect(fetched.simulation_enrichment?.model_version).toBe(
+          'coupled-cell-1d-restricted-v1',
+        );
+        expect(fetched.simulation_enrichment?.series).toEqual(
+          created.simulation_enrichment?.series,
+        );
+        if (donnan) {
+          expect(
+            fetched.simulation_enrichment.input_snapshot.cell_1d.membrane
+              .donnan,
+          ).toEqual(uniformDonnanFixture().membrane.donnan);
+          expect(
+            fetched.simulation_enrichment.derived_observations.find(
+              (entry: { key: string }) =>
+                entry.key === 'membrane_volume_charge_residual_mol_m3',
+            ).value,
+          ).toBeLessThan(1e-9);
+        }
+        expect(
+          fetched.simulation_enrichment?.derived_observations.every(
+            (entry: { decision_relevance: string }) =>
+              entry.decision_relevance === 'informational',
+          ),
+        ).toBe(true);
+      } finally {
+        await app.close();
+      }
+    },
+    20000,
+  );
 
   it('persists accepted catalog source lineage, claim lineage, and immutable snapshots', async () => {
     const prisma = getPrismaClient();

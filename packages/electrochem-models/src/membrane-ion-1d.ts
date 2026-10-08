@@ -58,9 +58,29 @@ export interface MembraneIonResult {
   totalIonicCurrentA: number;
   sourceDoi: string;
   reviewStatus: 'pending';
+  /** Present only for the exact uniform binary charge-closure family. */
+  uniformDonnan?: {
+    formulation: 'uniform-binary-ideal-donnan-v1';
+    fixedChargeDensityMolM3: number;
+    chargeResidualMolM3: number;
+    maximumVolumeChargeResidualMolM3: number;
+    leftMembraneMinusSolutionPotentialV: number;
+    rightMembraneMinusSolutionPotentialV: number;
+    netInterfaceVoltageV: number;
+    membraneResistanceOhm: number;
+    interfacePotentialV: number[];
+    species: {
+      name: string;
+      valence: number;
+      partitionCoefficient: number;
+      solutionConcentrationMolM3: number;
+      equilibriumMembraneConcentrationMolM3: number;
+      currentFraction: number;
+    }[];
+  };
 }
 
-function number(
+export function membraneParameterValue(
   item: SourcedSpatialValue,
   unit: string,
   label: string,
@@ -88,12 +108,12 @@ function number(
   return item.value;
 }
 
-function positive(
+export function positiveMembraneParameterValue(
   item: SourcedSpatialValue,
   unit: string,
   label: string,
 ): number {
-  const value = number(item, unit, label, 0);
+  const value = membraneParameterValue(item, unit, label, 0);
   if (!value) throw new RangeError(`${label}: must be positive`);
   return value;
 }
@@ -105,6 +125,8 @@ function bernoulli(x: number): number {
 
 /** Steady transport with exact exponential fitting in each constant-coefficient segment. */
 export function solveMembraneIon1d(input: MembraneIonInput): MembraneIonResult {
+  const number = membraneParameterValue;
+  const positive = positiveMembraneParameterValue;
   const n = input.segments?.length ?? 0;
   if (
     n < 2 ||

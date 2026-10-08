@@ -1,5 +1,5 @@
 schema_version: 1
-observed_on: '2026-10-07'
+observed_on: '2026-10-08'
 authority: chronological_reconciliation_not_a_replacement_roadmap
 current_requirements: governance/MASTER_EXECUTION_TASK.md
 current_operating_rules: AGENTS.md
@@ -399,7 +399,11 @@ stages:
 
   - id: spatial_charged_donnan_interface_coupling
     period: '2026-10-08'
-    state: pr_open_locally_verified
+    state: integrated_main
+    merge_commit: 696f32d7353ab6cd0ab123cd5f8b55c530e30c8c
+    head_sha: 6cd20df86664473cf2106c8c02584f2c54f91d85
+    ci_run: 37700305326
+    codeql_run: 37700305255
     pull_request: 141
     branch: feat/spatial-charged-donnan-interfaces
     base_main: 7faeaec43dc196186e2b2a2e4fd75baf0125337f
@@ -412,6 +416,24 @@ stages:
       - docs/audits/DONNAN_INTERFACE_CONTINUATION_2026-10-08.md
     meaning: Couples source-backed ideal Donnan partition and local fixed-charge closure to spatial trace-species membrane-interface fluxes, adds input-hash-bound report evidence, and keeps broad membrane closure, experimental validation and catalog admission open.
 
+  - id: uniform_binary_fixed_charge_1d
+    period: '2026-10-08'
+    state: development_pr_not_merged
+    pull_request: 142
+    head_sha: 539b42d785b70ce23fe12c0c409d3a1ebd2e6392
+    review_state: ready_for_review
+    ci_state: in_progress
+    codeql_state: in_progress
+    ci_run: 37749591042
+    codeql_run: 37749591032
+    branch: feat/1d-fixed-charge-membrane
+    base_main: 696f32d7353ab6cd0ab123cd5f8b55c530e30c8c
+    sources:
+      - packages/electrochem-models/src/uniform-donnan-membrane-1d.ts
+      - tests/runtime/uniform-donnan-membrane-1d.test.ts
+      - tests/postgres/persistence.test.ts
+      - tests/web-ui/printable-report-view.test.tsx
+    meaning: Exact uniform binary ideal Donnan fixed-charge/current family coupled to the existing 1D MFC/MEC circuit and persisted modeled observations; asymmetric reservoirs, concentration polarization, general 2D/3D charge closure and independent validation remain pending.
 sequence:
   - development_batch
   - numerical_verification_and_correction

@@ -7,8 +7,49 @@ import {
   ReportConversationTrace,
 } from '../../apps/web-ui/src/components/printable-report-view';
 import { buildWorkspaceViewFixtures } from '../fixtures/workspace-view-fixtures';
+import {
+  buildReportModelingSection,
+  normalizeCaseInput,
+  rawCaseInputSchema,
+} from '@metrev/domain-contracts';
+import { evaluateSimulationEnrichment } from '@metrev/electrochem-models';
+import { uniformDonnanFixture } from '../fixtures/coupled-cell-1d';
+import rawCase from '../fixtures/raw-case-input.json';
+import { PrintableReportModelingSection } from '../../apps/web-ui/src/components/printable-report-modeling';
 
 describe('printable report view', () => {
+  it('renders actual fixed-charge 1D membrane outputs with the selected dimensional limits', () => {
+    const simulation = evaluateSimulationEnrichment({
+      normalizedCase: normalizeCaseInput(
+        rawCaseInputSchema.parse({
+          ...rawCase,
+          mechanistic_model: {
+            model_version: 'coupled-cell-1d-restricted-v1',
+            model_fidelity_id: 'coupled-cell-1d-restricted-v1',
+            system_type: 'MFC',
+            cell_1d: uniformDonnanFixture(),
+          },
+        }),
+      ),
+    });
+    expect(simulation.status).toBe('completed');
+    const html = renderToStaticMarkup(
+      React.createElement(PrintableReportModelingSection, {
+        modeling: buildReportModelingSection(simulation),
+      }),
+    );
+    expect(html).toContain('steady planar 1D development model');
+    expect(html).toContain('Uniform fixed-charge ideal binary Donnan');
+    expect(html).toContain(
+      'Maximum membrane-volume electroneutrality residual',
+    );
+    expect(html).toContain('cation: ionic current contribution');
+    expect(html).toContain(
+      'anion: predicted membrane equilibrium concentration',
+    );
+    expect(html).toContain('test-fixture://coupled-cell-1d');
+    expect(html).not.toContain('isothermal 0D baseline');
+  });
   it('renders the print-friendly report sections aligned with the consulting template', async () => {
     const { report, repository } = await buildWorkspaceViewFixtures();
 
