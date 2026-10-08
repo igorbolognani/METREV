@@ -418,7 +418,14 @@ stages:
 
   - id: uniform_binary_fixed_charge_1d
     period: '2026-10-08'
-    state: locally_verified_pending_pr_ci
+    state: development_pr_not_merged
+    pull_request: 142
+    head_sha: 539b42d785b70ce23fe12c0c409d3a1ebd2e6392
+    review_state: ready_for_review
+    ci_state: in_progress
+    codeql_state: in_progress
+    ci_run: 37749591042
+    codeql_run: 37749591032
     branch: feat/1d-fixed-charge-membrane
     base_main: 696f32d7353ab6cd0ab123cd5f8b55c530e30c8c
     sources:
